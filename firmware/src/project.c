@@ -138,7 +138,7 @@ static void proj_write(pw_t *w, const char *name)
         uint32_t e = eng_idx(t->eng_req);
         int16_t v[P_COUNT];
         for (i = 0; i < P_COUNT; i++)
-            v[i] = motion_base_value(t, i);
+            v[i] = t->p[i];
         pw_u8(w, e);
         pw_u8(w, t->preset);
         for (i = n = 0; i < P_COUNT; i++)
@@ -587,7 +587,6 @@ static void pr_open(pr_t *r, int (*get)(uint32_t), uint32_t count)
 static int project_restore(int (*get)(uint32_t), uint32_t count)
 {
     pr_t r;
-    uint32_t k;
     int bad;
     pr_open(&r, get, count);
     if (pr_next(&r) || proj_read(&r, 0))
@@ -600,8 +599,6 @@ static int project_restore(int (*get)(uint32_t), uint32_t count)
     seq_stop();
     transport_req = 0;
     tk_defaults();
-    for (k = 0; k < NTRK; k++)
-        motion_reset(&trk[k]);
     pr_open(&r, get, count);
     bad = pr_next(&r) || proj_read(&r, 1);        /* (read and checked a moment ago: a flash that fails now) */
     if (bad)

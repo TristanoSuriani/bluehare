@@ -9,7 +9,7 @@
  * project's (as loaded or last saved; none: "PROJECT A"), so SAVE, OCT+, OCT+ saves with the default name.
  * Writing needs the transport stopped (STOP TO SAVE; the screen stays).
  *
- * The keys type and never sound, record or send MIDI (seq.c keyboard_block: song.grid 2). Upper case, at most 12:
+ * The keys type and never sound, record or send MIDI (seq.c keyboard_block: song.keys_mute). Upper case, at most 12:
  *   white keys   ABC (letters): AB CD EF GH IJK LM NO PQ RS TU VW XYZ, then 123 456 789 0-. ; phone style: a tap
  *                types the group's first character, another tap of the same key within 0.8 s the next one
  *                (cycling); another key or 0.8 s without a tap keeps it and moves on.
@@ -57,9 +57,8 @@ static void name_close(void)
         ui.force = 1;
     nm.kind = NK_NONE;
 }
-/* the keys: 2 = NAME's (silent), 1 = the DRUM grid, 3 = SONG's A..D (ui.c song_keys_on), 0 = notes (seq.c keyboard_block
- * reads song.grid) */
-static uint32_t keys_mode(void) { return name_on() ? 2u : grid_on() ? 1u : song_keys_on() ? 3u : 0u; }
+/* the keys: 1 = NAME's (silent), 0 = notes (seq.c keyboard_block reads song.keys_mute) */
+static uint32_t keys_mode(void) { return name_on() ? 1u : 0u; }
 
 static const char *nm_group(uint32_t p)                /* white key place p's characters */
 {
@@ -278,7 +277,7 @@ static void name_input(uint32_t notes, uint32_t oct)
 {
     uint32_t k;
     int32_t s;
-    song.grid = 2;                                     /* (already: keys_mode) */
+    song.keys_mute = 1;                                /* (already: keys_mode) */
     if (nm.key && fm1_ms - nm.t >= NM_TAP_MS)          /* 0.8 s without a tap: the letter is kept */
         nm_commit();
     for (k = 0; k < 27u; k++) {

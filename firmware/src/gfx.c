@@ -107,8 +107,8 @@ static struct {
 #define T_REC ux.rec             /* REC: fixed red (GREY, MONO: the accent) */
 #define T_RAISE ux.raise         /* a raised area on a surface: stubs, guides, slots, chips, button wells */
 #define T_KEY ux.key             /* a keycap's fill (its label: T_INK; unavailable: a T_DIM fill) */
-#define T_LANE ux.lane           /* the piano roll: an in-scale row (SURF -> THEME 10 %) */
-#define T_GRID ux.grid           /* the piano roll: a step line (SURF -> TEXT 6 %; beats and C rows: RAISE) */
+#define T_LANE ux.lane           /* (the piano roll's in-scale row until 1.4: SURF -> THEME 10 %; unused) */
+#define T_GRID ux.grid           /* (the piano roll's step line until 1.4: SURF -> TEXT 6 %; unused) */
 #define NPALETTES UI_NPALETTES
 
 static inline uint16_t ux_gray(uint32_t x5) { return (uint16_t)((x5 << 11) | (x5 << 6) | x5); }
@@ -232,15 +232,6 @@ static void cv_rule(int32_t x, int32_t y, int32_t w, int32_t h)
 {
     GFX_HOOK_CELL(x, y + cv_oy, x + w, y + h + cv_oy);
     cv_rect(x, y, w, h, T_RULE);
-}
-
-/* a 1 px outline */
-static void cv_frame(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
-{
-    cv_rect(x, y, w, 1, c);
-    cv_rect(x, y + h - 1, w, 1, c);
-    cv_rect(x, y, 1, h, c);
-    cv_rect(x + w - 1, y, 1, h, c);
 }
 
 static void cv_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)

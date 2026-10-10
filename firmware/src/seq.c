@@ -60,7 +60,7 @@ static uint32_t trk_midi_ch(uint32_t i) { return (midi_base() > 0 ? (uint32_t)mi
 static int drum_track(const track_t *t) { return ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM; }
 
 /* the 27 keys from F: black or white, and the key's place among the keys of its colour (white 0..15, black
- * 0..10). The DRUM grid: white keys are steps, black keys 1..8 lanes, 9 ACC, 10 / 11 the page */
+ * 0..10) */
 static int key_black(uint32_t k) { return (int)((0x54Au >> ((k + 5u) % 12u)) & 1u); }
 static uint32_t key_place(uint32_t k)
 {
@@ -68,15 +68,6 @@ static uint32_t key_place(uint32_t k)
     for (i = 0; i < k; i++)
         n += (uint32_t)(key_black(i) == key_black(k));
     return n;
-}
-enum { GK_ACC = NLANE, GK_PGDN, GK_PGUP };       /* black keys 9..11 on the grid */
-/* GLO > SONG (song.grid 3): key k's slot, the white keys A3 B3 C4 D4 (white places 2..5: keys 4 6 7 9 from F) A..D; -1 = a
- * key that plays. A table, not key_place (a loop); the audio ISR's key loop reads SONG_KEYS, the same keys */
-#define SONG_KEYS (1u << 4 | 1u << 6 | 1u << 7 | 1u << 9)
-static int32_t song_key(uint32_t k)
-{
-    static const int8_t S[10] = {-1, -1, -1, -1, 0, -1, 1, 2, -1, 3};
-    return k < 10u ? S[k] : -1;
 }
 
 static uint32_t scale_mask(const track_t *t)
@@ -165,7 +156,6 @@ static void arp_remove(track_t *t, uint32_t note)
     t->nheld = (uint8_t)k;
 }
 
-#define ND_NONE 0u                      /* track_t nd_late / nd_early: nothing latched (seq_tick; else its seq_pos + 1) */
 static void rec_note(track_t *t, uint32_t note, uint32_t vel);
 static void rec_release(track_t *t, uint32_t note);
 static int rec_on(const track_t *t) { return ((song.rec >> trk_index(t)) & 1u) && song.playing; }
@@ -176,9 +166,6 @@ static void tk_start(void);
 static void tk_stop(void);
 static void tk_tick(uint32_t n);
 
-static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx);
-static const step_t *seq_steps(const track_t *t) { return t->step; }
-#include "motion.c"
 
 /* the ARP's modes (P_AMODE). Append-only: a stored value keeps its meaning. ORD (1.2, it played as UP before) plays
  * the held notes in the order they were pressed, whatever ARP 2's ORD switch says (that switch orders the list of the
@@ -363,13 +350,6 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
 
 /* -------------------------------------------------------- note input --- */
-/* the length of step idx in samples: SWING (the track's + the global, at most 100) makes the even steps longer
- * and the odd ones shorter, so every odd step starts late (motion.c) */
-static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
-{
-    return swing_step_len(t, period, idx);   /* core.h: own + global, at most 100 */
-}
-
 /* live recording: into the row of the tracker's pattern playing (tracker.c tk_rec_note) */
 static void rec_note(track_t *t, uint32_t note, uint32_t vel) { tk_rec_note(t, note, vel); }
 static void rec_release(track_t *t, uint32_t note) { tk_rec_release(t, note); }
@@ -504,7 +484,7 @@ static __attribute__((noinline)) void kb_lat(uint32_t k)
 static void keyboard_block(void)
 {
     uint32_t cur = fm1_in.notes, ch, k;
-    uint32_t lay, fx, mute;
+    uint32_t lay, fx;
     ch = cur ^ kb_prev;                          /* keys also sound while entering steps */
     if (perf_remap)
         perf_key_remap();
@@ -519,7 +499,6 @@ static void keyboard_block(void)
     }
     lay = (fm1_in.buttons & kb_mask) || kb_lock;  /* (#83: kb_lock, a layer locked open with no button held) */
     fx = (fm1_in.buttons & perf_mask) || (kb_lock & 2u);
-    mute = song.grid == 2u ? ~0u : song.grid == 3u ? SONG_KEYS : 0u;   /* the keys that never sound here */
     for (k = 0; k < 27u; k++) {
         if (!((ch >> k) & 1u))
             continue;
@@ -536,10 +515,8 @@ static void keyboard_block(void)
                     perf_key_press(k, 1);
                 continue;
             }
-            if ((mute >> k) & 1u)                 /* NAME (ui_name.c): every key types, none sounds; SONG: A..D */
+            if (song.keys_mute)                   /* NAME (ui_name.c): every key types, none sounds */
                 kb_note[k] = KB_SILENT;
-            else if (song.grid == 1u)             /* the DRUM grid: a lane key plays its lane, the rest are the UI's */
-                kb_note[k] = key_black(k) && key_place(k) < NLANE ? DRUM_LANE_NOTE[key_place(k)] : KB_SILENT;
             else
                 kb_note[k] = (uint8_t)kb_map(&trk[kb_trk[k]], k);
             if (kb_note[k] == KB_SILENT)
@@ -582,16 +559,6 @@ static void seq_start(void)
     perf_start();                                  /* perform.c: its 1/16 grid too */
 }
 
-static void seq_release(track_t *t)
-{
-    uint32_t i;
-    for (i = 0; i < t->seq_n; i++)
-        trk_note_off(t, t->seq_notes[i]);
-    t->seq_n = 0;
-    t->seq_hold = 0;
-    t->slide_glide = 0;                             /* live MONO / LEG keys must not glide after it */
-}
-
 static void seq_stop(void)
 {
     uint32_t i;
@@ -600,8 +567,6 @@ static void seq_stop(void)
         for (i = 0; i < NPART; i++)                /* its sounding note too (HOLD keeps the latched chord) */
             if (trk[i].arp_note)
                 arp_off(&trk[i]);
-    for (i = 0; i < NTRK; i++)
-        seq_release(&trk[i]);
     tk_stop();
 }
 
@@ -692,10 +657,6 @@ static void events_block(uint32_t n)
         memset(midi_owners, 0, sizeof midi_owners);
         memset(mchord, 0, sizeof mchord);
         midi_hint = 0;
-        for (i = 0; i < NTRK; i++) {
-            trk[i].rh_n = trk[i].rskip_n = 0;
-            trk[i].seq_n = trk[i].seq_hold = trk[i].slide_glide = trk[i].rat_left = 0;
-        }
         pr |= (1u << NTRK) - 1u;
         RING_PUBLISH();
         midi_in_overflow = 0;

@@ -6,23 +6,25 @@
  * 1.5 = the tracker: TRACKER (78) and the TRACKER_CHANGED push (79), enabled by WATCH bit 2).
  *   F0 7D 46 4C cmd args.. F7     (7D = non-commercial ID, "FL")
  * Values are 14 bit, two 7-bit bytes LSB first, offset by 8192 (so -8192..8191).
- * Every request gets a reply with the same cmd; 23/24/26 are also pushed
+ * Every request gets a reply with the same cmd; 23/24 are also pushed
  * while watched. Frames arrive through sx_frame (usb.c), replies leave
  * through ota_wire_send(). */
 #define ED_HDR0 0x7D
 #define ED_HDR1 0x46
 #define ED_HDR2 0x4C
-enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_STEP_GET, ED_STEP_SET, ED_PRESET, ED_PROJECT, ED_NAMES,
+/* 1.5: 6 STEP_GET, 7 STEP_SET, 26 STEP_CHANGED, 30 TRACK_STEP and 64 MOTION (the step sequencer and its automation)
+ * are gone: no reply */
+enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_PRESET = 8, ED_PROJECT, ED_NAMES,
        ED_SMP_BEGIN, ED_SMP_WRITE, ED_SMP_END, ED_SMP_ERASE, ED_SMP_INFO,
        ED_UP_LIST, ED_UP_GET, ED_UP_PUT, ED_UP_STORE, ED_UP_LOAD, ED_UP_ERASE,   /* v2: user presets */
-       ED_WATCH, ED_CHANGED, ED_RELOAD, ED_PING, ED_STEP_CHANGED,              /* v2: live sync */
-       ED_TRACK, ED_TRACK_MIX, ED_TRACK_DUMP, ED_TRACK_STEP,                    /* v3: tracks */
-       ED_TRACK_PARAM, ED_TRACK_CHANGED, ED_SONG,
+       ED_WATCH, ED_CHANGED, ED_RELOAD, ED_PING,                                /* v2: live sync */
+       ED_TRACK = 27, ED_TRACK_MIX, ED_TRACK_DUMP,                              /* v3: tracks */
+       ED_TRACK_PARAM = 31, ED_TRACK_CHANGED, ED_SONG,
        ED_UI_STATE, ED_UI_SET, ED_UI_PALETTES, ED_FAV_GET, ED_FAV_SET,
-       ED_MOTION = 64, ED_BACKUP_LIST, ED_BACKUP_GET, ED_BACKUP_PUT,
+       ED_BACKUP_LIST = 65, ED_BACKUP_GET, ED_BACKUP_PUT,
        ED_TRACKER = 78, ED_TRACKER_CHANGED };                                    /* 1.5: the tracker */
 
-static uint8_t ed_out[664];                      /* (MOTION op 8: 128 records and their kinds, 653 bytes) */
+static uint8_t ed_out[664];
 static uint32_t ed_n;
 
 static void ed_begin(uint32_t cmd)
@@ -310,46 +312,6 @@ static const param_desc_t *ed_desc(uint32_t scope, uint32_t id, int16_t **vp)
     return 0;
 }
 
-/* a step as STEP_SET / TRACK_STEP send it (na bytes): n, 4 notes, time, flags, vel, then (v5) the lane hits
- * and their accents: hit & 127, acc & 127, bit 7 of each (bit 0 hit, bit 1 acc), (v7) the chance, (RATCH, INFO
- * 52 01) the hits 1..4, (NUDGE, INFO 54 01, 1.2) the nudge + 8 (0..15: -8..+7 sixteenths of the step); each value
- * made valid. 8 bytes (an editor of before the grid): the hits stay; without the chance, the ratchet or the nudge
- * the step keeps its own (flags carry accent and slide only) */
-static void ed_step_put(step_t *st, const uint8_t *a, uint32_t na)
-{
-    uint32_t i;
-    st->n = (uint8_t)(a[0] > 4u ? 4u : a[0]);
-    for (i = 0; i < 4u; i++)
-        st->note[i] = a[1 + i] & 0x7Fu;
-    st->time = (uint8_t)(a[5] > ST_REST ? ST_REST : a[5]);
-    st->flags = (uint8_t)((a[6] & (SF_ACCENT | SF_SLIDE)) | (st->flags & (SF_RATCH | SF_NUDGE)));
-    st->vel = a[7] & 0x7Fu;
-    if (na >= 11u) {
-        st->hit = (uint8_t)((a[8] & 0x7Fu) | (a[10] & 1u) << 7);
-        st->acc = (uint8_t)(((a[9] & 0x7Fu) | (a[10] & 2u) << 6) & st->hit);
-    }
-    if (na >= 12u) step_set_chance(st, a[11] <= 100u ? a[11] : 100u);
-    if (na >= 13u) step_set_ratchet(st, a[12]);
-    if (na >= 14u) step_set_nudge(st, (int32_t)(a[13] & 15u) - 8);
-    ui.force = 1;
-}
-static void ed_step_reply(const step_t *st)              /* the same 14 bytes */
-{
-    uint32_t i;
-    ed_b(st->n);
-    for (i = 0; i < 4u; i++)
-        ed_b(st->note[i]);
-    ed_b(st->time);
-    ed_b(st->flags & (SF_ACCENT | SF_SLIDE));
-    ed_b(st->vel);
-    ed_b(st->hit & 0x7Fu);
-    ed_b(st->acc & 0x7Fu);
-    ed_b((uint32_t)(st->hit >> 7) | (uint32_t)(st->acc >> 7) << 1);
-    ed_b(step_chance(st));
-    ed_b(step_ratchet(st));
-    ed_b((uint32_t)(step_nudge(st) + 8));
-}
-
 /* a flash write from the editor while the transport runs: stop it first (the erase silences the audio and
  * stalls the sequencer; the device's own SAVE refuses with "STOP TO SAVE", the editor's confirmed save stops) */
 static int ed_flash_stop(void)
@@ -358,9 +320,9 @@ static int ed_flash_stop(void)
     if (!transport_busy())
         return 0;
     transport_req = 2;
-    while ((song.playing || chain_busy()) && fm1_ms - t0 < 100u)          /* the audio ISR stops it at its next block */
+    while (song.playing && fm1_ms - t0 < 100u)          /* the audio ISR stops it at its next block */
         fm1_wdt_feed();
-    return song.playing || chain_busy();
+    return song.playing;
 }
 
 #include "editor_preferences.c"
@@ -369,35 +331,6 @@ static int ed_flash_stop(void)
 #include "editor_menu.c"
 #include "editor_tracker.c"
 
-/* MOTION's reply: the records of track k as (step, id, v14), a lock's id without its MOTION_LOCK bit (a 7-bit SysEx
- * byte); kinds (1.1: the ops 5..7): then one byte per record, in the same order, 0 automation, 1 lock. The query and
- * the ops 1..4 reply as before 1.1 (an editor of before reads a lock as an automation event).
- * 1.2 (128 records, INFO 41 01): the query and ops 1..7 reply as before, max 64 and at most the track's first 64
- * records (an editor of before keeps working while a track holds no more); op 8 (full) is the query with the kinds,
- * its count and max two 7-bit bytes each (LSB first): every record */
-static void ed_motion_reply(uint32_t k, uint32_t rc, uint32_t kinds, uint32_t full)
-{
-    track_t *t = &trk[k];
-    uint32_t i, n = motion_count(t), cap = full ? MOTION_MAX : 64u, j;
-    n = n < cap ? n : cap;
-    ed_b(k); ed_b(rc); ed_b(motion_enabled(t));
-    if (full) {
-        ed_b(n); ed_b(n >> 7); ed_b(MOTION_MAX); ed_b(MOTION_MAX >> 7);
-    } else {
-        ed_b(n); ed_b(64u);
-    }
-    for (i = j = 0; i < motion.count && j < n; i++) {
-        const motion_event_t *e = &motion.event[i];
-        if ((e->place >> 6) != k) continue;
-        ed_b(e->place & 63u); ed_b(MOTION_ID(e)); ed_v(e->value);
-        j++;
-    }
-    for (i = j = 0; kinds && i < motion.count && j < n; i++)
-        if ((motion.event[i].place >> 6) == k) {
-            ed_b((motion.event[i].param & MOTION_LOCK) != 0u);
-            j++;
-        }
-}
 static int ed_args_ok(uint32_t cmd, const uint8_t *a, uint32_t n)
 {
     switch (cmd) {
@@ -409,26 +342,15 @@ static int ed_args_ok(uint32_t cmd, const uint8_t *a, uint32_t n)
         return n == 2u || (cmd == ED_TRACK_PARAM && n == 4u);
     case ED_SET:
         return n == 4u;
-    case ED_STEP_GET: case ED_NAMES: case ED_SMP_BEGIN: case ED_SMP_ERASE:
+    case ED_NAMES: case ED_SMP_BEGIN: case ED_SMP_ERASE:
     case ED_UP_GET: case ED_UP_LOAD: case ED_UP_ERASE: case ED_WATCH: case ED_TRACK_DUMP: case ED_MENU_DESC:
         return n == 1u;
     case ED_MENU_SET:
         return n == 3u;
-    case ED_STEP_SET:
-        return n == 9u || n == 12u || (n == 13u && a[12] <= 100u) ||               /* notes only, or the complete grid extension, */
-               ((n == 14u || (n == 15u && a[14] <= 15u)) && a[12] <= 100u && a[13] >= 1u && a[13] <= 4u);   /* its chance,
-                                                                                * its ratchet, its nudge (1.2) */
     case ED_TRACK:
         return n <= 1u;
     case ED_TRACK_MIX:
         return n == 1u || n == 4u;
-    case ED_TRACK_STEP:
-        return n == 2u || n == 10u || n == 13u || (n == 14u && a[13] <= 100u) ||
-               ((n == 15u || (n == 16u && a[15] <= 15u)) && a[13] <= 100u && a[14] >= 1u && a[14] <= 4u);
-    case ED_MOTION:
-        return (n == 1u || (n == 2u && (a[1] == 2u || a[1] == 7u || a[1] == 8u)) || (n == 3u && a[1] == 1u && a[2] <= 1u) ||
-                (n == 6u && (a[1] == 3u || a[1] == 5u)) || (n == 4u && a[1] == 4u) || (n == 3u && a[1] == 6u)) &&
-               a[0] < NTRK;
     case ED_SONG:
         return n && (a[0] == 1u || a[0] == 5u || n == 1u);
     default:
@@ -457,48 +379,28 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     if (ed_menu_handle(cmd, a, na)) { ed_send(); return; }
     if (ed_tracker_handle(cmd, a, na)) { ed_send(); return; }
     switch (cmd) {
-    case ED_MOTION: {
-        track_t *t = &trk[a[0]]; uint32_t rc = 0;
-        if (na > 1u && a[1] >= 7u) {
-            /* (the query with the kinds; 8: all of them, 1.2) */
-        } else if (na > 1u && chain_busy()) rc = 3;
-        else if (na > 1u) {
-            if (a[1] == 1u) motion_set_enabled(t, a[2]);
-            else if (a[1] == 2u) { load_begin(t, UNDO_PAT); motion_clear(t); load_end(t); }
-            else if (a[1] == 3u) rc = motion_set_event(t, a[2], a[3], (int16_t)ed_rv(a + 4));
-            else if (a[1] == 4u && a[2] < NSTEP && motion_param(a[3])) motion_delete_event(t, a[2], a[3]);
-            else if (a[1] == 5u) rc = motion_set_lock(t, a[2], a[3], (int16_t)ed_rv(a + 4));
-            else if (a[1] == 6u && (a[2] < NSTEP || a[2] == 127u)) (void)motion_clear_locks(t, a[2]);
-            else rc = 1;
-            ui.force = 1;
-        }
-        ed_motion_reply(a[0], rc, na > 1u && a[1] >= 5u, na > 1u && a[1] == 8u);
-        break;
-    }
     case ED_INFO:
         ed_str("FELUCCA " FELUCCA_VERSION, 24);
         ed_b(NENGINES);
         ed_b(P_COUNT);
         ed_b(G_COUNT);
-        ed_b(NSTEP);
+        ed_b(0);                                          /* NSTEP (1.5: no steps) */
         ed_b(P_E0);
         for (i = 0; i < NENGINES; i++)
             ed_str(ENGINES[i]->name, 8);
         ed_b(NTRK);                                       /* v3 */
-        ed_b(CHAIN_ROWS);                                  /* v6 */
+        ed_b(16);                                          /* v6: CHAIN_ROWS (1.5: no A..D song; kept: editors read the
+                                                            * tags after it only when it is 16) */
         ed_b(0x55); ed_b(1); ed_b(ed_ui_caps());             /* tagged preferences v1: commands 34..38 */
-        ed_b(0x4d); ed_b(1); ed_b(64); ed_b(1);   /* motion + chance v1 (64: what it said before 1.2; 41 01 has the real count) */
+        ed_b(0x4d); ed_b(1); ed_b(64); ed_b(1);   /* motion + chance v1 (1.5: none, MOTION gets no reply; kept as it was:
+                                                   * editors find the tags after it by position) */
         ed_b(0x42); ed_b(1); ed_b(3); /* bounded full-backup read + restore */
         ed_b(0x46); ed_b(1); ed_b(FM6_NFACTORY); ed_b(0);   /* FM6 patches: cmds 68..71 (no bank since 1.0.3) */
         ed_b(0x53); ed_b(1); ed_b(3);   /* live sync: bit 0 WATCH while on keeps the shadow, bit 1 no RELOAD echo */
         ed_b(0x50); ed_b(1); ed_b(3);   /* FM6 patches v2: bit 0 no bank (SLOT F1..F8, 8 OWN), bit 1 user preset
                                          * patches (FM6 target 3, backup id 9) */
         ed_b(0x4E); ed_b(1); ed_b(ED_MENU_N);   /* MENU settings: cmds 72, 73; the items MENU_DESC offers */
-        ed_b(0x52); ed_b(1); ed_b(4);   /* RATCH: a step's ratchet (1..4 hits) after its chance */
-        ed_b(0x4C); ed_b(1); ed_b(1);   /* 1.1 parameter locks: MOTION ops 5..7, the kinds after the records */
-        ed_b(0x41); ed_b(1); ed_b(MOTION_MAX); ed_b(MOTION_MAX >> 7);   /* 1.2: 128 motion records, MOTION op 8 */
-        ed_b(0x54); ed_b(1); ed_b(NUDGE_DIV);   /* 1.2: a step's nudge (1/16 step) after its ratchet; LFO 2, QNTZ */
-        /* (1.2's 57 01 04, song sections with a slot per track: gone with the A..D song, 1.5) */
+        /* (1.5: no 52 01 / 4C 01 / 41 01 / 54 01, the steps' ratchet, locks, motion, nudge; no 57 01, the A..D song) */
         ed_b(0x56); ed_b(1); ed_b(FM6_NBANK);   /* 1.4.1: FM6's voice bank (cmds 74..77; SLOT 9..40 = B1..B32) */
         ed_b(0x58); ed_b(2); ed_b(TK_PATS); ed_b(TK_ROWS); ed_b(TK_INSTS); ed_b(TKC_N);   /* 1.5: the tracker (78, 79) */
         ed_b(TK_ORDER); ed_b(TK_ORDER >> 7);
@@ -516,10 +418,8 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
                 ed_load_after(&b);
             } else if (d->max > d->min) {
                 *vp = (int16_t)enum_orig(d, clamp(ed_rv(a + 2), d->min, d->max));
-                if (a[0] == 0) {
-                    (void)motion_capture(TSEL, a[1], *vp);
+                if (a[0] == 0)
                     load_extend(TSEL);                      /* (ui.c undo: an audition's values after G_ENGSEL) */
-                }
             }
             ui.force = 1;
             ed_w.v[a[0] ? P_COUNT + a[1] : a[1]] = *vp;   /* the editor's own change: no push */
@@ -534,7 +434,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(ed_eng(TSEL));
         ed_b(TSEL->preset);
         for (i = 0; i < P_COUNT; i++)
-            ed_v(motion_base_value(TSEL, i));
+            ed_v(TSEL->p[i]);
         for (i = 0; i < G_COUNT; i++)
             ed_v(song.g[i]);
         break;
@@ -553,19 +453,6 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             for (i = 0; i <= (uint32_t)(d->max - d->min) && i < 24u; i++)
                 ed_str(d->names[i], 8);
         break;
-    case ED_STEP_GET:
-    case ED_STEP_SET: {
-        step_t *st;
-        if (na < 1u || a[0] >= NSTEP)
-            return;
-        st = &TSEL->step[a[0]];
-        if (cmd == ED_STEP_SET && na >= 9u && !chain_busy()) {
-            ed_step_put(st, a + 1, na - 1u);
-        }
-        ed_b(a[0]);
-        ed_step_reply(&seq_steps(TSEL)[a[0]]);
-        break;
-    }
     case ED_PRESET: {                                      /* engine, preset */
         ed_load_t b;
         if (na < 2u || a[0] >= NENGINES)
@@ -835,20 +722,8 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(ed_eng(&trk[a[0]]));
         ed_b(trk[a[0]].preset);
         for (i = 0; i < P_COUNT; i++)
-            ed_v(motion_base_value(&trk[a[0]], i));
+            ed_v(trk[a[0]].p[i]);
         break;
-    case ED_TRACK_STEP: {                                  /* track, index [, step] -> track, index, step (as STEP_GET) */
-        step_t *st;
-        if (na < 2u || a[0] >= NTRK || a[1] >= NSTEP)
-            return;
-        st = &trk[a[0]].step[a[1]];
-        if (na >= 10u && !chain_busy())
-            ed_step_put(st, a + 2, na - 2u);
-        ed_b(a[0]);
-        ed_b(a[1]);
-        ed_step_reply(&seq_steps(&trk[a[0]])[a[1]]);
-        break;
-    }
     case ED_TRACK_PARAM: {                                 /* track, id [, v14] -> track, id, v14 */
         track_t *t;
         if (na < 2u || a[0] >= NTRK || a[1] >= P_COUNT)
@@ -858,7 +733,6 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         if (na >= 4u) {
             if (d->max > d->min)                           /* as SET: clamped; a fixed value stays */
                 t->p[a[1]] = (int16_t)enum_orig(d, clamp(ed_rv(a + 2), d->min, d->max));
-            (void)motion_capture(t, a[1], t->p[a[1]]);
             ed_known(a[0], a[1]);
             ui.force = 1;
         }

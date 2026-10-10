@@ -184,9 +184,8 @@ static void midi_silence_track(uint32_t track)
     track_t *t = &trk[track];
     uint32_t i;
     trk_all_off(t);
-    t->nheld = t->arp_phys = t->rh_n = 0;
+    t->nheld = t->arp_phys = 0;
     arp_forget(t);
-    t->seq_n = t->seq_hold = t->slide_glide = 0;
     for (i = 0; i < NVOICE; i++)
         if (t->v[i].active)
             voice_kill(&t->v[i]);             /* one-block fade, regardless of RELEASE */
@@ -206,8 +205,7 @@ static int midi_track_held(uint32_t track)
 }
 
 /* The standard CC map (#103): always on, these CCs only, on the track the channel plays (ROUT as notes). A CC
- * sets its parameter as a knob would, 0..127 over the parameter's range (64: the middle of a bipolar one), and
- * AUTOMATION records it as a knob move (motion_capture: the selected track, armed and playing). CC74 / CC71 are
+ * sets its parameter as a knob would, 0..127 over the parameter's range (64: the middle of a bipolar one). CC74 / CC71 are
  * the engine's own brightness / resonance (MIDI_CC_ENG); an engine without one ignores them. CC121 resets none
  * of them (RP-015: they are the sound's) */
 #define MCC_CUT 0xFEu
@@ -246,7 +244,6 @@ static void __attribute__((noinline)) midi_cc_map(track_t *t, uint32_t cc, uint3
     if (d->max <= d->min || t->p[id] == v)
         return;
     t->p[id] = (int16_t)v;
-    (void)motion_capture(t, id, (int16_t)v);
 }
 
 static void midi_control(uint32_t ch, uint32_t cc, uint32_t value)
@@ -271,7 +268,7 @@ static void midi_control(uint32_t ch, uint32_t cc, uint32_t value)
         for (i = 0; i < NTRK; i++)
             if ((mask & (1u << i)) && !midi_track_held(i)) {
                 trk_all_off(&trk[i]);
-                trk[i].nheld = trk[i].arp_phys = trk[i].rh_n = 0;
+                trk[i].nheld = trk[i].arp_phys = 0;
                 arp_forget(&trk[i]);
             }
         break;

@@ -31,7 +31,8 @@ tagged capability blocks for these (see `INFO`).
 **MENU settings (1.0.4):** `MENU_DESC` (72) and `MENU_SET` (73) read and set the device's MENU settings, described
 by the device (see "MENU settings" at the end); INFO advertises them with `4E 01 count`. 1.0.5: a `MENU_DESC` reply
 ends with the item's tab on the device (index and name), after the bytes 1.0.4 sent. 1.3: item 23 HOME (DISPLAY),
-appended (`4E 01 24`). 1.5: COUNT-IN (id 14) removed, the items after it one index up (`4E 01 23`; ids unchanged).
+appended (`4E 01 24`). 1.5: COUNT-IN (id 14) and CHORD ENTRY (id 20) removed, the items after each one index up
+(`4E 01 22`; ids unchanged).
 
 **Ratchet (1.0.5, INFO `52 01 04`):** a step gets a ratchet byte (its hits, 1..4) after its chance: one more byte at
 the end of the step replies, and an optional last byte of a step write (see "Ratchet" below). Nothing else changed.
@@ -62,10 +63,15 @@ ratchet. A song's rows became sections with a slot per track (`SONG` ops 4..7; o
 
 **1.5 (the tracker; INFO `58 02 24 64 63 15 00 01`):** the step sequencer is replaced by a tracker (patterns of rows, a
 cell per track and row with an optional chord, an order list, instruments). `TRACKER` (78) reads and writes it and runs its transport;
-`TRACKER_CHANGED` (79) is pushed when the device changes it, with bit 2 of `WATCH`. The steps (`STEP_GET` /
-`STEP_SET` / `TRACK_STEP`, `STEP_CHANGED`), `MOTION` (64) and `SONG` (33) still answer as before, but nothing plays
-them: the steps are never pushed any more, and `SONG` answers an empty song (a set or a start refused with rc 1, a stop
-still stops). `PROJECT` saves and loads the one song whatever the slot. See "1.5: the tracker (78, 79)" below.
+`TRACKER_CHANGED` (79) is pushed when the device changes it, with bit 2 of `WATCH`. The step sequencer is gone from the
+firmware, code and data: `STEP_GET` (6), `STEP_SET` (7), `TRACK_STEP` (30) and `MOTION` (64) get no reply, whatever
+they carry, and `STEP_CHANGED` (26) is never pushed. INFO's NSTEP byte is 0 and it sends none of `52 01`, `4C 01`,
+`41 01`, `54 01` (the steps' ratchet, locks, motion, nudge) or `57 01`; CHAIN_ROWS (16) and `4D 01 64 01` stay where
+they were, meaning nothing now: an editor finds the tags after them by their place. `SONG` (33)
+answers an empty song (a set or a start refused with rc 1, a stop still stops). `UP_GET` / `UP_PUT` keep their layout:
+a user preset's stored pattern is still read and written (and kept in flash), but the device never plays one, and
+`UP_STORE` stores an empty one. `PROJECT` saves and loads the one song whatever the slot. See "1.5: the tracker (78,
+79)" below.
 
 ## Framing
 
@@ -174,13 +180,13 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 
 | cmd | Request args | Reply args |
 | --- | --- | --- |
-| 1 INFO | — | version string, NENGINES, P_COUNT, G_COUNT, NSTEP, P_E0, then NENGINES engine-name strings, then (v3) NTRK (4), then (v6) CHAIN_ROWS (16), then the tagged blocks `55 01 uiCaps`, `4D 01 64 01`, `42 01 3`, `46 01 nfactory nbank`, `53 01 3`, (1.0.3) `50 01 3` and (1.0.4) `4E 01 count` (MENU settings; 12, 1.1: 15, 1.2: 17, 1.1.5: 18, 1.2: 23, 1.3: 24, 1.5: 23) and (1.0.5) `52 01 4` (ratchet) and (1.1) `4C 01 1` (parameter locks) and (1.2) `41 01 00 01` (128 motion records: two 7-bit bytes, LSB first; `4D 01 64 01` keeps saying 64) and `54 01 16` (a step's nudge, 1/16 of a step) and `57 01 4` (song sections: a slot per track, SONG ops 4..7) and (1.4.1) `56 01 32` (FM6's voice bank: cmds 74..77, SLOT 9..40) and (1.5) `58 02 pats rows insts ncmd order-lo order-hi` (the tracker: cmds 78, 79; always the last 8 bytes) (below; 1.5 no longer sends `57 01 4`); older firmware ends earlier |
+| 1 INFO | — | version string, NENGINES, P_COUNT, G_COUNT, NSTEP, P_E0, then NENGINES engine-name strings, then (v3) NTRK (4), then (v6) CHAIN_ROWS (16), then the tagged blocks `55 01 uiCaps`, `4D 01 64 01`, `42 01 3`, `46 01 nfactory nbank`, `53 01 3`, (1.0.3) `50 01 3` and (1.0.4) `4E 01 count` (MENU settings; 12, 1.1: 15, 1.2: 17, 1.1.5: 18, 1.2: 23, 1.3: 24, 1.5: 22) and (1.0.5) `52 01 4` (ratchet) and (1.1) `4C 01 1` (parameter locks) and (1.2) `41 01 00 01` (128 motion records: two 7-bit bytes, LSB first; `4D 01 64 01` keeps saying 64) and `54 01 16` (a step's nudge, 1/16 of a step) and `57 01 4` (song sections: a slot per track, SONG ops 4..7) and (1.4.1) `56 01 32` (FM6's voice bank: cmds 74..77, SLOT 9..40) and (1.5) `58 02 pats rows insts ncmd order-lo order-hi` (the tracker: cmds 78, 79; always the last 8 bytes) (below; 1.5 no longer sends `57 01 4`); older firmware ends earlier |
 | 2 GET | scope, id | scope, id, v14 |
 | 3 SET | scope, id, v14 | scope, id, v14 (the value after clamping). Setting global `G_ENGSEL` (id from DESC label "ENG") changes the engine: its defaults, then its first preset (as on the device) |
 | 4 DUMP | — | engine, preset, then P_COUNT × v14 (the selected track), then G_COUNT × v14 (globals) |
 | 5 DESC | scope, id | scope, id, fmt, min v14, max v14, def v14, label string, unit string, then for an enum (fmt 8) one name string per value (at most 24; firmware before the matrix: at most 16) |
-| 6 STEP_GET | index 0..NSTEP−1 | index, n (0..4 notes), note0..note3, time (0 NOTE, 1 TIE, 2 REST), flags (1 accent, 2 slide), vel, then (v5) hits (3 bytes, below), then (v7) chance 0..100, then (`52 01`) ratchet 1..4, then (`54 01`, 1.2) nudge + 8 (0..15: −8..+7 sixteenths of the step) |
-| 7 STEP_SET | index, n, note0..3, time, flags, vel [, hits (3 bytes, v5) [, chance 0..100 (v7) [, ratchet 1..4 [, nudge + 8, 0..15 (1.2)]]]] | same as STEP_GET (after the write). Without the hits the step keeps its own; without the chance, the ratchet or the nudge it keeps its own. The chance can only follow the hits, the ratchet the chance, the nudge the ratchet; a nudge byte above 15: no reply, nothing written |
+| 6 STEP_GET (up to 1.4.1; 1.5: no reply) | index 0..NSTEP−1 | index, n (0..4 notes), note0..note3, time (0 NOTE, 1 TIE, 2 REST), flags (1 accent, 2 slide), vel, then (v5) hits (3 bytes, below), then (v7) chance 0..100, then (`52 01`) ratchet 1..4, then (`54 01`, 1.2) nudge + 8 (0..15: −8..+7 sixteenths of the step) |
+| 7 STEP_SET (up to 1.4.1; 1.5: no reply) | index, n, note0..3, time, flags, vel [, hits (3 bytes, v5) [, chance 0..100 (v7) [, ratchet 1..4 [, nudge + 8, 0..15 (1.2)]]]] | same as STEP_GET (after the write). Without the hits the step keeps its own; without the chance, the ratchet or the nudge it keeps its own. The chance can only follow the hits, the ratchet the chance, the nudge the ratchet; a nudge byte above 15: no reply, nothing written |
 | 8 PRESET | engine, preset | engine, preset (applies the preset's sound to the selected track and sends; the steps and the track's own parameters stay, see "Sound loads and undo"). For another track, select it with `TRACK` first |
 | 9 PROJECT | op (0 load, 1 save, 2 query), slot 0..3 | op, slot, used (1/0). Save writes flash: allow ~2 s; it stops the transport first (see "Saves while playing") |
 | 10 NAMES | engine | engine, count, count preset-name strings, then the two edit-page titles |
@@ -192,21 +198,21 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 | 16 UP_LIST | start, count (1..16) | start, count, total slots, then per slot: used (0/1), engine, name string ("" if unused); 1.2: then one category byte per slot listed (below; 0 if unused) |
 | 17 UP_GET | slot | slot, used, engine, name, P_COUNT × v14, 16 × (note, flags), then (v5) kind (0 a note pattern, 1 a drum grid) and for kind 1 16 × hi; 1.2: then the category |
 | 18 UP_PUT | slot, engine, name, P_COUNT × v14, 16 × (note, flags) [, kind 0 or 1, 16 × hi (v5) [, category (1.2)]] | slot, rc (0 ok, 1 args, 2 flash). Writes flash: allow 1 s |
-| 19 UP_STORE | slot, name | slot, rc. Stores the current sound: engine, parameters, the first 16 sequencer steps as the pattern (TIE steps → flag 4) |
+| 19 UP_STORE | slot, name | slot, rc. Stores the current sound: engine, parameters, the first 16 sequencer steps as the pattern (TIE steps → flag 4; 1.5: an empty pattern) |
 | 20 UP_LOAD | slot | slot, rc (0 ok, 1 empty/invalid). Applies its sound (not its pattern; the steps stay) |
 | 21 UP_ERASE | slot | slot, rc |
 | 22 WATCH | on (0/1; v4: 3 = also `TRACK_CHANGED`; 1.5: bit 2 = also `TRACKER_CHANGED`, e.g. 7) | on with the bits the firmware knows (v4 firmware: 3 when 3 was asked for; 1.5: 7 for 7). While on, the device pushes cmds 23, 24, 26 (and 32 with bit 1, 79 with bit 2) |
 | 23 CHANGED (push) | — | scope, id, v14 |
 | 24 RELOAD (push) | — | engine, preset, then (v3) the selected track |
 | 25 PING | — | 0 |
-| 26 STEP_CHANGED (push) | — | index, then (v3) the selected track |
+| 26 STEP_CHANGED (push; up to 1.4.1) | — | index, then (v3) the selected track |
 
 | cmd (v3) | Request args | Reply args |
 | --- | --- | --- |
 | 27 TRACK | — (query), or track (select it) | selected track, NTRK, then per track: engine byte, preset, level v14, mute (0/1), armed (0/1, live recording) |
 | 28 TRACK_MIX | track (get), or track, level v14 (0..127), mute (set) | track, level v14, mute: the track's `P_LEVEL` and `P_MUTE` |
 | 29 TRACK_DUMP | track | track, engine byte, preset, P_COUNT × v14 (that track's parameters; no globals) |
-| 30 TRACK_STEP | track, index (get), or track, index, n, note0..3, time, flags, vel [, hits (v5) [, chance (v7) [, ratchet [, nudge + 8 (1.2)]]]] (set) | track, index, n, note0..3, time, flags, vel, then (v5) hits, then (v7) chance, then (`52 01`) ratchet, then (`54 01`) nudge + 8 |
+| 30 TRACK_STEP (up to 1.4.1; 1.5: no reply) | track, index (get), or track, index, n, note0..3, time, flags, vel [, hits (v5) [, chance (v7) [, ratchet [, nudge + 8 (1.2)]]]] (set) | track, index, n, note0..3, time, flags, vel, then (v5) hits, then (v7) chance, then (`52 01`) ratchet, then (`54 01`) nudge + 8 |
 
 | cmd (v4) | Request args | Reply args |
 | --- | --- | --- |
@@ -215,7 +221,7 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 
 | cmd (v7) | Request args | Reply args |
 | --- | --- | --- |
-| 64 MOTION | track (query); track, 1, on 0/1 (play on / off); track, 2 (clear); track, 3, step, id, v14 (set an event); track, 4, step, id (delete an event or a lock); (1.1) track, 5, step, id, v14 (set a lock); track, 6, step (clear the step's locks; step 127: every step's); track, 7 (query with the kinds); (1.2) track, 8 (every record, with the kinds) | track, rc, on (0/1), count (this track's events and locks), max (64), then count × (step, id, v14); after ops 5..7 (1.1) then count × kind (0 automation, 1 lock), in the same order. 1.2: ops 1..7 list at most the track's first 64 records (count ≤ 64, max 64: as before); op 8 answers track, rc, on, count lo, count hi, max lo, max hi (two 7-bit bytes each, LSB first; max 128), count × (step, id, v14), count × kind |
+| 64 MOTION (up to 1.4.1; 1.5: no reply) | track (query); track, 1, on 0/1 (play on / off); track, 2 (clear); track, 3, step, id, v14 (set an event); track, 4, step, id (delete an event or a lock); (1.1) track, 5, step, id, v14 (set a lock); track, 6, step (clear the step's locks; step 127: every step's); track, 7 (query with the kinds); (1.2) track, 8 (every record, with the kinds) | track, rc, on (0/1), count (this track's events and locks), max (64), then count × (step, id, v14); after ops 5..7 (1.1) then count × kind (0 automation, 1 lock), in the same order. 1.2: ops 1..7 list at most the track's first 64 records (count ≤ 64, max 64: as before); op 8 answers track, rc, on, count lo, count hi, max lo, max hi (two 7-bit bytes each, LSB first; max 128), count × (step, id, v14), count × kind |
 | 65 BACKUP_LIST | — | 1, rc, count (11), then per object: id, size u32, crc u32 |
 | 66 BACKUP_GET | id, offset u32, count lo, count hi (≤ 256) | id, rc, offset u32, count lo, count hi, pack7 data |
 | 67 BACKUP_PUT | op 0 begin: 0, id, size u32, crc u32; op 1 data: 1, id, offset u32, pack7 data; op 2 commit: 2, id; op 3 abort: 3, id | op, id, rc |
@@ -928,12 +934,13 @@ is told: no list of settings is fixed in the editor. INFO advertises `4E 01 coun
   ABOUT).
   For a kind it does not know, an editor cannot find the tab (it does not know that kind's bytes).
 
-This firmware (count 23; tabs 0 DISPLAY, 1 CONTROL, 2 AUDIO, 3 MIDI, 4 SYSTEM (1.2; before: 3 SYSTEM); 1.0.5 had the
+This firmware (count 22; tabs 0 DISPLAY, 1 CONTROL, 2 AUDIO, 3 MIDI, 4 SYSTEM (1.2; before: 3 SYSTEM); 1.0.5 had the
 first 12, 1.1 the first 15, 1.2 before SCALE LEDS the first 16, before SCREEN OFF the first 17, 1.1.5 the first 18, 1.2
 before MIDI IN the first 21, 1.2 the first 23, 1.3 .. 1.4.1 24). **1.5: COUNT-IN (id 14) is gone** with the count-in
-itself: the items after it moved up one index (index = id − 1 from RESTORE LAST on), their ids unchanged, and a
-MENU_SET of id 14 answers rc 1 (unknown id). This is the one time an index lost its setting; an editor that keeps
-settings by id (as advised above) sees one setting fewer:
+itself and **CHORD ENTRY (id 20)** with the step sequencer: the items after each moved up (index = id − 1 from RESTORE
+LAST on, id − 2 from MIDI IN on), their ids unchanged, and a MENU_SET of id 14 or 20 answers rc 1 (unknown id). These
+are the only times an index lost its setting; an editor that keeps settings by id (as advised above) sees two settings
+fewer:
 
 | index | id | name | kind | values (min 0) | default | tab |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -956,12 +963,11 @@ settings by id (as advised above) sees one setting fewer:
 | 16 | 17 | SCREEN OFF | 0 | 0 NEVER, 1 "5 MIN", 2 "15 MIN", 3 "30 MIN", 4 "60 MIN" (1.1.5) | NEVER (1.1.5.1; 1.1.5: 30 MIN) | 0 DISPLAY |
 | 17 | 18 | SCOPE | 0 | 0 OUT, 1 MIX (1.2) | OUT | 0 DISPLAY |
 | 18 | 19 | STEP PREVIEW | 0 | 0 OFF, 1 ON (1.2) | OFF | 1 CONTROL |
-| 19 | 20 | CHORD ENTRY | 0 | 0 HOLD, 1 ADD (1.2) | HOLD | 1 CONTROL |
-| 20 | 21 | MIDI IN | 0 | 0 CH1-4, 1 SEL, 2 CH5-8, 3 CH9-12, 4 CH13-16 (1.2: the project's `G_ROUTE`, global 14) | CH1-4 | 3 MIDI |
-| 21 | 22 | TUNE | 1 | -50..50, unit "ct" (1.2: the project's `G_TUNE`, global 3, cents) | 0 | 2 AUDIO |
-| 22 | 23 | HOME | 0 | 0 SCOPE, 1 TRACKS (1.3) | SCOPE | 0 DISPLAY |
+| 19 | 21 | MIDI IN | 0 | 0 CH1-4, 1 SEL, 2 CH5-8, 3 CH9-12, 4 CH13-16 (1.2: the project's `G_ROUTE`, global 14) | CH1-4 | 3 MIDI |
+| 20 | 22 | TUNE | 1 | -50..50, unit "ct" (1.2: the project's `G_TUNE`, global 3, cents) | 0 | 2 AUDIO |
+| 21 | 23 | HOME | 0 | 0 SCOPE, 1 TRACKS (1.3) | SCOPE | 0 DISPLAY |
 
-The device's AUDIO tab shows SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL and (1.2) TUNE (index 9, 10, 12, 13, 21;
+The device's AUDIO tab shows SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL and (1.2) TUNE (index 9, 10, 12, 13, 20;
 1.1 .. 1.4.1 also COUNT-IN, index 14).
 CLICK: the metronome while the transport runs: OFF, REC (while a track is armed), ON (always); CLICK LEVEL its
 level. The click goes to the headphones / speaker, never into USB audio or a recording (README: Metronome). Applied
@@ -1008,13 +1014,12 @@ is index 4, id 4, kind 0, value 2 (`02 40`), min 0 (`00 40`), max 3 (`03 40`), "
 `F0 7D 46 4C 49 00 32 40 F7` (COLOR 50) answers `F0 7D 46 4C 49 00 00 09 40 F7` (clamped to 9, MONO).
 `F0 7D 46 4C 49 0E 01 40 F7` set COUNT-IN to 1 BAR up to 1.4.1; 1.5 answers `F0 7D 46 4C 49 01 0E 01 40 F7` (rc 1, unknown id).
 `F0 7D 46 4C 49 16 74 3F F7` (TUNE -12) answers `F0 7D 46 4C 49 00 16 74 3F F7` (rc 0, 1.2).
-`F0 7D 46 4C 48 17 F7` answers `F0 7D 46 4C 48 17 7F F7` (no index 23, 1.5; 1.3 .. 1.4.1: none past 23, `18`; 1.2: none past 22, `17`; before MIDI IN: none past 20, `15`; before SCOPE: none past 17, `12`; before SCREEN OFF: none past 16, `11`; 1.2 before SCALE LEDS: none past 15, `10`; 1.1 firmware: none past 14, `0F`; 1.0.5: none past 11, `0C`).
+`F0 7D 46 4C 48 16 F7` answers `F0 7D 46 4C 48 16 7F F7` (no index 22, 1.5; 1.3 .. 1.4.1: none past 23, `18`; 1.2: none past 22, `17`; before MIDI IN: none past 20, `15`; before SCOPE: none past 17, `12`; before SCREEN OFF: none past 16, `11`; 1.2 before SCALE LEDS: none past 15, `10`; 1.1 firmware: none past 14, `0F`; 1.0.5: none past 11, `0C`).
 
 HOME (id 23, 1.3, Discussions #112 / #134; DISPLAY now shows COLOR, STYLE, LARGE, ANIM, LEDS, SCREEN OFF, SCOPE and
-HOME, index 0..4, 17, 18, 23): what the device's HOME page shows under its four cards. SCOPE (the default, as before)
-the oscilloscope; TRACKS the four tracks as rows: each track's cushion, engine icon and sound name, the 16 steps of its
-pattern's page that plays (LEN > 16: the play head's page, stopped the selected track's cursor page; a pip per page),
-a MUTE badge, the output meter; the selected track's row highlighted. Only the look changes: HOME's knobs, ALGORITHM
+HOME, index 0..4, 16, 17, 21): what the device's HOME page shows under its four cards. SCOPE (the default, as before)
+the oscilloscope; TRACKS the four tracks as rows: each track's cushion, engine icon and sound name (up to 1.4.1 the 16
+steps of its pattern's page that played), a MUTE badge, the output meter; the selected track's row highlighted. Only the look changes: HOME's knobs, ALGORITHM
 and the HOME button do what they do on SCOPE. Kept in the settings record (its own byte; a value an older firmware does
 not know reads as SCOPE there). Applied at once.
 

@@ -17,6 +17,7 @@
  * 7. demos into DEMODIR: every preset playing its suggested pattern, and a sweep of the modes. */
 #define main hostsim_main
 #include "hostsim.c"
+#include "factory_patterns.h"            /* (the 1.4 factory patterns: the lines the renders play) */
 #undef main
 #ifdef __APPLE__
 #include <libproc.h>
@@ -391,7 +392,8 @@ static void demo(const char *dir, uint32_t pi)
 {
     static int32_t o[2 * CTL];
     const preset_t *pr = &ENG_NOISE.presets[pi];
-    uint32_t pat = pr->pat ? pr->pat - 1u : 4u, step = FS / 8u, s, i, held = 0, frames = 0;
+    uint32_t pat = pr->mono ? 1u : 4u, step = FS / 8u, s, i, held = 0, frames = 0;   /* (a mono sound OFFBEAT, the
+                                                                                        * rest PAD: factory_patterns.h) */
     char path[512], nm[32];
     FILE *w;
     for (i = 0; pr->name[i] && i < 31u; i++)

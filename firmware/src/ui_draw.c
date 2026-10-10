@@ -11,7 +11,6 @@
  * free text (names) is ellipsised at its size. */
 static void draw_menu(void);
 static int name_on(void);                              /* NAME (ui_name.c) */
-static uint64_t lock_held(void);                       /* parameter locks: the steps held on STEP (ui_input.c) */
 static void name_draw(void);
 
 /* --------------------------------------------------------- drawing --- */
@@ -146,8 +145,7 @@ static int32_t roll_text(uint32_t k, int32_t x, int32_t y, const char *s, uint16
 }
 
 /* the header (y 0..24), three calm slots (1.2):
- *   left    the selected track's cushion (ink 4..20), the PROJECT slot letter of its pattern ("1 A", head_slot), the REC
- *           mark attached (filled: it is armed; outlined: another). A message centred hides the letter (its room)
+ *   left    the selected track's cushion (ink 4..20), the REC mark attached (filled: it is armed; outlined: another)
  *   centre  the play state (stop, play, the song's disc), the metronome and the BPM, its ink centred on x 120 (BPM
  *           LOCK ON: a lock right of it). The metronome swings on the click's beats (seq.c click_beat_now): mirrored
  *           on the bar's 2nd and 4th, the accent's on its 1st; stopped, still and MID
@@ -162,8 +160,7 @@ static int32_t roll_text(uint32_t k, int32_t x, int32_t y, const char *s, uint16
 #define HEAD_SY CAP_IN(S, H_HEAD)
 #define HEAD_MY CAP_IN(M, H_HEAD)
 #define HEAD_TRK_X 4                                   /* the track cushion's cell */
-#define HEAD_REC_X 20                                  /* the REC mark's cell (ink 23..33), after the slot letter if any */
-#define HEAD_SLOT_X 23                                 /* the slot letter's pen (ui_draw.c head_slot) */
+#define HEAD_REC_X 20                                  /* the REC mark's cell (ink 23..33) */
 #define HEAD_BAT_X 214                                 /* the battery's cell */
 #define HEAD_GRP_R 208                                 /* the octave / song row ends here */
 #define HEAD_MSG_W 166                                 /* a message centred on x 120: 37..203 (after the REC mark) */
@@ -265,16 +262,6 @@ static void head_msg(int32_t x, int32_t maxw)
     if (lock)
         cv_icon_mid(x + 6, H_HEAD / 2, 16, ICON_X_LOCK, T_THEME, T_BG);
 }
-/* the slot letter after the track's cushion (1.2): the PROJECT slot of the pattern the selected track plays or edits.
- * A song playing: its section's slot for the track ("-" silent there); else the slot the working pattern came from
- * (ui.c pat_from: the last PROJECT load or save), with a mark ("A*") once it was edited since (its steps, LEN DIV SWING
- * GATE, QUANTIZE or automation: ui.c pat_from_sig); none at power-on, after a PHRASES pattern or the editor's restore.
- * b: the letter (b[1] '*' or 0); 0 = none */
-static int head_slot(char *b)                          /* (no slot letter: one song, tracker.c) */
-{
-    b[0] = b[1] = b[2] = 0;
-    return 0;
-}
 static int tk_song_playing(void) { return song.playing && tk_pl.mode == TK_SONG; }
 /* the octave, or the song position while the tracker's SONG plays (hex, as its page), its right end at HEAD_GRP_R */
 static void head_group(void)
@@ -303,13 +290,10 @@ static void draw_head(void)
     head_geo_t g;
     int32_t beat = -1;                                 /* the metronome stands still (its swing removed in 1.1.5) */
     uint32_t rec = (song.rec >> song.sel) & 1u ? 2u : song.rec != 0u;   /* 2 the selected track armed, 1 another */
-    char sl[3];
-    int slot = head_slot(sl);
     uint32_t sig = (uint32_t)song.playing * 3u + rec * 5u + (uint32_t)(song.octave + 8) * 11u + song.sel * 13131u +
                    (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) + (uint32_t)song.g[G_BPM] * 101u + (ui.bpm_t != 0) * 31u +
                    (ui_prefs & PREF_BPM_LOCK) * 4099u +
-                   (uint32_t)batt_shown() * 7777u + (tk_song_playing() ? (tk_pl.pos + 1u) * 104729u : 0u) +
-                   (slot ? str_hash(11u, sl) : 0u);
+                   (uint32_t)batt_shown() * 7777u + (tk_song_playing() ? (tk_pl.pos + 1u) * 104729u : 0u);
     int msg = ui.msg_t || ui.layer;
     int centre = !msg || ui.bpm_t || ui.layer == LAYER_GLO;   /* the BPM being changed: it stays, the message right */
     int32_t rx = HEAD_REC_X;
@@ -345,14 +329,6 @@ static void draw_head(void)
     metro_x = -1;
     cv_begin(240, H_HEAD, T_BG);
     cv_icon_mid(HEAD_TRK_X, H_HEAD / 2, 16, trk_icon(song.sel, 1), T_ACCENT, T_BG);
-    if (slot && (centre || !msg)) {                    /* the slot letter (not under a message centred: its room) */
-        char l[2] = {sl[0], 0};
-        GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
-        rx = cv_text(HEAD_SLOT_X, HEAD_MY, &AF_M, l, sl[0] == '-' ? T_MID : T_THEME);
-        if (sl[1])                                     /* edited since: the mark, up by the letter's top */
-            rx = cv_text(rx, HEAD_MY, &AF_M, "*", T_MID);
-        rx += 1;                                       /* (the REC mark's cell after it, its ink 3 px on) */
-    }
     draw_rec_mark(rx, T_BG);
     if (centre) {
         int32_t ib[4], lx = g.bx + g.b[2];             /* lx: the right end of the BPM (and its lock) */
@@ -436,16 +412,6 @@ static void draw_frame(void)
 #ifndef CARD_HOOK
 #define CARD_HOOK(v, u) ((void)0)                       /* host: a card value set in S (M too wide with its unit) */
 #endif
-/* MOTION on the cards (#63: values that move on their own): the selected track's motion-driven parameters
- * (motion.c motion_mask: PLAY ON and an event for the id), once per draw_columns; card_mot_next is set just
- * before a draw_column of a track parameter (card_mot_of) and taken by it; card_mot: the cards drawn with it. */
-static uint32_t card_mot_mask[(P_COUNT + 31u) / 32u];
-static uint8_t card_mot_next, card_mot;
-static void card_mot_of(const int16_t *vp)
-{
-    uintptr_t id = ((uintptr_t)vp - (uintptr_t)TSEL->p) / sizeof *vp;   /* (not the track's: huge) */
-    card_mot_next = (uint8_t)(id < P_COUNT && ((card_mot_mask[id / 32u] >> (id % 32u)) & 1u));
-}
 
 /* MENU > LARGE, a tall card (ui.c LK_TALL; 57 x LG_CARD_H): which knob it is (a "K1" pill in M, the keycap's colours,
  * the accent while it turns, DIM when the knob does nothing here) and the icon at the right of it; the label in M
@@ -463,13 +429,13 @@ static void card_mot_of(const int16_t *vp)
 #define LG_UY 73                                        /* the unit's line (S capitals rows 76..84) */
 #define LG_GY 92                                        /* the gauge, 3 px */
 static void draw_column_tall(uint32_t c, const char *label, const char *val, const char *unit, uint16_t vc, int32_t ratio,
-                             uint32_t icon, int hot, int mot, int32_t kid)
+                             uint32_t icon, int hot, int32_t kid)
 {
-    uint16_t lc = hot ? T_ACCENT : mot ? T_THEME : T_MID;
+    uint16_t lc = hot ? T_ACCENT : T_MID;
     const aafont_t *lf = &AF_M, *vf = &AF_L;
     int32_t ly = LG_LY, vy, lw = 0, mw;
     char k[3] = {'K', (char)('1' + c), 0};
-    uint32_t ic = mot ? ICON_X_MOTION : icon, isz = 16u;
+    uint32_t ic = icon, isz = 16u;
     cv_begin(COL_W, LG_CARD_H, T_BG);
     cv_rrect(0, 0, COL_W, LG_CARD_H, 4, T_SURF, T_BG);
     {   /* the knob: "K1" .. "K4" on a pill */
@@ -485,7 +451,7 @@ static void draw_column_tall(uint32_t c, const char *label, const char *val, con
     }
     if (FELUCCA_ICONS && ic != ICON_NONE && label[0] && (ic - ICON_TRK < NTRK || icon_cell(&isz, ic) >= 0)) {
         GFX_HOOK_ALIGN(0, LG_MY, 0, LG_MY + LG_MH, AL_V, "large card icon on its pill's line");
-        cv_icon_in(COL_W - 5 - 16, LG_MY, 16, LG_MH, 16, ic, mot ? (hot ? T_ACCENT : T_THEME) : lc, T_SURF);
+        cv_icon_in(COL_W - 5 - 16, LG_MY, 16, LG_MH, 16, ic, lc, T_SURF);
     }
     if (label[0]) {
         if ((lw = ink_w(lf, label)) > COL_W - 6) {      /* M too wide: S, on the same capitals' middle */
@@ -540,15 +506,13 @@ static void draw_column_tall(uint32_t c, const char *label, const char *val, con
  * The value is M, or S when M is too wide (engine names, long ENUMs); the unit S after it. The gauge is
  * a 3 px rounded bar: BG track, THEME fill. The knob just turned (hot): icon, label, value and gauge in
  * the accent. ratio: 0..1000 for the gauge, -1 = no gauge. icon: ICON_* (icons.c), ICON_AUTO = by label;
- * a label too long to share the card with its icon goes without it. A parameter MOTION drives (card_mot_next):
- * the motion icon in place of its own, in the theme colour; a long label moves it left, up to the card's edge;
- * a label with no room for it at all (or FELUCCA_ICONS=0): the label in the theme colour.
+ * a label too long to share the card with its icon goes without it.
  * vc: the value's colour (T_THEME, T_DIM inactive, T_ACCENT the knob just turned) */
 static void draw_column(uint32_t c, const char *label, const char *val, const char *unit, uint16_t vc,
                         int32_t ratio, uint32_t icon)
 {
     char key[48];
-    int hot = c == ui.hot_col && ui.hot_t, named = fmt_named, mot = card_mot_next && label[0], strip, snap;
+    int hot = c == ui.hot_col && ui.hot_t, named = fmt_named, strip, snap;
     uint32_t kind = large_kind();                       /* MENU > LARGE: tall (draw_column_tall), or the label in M */
     uint8_t sig;
     uint16_t lc = hot ? T_ACCENT : T_MID;
@@ -557,8 +521,6 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
     uint32_t n, kn;
     int32_t kid = kc_tag(val, &kn);
     fmt_named = 0;                                      /* (params.c: a name, for this card only) */
-    card_mot_next = 0;                                  /* (the same: MOTION, this card only) */
-    card_mot = (uint8_t)((card_mot & ~(1u << c)) | (uint32_t)mot << c);
     if (str_eq(unit, label))
         unit = "";                                      /* "BPM 124 BPM", "USB OFF USB": the label says it */
     if (icon == ICON_AUTO)
@@ -577,7 +539,7 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
     key[n + 4] = (char)(' ' + (ratio < 0 ? 0 : 1 + ratio * (COL_W - 10) / 1000));   /* the gauge's own pixel (as
                                                         * drawn: gw; ratio / 20 missed a pixel inside a step, #63 soak) */
     key[n + 5] = (char)(icon == ICON_NONE ? '~' : '!' + icon % 90u);
-    key[n + 6] = (char)('0' + hot + 2 * mot + 4 * (int)kind);
+    key[n + 6] = (char)('0' + hot + 4 * (int)kind);
     key[n + 7] = 0;
     uw = unit[0] ? text_w(&AF_S, unit) + 3 : 0;
     if (text_w(vf, val) + uw > room) {
@@ -610,7 +572,7 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
             ui.roll[c].from[0] = 0;
         str_cpy(ui.col[c], key, sizeof ui.col[c]);
         if (kind == LK_TALL) {
-            draw_column_tall(c, label, val, unit, vc, ratio, icon, hot, mot, kid);
+            draw_column_tall(c, label, val, unit, vc, ratio, icon, hot, kid);
             return;
         }
         cv_begin(COL_W, COL_H, T_BG);
@@ -623,16 +585,10 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
             const aafont_t *lf = kind == LK_LABEL && 5 + text_w(&AF_M, label) <= COL_W - 2 ? &AF_M : &AF_S;
             int32_t lw = text_w(lf, label), ix = 5, ly = lf == &AF_M ? 1 : 3;
             int32_t cy = ly + (lf == &AF_M ? AF_M_CAP_Y : AF_S_CAP_Y), chh = lf == &AF_M ? AF_M_CAP_H : AF_S_CAP_H;
-            uint32_t ic = mot ? ICON_X_MOTION : icon;
-            if (mot && ix + ICON_CELL + ICON_GAP + lw > COL_W - 2)
-                ix = COL_W - 2 - lw - ICON_GAP - ICON_CELL;   /* a long label: MOTION's icon moves left */
-            if (FELUCCA_ICONS && ic != ICON_NONE && ix >= 1 && ix + ICON_CELL + ICON_GAP + lw <= COL_W - 2) {
+            if (FELUCCA_ICONS && icon != ICON_NONE && ix + ICON_CELL + ICON_GAP + lw <= COL_W - 2) {
                 GFX_HOOK_ALIGN(ix, cy, ix, cy + chh, AL_V, "card icon on its label's line");
-                lx = ix + cv_icon_in(ix, cy, 0, chh, ICON_CELL, ic,   /* its ink on the label's line */
-                                     mot ? (hot ? T_ACCENT : T_THEME) : lc, T_SURF) + ICON_GAP;
+                lx = ix + cv_icon_in(ix, cy, 0, chh, ICON_CELL, icon, lc, T_SURF) + ICON_GAP;   /* its ink on the label's line */
             }
-            else if (mot)                               /* the label from x 19 (5 + 12 + 2) */
-                lc = hot ? T_ACCENT : T_THEME;          /* no room for MOTION's icon: the label says it */
             if (hot && T_ACCENT == T_MID) {             /* MONO: no colour tells the hot knob: its label inverted, */
                 int32_t b[4], w;                        /* the chip 2 px round its ink (M: 3 above, 2 below) */
                 text_ink(lf, label, b);
@@ -680,19 +636,13 @@ static void foot_hint(char *a, char *b)
     uint32_t c = act_col();
     str_cpy(a, "OCT+ ", 8);
     str_cpy(a + 5, c ? act_name(c - 1u) : "--", 8);
-    str_cpy(b, ui.act && cur_page()->graph != GR_PATS ? "OCT- CANCEL" : "OCT- BACK", 16);
+    str_cpy(b, ui.act ? "OCT- CANCEL" : "OCT- BACK", 16);
 }
 
-/* SAVE > USER / PROJECT: EDIT renames the selected slot (ui_name.c); SEQ > AUTOMATION: EDIT deletes the row's
- * record (ui_events.c); 0 = not such a page, 1 an empty slot (PLAY, QUANTIZE, + ADD), 2 used */
+/* SAVE > USER / PROJECT: EDIT renames the selected slot (ui_name.c); 0 = not such a page, 1 an empty slot, 2 used */
 static uint32_t foot_rename(void)
 {
     uint32_t g = ui.home ? GR_NONE : cur_page()->graph;
-    if (g == GR_EVENTS) {
-        uint16_t rw[EV_ROWS];
-        uint32_t k = ev_cur(rw, 0) >> 8;
-        return k == EVK_TOP || k == EVK_QNT || k == EVK_ADD ? 1u : 2u;
-    }
     if (g == GR_USER)
         return 1u + (uint32_t)up_used(ui.uslot);
     if (g == GR_SLOTS)
@@ -730,19 +680,12 @@ static void draw_foot(void)
     s[str_len(s)] = (char)('1' + song.sel);
     str_cpy(s + str_len(s), pn, 16);
     str_cpy(s + str_len(s), ti, sizeof ti);
-    {   /* step markers: the playhead only when it is in the shown bank, the cursor only in SEQ */
-        uint32_t ph = song.playing && t->seq_idx / 16u == ui.bank ? t->seq_idx : 0xFFu;
-        sig = str_hash(0x9E3779B9u, s) + ph * 97u + (song.seq_mode ? ui.cursor : 0xFFu) * 3001u + steps_hash(t) +
-              (ui.home ? 0u : page_icon(pg)) * 7121u +
-              ui.bank * 7u + (uint32_t)t->p[P_SLEN] * 13u;
-    }
+    sig = str_hash(0x9E3779B9u, s) + (ui.home ? 0u : page_icon(pg)) * 7121u;
     if (act_cols()) {                                  /* the hint, and whether OCT+ would act */
         char ha[16], hb[16];
         foot_hint(ha, hb);
         sig += str_hash(str_hash(act_ready() ? 7u : 3u, ha), hb) + foot_rename() * 7717u;
     }
-    if (grid_on())
-        sig += 0x51EDu + (uint32_t)black_held(GK_ACC) * 977u;
     if (tk_page()) {                                   /* the tracker: the cursor's cell spelled out (ui_tracker.c) */
         char tf[48];
         tk_foot(tf, sizeof tf);
@@ -756,7 +699,7 @@ static void draw_foot(void)
         char tf[48];
         tk_foot(tf, sizeof tf);
         cv_free_text(8, 1, &AF_S, tf, T_TEXT, T_BG, 224);
-    } else if (act_cols()) {                          /* row 1: the OCT+ / OCT- hint in place of the steps */
+    } else if (act_cols()) {                          /* row 1: the OCT+ / OCT- hint (other pages: empty) */
         char ha[16], hb[16];
         khint_t kh[3];
         uint32_t rn = foot_rename();
@@ -765,53 +708,17 @@ static void draw_foot(void)
         kh[1] = (khint_t){KC_OCTDN, hb + 5};
         if (rn) {                                     /* USER / PROJECT: "EDIT NAME" between them */
             kh[2] = kh[1];
-            kh[1] = (khint_t){KC_EDIT, cur_page()->graph == GR_EVENTS ? "DELETE" : "NAME"};
+            kh[1] = (khint_t){KC_EDIT, "NAME"};
             cv_key_row(8, 232, 2, kh, 3, (act_ready() ? 1u : 0u) | (rn == 2u ? 2u : 0u) | 4u, T_BG);
         } else {
             cv_key_row(8, 232, 2, kh, 2, act_ready() ? 3u : 2u, T_BG);
         }
-    } else if (grid_on()) {                           /* row 1: the page, and what the keys do */
-        char b[16];
-        uint32_t len = (uint32_t)t->p[P_SLEN];
-        str_cpy(b, "PAGE ", sizeof b);
-        fmt_int(b + 5, (int32_t)ui.bank + 1);
-        str_cpy(b + str_len(b), "/", 4);
-        fmt_int(b + str_len(b), (int32_t)((len + 15u) / 16u));
-        cv_text(8, 2, &AF_S, b, T_THEME);
-        if (black_held(GK_ACC))
-            cv_text_r(232, 2, &AF_S, "ACCENT", T_ACCENT, T_BG);
-        else
-            cv_key_hint(232 - kh_w(KC_KEYS, "STEPS"), 2, KC_KEYS, "STEPS", 1, T_BG);   /* the keys are the steps */
-    } else {
-        uint32_t i;
-        if ((ui.bank + 1u) * 16u <= (uint32_t)t->p[P_SLEN])
-            GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_CELLS | AL_N(16), "footer step bars centred");
-        for (i = 0; i < 16u; i++) {                   /* row 1: the cursor's bank, 16 bars in 4 groups */
-            uint32_t si = ui.bank * 16u + i;
-            int32_t sx = bar_x(i);                    /* (centred: x 12 .. 228) */
-            const step_t *st = &seq_steps(t)[si];
-            if (si >= (uint32_t)t->p[P_SLEN])
-                continue;
-            if (step_on(st))                          /* a note: a bar (accented: the accent) */
-                cv_rrect(sx, 1, 9, 11, 2, (st->flags & SF_ACCENT) ? T_ACCENT : T_THEME, T_BG);
-            else                                      /* empty: a stub (a tie: brighter) */
-                cv_rrect(sx, 9, 9, 3, 1, st->time == ST_TIE ? T_MID : T_RAISE, T_BG);
-            if (song.seq_mode && si == ui.cursor)
-                cv_rect(sx, 14, 9, 2, T_ACCENT);        /* the step edited */
-            else if (song.playing && si == t->seq_idx)
-                cv_rect(sx, 14, 9, 2, T_TEXT);          /* the step sounding */
-        }
     }
-    {   /* row 2: engine icon + name, sound, page title at the right with its icon before it (MIXER, PHRASES, SONG,
-         * AUTOMATION); icons: their ink on the names' capitals */
+    {   /* row 2: engine icon + name, sound, page title at the right with its icon before it (MIXER, the tracker's
+         * PATTERN and SONG); icons: their ink on the names' capitals */
         uint32_t pi = ui.home ? ICON_NONE : page_icon(pg), ei = FELUCCA_ICONS ? engine_icon(ename) : ICON_NONE;
-        int32_t r = 232, tx, ex, need = text_w(&AF_S, pn), ew = text_w(&AF_S, ename);
-        ex = 8 + (FELUCCA_ICONS ? 12 + 5 : 0) + (ew < 80 ? ew : 80);   /* (where the engine's name ends) */
+        int32_t r = 232, tx;
         tx = r - text_w(&AF_S, ti) - (pi != ICON_NONE ? 16 : 0);
-        if (!ui.home && pg->graph == GR_EVENTS && tx - 12 - (ex + 10) < need) {
-            str_cpy(ti + 4, ti + 10, sizeof ti - 4);    /* #93: "AUTOMATION 6/6" -> "AUTO 6/6" where the sound's name */
-            tx = r - text_w(&AF_S, ti) - (pi != ICON_NONE ? 16 : 0);   /* would be cut (MENU > LARGE) */
-        }
         x = 8;
         if (FELUCCA_ICONS) {
             if (ei != ICON_NONE)
@@ -849,7 +756,6 @@ static void draw_columns(void)
     uint32_t c;
     char val[12];
     const char *unit;
-    (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
     if (cur_page()->graph == GR_TKLAY) {               /* the SEQ layer's knobs: the tracker's pattern (ui_tracker.c) */
         tk_layer_columns();
         return;
@@ -859,85 +765,8 @@ static void draw_columns(void)
             int16_t *vp;
             const param_desc_t *d = home_param(c, &vp);
             param_format(d, *vp, val, &unit);
-            card_mot_of(vp);
             draw_column(c, d->label, val, unit, VAL(c), RATIO(d, enum_rank(d, *vp)), param_icon(d, *vp));
         }
-        return;
-    }
-    if (cur_page()->graph == GR_EVENTS) {              /* AUTOMATION (ui_events.c): ROW STEP PARAM VALUE */
-        const track_t *t = TSEL;
-        uint16_t rw[EV_ROWS];
-        uint32_t n, c = ev_cur(rw, &n), r = ev_row(n), k = c >> 8, step, id;
-        int16_t v;
-        char nm[12];
-        const param_desc_t *d;
-        if (k == EVK_TOP) {                            /* PLAY: the counts, PLAY ON / OFF (OCT+: CLEAR) */
-            draw_column(0, "ROW", "ALL", "", VAL(0u), -1, ICON_AUTO);
-            fmt_int(val, (int32_t)(motion_count(t) - motion_lock_count(t)));
-            draw_column(1, "EVENT", val, "", T_MID, -1, ICON_NONE);
-            fmt_int(val, (int32_t)motion_lock_count(t));   /* parameter locks (SEQ > STEP: a step held, a knob) */
-            draw_column(2, "LOCK", val, "", T_MID, -1, ICON_NONE);
-            draw_column(3, "PLAY", motion_enabled(t) ? "ON" : "OFF", "", VAL(3u), -1, motion_icon());
-            return;
-        }
-        if (k == EVK_QNT) {                            /* QUANTIZE (1.2): the steps with a NUDGE, QNTZ ON / OFF */
-            draw_column(0, "ROW", "ALL", "", VAL(0u), -1, ICON_AUTO);
-            fmt_int(val, (int32_t)ev_nudged(t));
-            draw_column(1, "NUDGED", val, "", T_MID, -1, ICON_NONE);
-            draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);
-            draw_column(3, "QNTZ", t->p[P_SQNT] ? "ON" : "OFF", "", VAL(3u), -1, ICON_QUANTIZE);
-            return;
-        }
-        if (k == EVK_ADD) {
-            ev_fix();
-            str_cpy(val, "ADD", sizeof val);
-        } else {                                       /* "3/7": the rows between QUANTIZE and + ADD */
-            fmt_int(val, (int32_t)r - 1);
-            str_cpy(val + str_len(val), "/", 4);
-            fmt_int(val + str_len(val), (int32_t)n - 3);
-        }
-        step = ev_step_of(c);
-        id = k == EVK_REC ? MOTION_ID(&motion.event[c & 0xFFu]) : k == EVK_ADD ? ui.ev_id :
-             k == EVK_CHANCE ? EV_CHANCE : k == EVK_RATCH ? EV_RATCH : EV_NUDGE;
-        draw_column(0, "ROW", val, "", VAL(0u), -1, ICON_AUTO);
-        fmt_int(val, (int32_t)step + 1);
-        draw_column(1, "STEP", val, "", k != EVK_ADD || step < (uint32_t)t->p[P_SLEN] ? VAL(1u) : T_DIM, -1, ICON_AUTO);
-        if (!ev_id_ok(t, id)) {
-            draw_column(2, "PARAM", "--", "", T_DIM, -1, ICON_AUTO);
-            draw_column(3, "VALUE", "--", "", T_DIM, -1, ICON_AUTO);
-            return;
-        }
-        ev_name(t, id, nm);
-        draw_column(2, "PARAM", nm, "", k == EVK_REC || k == EVK_ADD ? VAL(2u) : T_MID, -1, ICON_AUTO);
-        if (id == EV_NUDGE) {                          /* a step's NUDGE (1.2): "+3 /16", DIM where it does not play */
-            const step_t *cs = &t->step[step % NSTEP];
-            int32_t sv = k == EVK_ADD ? ev_sadd(EVK_NUDGE) : step_nudge(cs);
-            ev_nudge_fmt(val, sv);
-            draw_column(3, "VALUE", val, "/16", k != EVK_ADD && ev_nudge_plays(t, cs) ? VAL(3u) : T_DIM, (sv + 8) * 66,
-                        ICON_AUTO);
-            return;
-        }
-        if (id == EV_CHANCE || id == EV_RATCH) {       /* a step's CHANCE (the die) / RATCH; + ADD: what it adds */
-            const step_t *cs = &t->step[step % NSTEP];
-            uint32_t sk = ev_skind(id), sv = (uint32_t)(k == EVK_ADD ? ev_sadd(sk) : ev_sval(cs, sk));
-            int plays = sk == EVK_CHANCE || (cs->time == ST_NOTE && (cs->n || cs->hit));   /* (RATCH does nothing on a
-                                                                                            * REST, a TIE, empty: DIM) */
-            if (sk == EVK_CHANCE) {
-                fmt_int(val, (int32_t)sv);
-            } else {
-                val[0] = 'x';                          /* x1 .. x4 */
-                val[1] = (char)('0' + sv);
-                val[2] = 0;
-            }
-            draw_column(3, "VALUE", val, sk == EVK_CHANCE ? "%" : "", k != EVK_ADD && plays ? VAL(3u) : T_DIM,
-                        sk == EVK_CHANCE ? (int32_t)sv * 10 : ((int32_t)sv - 1) * 333, sk == EVK_CHANCE ? ICON_PROB : ICON_X_REPEAT);
-            return;
-        }
-        v = k == EVK_REC ? motion.event[c & 0xFFu].value : motion_base_value(t, id);
-        d = track_desc(t, id);
-        param_format(d, v, val, &unit);
-        draw_column(3, k == EVK_ADD ? "VALUE" : (motion.event[c & 0xFFu].param & MOTION_LOCK) ? "LOCK" : "AUTO", val, unit,
-                    k != EVK_ADD ? VAL(3u) : T_DIM, RATIO(d, enum_rank(d, v)), param_icon(d, v));
         return;
     }
     if (cur_page()->graph == GR_TOOLS) {
@@ -950,13 +779,10 @@ static void draw_columns(void)
         const track_t *t = TSEL;
         uint32_t lvl = trk_level(song.sel);
         param_format(&TP[P_LEVEL], (int32_t)lvl, val, &unit);   /* (0: OFF) */
-        card_mot_of(&TSEL->p[P_LEVEL]);
         draw_column(0, "LEVEL", val, unit, lvl && !t->p[P_MUTE] ? VAL(0u) : T_DIM, (int32_t)lvl * 1000 / 127, ICON_AUTO);
         param_format(&TP[P_PAN], t->p[P_PAN], val, &unit);
-        card_mot_of(&TSEL->p[P_PAN]);
         draw_column(1, "PAN", val, unit, VAL(1u), RATIO(&TP[P_PAN], t->p[P_PAN]), param_icon(&TP[P_PAN], t->p[P_PAN]));
         param_format(&TP[P_REV], t->p[P_REV], val, &unit);
-        card_mot_of(&TSEL->p[P_REV]);
         draw_column(2, "REV", val, unit, VAL(2u), RATIO(&TP[P_REV], t->p[P_REV]), ICON_AUTO);
         draw_column(3, "MUTE", t->p[P_MUTE] ? "ON" : "OFF", "", t->p[P_MUTE] ? T_ACCENT : VAL(3u), -1, ICON_AUTO);
         return;
@@ -972,16 +798,6 @@ static void draw_columns(void)
         draw_column(1, "ENG", ENGINES[TSEL->eng_req]->name, "", VAL(1u), -1, engine_icon(ENGINES[TSEL->eng_req]->name));
         draw_column(2, "FAV", preset_favorite() ? "ON" : "OFF", "", VAL(2u), -1, ICON_X_STAR);
         draw_column(3, "LIST", list_name(list_mode()), "", VAL(3u), -1, ICON_X_FOLDER);
-        return;
-    }
-    if (cur_page()->graph == GR_PATS) {                  /* PAT, then LOAD (a GO button) */
-        uint32_t n = pat_count(), k = pat_pick();
-        char tag[4], nm[13];
-        pat_label(k, tag, nm);
-        draw_column(0, "PAT", tag, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(n > 1u ? n - 1u : 1u), ICON_X_PATTERN);
-        draw_act_column(1, "LOAD", T_THEME, ICON_AUTO);
-        draw_column(2, "", "", "", T_THEME, -1, ICON_AUTO);
-        draw_column(3, "", "", "", T_THEME, -1, ICON_AUTO);
         return;
     }
     if (cur_page()->graph == GR_USER) {                  /* SLOT, then three GO buttons */
@@ -1040,78 +856,6 @@ static void draw_columns(void)
         draw_column(3, "AMT", val, unit, a ? VAL(3u) : T_DIM, RATIO(&TP[id + 2u], a), mod_src_icon(MS_OFF));
         return;
     }
-    if (cur_page()->graph == GR_ROLL && lock_held()) {   /* a step held: what KNOB 1..4 lock (ui_input.c lock_turn) */
-        uint64_t held = lock_held();
-        uint32_t st = 0;
-        while (!((held >> st) & 1u))
-            st++;                                       /* (the first step held: its values) */
-        for (c = 0; c < 4u; c++) {
-            uint32_t id = lock_id(c);
-            const param_desc_t *d;
-            int16_t v;
-            int on;
-            if (id == 0xFFu) {
-                draw_column(c, "", "", "", T_THEME, -1, ICON_AUTO);
-                continue;
-            }
-            d = track_desc(TSEL, id);
-            on = motion_lock_get(TSEL, st, id, &v);
-            if (!on)
-                v = motion_base_value(TSEL, id);      /* not locked: the sound's own, DIM */
-            param_format(d, v, val, &unit);
-            draw_column(c, d->label, val, unit, on ? VAL(c) : T_DIM, RATIO(d, enum_rank(d, v)), param_icon(d, v));
-        }
-        return;
-    }
-    if (cur_page()->scope == SC_STEP && drum_track(TSEL)) {   /* the grid: STEP LANE HIT ACC */
-        const step_t *st = &seq_steps(TSEL)[ui.cursor];
-        uint32_t b = 1u << ui.lane, on = (step_lanes(st) & b) != 0u, ac = (step_accents(st) & b) != 0u;
-        char sn[8], sl[8];
-        fmt_int(sn, (int32_t)ui.cursor + 1);
-        str_cpy(sl, "/", 8);
-        fmt_int(sl + 1, TSEL->p[P_SLEN]);
-        draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
-        draw_column(1, "LANE", drum_lane_name(TSEL, ui.lane), "", VAL(1u), -1, ICON_AUTO);
-        draw_column(2, "HIT", on ? "ON" : "--", "", on ? VAL(2u) : T_DIM, -1, ICON_AUTO);
-        draw_column(3, "ACC", ac ? "ON" : "--", "", ac ? VAL(3u) : T_DIM, -1, ICON_AUTO);
-        return;
-    }
-    if (cur_page()->scope == SC_STEP) {
-        static const char *const TIME_N[3] = {"NOTE", "TIE", "REST"};
-        const step_t *st = &seq_steps(TSEL)[ui.cursor];
-        char u[8];
-        uint32_t cnt = st->n, first = st->note[0], l;
-        for (l = NLANE; l-- > 0;)                         /* (lane hits count as their notes) */
-            if ((st->hit >> l) & 1u) {
-                cnt++;
-                if (!st->n)
-                    first = DRUM_LANE_NOTE[l];
-            }
-        if (cnt) {
-            note_name(val, first);
-            u[0] = 0;
-            if (cnt > 1) {
-                str_cpy(u, "+", 8);
-                fmt_int(u + 1, (int32_t)cnt - 1);
-            }
-        } else {
-            str_cpy(val, "--", 12);
-            u[0] = 0;
-        }
-        {
-            static const char *const FLAG_N[4] = {"-", "ACC", "SLD", "A+S"};
-            char sn[8], sl[8];
-            fmt_int(sn, (int32_t)ui.cursor + 1);
-            str_cpy(sl, "/", 8);
-            fmt_int(sl + 1, TSEL->p[P_SLEN]);
-            draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
-            draw_column(1, "NOTE", val, u, step_on(st) ? VAL(1u) : T_DIM, -1, ICON_AUTO);
-            draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1, ICON_AUTO);
-            draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)], "",
-                        VAL(3u), -1, ICON_AUTO);
-        }
-        return;
-    }
     for (c = 0; c < 4u; c++) {
         int16_t *vp;
         const param_desc_t *d = page_desc(cur_page(), c, &vp);
@@ -1124,7 +868,6 @@ static void draw_columns(void)
             continue;
         }
         param_format(d, *vp, val, &unit);
-        card_mot_of(vp);                                /* (a global: never) */
         if (vp == &TSEL->p[P_LRATE] && TSEL->p[P_LSYNC]) {   /* LFO 2 SYNC on: RATE does nothing, DIM (1.2) */
             draw_column(c, d->label, val, unit, T_DIM, RATIO(d, *vp), param_icon(d, *vp));
             continue;
@@ -1221,9 +964,6 @@ static void confirm_text(char *a, char *b)
     case CF_INIT_SOUND:
         str_cpy(a, "INITIALIZE SOUND?", 24);
         break;
-    case CF_CLEAR_MOTION:
-        str_cpy(a, "CLEAR T1 AUTOMATION?", 24); a[7] = (char)('1' + k % NTRK);
-        break;
     case CF_OVR_USER:
         str_cpy(a, "OVERWRITE ", 24);
         up_slot_label(a + str_len(a), k);
@@ -1236,13 +976,6 @@ static void confirm_text(char *a, char *b)
         str_cpy(a + str_len(a), "?", 2);
         up_name(k, b);
         break;
-    case CF_LOAD_PAT: {
-        char tag[4];
-        str_cpy(a, "REPLACE T1 SEQUENCE?", 24);
-        a[9] = (char)('1' + k % NTRK);
-        pat_label(pat_pick(), tag, b);               /* with the pattern picked */
-        break;
-    }
     default:                                         /* CF_CLEAR_SEQ: the tracker's pattern */
         str_cpy(a, "CLEAR PATTERN 00?", 24);
         tk_hex2(a + 14, k % TK_PATS);
@@ -1264,7 +997,7 @@ static void draw_confirm(void)
     cv_rrect(!!ux.style, !!ux.style, DLG_W - 2 * !!ux.style, DLG_H - 2 * !!ux.style, 8 - !!ux.style, T_SURF,
              ux.style ? T_RULE : T_BG);
     GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog icon centred");
-    cv_icon_in(0, 12, DLG_W, 0, 16, ui.confirm == CF_CLEAR_MOTION ? ICON_X_MOTION_DEL : ICON_X_WARN, T_ACCENT, T_SURF);
+    cv_icon_in(0, 12, DLG_W, 0, 16, ICON_X_WARN, T_ACCENT, T_SURF);
     if (text_w(tf, a) > DLG_W - 16)
         tf = &AF_S;
     GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog question centred");
@@ -1356,7 +1089,6 @@ static void ui_draw_page(void)
         ui.page = (uint8_t)page_first(FAM_EDIT);
         page_entered();
     }
-    cursor_fix();
     if (tk_page()) {                                    /* the tracker's pages (ui_tracker.c): no cards, no panel */
         felucca_dbg.stage = 3;
         draw_head();

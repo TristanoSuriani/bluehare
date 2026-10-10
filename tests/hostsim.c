@@ -75,12 +75,9 @@ static void host_tracks_init(void)                /* as felucca_init: defaults, 
         song.g[i] = GP[i].def;
     song.g[G_RTYPE] = 0;                          /* ROOM, the power-on reverb until 1.2: the renders (goldens) as
                                                    * before, ROOM bit for bit; HALL, the default since: reverb_test.c */
-    for (k = 0; k < NTRK; k++) {
+    for (k = 0; k < NTRK; k++)
         for (i = 0; i < P_E0; i++)
             trk[k].p[i] = TP[i].def;
-        for (i = 0; i < NSTEP; i++)
-            trk[k].step[i].time = ST_REST;
-    }
     tk_defaults();                                /* (1.5: the tracker's song, empty) */
     host_rows = 0;
     song.master_q12 = 4096;
@@ -143,31 +140,28 @@ static void host_preset(track_t *t, uint32_t e, uint32_t pi)
  * for the migration tests, which pass it through a load */
 static void host_legacy_sample_perc(track_t *t)
 {
-    static const preset_t PERC = {"PERC", {SMP_SET_PERC, 0, 0, 0, 127, 0, 0, 0}, {0, 127, 127, 60}, 0, 0, PAT(12)};
+    static const preset_t PERC = {"PERC", {SMP_SET_PERC, 0, 0, 0, 127, 0, 0, 0}, {0, 127, 127, 60}, 0, 0};
     host_preset_values(t, ENGI_SAMPLE, SMP_SET_PERC, &PERC);
     t->engine = ENGI_SAMPLE;
 }
 /* the drums of the render tests: DRUM's kit (the power-on track 4; until 1.0.2 these used SAMPLE PERC) */
 static void host_drums(track_t *t) { host_preset(t, ENGI_DRUM, 0); }
 
-/* a step of the renders' songs (1.5: into the tracker's pattern 00 too, which plays them: its first note, a REST an OFF,
- * a TIE nothing (the note rings); the pattern as long as the longest track written) */
+/* a step of the renders' songs, written as they were for the step sequencer of 1.4 (the goldens keep their songs): into
+ * row i of the tracker's pattern 00, which plays them: its first note, a REST an OFF, a TIE nothing (the note rings);
+ * the pattern as long as the longest track written. The other notes of a chord and the flags (accent, slide) are not
+ * played (the tracker has no such cell); a row past TK_ROWS nothing */
+enum { ST_NOTE, ST_TIE, ST_REST };                 /* (the 1.4 steps' kinds: the render songs' vocabulary) */
+#define SF_ACCENT 1u
 static void put_step(track_t *t, uint32_t i, uint32_t n, const uint8_t *notes, uint32_t time, uint32_t flags)
 {
-    step_t *s = &t->step[i];
-    uint32_t k;
-    if (i < TK_ROWS) {
-        *tk_at(0, i, (uint32_t)(t - trk)) = tk_pack(time == ST_NOTE && n ? notes[0] : time == ST_REST ? TK_OFF : 0u, 0, 0, 0);
-        if (i + 1u > host_rows)
-            host_rows = i + 1u;
-        tk.len[0] = (uint8_t)host_rows;
-    }
-    s->n = (uint8_t)n;
-    for (k = 0; k < 4u; k++)
-        s->note[k] = k < n ? notes[k] : 0;
-    s->time = (uint8_t)time;
-    s->flags = (uint8_t)flags;
-    s->vel = n ? 100 : 0;
+    (void)flags;
+    if (i >= TK_ROWS)
+        return;
+    *tk_at(0, i, (uint32_t)(t - trk)) = tk_pack(time == ST_NOTE && n ? notes[0] : time == ST_REST ? TK_OFF : 0u, 0, 0, 0);
+    if (i + 1u > host_rows)
+        host_rows = i + 1u;
+    tk.len[0] = (uint8_t)host_rows;
 }
 
 static uint32_t busy_now(void)                   /* sounding voices of the parts (none fading after a block) */
@@ -843,7 +837,7 @@ int main(int argc, char **argv)
     if (getenv("STEPS")) {                              /* STEPS=n,n,...: a pattern (0 = rest) played by the sequencer */
         const char *s = getenv("STEPS");
         int nt, k, c = 0;
-        while (c < NSTEP && sscanf(s, "%d%n", &nt, &k) == 1) {
+        while (c < TK_ROWS && sscanf(s, "%d%n", &nt, &k) == 1) {
             uint8_t u = (uint8_t)nt;
             put_step(&inst, (uint32_t)c++, nt ? 1u : 0u, &u, nt ? ST_NOTE : ST_REST, 0);
             s += k;

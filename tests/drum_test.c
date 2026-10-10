@@ -714,7 +714,7 @@ static void lane_levels(void)
     double worst = 0;
     kit_fresh();
     for (l = 0; l < NLANE; l++)
-        bad += trk[0].p[P_LN0 + l] != 127 || TP[P_LN0 + l].def != 127 || NOTE[l] != DRUM_LANE_NOTE[l];
+        bad += trk[0].p[P_LN0 + l] != 127 || TP[P_LN0 + l].def != 127 || drum_lane(NOTE[l]) != l;
     for (l = 0; l < NLANE; l++) {
         double full = lane_mix(NOTE[l], l, 127, 64, &h0), half, off;
         (void)lane_mix(NOTE[l], (l + 1u) % NLANE, 0, 64, &h1);   /* another lane silenced: this one as it was */
@@ -1300,17 +1300,6 @@ static void retired(void)
                param_fit(d, (int32_t)r) != MAP[r];
     bad += param_fit(d, 99) != DK_77 || param_fit(d, -5) != DK_STD || enum_orig(d, DK_55) != DK_55;
     bad += param_fit(&TP[P_LEVEL], 77) != 77;
-    {   /* a motion event of KIT 2 (CYM): stored and played as 10 */
-        host_tracks_init();
-        host_preset(&trk[0], ENGI_DRUM, 0);
-        motion_clear(&trk[0]);
-        bad += motion_set_event(&trk[0], 0, P_E0, DK_CYM) != 0;
-        for (k = n = 0; k < motion.count; k++)
-            if (motion.event[k].param == P_E0)
-                n++, bad += motion.event[k].value != DK_10;
-        bad += n != 1u;
-        motion_clear(&trk[0]);
-    }
     {   /* KIT anywhere in its range (the matrix moves it per block): a crash plays a model kit's BELL on 1..3 */
         int16_t p[P_COUNT];
         host_tracks_init();

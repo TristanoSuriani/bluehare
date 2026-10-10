@@ -82,7 +82,7 @@
 #include "ui_draw.c"
 #include "ui_menu.c"
 #include "ui_input.c"
-#include "ui_layer.c"              /* the quick layers (FX GLO SCL EDIT REC held; SEQ TOOLS: ui_tools.c) */
+#include "ui_layer.c"              /* the quick layers (FX GLO SCL EDIT REC SEQ held) */
 
 /* --------------------------------------------- storage, update, editor --- */
 #if FELUCCA_FLASH

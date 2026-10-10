@@ -410,16 +410,16 @@ static int cc_map_test(void)
     bad += check("ROUT SEL: channel 10's CC7 sets the selected track's LEVEL", trk[2].p[P_LEVEL] == 5 && trk[0].p[P_LEVEL] != 5);
     song.g[G_ROUTE] = 0; song.sel = 0; events_block(CTL);
 
-    /* 1.5: no automation (the tracker's FX instead): armed and playing or not, a CC is the new value, nothing recorded */
+    /* 1.5: no automation (the tracker's FX instead): armed and playing or not, a CC is the new value */
     midi_test_reset();
     song.rec = 1; seq_start(); events_block(CTL);
     queued(0xB0, 74, 20, 1);
-    bad += check("armed and playing: CC74 sets CUT, records nothing", motion.count == 0u && trk[0].p[P_E4] != ANALOG_PRESETS[trk[0].preset].e[4]);
+    bad += check("armed and playing: CC74 sets CUT", trk[0].p[P_E4] != ANALOG_PRESETS[trk[0].preset].e[4]);
     seq_stop(); events_block(CTL);
-    bad += check("  stopped: the CC's value stays (no automation to undo)", motion.count == 0u && trk[0].p[P_E4] != ANALOG_PRESETS[trk[0].preset].e[4]);
+    bad += check("  stopped: the CC's value stays", trk[0].p[P_E4] != ANALOG_PRESETS[trk[0].preset].e[4]);
     song.rec = 0;
     queued(0xB0, 74, 77, 1);
-    bad += check("not armed: the CC is the new value, no event", trk[0].p[P_E4] == 77 && motion.count == 0u);
+    bad += check("not armed: the CC is the new value", trk[0].p[P_E4] == 77);
     return bad;
 }
 int main(void)

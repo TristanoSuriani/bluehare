@@ -183,7 +183,6 @@ static void reset(void)
     memset(up_bank, 0, sizeof up_bank);
     memset(&upf, 0, sizeof upf);
     memset(&ui, 0, sizeof ui);
-    memset(&motion, 0, sizeof motion);
     memset(&fvb_tx, 0, sizeof fvb_tx);
     host_tracks_init();
     fm6_init();
@@ -528,35 +527,6 @@ static int keep_test(void)
         up_load(6);
         ok &= patch_is(3, FM6_INIT) && trk[3].p[P_E7] == FM6_OWN;
         bad += check("a user preset with a stored SLOT 13: its patch (OWN); with none, the init voice as before", ok);
-    }
-    {   /* motion records holding SLOT 9..40 (recorded on 1.0.2's B slots): they play OWN, never a bank voice */
-        uint8_t x[FM6_PACKED];
-        track_t *t = &trk[0];
-        int32_t s;
-        memcpy(x, FM6_FACTORY[1], FM6_PACKED);
-        x[110] = 9;
-        {
-            uint8_t v[FP_SIZE + 1u];
-            fm6_unpack(x, v);
-            fm6_set_patch(0, v);
-            fm6_adopt(0);
-        }
-        ok = trk[0].p[P_E7] == FM6_OWN;
-        for (s = FM6_OWN + 1; s <= (int32_t)(FM6_OWN + FM6_NBANK); s++) {
-            memset(&motion, 0, sizeof motion);
-            motion.on = 1;
-            motion.count = 1;
-            motion.event[0].place = 3;                    /* track 1, step 3 */
-            motion.event[0].param = P_E7;
-            motion.event[0].value = (int8_t)s;
-            motion_base_valid = 0;
-            motion_step(t, 3, &motion, 1);
-            fm6_poll();
-            ok &= trk[0].p[P_E7] == FM6_OWN && patch_is(0, x);
-        }
-        ok &= motion_put(t, 4, P_E7, FM6_OWN + 3, 0) == 0 && motion.event[motion.count - 1u].value == FM6_OWN;
-        bad += check("motion holding SLOT 9..40: plays OWN, the patch kept; a record made on B3 stores OWN", ok);
-        memset(&motion, 0, sizeof motion);
     }
     return bad;
 }

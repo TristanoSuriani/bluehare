@@ -626,7 +626,7 @@ static void write_ppm(const char *dir, const char *pal, const char *name)
 
 /* ------------------------------------------------------------------ the screens --- */
 static void pal(uint32_t p) { settings.palette = p; palette_set(p); }
-static void state(void)                          /* a playing song with steps on every track */
+static void state(void)                          /* a playing song */
 {
     uint32_t i;
     ui_power_on();
@@ -634,10 +634,6 @@ static void state(void)                          /* a playing song with steps on
     song.playing = 1;
     song.g[G_BPM] = 124;
     clk_pos = 0; clk_step = 8;                           /* the bar's 3rd beat: the header's metronome at rest */
-    for (i = 0; i < NTRK; i++) trk[i].seq_idx = 5;
-    my_steps(&trk[1]);
-    trk[0].step[2].flags |= SF_ACCENT;
-    trk[0].step[6].flags |= SF_SLIDE;
 #if FELUCCA_SLICE
     if (usr_nz[0]) {                              /* (slices_usr filled USR1: empty again) */
         memset(host_slots, 0, sizeof host_slots);
@@ -649,25 +645,10 @@ static void state(void)                          /* a playing song with steps on
         scope_buf[i] = (int16_t)((int32_t)((i * 37u) % 128u) * 200 - 12800 + (int32_t)((i % 32u) < 16u ? 3000 : -3000));
     scope_w = 0;
 }
-static void drum(uint32_t kit)
+static void drum(uint32_t kit)                    /* track 4 (DRUM) selected, its KIT */
 {
-    uint32_t i;
     song.sel = 3;
     trk[3].p[P_E0] = (int16_t)kit;
-    for (i = 0; i < 16u; i++) {
-        step_t *s = &trk[3].step[i];
-        memset(s, 0, sizeof *s);
-        s->time = ST_NOTE; s->vel = 100;
-        if (i % 4u == 0u) s->hit |= 1u;
-        if (i == 4u || i == 12u) s->hit |= 2u, s->acc |= 2u;
-        if (i == 10u) s->hit |= 4u;
-        if (i % 2u == 0u) s->hit |= 8u;
-        if (i == 14u) s->hit |= 16u;
-        if (i == 7u || i == 15u) s->hit |= 32u;
-        if (i == 3u) s->hit |= 64u;
-        if (i == 0u) s->hit |= 128u, s->acc |= 128u;
-    }
-    trk[3].p[P_SLEN] = 32;
 }
 static void eng(uint32_t e) { set_engine_of(TSEL, e); }
 /* the FM engine of the FM screens: DIGITAL with FELUCCA_FM4, else FM6 (DIGITAL retired: its own screens, the OP ENV /
@@ -772,7 +753,7 @@ static void setup(int s)
     case S_PROJECT: song.playing = 0; project_save(1); song.g[G_SLOT] = 2; go_page(GR_SLOTS); ui.act = 4; break;
     case S_TOOLS: go_page(GR_TOOLS); ui.act = 1; break;
     case S_REC_LAYER: go_home(); ui.layer = LAYER_REC; break;
-    case S_REC_LAYER_SET: song.rec = 1; go_page(GR_TKPAT); ui.cursor = 6; rp_put(RP_CLICK, 1u); rp_put(RP_LEVEL, 2u);
+    case S_REC_LAYER_SET: song.rec = 1; go_page(GR_TKPAT); rp_put(RP_CLICK, 1u); rp_put(RP_LEVEL, 2u);
         rp_put(RP_LEVEL, 2u); ui.layer = LAYER_REC; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MENU_AUDIO: ui.menu = 1; ui.menu_sel = MI_CLICK; rp_put(RP_CLICK, 1u); rp_put(RP_LEVEL, 2u); break;
     /* 1.2: the header's three slots (ui_draw.c draw_head): playing with the selected track armed; another track armed;
@@ -974,11 +955,10 @@ static void setup(int s)
     /* #83: locked open by a double tap (the lock after the header's name): EDIT and FX */
     case S_LAYER_LOCK: go_title("ENV"); ui.layer = ui.lock = LAYER_EDIT; break;
     case S_LAYER_LOCK_FX: go_title("ENV"); ui.layer = ui.lock = LAYER_FX; break;
-    /* 1.2 SEQ TOOLS (SEQ held on STEP): a melodic track (the sequence's tools), the DRUM grid (+ BEAT, the lane's tools,
-     * the lanes; CLAP selected), a song playing (every tool dimmed: STOP TO EDIT) */
+    /* the EDIT layer on a DRUM track: the lanes' mutes on the black keys */
     case S_EDIT_DRUM: drum(0); go_home(); ui.layer = LAYER_EDIT; drum_mute[3] = 1u | 16u; break;
     case S_EDIT_DRUM_KIT: drum(8); go_home(); ui.layer = LAYER_EDIT; drum_mute[3] = 64u; break;
-    case S_DRUM_MUTED: drum(0); go_page(GR_TKPAT); ui.cursor = 4; ui.lane = 1; trk[3].seq_idx = 9; drum_mute[3] = 2u | 16u; break;
+    case S_DRUM_MUTED: drum(0); go_page(GR_TKPAT); drum_mute[3] = 2u | 16u; break;
     /* NAME (ui_name.c): USER SAVE prefilled; a letter cycling (RS: S, R next); 123 on a project; an empty project name
      * (the placeholder); 12 of the widest letters, the cursor past them; playing (OCT+ dim) */
     case S_NAME_USER: song.playing = 0; go_page(GR_USER); ui.uslot = 6; name_open(NK_USER_SAVE, 6); break;
@@ -1092,25 +1072,7 @@ static void draw(int s)
 }
 
 /* every value of every column on every page of every engine: labels and values fit their column */
-static uint32_t nsweep, nmotion;
-/* #63: the page drawn again with MOTION driving each of its cards' track parameters (the motion icon beside
- * every label, the long ones too): the lint over it; the motion cleared again */
-static void sweep_motion(void)
-{
-    uint32_t c, any = 0;
-    for (c = 0; c < 4u; c++) {
-        int16_t *vp = 0;
-        const param_desc_t *d = ui.home ? home_param(c, &vp) : page_desc(cur_page(), c, &vp);
-        uintptr_t id = vp ? ((uintptr_t)vp - (uintptr_t)TSEL->p) / sizeof *vp : P_COUNT;
-        if (d && d->label && d->label[0] != '-' && id < P_COUNT && !motion_set_event(TSEL, c, (uint32_t)id, *vp))
-            any = 1;
-    }
-    if (!any) return;
-    draw(-1);
-    for (c = 0; c < 4u; c++) nmotion += (card_mot >> c) & 1u;
-    lint();
-    memset(&motion, 0, sizeof motion);
-}
+static uint32_t nsweep;
 static void sweep_columns(void)
 {
     uint32_t e, i, c;
@@ -1146,14 +1108,12 @@ static void sweep_columns(void)
             }
             draw(-1);                                    /* the whole page */
             lint();
-            sweep_motion();
         }
         state(); pal(UI_GREY_INDEX); eng(e); go_home();   /* HOME's four knobs of this engine */
         snprintf(name, sizeof name, "%s%s/HOME", large_on ? "LARGE " : "", ENGINES[e]->name);
         cur_name = name;
         draw(-1);
         lint();
-        sweep_motion();
         state(); pal(UI_GREY_INDEX); eng(e); go_home(); ui_home_view = HV_TRACKS;   /* 1.3: HOME > TRACKS, this engine on */
         for (i = 0; i < NTRK; i++)                                                 /* every row, every one muted */
             trk[i].p[P_MUTE] = 1, set_engine_of(&trk[i], e);
@@ -1448,16 +1408,6 @@ static void align_sweeps(void)
             nm_draw_field();
         }
         name_close();
-        state(); pal(UI_GREY_INDEX);
-        cur_name = st ? "sweep LINE: drum kits" : "sweep FLAT: drum kits";
-        for (k = 0; k < 4u; k++) {
-            drum(k);
-            for (i = 0; i < NLANE; i++) {
-                ui.lane = (uint8_t)i;
-                cv_begin(240, H_GRAPH, T_SURF);
-                graph_grid(TSEL, T_THEME);
-            }
-        }
         state(); pal(UI_GREY_INDEX);
         cur_name = st ? "sweep LINE: mixer" : "sweep FLAT: mixer";
         go_page(GR_TRK);
@@ -1824,9 +1774,8 @@ int main(int argc, char **argv)
         fprintf(rep, "\n");
     }
     fprintf(rep, "\n%u lint findings, %u inks on their own colour, %u ellipsised free texts, %u GREY / MONO pixels off gray / "
-            "neutral; %u column values swept; %u FM6 charts linted; %u cards linted with MOTION's icon\n", nfind, nink, nfree, mono_bad,
-            nsweep, fmp_charts, nmotion);
-    if (!nmotion) { fprintf(stderr, "ui_render: the MOTION sweep marked no card\n"); nfind++; }
+            "neutral; %u column values swept; %u FM6 charts linted\n", nfind, nink, nfree, mono_bad,
+            nsweep, fmp_charts);
     fclose(rep);
     printf("ui_render: %u screens x %u palettes + the page/value sweep; %u lint findings, %u ellipsised free texts (%u distinct), "
            "%u inks on their own colour, %u GREY / MONO pixels off gray / neutral; report %s\n",

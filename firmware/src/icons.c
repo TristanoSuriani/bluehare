@@ -155,8 +155,8 @@ static const icon_map_t ICON_MAP[] = {
     {"FREQ", ICON_CUTOFF}, {"TRK", ICON_KEYTRACK}, {"DRFT", ICON_SWEEP},   /* NOISE (COLR, DENS, CRSH: above) */
     {"MLVL", ICON_MOD}, {"MRAT", ICON_RATIO}, {"MEG", ICON_DECAY}, {"VMOD", ICON_ACCENT}, {"DTUN", ICON_DETUNE},
     {"SLOT", ICON_LOAD},                                                    /* FM6 (ALG, FB: above) */
-    /* fixed columns drawn by ui_draw.c (STEP page, preset browser) */
-    {"NOTE", ICON_PITCH}, {"STEP", ICON_STEPS}, {"FLAG", ICON_ACCENT}, {"ACC", ICON_ACCENT}, {"LANE", ICON_DRUM}, {"HIT", ICON_GATE}, {"SLD", ICON_SLIDE},
+    /* fixed columns drawn by ui_draw.c and ui_tracker.c */
+    {"NOTE", ICON_PITCH}, {"STEP", ICON_STEPS}, {"ACC", ICON_ACCENT},
     {"TRACK", ICON_MIX},                  /* TRACKS page (LEVEL, LEN, PAN: above) */
     {"SLCR", ICON_SLICE}, {"PAT", ICON_STEPS}, {"DEPTH", ICON_MIX},   /* SLICER page (RATE: param_icon) */
 };
@@ -256,19 +256,13 @@ static uint32_t engine_icon(const char *name)
     return ICON_GENERIC;
 }
 
-/* MOTION: the knob and its trace; recording into it (REC armed on the selected track, playing): its REC form */
-static uint32_t motion_icon(void) { return rec_on(TSEL) ? ICON_X_MOTION_REC : ICON_X_MOTION; }
-
 /* the icon beside a page's title in the footer (the pages that have one of their own; else ICON_NONE) */
 static uint32_t page_icon(const page_t *pg)
 {
     switch (pg->graph) {
     case GR_TRK: return ICON_X_MIXER;         /* MIXER (HOME): vertical faders */
-    case GR_PATS: return ICON_X_PATTERN;      /* SAVE > PHRASES: the pattern loader */
-    case GR_SONG: return ICON_X_SONG;         /* SONG: the disc */
     case GR_TKSONG: return ICON_X_SONG;       /* the tracker's SONG */
     case GR_TKPAT: return ICON_X_PATTERN;     /* .. PATTERN */
-    case GR_EVENTS: return motion_icon();     /* AUTOMATION */
     default: return ICON_NONE;
     }
 }
@@ -279,6 +273,5 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v) { (void)d; (void)v;
 static uint32_t engine_icon(const char *name) { (void)name; return ICON_NONE; }
 static uint32_t mod_src_icon(int32_t s) { (void)s; return ICON_NONE; }
 static uint32_t mod_dst_icon(const track_t *t, int32_t d) { (void)t; (void)d; return ICON_NONE; }
-static uint32_t motion_icon(void) { return ICON_NONE; }
 static uint32_t page_icon(const page_t *pg) { (void)pg; return ICON_NONE; }
 #endif

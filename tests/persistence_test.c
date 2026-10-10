@@ -238,8 +238,6 @@ static void as_power_on(void)                            /* RAM lost: the defaul
 {
     uint32_t k;
     memset(trk, 0, sizeof trk);
-    memset(&motion, 0, sizeof motion);
-    memset(motion_active, 0, sizeof motion_active);
     memset(&as, 0, sizeof as);
     memset(&ui, 0, sizeof ui);
     proj_name[0] = 0;

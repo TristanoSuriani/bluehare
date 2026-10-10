@@ -153,7 +153,7 @@ int main(void)
         ok = up_parse(g, m, &got, &slot) == 0 && slot == 9u && got.ver == UP_VER_GRID && up_valid(&got) &&
              got.note[0] == 0x09u && got.flags[0] == 0x09u && got.note[1] == 0x08u && !got.flags[1] &&
              got.note[2] == 0x88u && got.flags[2] == 0x80u && got.note[5] == 0x08u && !got.flags[5] &&
-             got.engine == ENGI_DRUM && !up_pat_empty(&got);
+             got.engine == ENGI_DRUM;
         bad += check("UP_PUT kind 1: a grid record, accents only on hits", ok);
         g[m - 17u] = 0;                                     /* kind 0: the notes and flags as before */
         ok = up_parse(g, m, &got, &slot) == 0 && got.ver == UP_VER && got.note[2] == 0x08u && got.flags[0] == 4u;   /* (flags 0x7F: a tie) */
@@ -342,22 +342,6 @@ int main(void)
         ok &= v[i] == (int16_t)i;
     bad += check("np == P_COUNT: as stored", ok);
 
-    {   /* steps -> pattern (UP_STORE) */
-        step_t st[NSTEP];
-        memset(st, 0, sizeof st);
-        for (i = 0; i < 16u; i++)
-            st[i].time = ST_REST;
-        st[0] = (step_t){{60, 64, 67, 0}, 3, ST_NOTE, SF_ACCENT | SF_SLIDE, 100};
-        st[1] = (step_t){{0}, 0, ST_TIE, 0, 0};
-        st[2] = (step_t){{50}, 0, ST_NOTE, SF_ACCENT, 0};   /* n = 0: empty */
-        st[20] = (step_t){{70}, 1, ST_NOTE, 0, 90};         /* beyond 16: not stored */
-        up_pat_from(&r, st);
-        bad += check("steps -> pattern", r.note[0] == 60 && r.flags[0] == 3 && r.note[1] == 0 && r.flags[1] == 4 &&
-                                             r.note[2] == 0 && r.flags[2] == 0 && !up_pat_empty(&r));
-        memset(st, 0, sizeof st);
-        up_pat_from(&r, st);
-        bad += check("empty sequencer -> empty pattern", up_pat_empty(&r));
-    }
     {   /* 1.2 (Discussion #90): the category, the record's last byte (UP_CAT_AT), outside its values; UP_PUT's optional
          * last byte; through a bank's flash round trip; a record of before reads its engine's; versions 2 / 3 converted */
         n = put_frame(a, 17, 0, "CAT", 0);

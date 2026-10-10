@@ -158,12 +158,15 @@ The pages by button:
 | LFO | LFO, LFO 2, LFO DEST, MOD | MOMENTARY (with a knob) |
 | EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES; SLICE SLICES) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
 | FX, SCL, ENV, ARP | their pages, as before | FX and SCL: their layers |
-| REC | arms the track | the REC layer (CLEAR, CLICK, CLICK LEVEL) |
+| REC | arms / disarms the selected track (never starts PLAY: PLAY then records) | the REC layer (CLEAR, CLICK, CLICK LEVEL) |
 
 ## Tracker
 
-The step sequencer, its AUTOMATION list, SEQ TOOLS, PHRASES and the A–D song are replaced by a tracker.
-Projects of Felucca 1.4 and before do not open here.
+The step sequencer and everything that came with it are gone, code and all: the STEP page and the DRUM grid, the
+AUTOMATION list (automation, parameter locks, CHANCE, RATCH, NUDGE), the old SEQ TOOLS, PHRASES (the factory patterns,
+a preset's suggested pattern), the A–D song and MENU > CHORD ENTRY. A tracker replaces them. Projects of Felucca 1.4
+and before do not open here; a user preset still loads its sound (a pattern stored with it is kept but never played,
+and a new one stores none).
 
 **PATTERN** (SEQ): 24 patterns (00..17), 8 rows at a time, a column per track (ALGORITHM picks the cursor's column).
 Each cell shows the note (`C-4`, `OFF`, `---` none), the instrument (`01`..`3F`, `..` none) and the FX (a letter and a
@@ -268,7 +271,7 @@ The protocol (SysEx commands 78 TRACKER and 79 TRACKER_CHANGED) is in [web/EDITO
 ## Menu
 
 Hold **HOME** for the menu, in five tabs: **DISPLAY** (COLOR, STYLE, LARGE, ANIM, LEDS, SCREEN OFF, SCOPE, HOME),
-**CONTROL** (HOLD, KNOB ACCEL, FX LATCH, BPM LOCK, SCALE LEDS, STEP PREVIEW, CHORD ENTRY), **AUDIO** (SPEAKER EQ,
+**CONTROL** (HOLD, KNOB ACCEL, FX LATCH, BPM LOCK, SCALE LEDS, STEP PREVIEW), **AUDIO** (SPEAKER EQ,
 USB LEVEL, CLICK, CLICK LEVEL, TUNE), **MIDI** (MIDI IN) and **SYSTEM** (USB SERIAL, RESTORE LAST,
 HARDWARE CALIBRATION, INFO, ABOUT).
 ALGORITHM moves between the tabs and PRESETS through the rows of one; any of KNOB 1–4, or OCT+ / OCT−,
@@ -308,8 +311,6 @@ way as from the menu, in the same tabs.
   brighter); not on DRUM or SLICE tracks
 - **STEP PREVIEW:** OFF (default) or ON: on SEQ > PATTERN with the transport stopped, moving the cursor plays the
   cell it lands on once (its note, through its instrument)
-- **CHORD ENTRY:** kept for the projects and the web editor, but it has no effect with the tracker (a cell holds one
-  note)
 - **SPEAKER EQ:** FLAT, LOWCUT or BASS+, a tone setting for the built-in speaker (not a switch). It also
   shapes the headphone out and USB audio, so keep it on FLAT when recording. The firmware cannot turn
   the speaker off, but headphones in the jack do

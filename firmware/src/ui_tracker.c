@@ -256,7 +256,7 @@ static int tk_tool(uint32_t t)                      /* 1 = the pattern changed (
 /* SEQ held + PLAY, stopped on PATTERN: LOOP from the cursor's row (ui_layer.c layer_play). 1 = done */
 static int tk_play_from_row(void)
 {
-    if (tk_graph() != GR_TKPAT || song.playing || chain_busy())
+    if (tk_graph() != GR_TKPAT || song.playing)
         return 0;
     tk_pl.mode = TK_LOOP;
     tk_pl.start_row = tku.row;
@@ -1106,7 +1106,7 @@ static struct { uint8_t row, pat, root, key; } tk_entry = {0xFF, 0, 0, 0};   /* 
 static int tk_page_keys(uint32_t pressed)
 {
     uint32_t k;
-    if (tk_graph() != GR_TKPAT || !((song.rec >> song.sel) & 1u) || song.playing || song.grid)
+    if (tk_graph() != GR_TKPAT || !((song.rec >> song.sel) & 1u) || song.playing || song.keys_mute)
         return 0;
     if (tk_entry.row != 0xFFu && !((fm1_in.notes >> tk_entry.key) & 1u))
         tk_entry.row = 0xFF;                        /* (its key let go: the next key writes a new cell) */

@@ -11,7 +11,6 @@
 #define NVOICE 8                 /* voices per part, and the budget shared by all parts */
 #define NPART 4                  /* synth parts: tracks 1..4 */
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
-#define NSTEP 64
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
 #ifndef FELUCCA_SLICE
 #define FELUCCA_SLICE 1          /* the SLICE engine (eng_slice.c), engine 13; FELUCCA_SLICE=0 builds without it */
@@ -175,13 +174,9 @@ typedef struct {
     int8_t fenv;                 /* ENV -> FILTER amount (-64..63) */
     uint8_t mono;                /* 1 = MONO (bass / lead), 0 = POLY */
     /* the rest of the patch; each value is stored + 1, 0 = the default */
-    uint8_t fx[4];               /* DIST, CHORUS, DELAY, REVERB sends */
-    uint8_t pat;                 /* suggested pattern (PATTERNS[pat - 1], 0 = none): only a hint. A sound load
-                                  * never touches the steps; SEQ > PATTERNS loads a pattern (ui.c pat_load). The
-                                  * arp is the track's too: a preset does not set it */
+    uint8_t fx[4];               /* DIST, CHORUS, DELAY, REVERB sends (the arp is the track's: a preset does not set it) */
 } preset_t;
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}
-#define PAT(n) .pat = (n)
 
 struct track;
 typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c files) */
@@ -217,80 +212,7 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
 } engine_t;
 
 /* ------------------------------------------------- tracks, the song --- */
-enum { ST_NOTE, ST_TIE, ST_REST };
-#define SF_ACCENT 1u
-#define SF_SLIDE 2u
-#define SF_RATCH_SH 3u                   /* RATCH: the hits of a NOTE step - 1 (0..3: x1..x4, seq.c seq_ratchet); */
-#define SF_RATCH (3u << SF_RATCH_SH)     /* bits 3..4, so a user preset's pattern (flag 4 = tie) carries it too */
-#define NLANE 8                  /* drum lanes of a step (the DRUM engine's: eng_drum.c DRUM_LANE_NOTE) */
-typedef struct {                 /* acid-style step: up to 4 notes (POLY), time, accent, slide; drum hits */
-    uint8_t note[4];
-    uint8_t n;                   /* notes in use, 0 = empty */
-    uint8_t time;                /* ST_NOTE / ST_TIE / ST_REST */
-    uint8_t flags;               /* SF_ACCENT | SF_SLIDE | SF_RATCH */
-    uint8_t vel;
-    uint8_t hit;                 /* bit l: lane l hits (its GM note, on any engine): the DRUM grid */
-    uint8_t acc;                 /* bit l: that hit is accented (velocity 127) */
-    uint8_t probability;         /* 0 = legacy 100%; 1..100 = percent, 101 = silent */
-} step_t;
-typedef struct {                 /* a step as formats 1..4 (projects to FUN4) stored it: no hits */
-    uint8_t note[4];
-    uint8_t n, time, flags, vel;
-} step8_t;
-
-/* Probability keeps zero-initialized and legacy patterns at 100%. */
-static uint32_t step_chance(const step_t *s) { return !s->probability ? 100u : s->probability <= 100u ? s->probability : 0u; }
-static void step_set_chance(step_t *s, uint32_t chance) { s->probability = (uint8_t)(chance >= 100u ? 0u : chance ? chance : 101u); }
-/* RATCH: a NOTE step plays its notes and hits this many times (1..4), in equal parts of the step; every older
- * pattern holds 0 there, x1 */
-static uint32_t step_ratchet(const step_t *s) { return ((s->flags & SF_RATCH) >> SF_RATCH_SH) + 1u; }
-static void step_set_ratchet(step_t *s, uint32_t hits)
-{
-    s->flags = (uint8_t)((s->flags & ~SF_RATCH) | ((hits < 1u ? 0u : hits > 4u ? 3u : hits - 1u) << SF_RATCH_SH));
-}
-/* NUDGE (1.2, #162, D98): a step's timing, in 1/NUDGE_DIV of the track's DIV, -8..+7 (half a step early .. 7/16 late);
- * live recording keeps it, SEQ > AUTOMATION's NUDGE rows and STEP (steps held + PRESETS) set it, the track's QUANTIZE
- * OFF (P_SQNT, AUTOMATION's QUANTIZE row) plays it (seq.c seq_tick).
- * Four bits of the flags no other field uses: 4 (bit 3 of the nudge, its sign) and 32 64 128 (bits 0..2). 0 = on the
- * step: every older pattern. A user preset's pattern keeps none (upreset.c up_pat_norm) */
-#define NUDGE_DIV 16
-#define SF_NUDGE (4u | 0xE0u)
-static int32_t step_nudge(const step_t *s)
-{
-    uint32_t u = (uint32_t)(s->flags >> 5) | (uint32_t)(s->flags & 4u) << 1;
-    return (int32_t)(u ^ 8u) - 8;
-}
-static void step_set_nudge(step_t *s, int32_t v)
-{
-    uint32_t u = (uint32_t)(v < -8 ? -8 : v > 7 ? 7 : v) & 15u;
-    s->flags = (uint8_t)((s->flags & ~SF_NUDGE) | (u & 7u) << 5 | (u >> 1 & 4u));
-}
-#define MOTION_MAX 128u          /* 1.2 (FUN10): 64 before */
-/* Four tracks x64 steps fit one byte. Values retain their signed parameter range (-64..127: an int8_t, 1.2).
- * param: the P_* id (< 128: P_COUNT is at most 127, project.c), bit 7 (MOTION_LOCK, 1.1) a parameter lock: the value
- * sounds on that step only and goes back after it (motion.c motion_step); without it an automation event, the
- * value holds until another one changes it. One record per (track, step, id), of either kind */
-#define MOTION_LOCK 0x80u
-#define MOTION_ID(e) ((uint32_t)(e)->param & 0x7Fu)
-typedef struct { uint8_t place, param; int8_t value; } motion_event_t;
-typedef struct { uint8_t count, on, rsv[2]; motion_event_t event[MOTION_MAX]; } motion_store_t;
-_Static_assert(sizeof(motion_store_t) == 388u, "motion disk layout (FUN10)");
-#define CHAIN_ROWS 16u
-/* A song section (1.2, FUN10): the PROJECT slot each track plays (0..3, A..D; CHAIN_SILENT "-": that track plays
- * nothing there) and its repeats (1..16). Up to 1.1 a row was {slot, repeat}, all four tracks on that slot
- * (chain_v9_t, FUN6..FUN9): it loads as a section with the four on it (song_chain.c chain_from_v9) */
-#define CHAIN_SILENT 4u
-typedef struct { uint8_t slot[NTRK], repeat; } chain_row_t;
-typedef struct {
-    uint8_t count, rsv[3];
-    chain_row_t row[CHAIN_ROWS];
-} chain_config_t;
-typedef struct { uint8_t slot, repeat; } chain_row_v9_t;   /* frozen: the rows of FUN6..FUN9 */
-typedef struct {
-    uint8_t count, rsv[3];
-    chain_row_v9_t row[CHAIN_ROWS];
-} chain_v9_t;
-_Static_assert(sizeof(chain_config_t) == 84u && sizeof(chain_v9_t) == 36u, "song chain layouts (FUN10 / FUN6..FUN9)");
+#define NLANE 8                  /* the DRUM engine's lanes (eng_drum.c DRUM_LANE_NOTE) */
 
 /* The tracker (tracker.c): the song is TK_PATS patterns of up to TK_ROWS rows, a cell per track and row, and an order
  * list of TK_ORDER positions naming the pattern each plays. A cell is 4 bytes: 24 bits of the note (bits 0..6: 0 none,
@@ -376,29 +298,6 @@ typedef struct track {
     uint8_t arp_walk;            /* WALK: the place in the note list it stands on */
     uint8_t arp_ch[3];           /* CHORD: the other notes sounding with arp_note, 0 = none */
     uint32_t arp_off;            /* q8 sample time of its note-off */
-    /* sequencer */
-    step_t step[NSTEP];
-    uint32_t seq_pos;            /* q8 samples into the current step */
-    uint16_t seq_idx;
-    uint8_t seq_notes[4 + NLANE];   /* sounding seq notes (the step's notes, then its hits) */
-    uint8_t seq_n;
-    uint8_t seq_hold;            /* last step slides: keep the notes until the next step */
-    uint8_t slide_glide;         /* next legato note glides (slide) */
-    uint8_t rat_left;            /* RATCH: repeats of the playing step still to come (seq.c seq_ratchet) */
-    uint32_t seq_off;
-    uint8_t seq_active;          /* any step programmed */
-    uint8_t rskip_idx;           /* live recording put notes into the step about to play: */
-    uint8_t rskip_n, rskip[NLANE];   /* do not trigger them again there (they sound already) */
-    /* NUDGE (QUANTIZE OFF, seq.c seq_tick): a step plays at its start + its nudge. Latched as a step starts: */
-    uint32_t nd_late;            /* the step playing now plays at this seq_pos + 1 (0: it played) */
-    uint32_t nd_early;           /* the next step plays early, at this seq_pos + 1 of this one (0: on its start) */
-    uint8_t nd_fired;            /* that step + 1 once it played early (its start then plays nothing), 0 = none */
-    /* live recording of held notes (seq.c rec_hold): the steps they are held into become TIEs */
-    uint8_t rh_n, rh_note[4];    /* recorded notes still held, 0 = none */
-    uint8_t rh_start;            /* the step they were recorded into */
-    uint8_t rh_ties;             /* TIE steps written after it */
-    uint8_t rh_last;             /* the last of them; rh_bak: what it held (an early release puts it back) */
-    step_t rh_bak;
     /* mono */
     uint8_t mono_stack[8];
     uint8_t nmono;
@@ -425,8 +324,7 @@ typedef struct track {
 typedef struct {
     int16_t g[G_COUNT];
     uint8_t playing, seq_mode;
-    uint8_t grid;                /* 1: the keys are the DRUM grid (ui.c grid_on): only the lane keys play (seq.c);
-                                  * 2: NAME (ui_name.c): no key plays; 3: SONG, A..D are its (seq.c song_key) */
+    uint8_t keys_mute;           /* 1: NAME (ui_name.c): the keys type, none plays (seq.c keyboard_block) */
     uint8_t rec;                 /* live recording armed: bit per track */
     uint8_t sel;                 /* selected track 0..NTRK-1: keys, pages, editor */
     int8_t octave;

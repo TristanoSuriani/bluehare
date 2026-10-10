@@ -26,12 +26,10 @@
 #                   screen in FLAT and LINE and every palette, over every value it can show; 1 px off or more fails
 #                   (build/ui_new/align.txt). MENU > LARGE: every screen again (FLAT, LINE, every palette) and the page / value
 #                   sweep with the tall cards, the same lint and alignment; sheet_LARGE_GREY.png, sheet_LARGE_MONO.png.
-# UI (tests/ui_test.c): the UI sources against stub display / buttons / knobs: sound loads keep the steps and
-#                   the track's ARP / SCL / SLICER, the SAVE > PHRASES loader and its REPLACE? dialog, the
-#                   one-step undo of both (SAVE held), REC on TRACKS / SEQ / ARP, STEP and ARP while recording,
-#                   MIDI IN ROUT, saves refused while playing and the OVERWRITE? dialog, MUTE on TRACKS KNOB 1, FM6's operator
-#                   pages (each byte alone, SLOT OWN, the sound, undo, the macros, projects / user presets),
-#                   the DRUM grid (keys, knobs, LEDs, pages, live recording into it, BEAT from PATTERNS).
+# UI (tests/ui_test.c): the UI sources against stub display / buttons / knobs: sound loads keep the track's
+#                   ARP / SCL / SLICER, the sound's one-step undo (SAVE held), REC (arms only) on every page, ARP while
+#                   recording, MIDI IN ROUT, saves refused while playing and the OVERWRITE? dialog, MUTE on TRACKS KNOB 1,
+#                   FM6's operator pages (each byte alone, SLOT OWN, the sound, undo, the macros, projects / user presets).
 # Audio / persistence / editor: the real C paths against simulated DMA and NOR flash: bounded overload
 #                   fades, shared-voice limits, deferred settings and retries, failed-save rollback, the autosave
 #                   (1.2: when it writes, the power-on restore, damaged copies, a write cut short, wear over a session),
@@ -42,7 +40,7 @@
 #                   touched), a power cut after any programmed byte or in any erase (the old bank or the new one, the
 #                   autosave kept), a wrong CRC, an autosave between requests, SLOT B1..B32 loading the exact records,
 #                   empty bank slots skipped / refused, projects and user presets keeping a bank voice, stored SLOT values
-#                   (projects, user presets, motion) loading as before.
+#                   (projects, user presets) loading as before.
 # CHORD (tests/chord_test.c): the chord keys (src/chord.c): diatonic triads / sevenths of several scales and roots,
 #                   the fixed shapes and voicings (at most 4 notes), names, MONO plays the root, a release ends
 #                   exactly what its key / MIDI note started, recording, the ARP, MIDI IN, kits ignore CHRD.

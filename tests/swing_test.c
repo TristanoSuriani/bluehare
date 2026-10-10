@@ -88,7 +88,7 @@ static int test_seq(void)
     host_tracks_init();
     set_swing(&trk[0], 100, 120);
     bad += check("rows at SWG 100 (and past): 1.4 x and 0.6 x of the straight 1/16",
-                 step_samples(&trk[0], 6000, 0) == 8400 && step_samples(&trk[0], 6000, 1) == 3600);
+                 swing_step_len(&trk[0], 6000, 0) == 8400 && swing_step_len(&trk[0], 6000, 1) == 3600);
     return bad;
 }
 
@@ -108,7 +108,7 @@ static int test_slicer(void)
         s.idx = 15;
         for (k = 0; k < 32u; k++) {
             sl_enter(&trk[0], &s);
-            lens += s.len != step_samples(&trk[0], s.base, s.idx);
+            lens += s.len != swing_step_len(&trk[0], s.base, s.idx);
         }
     }
     bad += check("SLICER step lengths == the tracker's rows (one helper) at every swing", !lens);
