@@ -8,7 +8,6 @@ static int project_save(uint32_t slot);
 static void panel_setup(void);
 static void project_load(uint32_t slot);
 static int project_used(uint32_t slot);
-static uint32_t chain_prepare(void);
 static int up_used(uint32_t k);              /* user presets: upreset.c */
 static int up_load(uint32_t k);
 static uint32_t up_count(void);
@@ -28,9 +27,9 @@ static void up_ui_named(uint32_t op, uint32_t k, const char *name, uint32_t cat)
 static uint32_t up_cat(uint32_t k);
 static int project_save_as(uint32_t slot, const char *name);
 static int project_name(uint32_t slot, char *b);
-static int project_info(uint32_t slot, char *b, uint16_t *len48, uint32_t *den, uint8_t *n);
 static int project_rename(uint32_t slot, const char *name);
 static void project_cur_name(char *b);
+static void project_new(void);
 static uint32_t user_of(const track_t *t)    /* user preset slot its sound came from, UP_SLOTS = none */
 {
     return t->user && up_used(t->user - 1u) ? t->user - 1u : UP_SLOTS;
@@ -54,10 +53,10 @@ static uint32_t up_gen;                      /* bumped on every user bank change
 #define PREF_RESTORE_OFF 128u                  /* MENU > RESTORE LAST OFF (1.2, Discussion #130): no autosave written, none
                                                 * restored at power-on (project.c); clear in every older setting = ON */
 #define fx_latch ui_prefs
-/* MENU > AUDIO CLICK, CLICK LEVEL, COUNT-IN (1.1, Discussion #131; click.c, seq.c): two bits each in another byte no
- * engine uses, saved with the settings: bits 0-1 CLICK (OFF REC ON), 2-3 CLICK LEVEL (stored 0 MID, 1 LOW, 2 HIGH),
- * 4-5 COUNT-IN (OFF, 1 BAR, 2 BARS); 0 in older settings = OFF / MID / OFF, so nothing clicks or counts in that did
- * not; 3 (unknown) reads as 0 (settings_persist.c puts it back). Bit 6 (1.2): MENU > SCALE LEDS ON (Discussion #127,
+/* MENU > AUDIO CLICK, CLICK LEVEL (1.1, Discussion #131; click.c, seq.c): two bits each in another byte no engine
+ * uses, saved with the settings: bits 0-1 CLICK (OFF REC ON), 2-3 CLICK LEVEL (stored 0 MID, 1 LOW, 2 HIGH); 0 in older
+ * settings = OFF / MID, so nothing clicks that did not; 3 (unknown) reads as 0 (settings_persist.c puts it back). Bits
+ * 4-5 were COUNT-IN (1.1 .. 1.4.1; 1.5 has none): ignored, kept as saved. Bit 6 (1.2): MENU > SCALE LEDS ON (Discussion #127,
  * ui_input.c scale_leds; 0 in older settings = OFF). Bit 7 free (append-only) */
 #define ui_rec_prefs (favorites.factory[15][28])
 #define PREF_REC 0xFF00u                       /* (menu_items.c MENU_FLAGS: a bit of ui_rec_prefs, << 8) */
@@ -78,7 +77,7 @@ static uint32_t up_gen;                      /* bumped on every user bank change
 #define ui_home_view (favorites.factory[15][26])
 enum { HV_SCOPE, HV_TRACKS, HV_COUNT };
 static int home_tracks(void) { return ui_home_view == HV_TRACKS; }
-enum { RP_CLICK, RP_LEVEL, RP_COUNTIN };
+enum { RP_CLICK, RP_LEVEL };
 static uint32_t rp_get(uint32_t f)                     /* a field as the MENU steps it: 0..2 */
 {
     uint32_t v = (ui_rec_prefs >> (2u * f)) & 3u;
@@ -89,7 +88,6 @@ static void rp_apply(void)                             /* the settings into clic
 {
     click_mode = (uint8_t)rp_get(RP_CLICK);
     click_lvl = (uint8_t)rp_get(RP_LEVEL);
-    cin_bars = (uint8_t)rp_get(RP_COUNTIN);
 }
 static void rp_put(uint32_t f, uint32_t v)
 {
@@ -270,7 +268,7 @@ static int scr_input(uint32_t pressed, uint32_t notes)
 static int scr_frame(void)
 {
     uint32_t lim = SCR_MIN[scr_get()] * 60000u;
-    if (ui.confirm || ui.uboot || seq_counting()) {    /* (never dark under these) */
+    if (ui.confirm || ui.uboot) {                      /* (never dark under these) */
         scrn.idle = fm1_ms;
         if (scrn.st == SCR_OFF)
             scr_wake();
@@ -341,6 +339,7 @@ static uint32_t large_kind(void)
         return home_tracks() ? LK_LABEL : LK_TALL;      /* a list page; the rows' names in M: draw_home_tracks) */
     g = cur_page()->graph;
     return g == GR_BROWSE || g == GR_SLOTS || g == GR_USER || g == GR_PATS || g == GR_SONG || g == GR_ROLL ||
+           (g >= GR_TKPAT && g <= GR_TKINST) ||
            g == GR_SLICES || g == GR_EVENTS ? LK_LABEL : LK_TALL;
 }
 /* the geometry of the page shown: the cards' height, the panel's top and height */
@@ -416,31 +415,18 @@ static void ui_message(const char *s) { ui_say(s, ""); }
  * for the header's 130 px after the icon) */
 #define MSG_NO_SAMPLE MSG_NOFILE "NO SAMPLE"
 
-static int chain_busy(void) { return chain.running || chain.armed; }
+/* (the song chain of 1.4 is gone: the tracker's song never holds an edit back) */
+static int chain_busy(void) { return 0; }
 /* Main loop only, with interrupts enabled. PLAY may be consumed between reads;
  * take one coherent snapshot before a flash operation or song preparation. */
 static int transport_busy(void)
 {
     int busy;
     fm1_irq_off();
-    busy = song.playing || chain_busy() || transport_req == 1u || seq_counting();   /* (a count-in: as playing) */
+    busy = song.playing || chain_busy() || transport_req == 1u;
     fm1_irq_on();
     return busy;
 }
-static void chain_play_ui(void)
-{
-    uint32_t rc = chain_prepare();
-    if (!rc) {
-        ui.force = 1;
-    } else if (rc >= 3u) {
-        char b[8] = "A EMPTY";
-        b[0] = (char)('A' + rc - 3u);
-        ui_say("PATTERN ", b);
-    } else {
-        ui_message(rc == 1u ? "ADD A SECTION" : "STOP FIRST");
-    }
-}
-
 
 /* parameter locks: a page whose KNOB 1..4 can lock (a track's sound: one of its parameters can be motion; not MOD's
  * slots), the parameter KNOB k locks (ui.plk_src's page, HOME's four), 0xFF = none */
@@ -602,6 +588,13 @@ static void open_family(uint32_t fam)
             i = (i + 1u) % NPAGES;
             if (PAGES[i].fam == fam && page_visible(i)) break;
         }
+        ui.page = (uint8_t)i;
+    } else if (fam == FAM_SEQ) {                         /* SEQ from elsewhere: the tracker's PATTERN, always */
+        ui.page = (uint8_t)page_first(FAM_SEQ);
+    } else if (fam == FAM_GLO) {                         /* GLO (1.5: no page of its own): the tracker's SONG */
+        uint32_t i;
+        for (i = 0; i < NPAGES && PAGES[i].graph != GR_TKSONG; i++)
+            ;
         ui.page = (uint8_t)i;
     } else if (fam == FAM_SAVE) {
         uint32_t i;
@@ -1463,8 +1456,6 @@ static uint32_t act_cols(void)                   /* the columns that are actions
         return 0;
     if (pg->graph == GR_EVENTS) return 16u;     /* AUTOMATION: no knob is an action; OCT+ by the row (ev_oct) */
     if (pg->graph == GR_TOOLS) return 15u;
-    if (pg->graph == GR_SONG)
-        return 1u;                               /* PLAY / STOP (also the PLAY button) */
     if (pg->graph == GR_PATS)
         return 2u;                               /* LOAD */
     if (pg->graph == GR_USER)
@@ -1481,7 +1472,6 @@ static uint32_t act_cols(void)                   /* the columns that are actions
 /* the action OCT+ does: its column + 1, 0 = none picked yet (PHRASES has LOAD only) */
 static uint32_t act_col(void)
 {
-    if (!ui.home && cur_page()->graph == GR_SONG) return 1u;
     if (!ui.home && cur_page()->graph == GR_EVENTS) return 5u;
     return !ui.home && cur_page()->graph == GR_PATS ? 2u : ui.act;
 }
@@ -1492,11 +1482,9 @@ static const char *act_name(uint32_t c)          /* column c's action (the foote
     uint32_t id = cur_page()->id[c & 3u];
     if (cur_page()->graph == GR_EVENTS) return ev_act_name();
     if (cur_page()->graph == GR_TOOLS) {
-        static const char *const actions[] = {"CLEAR", "INIT", "DELETE", "CLEAR"};
+        static const char *const actions[] = {"CLEAR", "INIT", "-", "NEW"};
         return actions[c & 3u];
     }
-    if (cur_page()->graph == GR_SONG)
-        return song.playing || chain_busy() ? "STOP" : "PLAY";
     if (cur_page()->graph == GR_PATS)
         return "LOAD";
     if (cur_page()->graph == GR_USER)
@@ -1514,11 +1502,8 @@ static int act_ready(void)
     if (!c--)
         return 0;
     if (cur_page()->graph == GR_EVENTS) return ev_act_ready();
-    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: CLEAR PAT, INIT, DELETE ROW, CLEAR SONG */
-        return !chain_busy() && (c == 0u ? !seq_is_empty(TSEL) || motion_count(TSEL) : c == 1u ? 1 :
-                                 c == 2u ? ui.song_row < chain_config.count : chain_config.count != 0u);
-    if (cur_page()->graph == GR_SONG)
-        return song.playing || chain_busy() || chain_config.count;
+    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: CLEAR PATTERN, INIT, -, NEW SONG */
+        return c == 0u ? !tk_pat_empty(tk_pl.loop_pat) : c == 1u ? 1 : c == 3u ? !song.playing : 0;
     if (cur_page()->graph == GR_PATS)
         return pat_last[s] != pat_pick() + 1u || steps_sig(TSEL) != pat_sig[s];
     if (cur_page()->graph == GR_USER)

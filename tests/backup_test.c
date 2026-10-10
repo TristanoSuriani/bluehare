@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* The editor's full backup (editor_backup.c: LIST / GET / PUT) against simulated NOR flash:
- * CRC before any write, stale runtime copies, USB resets and timeouts, malformed objects, older
- * project formats, settings values and user preset banks kept byte for byte. */
+ * CRC before any write, stale runtime copies, USB resets and timeouts, malformed objects, the song's chunks (1.5)
+ * backed up and restored whole, settings values and user preset banks kept byte for byte. */
 static unsigned char host_samples[3][0x14000];
 #define SMP_USER_XIP(k) host_samples[k]
 #define main hostsim_main
@@ -37,7 +37,6 @@ static void fl_plain_window_init(void) {}
 #include "../firmware/src/storage.c"
 #include "../firmware/src/upreset.c"
 #include "../firmware/src/project.c"
-#include "old_pack.h"
 
 enum { ED_BACKUP_LIST = 65, ED_BACKUP_GET, ED_BACKUP_PUT };
 static uint8_t rep[4096];
@@ -73,9 +72,9 @@ static void reset(void)
     memset(nor, 0xFF, sizeof nor);
     memset(&song, 0, sizeof song);
     memset(trk, 0, sizeof trk);
-    memset(&chain, 0, sizeof chain);
-    chain_defaults(&chain_config);
-    memset(proj_slot, 0, sizeof proj_slot);
+    tk_defaults();
+    memset(&proj_good, 0, sizeof proj_good);
+    proj_name[0] = 0;
     memset(up_bank, 0, sizeof up_bank);
     memset(&persist_saved, 0, sizeof persist_saved);
     memset(&settings, 0, sizeof settings);
@@ -172,21 +171,18 @@ int main(void)
 {
     int bad = 0;
     uint32_t len = 0, crc = 0, before;
-    static project_store_t st;
-    static project_v6_t v6;
     persist_t ps;
 
     reset();
-    trk[0].step[0] = (step_t){{60}, 1, ST_NOTE, 0, 96, 0, 0};
-    bad += check("LIST captures the runtime: 13 objects (id 8 empty, id 9 the FM6 patches), runtime 3840 B (FUN10)",
-                 list(0, &len, &crc) == 0 && rep[2] == 13u && len == sizeof(project_store_t) && len == 3840u &&
-                 crc == st_crc32(ED_BK_RAW, len));
-    bad += check("an empty project slot lists as length 0", list(2, &len, &crc) == 0 && len == 0);
-    bad += check("GET of the runtime copy", get(0, 0, 64) == 0);
+    *tk_at(0, 0, 0) = tk_pack(60, 1, 0, 0);
+    bad += check("LIST: 13 objects (id 8 empty, id 9 the FM6 patches); id 0, the music in RAM, empty (1.5: a song)",
+                 list(0, &len, &crc) == 0 && rep[2] == 13u && len == 0u);
+    bad += check("no song stored: its chunks (ids 2..5) list as length 0", list(2, &len, &crc) == 0 && len == 0 &&
+                 list(3, &len, &crc) == 0 && len == 0);
     project_save(0);
-    bad += check("a project save after LIST reused the staging RAM: GET of the runtime is stale (5)",
-                 get(0, 0, 64) == 5u);
-    bad += check("a new LIST makes it readable again", list(0, &len, &crc) == 0 && get(0, 0, 64) == 0);
+    bad += check("a song stored: id 2 its first chunk, as the flash has it (its CRC); GET reads it",
+                 list(2, &len, &crc) == 0 && len > PROJ_HDR && len <= ST_PAYLOAD_MAX && crc == st_crc32(ED_BK_RAW, len) &&
+                 get(2, 0, 64) == 0 && list(3, &len, &crc) == 0 && len == 0);
     usb.resets++;
     bad += check("a USB reset after LIST: GET is stale (5)", get(2, 0, 16) == 5u);
 
@@ -241,7 +237,8 @@ int main(void)
 
     /* malformed requests */
     bad += check("an unknown object id is refused", put_begin(8, sizeof ps, 0) == 1u);
-    bad += check("a project of the wrong length is refused", put_begin(2, sizeof(project_store_t) - 4u, 0) == 1u);
+    bad += check("a song chunk longer than a storage object is refused", put_begin(2, ST_PAYLOAD_MAX + 4u, 0) == 1u);
+    bad += check("the music in RAM (id 0, a project of 1.4) is refused", put_begin(0, 3840u, 0) == 1u);
     bad += check("settings of the wrong length are refused", put_begin(1, sizeof ps + 4u, 0) == 1u);
     bad += check("a chunk without a begin is refused (5)", (ed_bk_put = 0, put_chunk(1, 0, (const uint8_t *)&ps, 16)) == 5u);
     put_begin(1, sizeof ps, st_crc32(&ps, sizeof ps));
@@ -263,7 +260,7 @@ int main(void)
     put_begin(1, sizeof ps, st_crc32(&ps, sizeof ps));
     fm1_ms += 16000u;
     bad += check("16 s without a chunk ends the PUT (5)", put_chunk(1, 0, (const uint8_t *)&ps, 64) == 5u);
-    put_begin(2, sizeof st, 0);
+    put_begin(2, ST_PAYLOAD_MAX, 0);
     put_chunk(2, 0, (const uint8_t *)&ps, 64);
     project_save(1);
     bad += check("a project save during PUT (the staging RAM) ends it (5)",
@@ -272,56 +269,56 @@ int main(void)
     bad += check("PUT while starting PLAY is refused (3)", put_begin(1, sizeof ps, 0) == 3u);
     transport_req = 0;
 
-    /* projects */
-    reset();
-    trk[1].step[3] = (step_t){{64}, 1, ST_NOTE, 0, 96, 0, 0};
-    project_capture(&proj_scratch);
-    proj_pack(&st, &proj_scratch);
-    bad += check("a FUN10 project restores into slot 3 (flash and RAM)",
-                 put_all(4, &st, sizeof st, st_crc32(&st, sizeof st)) == 0 && project_used(2) &&
-                 !memcmp(&proj_slot[2], &st, sizeof st) && st_load(OBJ_PROJECT0 + 2, &proj_wire, sizeof proj_wire) == (int)sizeof st);
-    {   /* FUN8 of 1.0.x (3584 bytes, 91 parameters) and FUN9 of 1.1 (3648, 99): restore as FUN10, E0 at P_E0, lanes
-         * 100 %, the four 1.2 parameters at their defaults; a FUN9 with 64 motion records keeps them all */
-        static uint8_t v8[3584], v9[3648];
-        uint32_t k, ok;
-        trk[2].p[P_E0] = 2;
-        trk[2].p[P_LN3] = 90;
-        project_capture(&proj_scratch);
-        proj_scratch.t[2].p[P_LN3] = 127;              /* (FUN8 had no lane levels) */
-        bad += check("a FUN8 project (1.0.x) restores as FUN10 into slot 2, E0 at P_E0, lane levels 100 %",
-                     old_pack(v8, &proj_scratch, OLD_FUN8, 91u) == sizeof v8 &&
-                     put_all(3, v8, sizeof v8, st_crc32(v8, sizeof v8)) == 0 && ((uint32_t *)proj_slot[1].raw)[0] == PROJ_MAGIC &&
-                     proj_import(&proj_scratch, &proj_slot[1], sizeof st) && proj_scratch.t[2].p[P_E0] == 2 &&
-                     proj_scratch.t[2].p[P_LN3] == 127 && proj_scratch.t[1].step[3].note[0] == 64u);
-        project_capture(&proj_scratch);
-        for (k = 0; k < 64u; k++)
-            proj_scratch.motion.event[k] = (motion_event_t){(uint8_t)(1u << 6 | k), P_REV, (int8_t)k};
-        proj_scratch.motion.count = 64;
-        proj_scratch.motion.on = 2;
-        ok = old_pack(v9, &proj_scratch, OLD_FUN9, 99u) == sizeof v9 &&
-             put_all(4, v9, sizeof v9, st_crc32(v9, sizeof v9)) == 0 && ((uint32_t *)proj_slot[2].raw)[0] == PROJ_MAGIC &&
-             proj_import(&proj_scratch, &proj_slot[2], sizeof st) && proj_scratch.t[2].p[P_E0] == 2 &&
-             proj_scratch.t[2].p[P_LN3] == 90 && proj_scratch.motion.count == 64u && proj_scratch.motion.event[63].value == 63 &&
-             proj_scratch.t[0].p[P_LSYNC] == 0 && proj_scratch.t[0].p[P_LTRIG] == 0 && proj_scratch.t[0].p[P_LPOL] == 0 &&
-             proj_scratch.t[0].p[P_SQNT] == 1;
-        bad += check("a FUN9 project (1.1) restores as FUN10 into slot 3: its 64 records, the lanes, LFO 2 / QUANTIZE defaults", ok);
+    /* the song (1.5): its chunks backed up and restored whole; a restore is the newest song stored */
+    {
+        static uint8_t ch[4][ST_PAYLOAD_MAX];
+        static uint32_t cl[4];
+        uint32_t i, p, r, k, h0, h1, n = 0;
+        reset();
+        for (p = 0; p < 6u; p++)                        /* (two chunks' worth or more) */
+            for (r = 0; r < TK_ROWS; r++)
+                for (k = 0; k < NTRK; k++, n++)
+                    *tk_at(p, r, k) = tk_pack(30u + n % 70u, k, 0, 0);
+        song.g[G_BPM] = 99;
+        project_save_as(0, "ARCHIVED");
+        for (p = 0, h0 = 0; p < TK_PATS; p++) h0 = h0 * 31u + (uint32_t)tk_pat_empty(p) + tk_note(tk_at(p, 7, 2));
+        int ok = 1;
+        for (i = 0; i < 4u; i++) {
+            ok &= list(2u + i, &cl[i], &crc) == 0;
+            if (cl[i]) {
+                uint32_t off;
+                for (off = 0; off < cl[i]; off += 256u) {
+                    uint32_t c = cl[i] - off > 256u ? 256u : cl[i] - off;
+                    ok &= get(2u + i, off, c) == 0;
+                }
+                memcpy(ch[i], ED_BK_RAW, cl[i]);
+                ok &= crc == st_crc32(ch[i], cl[i]);
+            }
+        }
+        bad += check("a song of two chunks or more: LIST and GET give each as the flash has it", ok && cl[0] && cl[1]);
+        project_new();
+        *tk_at(0, 0, 0) = tk_pack(77, 0, 0, 0);
+        song.g[G_BPM] = 140;
+        project_save_as(0, "NEWER");
+        ok = 1;
+        for (i = 0; i < 4u; i++)
+            ok &= put_all(2u + i, cl[i] ? ch[i] : 0, cl[i], st_crc32(ch[i], cl[i])) == 0;
+        project_load(0);
+        for (p = 0, h1 = 0; p < TK_PATS; p++) h1 = h1 * 31u + (uint32_t)tk_pat_empty(p) + tk_note(tk_at(p, 7, 2));
+        bad += check("its chunks put back: the stored song is the archived one (newer than the song saved since)",
+                     ok && h1 == h0 && song.g[G_BPM] == 99 && str_eq(proj_name, "ARCHIVED"));
+        ch[1][8] ^= 1u;                                 /* (its index) */
+        bad += check("a chunk of another place (its header's index) is refused (2)",
+                     put_all(3, ch[1], cl[1], st_crc32(ch[1], cl[1])) == 2u);
+        ch[1][8] ^= 1u;
+        erase_error = 1;
+        ok = put_all(2, ch[0], cl[0], st_crc32(ch[0], cl[0])) == 4u;
+        erase_error = 0;
+        project_load(0);
+        bad += check("a flash error on commit (4): the stored song as it was", ok && song.g[G_BPM] == 99);
+        bad += check("an archive of no song (id 2 empty): none stored after it",
+                     put_all(2, 0, 0, st_crc32(0, 0)) == 0 && !project_used(0));
     }
-    memset(&v6, 0, sizeof v6);                           /* FUN6: 69 parameters, steps out of range */
-    v6.magic = PROJ_MAGIC_V6;
-    v6.size = sizeof v6;
-    for (uint32_t i = 0; i < G_COUNT; i++)
-        v6.g[i] = GP[i].def;
-    for (uint32_t i = 0; i < NTRK; i++)
-        v6.t[i].engine = trk[i].engine;
-    v6.t[0].step[0] = (step10_t){{255, 72}, 9, 7, 0, 96, 0, 0};
-    v6.t[0].p[61] = 3;                                   /* old E0 */
-    memset(&v6.chain, 0, sizeof v6.chain);
-    v6.sum = proj_hash(&v6, sizeof v6 - 4u);
-    bad += check("a FUN6 project restores as FUN10, bounded, its E0 at P_E0",
-                 put_all(5, &v6, sizeof v6, st_crc32(&v6, sizeof v6)) == 0 && ((uint32_t *)proj_slot[3].raw)[0] == PROJ_MAGIC &&
-                 proj_import(&proj_scratch, &proj_slot[3], sizeof st) && proj_scratch.t[0].step[0].n == 4u &&
-                 proj_scratch.t[0].step[0].note[0] == 127u && proj_scratch.t[0].p[P_E0] ==
-                 clamp(3, param_desc_of(trk[0].engine, P_E0)->min, param_desc_of(trk[0].engine, P_E0)->max));
     {   /* 1.0.3: the FM6 patch bank (id 8) is retired; an older archive's bank moves into its user presets (ids 6, 7
          * restored first), the user presets' patches are id 9 */
         static up_bank_t ub;
@@ -379,28 +376,6 @@ int main(void)
         bad += check("an id 9 of the wrong size is refused at begin (1)", put_begin(9, sizeof got - 4u, 0) == 1u);
         bad += check("an id 10 is refused (1)", put_begin(10, 0, 0) == 1u);
     }
-    memcpy(&st, &proj_slot[2], sizeof st);
-    erase_error = 1;
-    proj_slot[2].raw[100] ^= 1;                          /* (marks the RAM copy, to see it is kept) */
-    memcpy(&v6, &proj_slot[2], sizeof v6);
-    bad += check("a flash error on commit (4) keeps the slot's RAM copy",
-                 put_all(4, &st, sizeof st, st_crc32(&st, sizeof st)) == 4u && !memcmp(&proj_slot[2], &v6, sizeof v6));
-    erase_error = 0;
-    bad += check("an empty project object clears the slot", put_all(4, 0, 0, st_crc32(0, 0)) == 0 && !project_used(2));
-    st.raw[200] ^= 1;                                    /* hash no longer matches */
-    bad += check("a project whose own hash fails is refused", put_all(4, &st, sizeof st, st_crc32(&st, sizeof st)) == 2u);
-
-    /* the runtime */
-    reset();
-    trk[2].step[5] = (step_t){{67}, 1, ST_NOTE, 0, 96, 0, 0};
-    trk[2].p[P_LEVEL] = 77;
-    project_capture(&proj_scratch);
-    proj_pack(&st, &proj_scratch);
-    host_tracks_init();
-    bad += check("the runtime object restores the tracks",
-                 put_all(0, &st, sizeof st, st_crc32(&st, sizeof st)) == 0 && trk[2].step[5].note[0] == 67u &&
-                 trk[2].p[P_LEVEL] == 77);
-
     /* user preset banks: unknown record versions are kept as bytes */
     reset();
     {
@@ -415,8 +390,8 @@ int main(void)
         b.r[4].p[0] = 55;
         bad += check("a bank with a future record version restores byte for byte",
                      put_all(6, &b, sizeof b, st_crc32(&b, sizeof b)) == 0 &&
-                     st_load(OBJ_UPRESET0, &proj_wire, sizeof proj_wire) == (int)sizeof b &&
-                     !memcmp(&proj_wire, &b, sizeof b));
+                     st_load(OBJ_UPRESET0, &proj_wire_u, sizeof proj_wire_u) == (int)sizeof b &&
+                     !memcmp(&proj_wire_u, &b, sizeof b));
         b.nslot = 3;
         bad += check("a bank with the wrong slot count is refused", put_all(7, &b, sizeof b, st_crc32(&b, sizeof b)) == 2u);
     }

@@ -2,7 +2,8 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Editor protocol: SysEx for the web editor (web/EDITOR_PROTOCOL.md; v2 = user presets + live sync,
  * v3 = four tracks: the v1 / v2 commands act on the selected track, cmds 27-30 reach any track;
- * v4 = TRACK_PARAM (31) and the TRACK_CHANGED push (32), enabled by WATCH bit 1).
+ * v4 = TRACK_PARAM (31) and the TRACK_CHANGED push (32), enabled by WATCH bit 1;
+ * 1.5 = the tracker: TRACKER (78) and the TRACKER_CHANGED push (79), enabled by WATCH bit 2).
  *   F0 7D 46 4C cmd args.. F7     (7D = non-commercial ID, "FL")
  * Values are 14 bit, two 7-bit bytes LSB first, offset by 8192 (so -8192..8191).
  * Every request gets a reply with the same cmd; 23/24/26 are also pushed
@@ -18,7 +19,8 @@ enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_STEP_GET, ED_STEP_SET, 
        ED_TRACK, ED_TRACK_MIX, ED_TRACK_DUMP, ED_TRACK_STEP,                    /* v3: tracks */
        ED_TRACK_PARAM, ED_TRACK_CHANGED, ED_SONG,
        ED_UI_STATE, ED_UI_SET, ED_UI_PALETTES, ED_FAV_GET, ED_FAV_SET,
-       ED_MOTION = 64, ED_BACKUP_LIST, ED_BACKUP_GET, ED_BACKUP_PUT };                              /* v6: song chain */
+       ED_MOTION = 64, ED_BACKUP_LIST, ED_BACKUP_GET, ED_BACKUP_PUT,
+       ED_TRACKER = 78, ED_TRACKER_CHANGED };                                    /* 1.5: the tracker */
 
 static uint8_t ed_out[664];                      /* (MOTION op 8: 128 records and their kinds, 653 bytes) */
 static uint32_t ed_n;
@@ -125,11 +127,11 @@ static int ed_smp_end(uint32_t k, const uint8_t *a, uint32_t na)
 static uint32_t ed_eng(const track_t *t) { return t->eng_req % NENGINES; }
 
 /* ---- live sync (v2): while the editor WATCHes, device-side changes are pushed.
- * Shadows of the selected track's p[] + song.g[] and of its steps are kept in step
- * with what the editor knows (its own SET / STEP_SET update them); the main loop
- * compares and pushes CHANGED / STEP_CHANGED, or RELOAD after a load or when another
- * track was selected (v3: RELOAD and STEP_CHANGED carry the selected track). Pushes
- * go out only into a half-empty SysEx ring, so they never wait. */
+ * Shadows of the selected track's p[] + song.g[] are kept in step with what the editor knows (its own SET updates
+ * them); the main loop compares and pushes CHANGED, or RELOAD after a load or when another track was selected (v3:
+ * RELOAD carries the selected track). 1.5: the steps are not played any more (no STEP_CHANGED); with WATCH bit 2 the
+ * tracker's song is followed instead: a signature per pattern and one of the rest (TRACKER_CHANGED). Pushes go out
+ * only into a half-empty SysEx ring, so they never wait. */
 #define ED_PUSH_MAX 4u                                   /* frames per pass */
 #define ED_NV (P_COUNT + G_COUNT)
 /* v4: the parameters of the tracks that are not selected which TRACK_CHANGED follows (the mixer) */
@@ -138,29 +140,46 @@ static const uint8_t ED_TIDS[3] = {P_LEVEL, P_PAN, P_MUTE};
 static struct {
     uint8_t on, eng, preset, sel;
     uint8_t v4;                                          /* WATCH bit 1: TRACK_CHANGED pushes too */
+    uint8_t tk;                                          /* WATCH bit 2: TRACKER_CHANGED pushes too (1.5) */
     uint32_t pos, last_ms, run_ms, resets;
     int16_t v[ED_NV];                                    /* TSEL->p[], then song.g[] */
     uint16_t t[ED_NV];                                   /* ms (low 16 bits) of the last push */
-    uint32_t st[NSTEP];                                  /* step signatures */
+    uint32_t ts[TK_PATS + 1u];                           /* 1.5: the patterns' signatures, then the song's (ed_tk_sig) */
     int16_t tv[ED_NT];                                   /* v4: trk[k].p[ED_TIDS[j]] at k * 3 + j */
     uint16_t tt[ED_NT];
-    uint32_t tpos;
+    uint32_t tpos, tkpos;
 } ed_w;
 
 static int16_t *ed_val(uint32_t i) { return i < P_COUNT ? &TSEL->p[i] : &song.g[i - P_COUNT]; }
-static uint32_t ed_step_sig(const step_t *s)
+/* 1.5: the signature of tracker pattern i (its cells and length), or (i == TK_PATS) of the rest of the song: the order
+ * list, the instruments, the tracks' CUT / RES. FNV-1a; a pattern is 768 bytes, so ed_sync checks a few a pass */
+static uint32_t ed_fnv(uint32_t h, const uint8_t *b, uint32_t n)
 {
-    return ((uint32_t)s->note[0] | (uint32_t)s->note[1] << 7 | (uint32_t)s->note[2] << 14 | (uint32_t)s->note[3] << 21) ^
-           ((uint32_t)s->n << 28) ^ ((uint32_t)s->time * 0x9E3779B1u) ^ ((uint32_t)s->flags * 0x85EBCA6Bu) ^
-           ((uint32_t)s->vel * 0xC2B2AE35u) ^ ((uint32_t)(s->hit | s->acc << 8) * 0x27D4EB2Fu) ^ ((uint32_t)s->probability * 0x165667B1u);
+    while (n--)
+        h = (h ^ *b++) * 16777619u;
+    return h;
+}
+static uint32_t ed_tk_sig(uint32_t i)
+{
+    uint32_t h = 2166136261u, r;
+    if (i < TK_PATS) {
+        for (r = 0; r < TK_ROWS; r++)
+            h = ed_fnv(h, tk_row(i, r)[0].b, sizeof(tk_cell_t) * NTRK);
+        return ed_fnv(h, &tk.len[i], 1);
+    }
+    h = ed_fnv(h, &tk.norder, 1);
+    h = ed_fnv(h, tk.order, tk.norder);
+    h = ed_fnv(h, &tk.instr[0].src, sizeof tk.instr);
+    h = ed_fnv(h, tk.cut, NTRK);
+    return ed_fnv(h, tk.res, NTRK);
 }
 static void ed_shadow(void)                              /* the editor is in sync */
 {
     uint32_t i;
     for (i = 0; i < ED_NV; i++)
         ed_w.v[i] = *ed_val(i);
-    for (i = 0; i < NSTEP; i++)
-        ed_w.st[i] = ed_step_sig(&seq_steps(TSEL)[i]);
+    for (i = 0; i <= TK_PATS; i++)
+        ed_w.ts[i] = ed_tk_sig(i);
     for (i = 0; i < ED_NT; i++)
         ed_w.tv[i] = trk[i / 3u].p[ED_TIDS[i % 3u]];
     ed_w.eng = (uint8_t)ed_eng(TSEL);
@@ -225,16 +244,16 @@ static void ed_sync(void)                                /* main loop */
         ed_send();
         return;
     }
-    for (i = 0; i < NSTEP && n < ED_PUSH_MAX; i++) {
-        uint32_t h = ed_step_sig(&seq_steps(TSEL)[i]);
-        if (h == ed_w.st[i])
+    for (i = 0; ed_w.tk && i < 3u && n < ED_PUSH_MAX; i++) {   /* 1.5: the song, then two patterns a pass (80 ms) */
+        uint32_t k = i ? ed_w.tkpos++ % TK_PATS : TK_PATS, h = ed_tk_sig(k);
+        if (h == ed_w.ts[k])
             continue;
         if (!ed_room())
             return;
-        ed_w.st[i] = h;
-        ed_begin(ED_STEP_CHANGED);
-        ed_b(i);
-        ed_b(song.sel);
+        ed_w.ts[k] = h;
+        ed_begin(ED_TRACKER_CHANGED);
+        ed_b(k < TK_PATS ? 0u : 1u);                     /* 0 a pattern, 1 the song (order, instruments, CUT / RES) */
+        ed_b(k < TK_PATS ? k : 0u);
         ed_send();
         n++;
     }
@@ -348,6 +367,7 @@ static int ed_flash_stop(void)
 #include "editor_backup.c"
 #include "editor_fm6.c"
 #include "editor_menu.c"
+#include "editor_tracker.c"
 
 /* MOTION's reply: the records of track k as (step, id, v14), a lock's id without its MOTION_LOCK bit (a 7-bit SysEx
  * byte); kinds (1.1: the ops 5..7): then one byte per record, in the same order, 0 automation, 1 lock. The query and
@@ -435,6 +455,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     if (ed_backup_handle(cmd, a, na)) { ed_send(); return; }
     if (ed_fm6_handle(cmd, a, na)) { ed_send(); return; }
     if (ed_menu_handle(cmd, a, na)) { ed_send(); return; }
+    if (ed_tracker_handle(cmd, a, na)) { ed_send(); return; }
     switch (cmd) {
     case ED_MOTION: {
         track_t *t = &trk[a[0]]; uint32_t rc = 0;
@@ -477,14 +498,16 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x4C); ed_b(1); ed_b(1);   /* 1.1 parameter locks: MOTION ops 5..7, the kinds after the records */
         ed_b(0x41); ed_b(1); ed_b(MOTION_MAX); ed_b(MOTION_MAX >> 7);   /* 1.2: 128 motion records, MOTION op 8 */
         ed_b(0x54); ed_b(1); ed_b(NUDGE_DIV);   /* 1.2: a step's nudge (1/16 step) after its ratchet; LFO 2, QNTZ */
-        ed_b(0x57); ed_b(1); ed_b(NTRK);   /* 1.2: song sections with a slot per track (SONG ops 4..7) */
+        /* (1.2's 57 01 04, song sections with a slot per track: gone with the A..D song, 1.5) */
         ed_b(0x56); ed_b(1); ed_b(FM6_NBANK);   /* 1.4.1: FM6's voice bank (cmds 74..77; SLOT 9..40 = B1..B32) */
+        ed_b(0x58); ed_b(2); ed_b(TK_PATS); ed_b(TK_ROWS); ed_b(TK_INSTS); ed_b(TKC_N);   /* 1.5: the tracker (78, 79) */
+        ed_b(TK_ORDER); ed_b(TK_ORDER >> 7);
         break;
     case ED_GET:
     case ED_SET:
         if (na < 2u || !(d = ed_desc(a[0], a[1], &vp)))
             return;
-        if (cmd == ED_SET && na >= 4u && !(chain_busy() && !a[0] && chain_owns(a[1]))) {
+        if (cmd == ED_SET && na >= 4u) {
             if (a[0] == 1 && a[1] == G_ENGSEL) {          /* engine change: the safe path (1 without FELUCCA_FM4:
                                                            * DIGITAL's first preset, as FM6) */
                 ed_load_t b;
@@ -539,7 +562,6 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         if (cmd == ED_STEP_SET && na >= 9u && !chain_busy()) {
             ed_step_put(st, a + 1, na - 1u);
         }
-        ed_w.st[a[0]] = ed_step_sig(&seq_steps(TSEL)[a[0]]);
         ed_b(a[0]);
         ed_step_reply(&seq_steps(TSEL)[a[0]]);
         break;
@@ -758,13 +780,14 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         keep = ed_w.on && ed_w.resets == usb.resets && (a[0] & 1u);   /* already watching: the changes not yet */
         ed_w.on = a[0] & 1u;                                          /* pushed stay pending (INFO 53 01 bit 0) */
         ed_w.v4 = (uint8_t)(ed_w.on && (a[0] & 2u));     /* v4: also TRACK_CHANGED; the reply says it is known */
+        ed_w.tk = (uint8_t)(ed_w.on && (a[0] & 4u));     /* 1.5: also TRACKER_CHANGED (the shadow: ed_shadow) */
         ed_w.resets = usb.resets;
         if (ed_w.on && !keep)
             ed_shadow();
         else if (keep && ed_w.v4 && !v4was)
             for (i = 0; i < ED_NT; i++)                    /* TRACK_CHANGED newly asked for: from the mix as it is */
                 ed_w.tv[i] = trk[i / 3u].p[ED_TIDS[i % 3u]];
-        ed_b(ed_w.on | ed_w.v4 << 1);
+        ed_b(ed_w.on | ed_w.v4 << 1 | ed_w.tk << 2);
         break;
     }
     case ED_PING:
@@ -821,8 +844,6 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         st = &trk[a[0]].step[a[1]];
         if (na >= 10u && !chain_busy())
             ed_step_put(st, a + 2, na - 2u);
-        if (a[0] == song.sel)
-            ed_w.st[a[1]] = ed_step_sig(&seq_steps(&trk[a[0]])[a[1]]);
         ed_b(a[0]);
         ed_b(a[1]);
         ed_step_reply(&seq_steps(&trk[a[0]])[a[1]]);
@@ -834,7 +855,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             return;
         t = &trk[a[0]];
         d = ed_tdesc(t, a[1]);
-        if (na >= 4u && !(chain_busy() && chain_owns(a[1]))) {
+        if (na >= 4u) {
             if (d->max > d->min)                           /* as SET: clamped; a fixed value stays */
                 t->p[a[1]] = (int16_t)enum_orig(d, clamp(ed_rv(a + 2), d->min, d->max));
             (void)motion_capture(t, a[1], t->p[a[1]]);
@@ -846,45 +867,15 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_v(t->p[a[1]]);
         break;
     }
-    case ED_SONG: {                                     /* ops 0..3 rows of one slot (v6); 4..7 the same with a slot
-                                                         * per track (1.2, `57 01`) */
-        uint32_t rc = 0, op, lanes, w, k;
-        chain_config_t c;
+    case ED_SONG: {                                     /* the A..D song (v6, 1.2 lanes) is gone (1.5, the tracker:
+                                                         * tracker.c): every op answers an empty one, a write or a
+                                                         * PLAY refused (1); op 3 still stops the transport */
+        uint32_t op;
         if (!na || a[0] > 7u) return;
         op = a[0] & 3u;
-        lanes = a[0] >> 2;
-        w = lanes ? NTRK + 1u : 2u;                     /* the bytes of a row */
-        if (op == 1u) {
-            chain_defaults(&c);
-            if (na < 2u || a[1] > CHAIN_ROWS || na != 2u + w * a[1]) rc = 1;
-            else {
-                c.count = a[1];
-                for (i = 0; i < c.count; i++) {
-                    const uint8_t *r = a + 2u + w * i;
-                    if (lanes) {
-                        memcpy(c.row[i].slot, r, NTRK);
-                        c.row[i].repeat = r[NTRK];
-                    } else if (r[0] < 4u)       /* (a row of one slot: all four tracks on it) */
-                        c.row[i] = chain_row_of(r[0], r[1]);
-                    else
-                        c.row[i].repeat = 0;    /* (invalid) */
-                }
-                if (!chain_valid(&c)) rc = 1;
-                else if (chain_busy()) rc = 2;
-                else { chain_config = c; ui.song_row = 0; ui.force = 1; }
-            }
-        } else if (op == 2u) rc = chain_prepare();
-        else if (op == 3u) transport_req = 2;
-        ed_b(a[0]); ed_b(rc); ed_b(chain_config.count);
-        ed_b(chain.running); ed_b(chain.row); ed_b(chain.remaining);
-        for (i = 0; i < chain_config.count; i++) {
-            const chain_row_t *r = &chain_config.row[i];
-            if (lanes)
-                for (k = 0; k < NTRK; k++) ed_b(r->slot[k]);
-            else                                         /* v6: the clock track's slot (every track "-": A) */
-                ed_b(r->slot[chain_clock(r)] < 4u ? r->slot[chain_clock(r)] : 0u);
-            ed_b(r->repeat);
-        }
+        if (op == 3u) transport_req = 2;
+        ed_b(a[0]); ed_b(op == 1u || op == 2u); ed_b(0);
+        ed_b(0); ed_b(0); ed_b(0);
         break;
     }
     default:

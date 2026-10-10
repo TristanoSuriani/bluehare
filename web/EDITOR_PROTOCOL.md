@@ -31,7 +31,7 @@ tagged capability blocks for these (see `INFO`).
 **MENU settings (1.0.4):** `MENU_DESC` (72) and `MENU_SET` (73) read and set the device's MENU settings, described
 by the device (see "MENU settings" at the end); INFO advertises them with `4E 01 count`. 1.0.5: a `MENU_DESC` reply
 ends with the item's tab on the device (index and name), after the bytes 1.0.4 sent. 1.3: item 23 HOME (DISPLAY),
-appended (`4E 01 24`).
+appended (`4E 01 24`). 1.5: COUNT-IN (id 14) removed, the items after it one index up (`4E 01 23`; ids unchanged).
 
 **Ratchet (1.0.5, INFO `52 01 04`):** a step gets a ratchet byte (its hits, 1..4) after its chance: one more byte at
 the end of the step replies, and an optional last byte of a step write (see "Ratchet" below). Nothing else changed.
@@ -59,6 +59,13 @@ ratchet. A song's rows became sections with a slot per track (`SONG` ops 4..7; o
 
 **1.4.1 (FM6's voice bank; INFO `56 01 32`):** FM6's SLOT (P_E0 + 7) runs to 40: 9..40 = B1..B32, the voices of a
 32-voice bank the editor writes whole (cmds 74..77). Nothing else changed. See "FM6 voice bank (74-77)" below.
+
+**1.5 (the tracker; INFO `58 02 24 64 63 15 00 01`):** the step sequencer is replaced by a tracker (patterns of rows, a
+cell per track and row with an optional chord, an order list, instruments). `TRACKER` (78) reads and writes it and runs its transport;
+`TRACKER_CHANGED` (79) is pushed when the device changes it, with bit 2 of `WATCH`. The steps (`STEP_GET` /
+`STEP_SET` / `TRACK_STEP`, `STEP_CHANGED`), `MOTION` (64) and `SONG` (33) still answer as before, but nothing plays
+them: the steps are never pushed any more, and `SONG` answers an empty song (a set or a start refused with rc 1, a stop
+still stops). `PROJECT` saves and loads the one song whatever the slot. See "1.5: the tracker (78, 79)" below.
 
 ## Framing
 
@@ -167,7 +174,7 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 
 | cmd | Request args | Reply args |
 | --- | --- | --- |
-| 1 INFO | — | version string, NENGINES, P_COUNT, G_COUNT, NSTEP, P_E0, then NENGINES engine-name strings, then (v3) NTRK (4), then (v6) CHAIN_ROWS (16), then the tagged blocks `55 01 uiCaps`, `4D 01 64 01`, `42 01 3`, `46 01 nfactory nbank`, `53 01 3`, (1.0.3) `50 01 3` and (1.0.4) `4E 01 count` (MENU settings; 12, 1.1: 15, 1.2: 17, 1.1.5: 18, 1.2: 23) and (1.0.5) `52 01 4` (ratchet) and (1.1) `4C 01 1` (parameter locks) and (1.2) `41 01 00 01` (128 motion records: two 7-bit bytes, LSB first; `4D 01 64 01` keeps saying 64) and `54 01 16` (a step's nudge, 1/16 of a step) and `57 01 4` (song sections: a slot per track, SONG ops 4..7) and (1.4.1) `56 01 32` (FM6's voice bank: cmds 74..77, SLOT 9..40) (below); older firmware ends earlier |
+| 1 INFO | — | version string, NENGINES, P_COUNT, G_COUNT, NSTEP, P_E0, then NENGINES engine-name strings, then (v3) NTRK (4), then (v6) CHAIN_ROWS (16), then the tagged blocks `55 01 uiCaps`, `4D 01 64 01`, `42 01 3`, `46 01 nfactory nbank`, `53 01 3`, (1.0.3) `50 01 3` and (1.0.4) `4E 01 count` (MENU settings; 12, 1.1: 15, 1.2: 17, 1.1.5: 18, 1.2: 23, 1.3: 24, 1.5: 23) and (1.0.5) `52 01 4` (ratchet) and (1.1) `4C 01 1` (parameter locks) and (1.2) `41 01 00 01` (128 motion records: two 7-bit bytes, LSB first; `4D 01 64 01` keeps saying 64) and `54 01 16` (a step's nudge, 1/16 of a step) and `57 01 4` (song sections: a slot per track, SONG ops 4..7) and (1.4.1) `56 01 32` (FM6's voice bank: cmds 74..77, SLOT 9..40) and (1.5) `58 02 pats rows insts ncmd order-lo order-hi` (the tracker: cmds 78, 79; always the last 8 bytes) (below; 1.5 no longer sends `57 01 4`); older firmware ends earlier |
 | 2 GET | scope, id | scope, id, v14 |
 | 3 SET | scope, id, v14 | scope, id, v14 (the value after clamping). Setting global `G_ENGSEL` (id from DESC label "ENG") changes the engine: its defaults, then its first preset (as on the device) |
 | 4 DUMP | — | engine, preset, then P_COUNT × v14 (the selected track), then G_COUNT × v14 (globals) |
@@ -188,7 +195,7 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 | 19 UP_STORE | slot, name | slot, rc. Stores the current sound: engine, parameters, the first 16 sequencer steps as the pattern (TIE steps → flag 4) |
 | 20 UP_LOAD | slot | slot, rc (0 ok, 1 empty/invalid). Applies its sound (not its pattern; the steps stay) |
 | 21 UP_ERASE | slot | slot, rc |
-| 22 WATCH | on (0/1; v4: 3 = also `TRACK_CHANGED`) | on (0/1; v4 firmware: 3 when 3 was asked for). While on, the device pushes cmds 23, 24, 26 (and 32 with bit 1) |
+| 22 WATCH | on (0/1; v4: 3 = also `TRACK_CHANGED`; 1.5: bit 2 = also `TRACKER_CHANGED`, e.g. 7) | on with the bits the firmware knows (v4 firmware: 3 when 3 was asked for; 1.5: 7 for 7). While on, the device pushes cmds 23, 24, 26 (and 32 with bit 1, 79 with bit 2) |
 | 23 CHANGED (push) | — | scope, id, v14 |
 | 24 RELOAD (push) | — | engine, preset, then (v3) the selected track |
 | 25 PING | — | 0 |
@@ -921,9 +928,12 @@ is told: no list of settings is fixed in the editor. INFO advertises `4E 01 coun
   ABOUT).
   For a kind it does not know, an editor cannot find the tab (it does not know that kind's bytes).
 
-This firmware (count 24; tabs 0 DISPLAY, 1 CONTROL, 2 AUDIO, 3 MIDI, 4 SYSTEM (1.2; before: 3 SYSTEM); 1.0.5 had the
+This firmware (count 23; tabs 0 DISPLAY, 1 CONTROL, 2 AUDIO, 3 MIDI, 4 SYSTEM (1.2; before: 3 SYSTEM); 1.0.5 had the
 first 12, 1.1 the first 15, 1.2 before SCALE LEDS the first 16, before SCREEN OFF the first 17, 1.1.5 the first 18, 1.2
-before MIDI IN the first 21, 1.2 the first 23):
+before MIDI IN the first 21, 1.2 the first 23, 1.3 .. 1.4.1 24). **1.5: COUNT-IN (id 14) is gone** with the count-in
+itself: the items after it moved up one index (index = id − 1 from RESTORE LAST on), their ids unchanged, and a
+MENU_SET of id 14 answers rc 1 (unknown id). This is the one time an index lost its setting; an editor that keeps
+settings by id (as advised above) sees one setting fewer:
 
 | index | id | name | kind | values (min 0) | default | tab |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -941,25 +951,23 @@ before MIDI IN the first 21, 1.2 the first 23):
 | 11 | 11 | USB SERIAL | 0 | 0 ON, 1 OFF | ON | 4 SYSTEM (up to 1.2's MIDI tab: 3) |
 | 12 | 12 | CLICK | 0 | 0 OFF, 1 REC, 2 ON (1.1) | OFF | 2 AUDIO |
 | 13 | 13 | CLICK LEVEL | 0 | 0 LOW, 1 MID, 2 HIGH (1.1) | MID | 2 AUDIO |
-| 14 | 14 | COUNT-IN | 0 | 0 OFF, 1 "1 BAR", 2 "2 BARS" (1.1) | OFF | 2 AUDIO |
-| 15 | 15 | RESTORE LAST | 0 | 0 ON, 1 OFF (1.2) | ON | 4 SYSTEM (up to 1.2's MIDI tab: 3) |
-| 16 | 16 | SCALE LEDS | 0 | 0 OFF, 1 ON (1.2) | OFF | 1 CONTROL |
-| 17 | 17 | SCREEN OFF | 0 | 0 NEVER, 1 "5 MIN", 2 "15 MIN", 3 "30 MIN", 4 "60 MIN" (1.1.5) | NEVER (1.1.5.1; 1.1.5: 30 MIN) | 0 DISPLAY |
-| 18 | 18 | SCOPE | 0 | 0 OUT, 1 MIX (1.2) | OUT | 0 DISPLAY |
-| 19 | 19 | STEP PREVIEW | 0 | 0 OFF, 1 ON (1.2) | OFF | 1 CONTROL |
-| 20 | 20 | CHORD ENTRY | 0 | 0 HOLD, 1 ADD (1.2) | HOLD | 1 CONTROL |
-| 21 | 21 | MIDI IN | 0 | 0 CH1-4, 1 SEL, 2 CH5-8, 3 CH9-12, 4 CH13-16 (1.2: the project's `G_ROUTE`, global 14) | CH1-4 | 3 MIDI |
-| 22 | 22 | TUNE | 1 | -50..50, unit "ct" (1.2: the project's `G_TUNE`, global 3, cents) | 0 | 2 AUDIO |
-| 23 | 23 | HOME | 0 | 0 SCOPE, 1 TRACKS (1.3) | SCOPE | 0 DISPLAY |
+| 14 | 15 | RESTORE LAST | 0 | 0 ON, 1 OFF (1.2) | ON | 4 SYSTEM (up to 1.2's MIDI tab: 3) |
+| 15 | 16 | SCALE LEDS | 0 | 0 OFF, 1 ON (1.2) | OFF | 1 CONTROL |
+| 16 | 17 | SCREEN OFF | 0 | 0 NEVER, 1 "5 MIN", 2 "15 MIN", 3 "30 MIN", 4 "60 MIN" (1.1.5) | NEVER (1.1.5.1; 1.1.5: 30 MIN) | 0 DISPLAY |
+| 17 | 18 | SCOPE | 0 | 0 OUT, 1 MIX (1.2) | OUT | 0 DISPLAY |
+| 18 | 19 | STEP PREVIEW | 0 | 0 OFF, 1 ON (1.2) | OFF | 1 CONTROL |
+| 19 | 20 | CHORD ENTRY | 0 | 0 HOLD, 1 ADD (1.2) | HOLD | 1 CONTROL |
+| 20 | 21 | MIDI IN | 0 | 0 CH1-4, 1 SEL, 2 CH5-8, 3 CH9-12, 4 CH13-16 (1.2: the project's `G_ROUTE`, global 14) | CH1-4 | 3 MIDI |
+| 21 | 22 | TUNE | 1 | -50..50, unit "ct" (1.2: the project's `G_TUNE`, global 3, cents) | 0 | 2 AUDIO |
+| 22 | 23 | HOME | 0 | 0 SCOPE, 1 TRACKS (1.3) | SCOPE | 0 DISPLAY |
 
-The device's AUDIO tab shows SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL, COUNT-IN and (1.2) TUNE (index 9, 10, 12, 13,
-14, 22).
+The device's AUDIO tab shows SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL and (1.2) TUNE (index 9, 10, 12, 13, 21;
+1.1 .. 1.4.1 also COUNT-IN, index 14).
 CLICK: the metronome while the transport runs: OFF, REC (while a track is armed), ON (always); CLICK LEVEL its
-level; COUNT-IN: PLAY from stop with a track armed counts in that many bars first (internal clock only). The click
-goes to the headphones / speaker, never into USB audio or a recording (README: Metronome and count-in). Applied at
-once, as on the device.
+level. The click goes to the headphones / speaker, never into USB audio or a recording (README: Metronome). Applied
+at once, as on the device. 1.5 has no count-in: PLAY starts at once, armed or not.
 
-RESTORE LAST (id 15, 1.2; the SYSTEM tab shows USB SERIAL and RESTORE LAST, index 11 and 15, then CALIBRATION, INFO
+RESTORE LAST (id 15, 1.2; the SYSTEM tab shows USB SERIAL and RESTORE LAST, index 11 and 14 (before 1.5: 15), then CALIBRATION, INFO
 and ABOUT): ON (the default)
 keeps the music as it is in an autosave while the device is stopped and idle, and brings it back at power-on; OFF
 writes no autosave and starts with the power-on sounds (README: Restore the last session).
@@ -998,9 +1006,9 @@ Example (bytes in hex): `F0 7D 46 4C 48 04 F7` asks for index 4; the reply
 is index 4, id 4, kind 0, value 2 (`02 40`), min 0 (`00 40`), max 3 (`03 40`), "LEDS", then "OFF" "DIM LO"
 "DIM HI" "INV", then tab 0 "DISPLAY" (1.0.4 firmware: the same reply without `00 44 49 53 50 4C 41 59 00`). `F0 7D 46 4C 49 04 03 40 F7` sets LEDS to INV and answers `F0 7D 46 4C 49 00 04 03 40 F7` (rc 0).
 `F0 7D 46 4C 49 00 32 40 F7` (COLOR 50) answers `F0 7D 46 4C 49 00 00 09 40 F7` (clamped to 9, MONO).
-`F0 7D 46 4C 49 0E 01 40 F7` sets COUNT-IN to 1 BAR and answers `F0 7D 46 4C 49 00 0E 01 40 F7` (1.1).
+`F0 7D 46 4C 49 0E 01 40 F7` set COUNT-IN to 1 BAR up to 1.4.1; 1.5 answers `F0 7D 46 4C 49 01 0E 01 40 F7` (rc 1, unknown id).
 `F0 7D 46 4C 49 16 74 3F F7` (TUNE -12) answers `F0 7D 46 4C 49 00 16 74 3F F7` (rc 0, 1.2).
-`F0 7D 46 4C 48 18 F7` answers `F0 7D 46 4C 48 18 7F F7` (no index 24; 1.2: none past 22, `17`; before MIDI IN: none past 20, `15`; before SCOPE: none past 17, `12`; before SCREEN OFF: none past 16, `11`; 1.2 before SCALE LEDS: none past 15, `10`; 1.1 firmware: none past 14, `0F`; 1.0.5: none past 11, `0C`).
+`F0 7D 46 4C 48 17 F7` answers `F0 7D 46 4C 48 17 7F F7` (no index 23, 1.5; 1.3 .. 1.4.1: none past 23, `18`; 1.2: none past 22, `17`; before MIDI IN: none past 20, `15`; before SCOPE: none past 17, `12`; before SCREEN OFF: none past 16, `11`; 1.2 before SCALE LEDS: none past 15, `10`; 1.1 firmware: none past 14, `0F`; 1.0.5: none past 11, `0C`).
 
 HOME (id 23, 1.3, Discussions #112 / #134; DISPLAY now shows COLOR, STYLE, LARGE, ANIM, LEDS, SCREEN OFF, SCOPE and
 HOME, index 0..4, 17, 18, 23): what the device's HOME page shows under its four cards. SCOPE (the default, as before)
@@ -1021,3 +1029,68 @@ device gone at ~0.3 s, the MIDI port gone at ~0.57 s and back at ~1.15 s; ON -> 
 at ~0.6 s while the MIDI port was not seen to disappear at all (so do not wait for a disconnect event: after
 a real change, wait ~1.5 s and open again). What the editor sends in that window is lost, `WATCH` ends with the
 bus reset (send `INFO` and `WATCH` again after reconnecting), and a backup in progress answers rc 5 (stale).
+
+## 1.5: the tracker (78, 79)
+
+INFO ends with `58 02 pats rows insts ncmd order-lo order-hi` (24, 64, 63, 15, 128 as two 7-bit bytes): the patterns,
+their most rows, the instruments, the FX commands and the order list's most positions. Version 02 has the 6-byte cells
+below (01, 4-byte cells without the chord and 32 patterns, was never released: an editor that knows only 01 shows no
+tracker). The firmware side is
+`firmware/src/editor_tracker.c`; the song itself `firmware/src/tracker.c` (see the README's Tracker section).
+
+**The song.** 24 patterns (00..17) of 1..64 rows; a row is a 1/16 of the tempo, swung by the global SWING. Each row
+has a cell per track. An order list of 1..128 positions names the pattern each plays. 63 instruments (01..3F), each
+none, a factory preset of an engine or a user preset. Each track's CUT and RES hold the engine's filter over every
+instrument, or leave it to the instrument (INST).
+
+**A cell** on the wire is 6 bytes: note (0 none, 1..126 a MIDI note, 127 OFF: releases the column's notes), instrument
+(0 none, 1..63), FX command (0..14), its value (0..127), and the chord: two intervals above the note (0 none, 1..15
+semitones each; a note past 126 is left out). The row plays the note and its chord's notes together on a POLY track
+(a MONO, LEGATO or UNISON track: the note alone); the next note or OFF in the column releases them all. The device
+names a chord by its shape when it is one (MAJ 4 7, MIN 3 7, SUS2 2 7, SUS4 5 7, DIM 3 6, AUG 4 8, MAJ6 4 9, MAJ7 4 11,
+DOM7 4 10, MIN7 3 10, 5TH 7 0, 5+OCT 7 12, OCT 12 0; either order), else as `+i+j`. An instrument in a cell changes the
+track's sound from that row on; `0` keeps the one the column played last. The FX commands (append-only; the letter the
+device shows):
+
+| cmd | letter | sets for that row only | cmd | letter | sets for that row only |
+| --- | --- | --- | --- | --- | --- |
+| 0 | . | nothing | 8 | F | FLT ENV (P_ED_FLT) |
+| 1 | V | LEVEL | 9 | P | PAN |
+| 2 | A | ATTACK | 10 | X | DIST |
+| 3 | D | DECAY | 11 | H | CHORUS send |
+| 4 | S | SUSTAIN | 12 | E | DELAY send |
+| 5 | R | RELEASE | 13 | W | REVERB send |
+| 6 | C | the engine's cutoff (as MIDI CC 74) | 14 | G | GLIDE |
+| 7 | Q | the engine's resonance (as MIDI CC 71) | | | |
+
+The value 0..127 spans the parameter's range (64: the middle of a bipolar one). The track's own value comes back on
+its next row.
+
+| cmd | Request args | Reply args |
+| --- | --- | --- |
+| 78 TRACKER | op, then the op's args (below) | op, rc, then the op's reply |
+| 79 TRACKER_CHANGED (push) | — | kind (0 a pattern: its cells or length; 1 the rest of the song: the order, the instruments, CUT / RES), index (the pattern; 0 for kind 1) |
+
+| op | Request args (after op) | Reply (after op, rc) |
+| --- | --- | --- |
+| 0 STATUS | — | playing (0/1), mode (0 LOOP, 1 SONG), the pattern playing, the position playing (SONG), the row playing, the pattern LOOP plays (the device's PATTERN page), positions lo, hi |
+| 1 PATTERN | pat, row, count (1..16) | pat, length, row, count (cut at row 64), count × 4 cells × 6 bytes (row by row) |
+| 2 CELLS | pat, row, col (0..3), count (1..64), count × 6 bytes | pat, row, col, count. The cells go row-major from (row, col): col 3 is followed by col 0 of the next row. Past row 63, an instrument above 63, a command above 14 or an interval above 15: rc 1, nothing written |
+| 3 LENGTH | pat [, length 1..64] | pat, length (rc 1: a length outside 1..64, unchanged) |
+| 4 ORDER | — (get), or count lo, count hi (1..128), count × pat | count lo, count hi, count × pat (rc 1: a pattern past 23, the order unchanged) |
+| 5 INSTR | first (0 = instrument 01), count [, count × (kind, a, b)] | first, count, count × (kind, a, b): kind 0 none, 1 factory preset b of engine a (wrapped to its presets), 2 user preset slot a (b 0). rc 1 (nothing written): another kind, an engine without presets (1, retired DIGITAL), a user slot past the last |
+| 6 FILTER | — (get), or track, cut v14, res v14 (each −1 INST or 0..127) | 4 × (cut v14, res v14); rc 1: a value outside −1..127 |
+| 7 PLAY | 0 (stop); 1, pat (LOOP that pattern; playing: it starts after the one playing); 2, position (SONG from that position: stopped only, rc 2 while playing) | as STATUS (a start is asked for: the transport starts at the next audio block, so the reply may still say stopped) |
+| 8 CLEAR | pat | pat (every cell of it empty; the length stays) |
+
+A request with the wrong number of bytes, or a pattern, row or column out of range, gets no reply. rc: 0 ok, 1 an
+argument (nothing written), 2 busy. Every write is the editor's own: no `TRACKER_CHANGED` follows it. The device
+checks the song's signatures about every 80 ms while watched (the song and two patterns per main-loop pass), so a
+change on the panel or a recorded row arrives as one push per pattern. The editor reads it again with PATTERN (four
+requests for 64 rows) or ORDER / INSTR / FILTER.
+
+The tracks' own settings on the device's SETTINGS page other than CUT / RES (ATTACK, DECAY, SUSTAIN, RELEASE, FLT ENV,
+DIST, CHORUS, DELAY, REVERB, LEVEL, PAN) are track parameters: `TRACK_PARAM` (31) reads and sets them.
+
+`tests/editor_test.c` (tracker_protocol) covers the firmware side; `web/test_web.mjs` (editorTracker) covers the
+editor's requests, replies and its mock device.

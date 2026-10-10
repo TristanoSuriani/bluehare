@@ -95,11 +95,12 @@ static void fm1_fault(const fm1_crash_t *c)
     fm1_reboot();
 }
 
-/* power-on: the parts with their default sounds (TRK_DEF); the sequencers empty */
+/* power-on: the parts with their default sounds (TRK_DEF); the tracker's song empty */
 static void felucca_init(void)
 {
     uint32_t i;
-    chain_defaults(&chain_config);
+    tk_defaults();
+    tk_user_sound = up_tk_sound;              /* (tracker.c: user preset instruments, upreset.c) */
     for (i = 0; i < G_COUNT; i++)
         song.g[i] = GP[i].def;
     undo_depth++;                             /* (no undo copy of the power-on loads) */
@@ -110,11 +111,7 @@ static void felucca_init(void)
         set_engine_of(t, TRK_DEF[i][0]);
         apply_preset_to(t, TRK_DEF[i][1]);    /* with its sends */
         t->engine = t->eng_req;
-        track_defaults_steps(t);              /* (a sound load never touches them) */
-        if (TRK_DEF[i][2])
-            load_pat16(t, PATTERNS[TRK_DEF[i][2] - 1u].note, PATTERNS[TRK_DEF[i][2] - 1u].flags);
-        pat_sig[i] = steps_sig(t);            /* a default pattern, not the user's */
-        pat_last[i] = TRK_DEF[i][2];
+        track_defaults_steps(t);
     }
     undo_depth--;
     song.sel = 0;

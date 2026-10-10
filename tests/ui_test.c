@@ -34,7 +34,7 @@
  *              the menu, the settings, the descriptor at boot (built with the console, as the firmware: FELUCCA_CDC).
  *   SCREEN OFF (1.1.5): MENU > DISPLAY > SCREEN OFF against a simulated clock and the panel's commands (lcd_power):
  *              dark after the time, nothing drawn, any input wakes it (SLPOUT, 120 ms, redraw, DISPON) and is
- *              swallowed; dialogs / count-in / UPDATE MODE keep it on; saved; the sound bit for bit while dark.
+ *              swallowed; dialogs / UPDATE MODE keep it on; saved; the sound bit for bit while dark.
  * Built and run by tests/run_tests.sh. */
 #ifndef FELUCCA_CDC
 #define FELUCCA_CDC 1                                    /* (as src/felucca.c: the console built in, MENU > USB SERIAL) */
@@ -168,11 +168,16 @@ static void ui_power_on(void)
     uint32_t i;
     memset(trk, 0, sizeof trk);
     memset(&song, 0, sizeof song);
-    memset(&chain, 0, sizeof chain);
-    chain_defaults(&chain_config);
+    tk_defaults();                                /* the tracker's song empty, nothing playing */
+    tk_user_sound = up_tk_sound;
+    memset(&tku, 0, sizeof tku);
+    tku.step = 1;
+    tku.note = 60;
+    tku.cmd = TKC_LEVEL;
+    tk_aud_req = 0;
+    tk_aud_note = 0;
     memset(&ui, 0, sizeof ui);
     page_over = 0;                                /* (no layer's knobs; roll_settle's test page gone) */
-    cin_left = cin_total = 0;                     /* (no count-in) */
     memset(&nm, 0, sizeof nm);                    /* NAME closed, no project name */
     memset(&mom, 0, sizeof mom);                  /* MOMENTARY: no value held (the pool at power-on) */
     proj_name[0] = 0;
@@ -182,11 +187,22 @@ static void ui_power_on(void)
     fop_op = fop_stg = 0;                         /* (FM6's operator pages: OP 1, stage 1, as at power-on) */
     memset(pat_last, 0, sizeof pat_last);
     memset(pat_from, 0, sizeof pat_from);                /* (the header's slot letter: none) */
-    memset(proj_slot, 0, sizeof proj_slot);
+    memset(proj_ram_len, 0, sizeof proj_ram_len);       /* (the song store: empty, RAM in these builds) */
+    memset(&proj_good, 0, sizeof proj_good);
     memset(up_bank, 0, sizeof up_bank);
     for (i = 0; i < G_COUNT; i++)
         song.g[i] = GP[i].def;
     undo_depth++;
+    fm6_init();                                   /* (main.c: every track's FM6 patch the init voice; its LFOs and */
+    memset(fm6_lfo, 0, sizeof fm6_lfo);           /* notes as .bss has them at power-on) */
+    memset(fm6_lfo_v, 0, sizeof fm6_lfo_v);
+    memset(fm6_lfo_d, 0, sizeof fm6_lfo_d);
+    memset(fm6_note, 0, sizeof fm6_note);
+    rng_state = 0x1234567u;                       /* (libc.c: the random numbers from their power-on seed) */
+    lim_env = LIM_T;                              /* (fx.c: the master limiter at rest, the effects silent, as at */
+    rev_clear();                                  /* power-on: no tail of the test before sounds into this one) */
+    memset(dly_buf, 0, sizeof dly_buf);
+    memset(cho_buf, 0, sizeof cho_buf);
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         track_defaults(t);
@@ -194,10 +210,6 @@ static void ui_power_on(void)
         apply_preset_to(t, TRK_DEF[i][1]);
         t->engine = t->eng_req;
         track_defaults_steps(t);
-        if (TRK_DEF[i][2])
-            load_pat16(t, PATTERNS[TRK_DEF[i][2] - 1u].note, PATTERNS[TRK_DEF[i][2] - 1u].flags);
-        pat_sig[i] = steps_sig(t);
-        pat_last[i] = TRK_DEF[i][2];
     }
     undo_depth--;
     song.sel = 0;
@@ -279,17 +291,46 @@ static void turn(uint32_t role, int32_t s)
     host_ticks += 200000u;                        /* (no knob acceleration between the turns) */
 }
 static void stop_transport(void) { transport_req = 0; song.playing = 0; }
+/* parameter id of track `track` as the stored song holds it (project.c's stream, walked; -32768: none stored) */
 static int16_t stored_param(uint32_t slot, uint32_t track, uint32_t id)
 {
-    project_t p;
-    return proj_import(&p, &proj_slot[slot], sizeof proj_slot[slot]) ? p.t[track].p[id] : -32768;
-}
-static uint8_t stored_note(uint32_t slot, uint32_t track, uint32_t step)
-{
-    project_t p;
-    return proj_import(&p, &proj_slot[slot], sizeof proj_slot[slot]) ? p.t[track].step[step].note[0] : 0;
+    pr_t r;
+    uint32_t i, k, ng, e = 0, n;
+    int16_t v = -32768;
+    (void)slot;
+    if (!proj_find())
+        return -32768;
+    pr_open(&r, proj_get, proj_good.count);
+    if (pr_next(&r))
+        return -32768;
+    (void)pr_u8(&r);
+    (void)pr_u8(&r);
+    ng = pr_u8(&r);
+    for (i = 0; i < ng; i++)
+        (void)pr_i16(&r);
+    (void)pr_u8(&r);
+    for (i = 0; i < PROJ_NAME_LEN; i++)
+        (void)pr_u8(&r);
+    for (k = 0; k <= track; k++) {
+        e = pr_u8(&r);
+        (void)pr_u8(&r);
+        v = param_desc_of(e % NENGINES, id)->def;
+        n = pr_u8(&r);
+        for (i = 0; i < n; i++) {
+            uint32_t pid = pr_u8(&r);
+            int16_t pv = (int16_t)pr_i16(&r);
+            if (pid == id)
+                v = pv;
+        }
+        if (pr_u8(&r))
+            for (i = 0; i < FM6_PACKED; i++)
+                (void)pr_u8(&r);
+    }
+    return r.err ? -32768 : v;
 }
 static int msg_is(const char *s) { return ui.msg_t && str_eq(ui.msg, s); }
+/* the tracker's cell at pattern p, row r, track k is c (tracker.c) */
+static int cell_is(uint32_t p, uint32_t r, uint32_t k, tk_cell_t c) { return !memcmp(tk_at(p, r, k), &c, sizeof c); }
 static void my_steps(track_t *t)                  /* "recorded" steps */
 {
     uint32_t i;
@@ -512,20 +553,6 @@ static int test_sound_loads(void)
                      str_eq(sd->names[7], "USR3") && sd->max == 7 &&
                      enum_orig(&ENGINES[8]->edit[0], SMP_SET_PERC) == 0 && SMP_SETS[SMP_SET_PERC].z0 == SMP_SETS[0].z0);
     }
-    host_legacy_sample_perc(t);                /* SAMPLE PERC (SET 4, retired after 1.0.2): every load gives DRUM */
-    t->preset = 4;                             /* a project written before the factory removal */
-    my_steps(t);
-    t->p[P_LEVEL] = 71;
-    t->p[P_REV] = 33;
-    before = *t;
-    project_save(0);
-    apply_preset_to(t, 0);
-    track_defaults_steps(t);
-    project_load(0);
-    bad += check("saved SAMPLE PERC project: a DRUM track (its kit), the rest of the sound and every step kept",
-                 t->eng_req == ENGI_DRUM && t->preset == 0u && perc_kit(t) &&
-                 !memcmp(t->p, before.p, P_E0 * sizeof t->p[0]) && !memcmp(t->step, before.step, sizeof t->step));
-    bad += check("  its GM hits play as drums (kick, snare, closed hat on their lanes)", gm_hits_play(t));
     {   /* a user preset of SAMPLE PERC (UP_PUT from an older editor, or a bank read): DRUM, its kit */
         up_rec_t r;
         int16_t keep[P_COUNT];
@@ -554,109 +581,10 @@ static int test_sound_loads(void)
     apply_preset_to(t, SMP_SET_PERC);             /* SAMPLE preset 4 (once PERC): the editor's PRESET, a favourite */
     bad += check("SAMPLE preset 4 (once PERC): DRUM's kit", t->eng_req == ENGI_DRUM && t->preset == 0u && perc_kit(t) &&
                  gm_hits_play(t));
-    ui_power_on();
-    host_legacy_sample_perc(&trk[3]);
-    my_steps(&trk[3]);
-    trk[3].p[P_SDIV] = 3;
-    before = trk[3];
-    project_save(1);
-    project_v6_t legacy = {0};
-    project_t decoded;
-    proj_import(&decoded, &proj_slot[1], sizeof proj_slot[1]);
-    legacy.magic = PROJ_MAGIC_V6; legacy.size = sizeof legacy;
-    legacy.parts = 0; legacy.phys = PROJ_PHYS;
-    memcpy(legacy.g, decoded.g, sizeof legacy.g);
-    for (uint32_t ti = 0; ti < NTRK; ti++) {
-        memcpy(legacy.t[ti].p, decoded.t[ti].p, 61u * sizeof(int16_t));
-        memcpy(legacy.t[ti].p + 61, decoded.t[ti].p + P_E0, 8u * sizeof(int16_t));
-        legacy.t[ti].engine = decoded.t[ti].engine; legacy.t[ti].preset = decoded.t[ti].preset;
-        for (uint32_t st = 0; st < NSTEP; st++) memcpy(&legacy.t[ti].step[st], &decoded.t[ti].step[st], sizeof(step10_t));
-    }
-    legacy.t[3].engine = 0;
-    legacy.g[G_DRLVL] = 71; legacy.g[G_DRREV] = 43;
-    legacy.g[G_RTYPE] = 10;                               /* (id 24 was the GM drum part's MIDI channel: 10) */
-    legacy.sum = proj_hash(&legacy, offsetof(project_v6_t, sum));
-    memcpy(&proj_slot[1], &legacy, sizeof legacy);
-    project_load(1);
-    bad += check("old GM projects (the drum part) load as DRUM's kit, their mix and steps kept",
-                 trk[3].eng_req == ENGI_DRUM && trk[3].preset == 0u && perc_kit(&trk[3]) &&
-                 trk[3].p[P_LEVEL] == 71 && trk[3].p[P_REV] == 43 && trk[3].p[P_SDIV] == 3 &&
-                 !memcmp(trk[3].step, before.step, sizeof trk[3].step));
-    bad += check("  their GM hits play as drums", gm_hits_play(&trk[3]));
-    bad += check("  its old drum channel (10, in id 24) loads as REVERB TYPE ROOM", song.g[G_RTYPE] == 0);
     printf("ui: undo copy %u bytes\n", (unsigned)sizeof undo);
     return bad;
 }
 
-/* SAVE > PHRASES: K1 PAT, OCT+ LOAD; the dialog over the user's steps; undo */
-static int test_patterns(void)
-{
-    int bad = 0;
-    track_t *t = &trk[0], before;
-    ui_power_on();
-    go_page(GR_PATS);
-    bad += check("1.2: PHRASES is a SAVE page (SAVE > PHRASES)", cur_page()->fam == FAM_SAVE &&
-                 str_eq(cur_page()->title, "PHRASES") && !song.seq_mode);
-    before = *t;
-    turn(EN_K2, 1);
-    bad += check("KNOB 2 loads nothing (the knobs only pick)", seq_is_empty(t) && ui.confirm == CF_NONE);
-    press(B_OCTUP);                               /* LOAD 01 ACID into the empty sequencer */
-    bad += check("LOAD into an empty sequencer: at once, LOADED 01 ACID", ui.confirm == CF_NONE && steps_are(t, 0) &&
-                 msg_is("LOADED 01 ACID"));
-    bad += check("..the sound and the track's settings untouched", same_sound(t, &before) && t->p[P_SDIV] == before.p[P_SDIV] &&
-                 t->p[P_AMODE] == before.p[P_AMODE]);
-    turn(EN_K1, 2);
-    press(B_OCTUP);
-    bad += check("a loaded pattern, untouched: the next one without asking (03 MELODY)", ui.confirm == CF_NONE && steps_are(t, 2) &&
-                 msg_is("LOADED 03 MELODY"));
-    hold(B_SAVE);
-    bad += check("SAVE held: back past both loads (empty again), the sound untouched", seq_is_empty(t) && same_sound(t, &before) &&
-                 t->p[P_SLEN] == before.p[P_SLEN]);
-    hold(B_SAVE);                                 /* redo */
-    t->step[3].note[0] = 70;                      /* an edit: the user's steps now */
-    t->step[3].n = 1;
-    t->step[3].time = ST_NOTE;
-    press(B_OCTUP);
-    bad += check("edited steps: the REPLACE T1 SEQUENCE? dialog", ui.confirm == CF_LOAD_PAT && ui.confirm_trk == 0u &&
-                 t->step[3].note[0] == 70);
-    press(B_OCTDN);
-    bad += check("OCT- keeps them", ui.confirm == CF_NONE && t->step[3].note[0] == 70);
-    my_steps(t);
-    before = *t;
-    turn(EN_K1, 9);                               /* 12 BEAT */
-    press(B_OCTUP);
-    press(B_OCTUP);
-    bad += check("OCT+ loads (12 BEAT), then HOLD SAVE: UNDO", ui.confirm == CF_NONE && steps_are(t, 11) &&
-                 msg_is("LOADED 12 BEAT") && str_eq(ui.msg2, "[SAVE] HOLD TO UNDO"));
-    hold(B_SAVE);
-    bad += check("SAVE held: the user's steps and LEN back", !memcmp(t->step, before.step, sizeof t->step) && t->p[P_SLEN] == 32);
-    /* a user preset's pattern: listed after the factory ones as U06, with its LEN DIV SWING GATE */
-    t->p[P_SDIV] = 2;
-    t->p[P_SSWING] = 40;
-    up_store(5, "UPAT");
-    t->p[P_SDIV] = 0;
-    t->p[P_SSWING] = 0;
-    up_store(6, "NOPAT");
-    memset(up_rec(6)->note, 0, sizeof up_rec(6)->note);   /* .. a record with no pattern: not listed */
-    bad += check("user presets with a pattern are listed after the factory ones", pat_count() == NPATTERNS + 1u);
-    track_defaults_steps(t);
-    turn(EN_K1, 20);                              /* (to the end of the list) */
-    press(B_OCTUP);
-    bad += check("LOAD U06: its 16 steps, LEN 16 (at most), DIV and SWING", msg_is("LOADED U06 UPAT") && t->step[0].note[0] == 40 &&
-                 t->step[3].note[0] == 43 && !t->step[30].n && t->p[P_SLEN] == 16 && t->p[P_SDIV] == 2 && t->p[P_SSWING] == 40);
-    /* a project's steps count as the user's */
-    project_save(2);
-    project_load(2);
-    press(B_OCTUP);
-    bad += check("over a project's steps: the dialog", ui.confirm == CF_LOAD_PAT);
-    press(B_OCTDN);
-    /* the hint: PRESETS page K3 PAT, and a load moves the pick there */
-    go_page(GR_BROWSE);
-    turn(EN_K1, 1);
-    bad += check("PRESETS: a factory preset's suggested pattern becomes the pick", preset_pat_hint() >= 0 &&
-                 ui.ppick == (uint8_t)preset_pat_hint());
-    return bad;
-}
 
 static int test_rec(void)
 {
@@ -669,9 +597,9 @@ static int test_rec(void)
         open_family(FAMS[k]);
         press(B_REC);
         bad += check(k == 0 ? "REC on TRACKS: arms the selected track, PLAY starts" :
-                     k == 1 ? "#133 REC on SEQ > STEP: arms the selected track for step recording, PLAY does not start" :
+                     k == 1 ? "REC on SEQ > PATTERN: arms the selected track for step entry, PLAY does not start" :
                      "REC on ARP: arms the selected track, PLAY starts",
-                     song.rec == 4u && (k == 1u ? transport_req == 0u && msg_is("KEYS WRITE STEPS") : transport_req == 1u));
+                     song.rec == 4u && (k == 1u ? transport_req == 0u && msg_is("KEYS WRITE NOTES") : transport_req == 1u));
         song.playing = 1;
         transport_req = 0;
         frames(400);                                   /* (not a double tap: that locks the REC layer) */
@@ -686,10 +614,10 @@ static int test_rec(void)
     ui_power_on();
     press(B_REC);
     bad += check("REC on HOME records without changing the screen", ui.home && song.rec == 1u && transport_req == 1u);
-    /* STEP page: armed + playing -> the keys record live only */
+    /* PATTERN: armed + playing -> the keys record live only (the tracker, tracker.c tk_rec_note) */
     ui_power_on();
     open_family(FAM_SEQ);
-    bad += check("SEQ opens STEP", cur_page()->scope == SC_STEP);
+    bad += check("SEQ opens PATTERN", cur_page()->graph == GR_TKPAT);
     press(B_REC);
     song.playing = 1;
     transport_req = 0;
@@ -697,27 +625,28 @@ static int test_rec(void)
     frame();
     fm1_in.notes = 0;
     frame();
-    bad += check("STEP, armed and playing: a key does not write the cursor step", !trk[0].step[0].n && ui.cursor == 0);
+    bad += check("PATTERN, armed and playing: a key does not write the cursor's cell", tk_empty(tk_at(0, 0, 0)) &&
+                 tku.row == 0);
     song.rec = 0;
-    fm1_in.notes = host_notes = 1u << 7;
-    frame();
-    fm1_in.notes = 0;
-    frame();
-    bad += check("#133 STEP, not armed: the key only plays (nothing written, the cursor stays)",
-                 !trk[0].step[0].n && ui.cursor == 0);
-    song.rec = 1;
     song.playing = 0;
     fm1_in.notes = host_notes = 1u << 7;
     frame();
     fm1_in.notes = 0;
     frame();
-    bad += check("#133 STEP, armed and stopped: the key writes the cursor step (and moves on)",
-                 trk[0].step[0].n == 1 && ui.cursor == 1);
+    bad += check("PATTERN, not armed: the key only plays (nothing written, the cursor stays)",
+                 tk_empty(tk_at(0, 0, 0)) && tku.row == 0);
+    song.rec = 1;
+    fm1_in.notes = host_notes = 1u << 7;
+    frame();
+    fm1_in.notes = 0;
+    frame();
+    bad += check("PATTERN, armed and stopped: the key writes its note at the cursor (and the cursor moves on)",
+                 tk_note(tk_at(0, 0, 0)) == kb_map(&trk[0], 7) && tku.row == 1);
     /* ARP: the arp's notes are recorded, not the key */
     ui_power_on();
     {
         track_t *t = &trk[0];
-        uint32_t i, n = 0, notes = 0;
+        uint32_t i, notes = 0;
         t->engine = t->eng_req;
         t->p[P_AMODE] = 1;
         t->p[P_AOCT] = 2;
@@ -725,13 +654,11 @@ static int test_rec(void)
         song.rec = 1;
         song.playing = 1;
         input_on(t, 60, 100);
-        for (i = 0; i < NSTEP; i++)
-            n += t->step[i].n;
-        bad += check("ARP on: the key held is not recorded", n == 0);
+        bad += check("ARP on: the key held is not recorded", tk_pat_empty(0));
         arp_tick(t, 1);
-        for (i = 0; i < NSTEP; i++)
-            if (t->step[i].n)
-                notes = t->step[i].note[0];
+        for (i = 0; i < TK_ROWS; i++)
+            if (tk_note(tk_at(0, i, 0)))
+                notes = tk_note(tk_at(0, i, 0));
         bad += check("ARP on: the note the arp plays is recorded", notes == 60u);
         t->p[P_AMODE] = 0;
         input_off(t, 60);
@@ -853,9 +780,9 @@ static int test_save(void)
                      !name_on() && up_used(0) && up_value(up_rec(0), P_E0) == 5 && ui.act == 0u && str_eq(nmb, au));
     }
     press(B_SAVE);
-    bad += check("1.2: SAVE again: PHRASES (the patterns, after the sounds)", cur_page()->graph == GR_PATS);
+    bad += check("1.5: SAVE again: PROJECT (the song; PHRASES gone with the steps)", cur_page()->graph == GR_SLOTS);
     press(B_SAVE);
-    bad += check("SAVE again still cycles to PROJECT", cur_page()->graph == GR_SLOTS);
+    bad += check("SAVE again still cycles to TOOLS", cur_page()->graph == GR_TOOLS);
     go_home();
     press(B_SAVE);
     bad += check("SAVE from HOME returns directly to USER, even after visiting PROJECT",
@@ -875,9 +802,6 @@ static int test_save(void)
     bad += check("a pending PLAY cannot save a project", !project_used(0) && msg_is("STOP TO SAVE"));
     bad += check("a pending PLAY cannot save a user preset", up_store(0, "X") == 2 && !up_used(0));
     transport_req = 0;
-    chain.armed = 1;
-    bad += check("a pending SONG cannot save a user preset", up_store(0, "X") == 2 && !up_used(0));
-    chain.armed = 0;
     song.playing = 1;
     for (i = 0; i < NPAGES; i++)
         if (PAGES[i].graph == GR_SLOTS)
@@ -894,8 +818,8 @@ static int test_save(void)
     stop_transport();
     turn(EN_K4, 1);
     press(B_OCTUP);
-    bad += check("stopped, an empty slot: OCT+ opens NAME (no name yet: PROJECT A)", name_on() && nm.kind == NK_PROJ_SAVE &&
-                 nm.len == 0u && str_eq(nm.ph, "PROJECT A") && !project_used(0));
+    bad += check("stopped, no song stored: OCT+ opens NAME (no name yet: SONG)", name_on() && nm.kind == NK_PROJ_SAVE &&
+                 nm.len == 0u && str_eq(nm.ph, "SONG") && !project_used(0));
     press(B_OCTUP);
     bad += check("..OCT+ saves it unnamed, SAVE dropped", !name_on() && project_used(0) && msg_is("SAVED (RAM)") &&
                  ui.act == 0u);
@@ -972,46 +896,23 @@ static int test_actions(void)
     ui_power_on();
     press(B_OCTUP);
     bad += check("HOME: OCT+ shifts the octave (lit)", song.octave == 1 && oct_leds() == 2u);
-    go_page(GR_PATS);
-    bad += check("PATTERNS: OCT+ breathes (a pattern to load), OCT- lit", oct_leds_seen(0) == (1u | OCT_BREATH) &&
-                 oct_leds_seen(1) == (1u | OCT_BREATH));
-    press(B_OCTUP);
-    bad += check("..OCT+ loads it, the octave stays", steps_are(t, 0) && song.octave == 1 && !ui.home);
-    bad += check("..the same pattern again would change nothing: OCT+ dark", oct_leds_seen(0) == 1u);
+    fm1_in.buttons |= 1u << panel.btn[B_OCTUP];   /* pressed on HOME, let go on TOOLS: nothing done there */
+    host_pressed |= 1u << panel.btn[B_OCTUP];
+    frame();
+    go_title("TOOLS");
     turn(EN_K1, 1);
-    bad += check("..another one picked: OCT+ breathes again", oct_leds_seen(0) == (1u | OCT_BREATH));
-    {
-        char a[16], b[16];
-        foot_hint(a, b);
-        bad += check("..the footer: OCT+ LOAD / OCT- BACK", str_eq(a, "OCT+ LOAD") && str_eq(b, "OCT- BACK"));
-    }
-    fm1_in.buttons |= 1u << panel.btn[B_OCTUP];   /* both together (the UPDATE MODE hold): nothing */
-    host_pressed |= 1u << panel.btn[B_OCTUP];
-    frame();
-    fm1_in.buttons |= 1u << panel.btn[B_OCTDN];
-    host_pressed |= 1u << panel.btn[B_OCTDN];
-    frame();
+    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));
     fm1_in.buttons &= ~(1u << panel.btn[B_OCTUP]);
     frame();
-    fm1_in.buttons &= ~(1u << panel.btn[B_OCTDN]);
-    frame();
-    bad += check("OCT- + OCT+ together: no load, no HOME, no octave change", steps_are(t, 0) && !ui.home && song.octave == 1);
+    bad += check("a press that began elsewhere does nothing on an action page", !ui.confirm && song.octave == 2);
+    ui.act = 0;
     go_home();
-    fm1_in.buttons |= 1u << panel.btn[B_OCTUP];   /* pressed on HOME, let go on PATTERNS: no load */
-    host_pressed |= 1u << panel.btn[B_OCTUP];
-    frame();
-    go_page(GR_PATS);
-    fm1_in.buttons &= ~(1u << panel.btn[B_OCTUP]);
-    frame();
-    bad += check("a press that began elsewhere does not load", steps_are(t, 0) && song.octave == 2);
-    press(B_OCTDN);
-    bad += check("PATTERNS: OCT- goes HOME (the octave stays)", ui.home && song.octave == 2);
     /* TOOLS: CLRSQ and INIT are picked, not done, by their knobs */
-    my_steps(t);
+    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));          /* (the pattern edited: a cell) */
     go_title("TOOLS");
     bad += check("TOOLS: nothing picked, OCT+ dark", act_cols() == 15u && act_col() == 0u && oct_leds_seen(0) == 1u);
     turn(EN_K1, 3);
-    bad += check("KNOB 1 picks CLEAR, the steps stay; OCT+ breathes", ui.act == 1u && !seq_is_empty(t) &&
+    bad += check("KNOB 1 picks CLEAR, the pattern stays; OCT+ breathes", ui.act == 1u && !tk_pat_empty(0) &&
                  oct_leds_seen(0) == (1u | OCT_BREATH));
     {
         char a[16], b[16];
@@ -1022,12 +923,12 @@ static int test_actions(void)
     bad += check("KNOB 1 left drops it", ui.act == 0u);
     turn(EN_K1, 1);
     press(B_OCTDN);
-    bad += check("OCT- cancels the pick (still on TOOLS)", ui.act == 0u && !ui.home && !seq_is_empty(t));
+    bad += check("OCT- cancels the pick (still on TOOLS)", ui.act == 0u && !ui.home && !tk_pat_empty(0));
     turn(EN_K1, 1);
     press(B_OCTUP);
-    bad += check("TOOLS CLEAR first asks confirmation", ui.confirm == CF_CLEAR_SEQ && !seq_is_empty(t));
+    bad += check("TOOLS CLEAR first asks confirmation", ui.confirm == CF_CLEAR_SEQ && !tk_pat_empty(0));
     press(B_OCTUP);
-    bad += check("OCT+ clears the pattern, the pick dropped", seq_is_empty(t) && msg_is("PATTERN CLEARED") && ui.act == 0u);
+    bad += check("OCT+ clears the pattern, the pick dropped", tk_pat_empty(0) && msg_is("PATTERN CLEARED") && ui.act == 0u);
     turn(EN_K1, 1);
     bad += check("nothing to clear: OCT+ dark", oct_leds_seen(0) == 1u);
     turn(EN_K2, 1);
@@ -1040,18 +941,18 @@ static int test_actions(void)
     bad += check("OCT- with nothing picked: HOME", ui.home);
     /* the dialogs and the menu */
     open_family(FAM_SEQ);
-    my_steps(t);
-    confirm_open(CF_CLEAR_SEQ, song.sel);
+    tk_put(0, 5, 0, tk_pack(62, 0, 0, 0));
+    confirm_open(CF_CLEAR_SEQ, 0);
     frame();
     bad += check("a dialog: OCT+ breathes, OCT- lit", ui.confirm == CF_CLEAR_SEQ && oct_leds_seen(0) == (1u | OCT_BREATH) &&
                  oct_leds_seen(1) == (1u | OCT_BREATH));
     fm1_in.buttons |= 1u << panel.btn[B_OCTUP];
     host_pressed |= 1u << panel.btn[B_OCTUP];
     frame();
-    bad += check("..it answers on release, not on the press", ui.confirm == CF_CLEAR_SEQ && !seq_is_empty(t));
+    bad += check("..it answers on release, not on the press", ui.confirm == CF_CLEAR_SEQ && !tk_pat_empty(0));
     fm1_in.buttons &= ~(1u << panel.btn[B_OCTUP]);
     frame();
-    bad += check("..OCT+ let go: cleared", ui.confirm == CF_NONE && seq_is_empty(t));
+    bad += check("..OCT+ let go: cleared", ui.confirm == CF_NONE && tk_pat_empty(0));
     bad += check("back on SEQ: the octave LEDs again", oct_leds() == 2u);
     return bad;
 }
@@ -1107,198 +1008,6 @@ static uint32_t lane_steps(const track_t *t, uint32_t l)   /* bit i: lane l stri
     return m;
 }
 
-static int test_grid(void)
-{
-    int bad = 0;
-    track_t *t = &trk[0];
-    uint32_t i, k, leds, ok;
-    ui_power_on();
-    set_engine_of(t, ENGI_DRUM);
-    t->engine = t->eng_req;
-    open_family(FAM_SEQ);
-    frame();
-    bad += check("SEQ > STEP on a DRUM track is the grid (keys to the UI), GRID in the footer", grid_on() && song.grid == 1u &&
-                 cur_page()->scope == SC_STEP);
-    bad += check("the lanes: KICK SNARE CLAP HATCL HATOP TOM RIM BELL on GM 36 38 39 42 46 45 37 56",
-                 str_eq(drum_lane_name(t, 0), "KICK") && str_eq(drum_lane_name(t, 7), "BELL") && DRUM_LANE_NOTE[3] == 42 &&
-                 DRUM_LANE_NOTE[6] == 37 && drum_lane(41) == DV_TOM && drum_lane(49) == DV_BELL && drum_lane(35) == DV_KICK);
-    tap_key(key_at(1, 1));
-    bad += check("black key 2: lane 2 (SNARE) selected", ui.lane == 1u);
-    tap_key(key_at(0, 4));
-    bad += check("white key 5: SNARE on step 5, the cursor there", t->step[4].hit == 1u << DV_SNARE && t->step[4].time == ST_NOTE &&
-                 !t->step[4].n && ui.cursor == 4u);
-    leds = grid_leds();
-    bad += check("LEDs: white key 5 lit, black key 2 lit, ACC and the page keys dark (LEN 16)",
-                 (leds >> key_at(0, 4) & 1u) && (leds >> key_at(1, 1) & 1u) && !(leds >> key_at(0, 3) & 1u) &&
-                 !(leds >> key_at(1, 0) & 1u) && !(leds >> key_at(1, GK_ACC) & 1u) && !(leds >> key_at(1, GK_PGUP) & 1u));
-    song.playing = 1;
-    t->seq_idx = 4;
-    leds = grid_leds();
-    ok = !(leds >> key_at(0, 4) & 1u);
-    t->seq_idx = 6;
-    leds = grid_leds();
-    ok &= (leds >> key_at(0, 6) & 1u) && !(leds >> key_at(0, 4) & 1u) == 0u;
-    song.playing = 0;
-    bad += check("LEDs: the step playing inverted (a hit goes dark, an empty step lights)", ok);
-    tap_key(key_at(0, 4));
-    bad += check("white key 5 again: off, an empty step (REST)", !t->step[4].hit && t->step[4].time == ST_REST);
-    /* ACC held: the white keys set accents, their LEDs show them */
-    fm1_in.notes |= 1u << key_at(1, GK_ACC);
-    frame();
-    tap_key(key_at(0, 0));
-    fm1_in.notes |= 1u << key_at(1, GK_ACC);
-    leds = grid_leds();
-    ok = t->step[0].hit == 1u << DV_SNARE && t->step[0].acc == 1u << DV_SNARE && (leds >> key_at(0, 0) & 1u) &&
-         (leds >> key_at(1, GK_ACC) & 1u);
-    tap_key(key_at(0, 0));
-    fm1_in.notes |= 1u << key_at(1, GK_ACC);
-    leds = grid_leds();
-    ok &= t->step[0].hit == 1u << DV_SNARE && !t->step[0].acc && !(leds >> key_at(0, 0) & 1u);
-    fm1_in.notes = 0;
-    frame();
-    leds = grid_leds();
-    ok &= (leds >> key_at(0, 0) & 1u) != 0u;
-    bad += check("ACC held: a tap adds the hit accented, again drops the accent only; the LEDs show accents", ok);
-    /* the knobs: STEP LANE HIT ACC */
-    turn(EN_K1, 2);
-    turn(EN_K2, 1);
-    turn(EN_K3, 1);
-    ok = ui.cursor == 2u && ui.lane == 2u && t->step[2].hit == 1u << DV_CLAP;
-    turn(EN_K4, 1);
-    ok &= t->step[2].acc == 1u << DV_CLAP;
-    turn(EN_K3, -1);
-    ok &= !t->step[2].hit && !t->step[2].acc && t->step[2].time == ST_REST;
-    turn(EN_K4, 1);
-    ok &= t->step[2].hit == 1u << DV_CLAP && t->step[2].acc == 1u << DV_CLAP;
-    bad += check("KNOB 1 STEP, 2 LANE, 3 HIT on / off, 4 ACC (an accent adds the hit)", ok);
-    press(B_EDIT);
-    bad += check("EDIT: the cursor step cleared, on to the next", t->step[2].time == ST_REST && !t->step[2].hit && ui.cursor == 3u &&
-                 grid_on());
-    /* pages: LEN 32, the page keys */
-    t->p[P_SLEN] = 32;
-    leds = grid_leds();
-    tap_key(key_at(1, GK_PGUP));
-    ok = ui.bank == 1u && ui.cursor == 19u && (leds >> key_at(1, GK_PGUP) & 1u) && (leds >> key_at(1, GK_PGDN) & 1u);
-    tap_key(key_at(0, 15));
-    ok &= t->step[31].hit == 1u << DV_CLAP;
-    tap_key(key_at(1, GK_PGDN));
-    ok &= ui.bank == 0u && ui.cursor == 15u;
-    t->p[P_SLEN] = 12;
-    frame();
-    tap_key(key_at(0, 13));
-    ok &= !t->step[13].hit && !t->step[13].n;
-    bad += check("pages: black keys 11 / 10 up / down (the cursor along); past LEN a key does nothing", ok);
-    t->p[P_SLEN] = 16;
-    /* a step's GM notes on their lanes */
-    t->step[8] = (step_t){{41, 49, 36, 0}, 3, ST_NOTE, SF_ACCENT, 96, 0, 0};
-    ok = step_lanes(&t->step[8]) == ((1u << DV_TOM) | (1u << DV_BELL) | (1u << DV_KICK)) &&
-         step_accents(&t->step[8]) == step_lanes(&t->step[8]);
-    grid_hit(t, 8, DV_TOM, 0);
-    ok &= t->step[8].n == 1 && t->step[8].note[0] == 49 && t->step[8].hit == 1u << DV_KICK && (t->step[8].flags & SF_ACCENT);
-    grid_acc(t, 8, DV_KICK, 0);
-    ok &= !t->step[8].acc && !(t->step[8].flags & SF_ACCENT) && t->step[8].n == 1 && (step_lanes(&t->step[8]) >> DV_BELL & 1u);
-    grid_acc(t, 8, DV_BELL, 1);
-    ok &= !t->step[8].n && t->step[8].hit == ((1u << DV_KICK) | (1u << DV_BELL)) && t->step[8].acc == 1u << DV_BELL;
-    bad += check("GM notes on the grid: a low tom / crash on their lanes; an edit makes the lane its hit", ok);
-    /* the keys in the audio ISR: on the grid only the lane keys play */
-    kb_prev = 0;
-    fm1_in.notes = (1u << key_at(0, 3)) | (1u << key_at(1, 3)) | (1u << key_at(1, GK_ACC));
-    keyboard_block();
-    ok = kb_note[key_at(0, 3)] == KB_SILENT && kb_note[key_at(1, 3)] == 42u && kb_note[key_at(1, GK_ACC)] == KB_SILENT;
-    fm1_in.notes = 0;
-    keyboard_block();
-    bad += check("grid keys in the ISR: white keys and ACC silent, black key 4 plays HAT CL (42)", ok);
-    /* live recording on the grid: armed and playing, a lane key records its hit at the play head */
-    track_defaults_steps(t);
-    song.rec = 1;
-    song.playing = 1;
-    t->seq_idx = 5;
-    t->seq_pos = 0;
-    fm1_in.notes = 1u << key_at(1, 4);
-    keyboard_block();
-    fm1_in.notes = 0;
-    keyboard_block();
-    ok = t->step[5].hit == 1u << DV_HATO && !t->step[5].n && t->rskip_n == 0u;
-    t->seq_pos = step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), 5) - 10u;   /* late in step 6: into step 7 */
-    fm1_in.notes = 1u << key_at(1, 0);
-    keyboard_block();
-    ok &= t->step[6].hit == 1u << DV_KICK && t->rskip_n == 1u && t->rskip[0] == 36u;
-    rec_hold(t, 7, 16);
-    fm1_in.notes = 0;
-    keyboard_block();
-    ok &= t->step[7].time == ST_REST && !t->rh_n;
-    bad += check("REC on the grid: lane keys record hits, quantised (the next step late), no TIE holds", ok);
-    /* live recording elsewhere (HOME): the GM keys; a lane's note a hit, another GM drum a note */
-    go_home();
-    frame();
-    t->seq_idx = 9;
-    t->seq_pos = 0;
-    fm1_in.notes = (1u << 7) | (1u << 13) | (1u << 6);   /* C 36 KICK, F# 42 HAT CL, E 35 (a kick 2 st down) */
-    keyboard_block();
-    fm1_in.notes = 0;
-    keyboard_block();
-    ok = !song.grid && t->step[9].hit == ((1u << DV_KICK) | (1u << DV_HATC)) && t->step[9].n == 1 && t->step[9].note[0] == 35 &&
-         step_lanes(&t->step[9]) == ((1u << DV_KICK) | (1u << DV_HATC));
-    song.rec = 0;
-    song.playing = 0;
-    bad += check("REC on HOME: GM keys quantised into the grid (35 a note on the KICK lane)", ok);
-    /* SAVE > PHRASES: 12 BEAT into the DRUM track fills the grid */
-    track_defaults_steps(t);
-    pat_sig[0] = steps_sig(t);
-    go_page(GR_PATS);
-    ui.ppick = 11;
-    press(B_OCTUP);
-    ok = msg_is("LOADED 12 BEAT") && t->p[P_SLEN] == 16 && lane_steps(t, DV_KICK) == ((1u << 0) | (1u << 6) | (1u << 8) | (1u << 11)) &&
-         lane_steps(t, DV_SNARE) == ((1u << 4) | (1u << 12)) && lane_steps(t, DV_HATO) == 1u << 14 &&
-         lane_steps(t, DV_HATC) == 0xA6AEu && t->step[0].acc == 1u << DV_KICK && t->step[4].acc == 1u << DV_SNARE &&
-         t->step[1].acc == 0u && t->step[16].time == ST_REST;
-    for (i = 0; i < 16u; i++)
-        ok &= t->step[i].n == 0u && !(t->step[i].flags & SF_ACCENT);
-    bad += check("PATTERNS 12 BEAT into a DRUM track: the grid (hits, the accents on 1 5 9 13)", ok);
-    open_family(FAM_SEQ);
-    ui.lane = DV_KICK;
-    cursor_set(0);
-    leds = grid_leds();
-    ok = 1;
-    for (i = 0; i < 16u; i++)
-        ok &= (leds >> key_at(0, i) & 1u) == ((0x0941u >> i) & 1u);
-    bad += check("..its KICK lane on the white key LEDs (1 7 9 12)", ok);
-    {   /* the sound changes, the grid stays and plays as GM notes on another engine */
-        step_t keep[NSTEP];
-        memcpy(keep, t->step, sizeof keep);
-        go_home();
-        turn(EN_PRESET, 1);
-        set_engine_of(t, 0);
-        t->engine = t->eng_req;
-        ok = !memcmp(keep, t->step, sizeof keep) && !grid_on();
-        t->seq_hold = 0;
-        t->seq_n = 0;
-        seq_step(t, &t->step[0], 0, div_samples((uint32_t)t->p[P_SDIV]), 0);
-        ok &= t->seq_n == 1u && t->seq_notes[0] == 36u;
-        seq_release(t);
-        bad += check("a sound load keeps the grid; on ANALOG its hits play as their GM notes", ok);
-        hold(B_SAVE);                             /* undo the sound loads: DRUM again */
-        set_engine_of(t, ENGI_DRUM);
-        t->engine = t->eng_req;
-    }
-    my_steps(t);
-    go_page(GR_PATS);
-    ui.ppick = 11;
-    press(B_OCTUP);
-    press(B_OCTUP);
-    hold(B_SAVE);
-    bad += check("BEAT over the user's steps: the dialog, then SAVE held brings them back", t->step[0].note[0] == 40 &&
-                 !t->step[0].hit && t->p[P_SLEN] == 32);
-    /* the menu: the keys play again */
-    go_page(GR_ROLL);
-    frame();
-    k = song.grid;
-    hold(B_HOME);
-    frame();
-    bad += check("HOME held (the menu): the keys are no longer the grid's", k == 1u && ui.menu && !song.grid);
-    menu_close();
-    return bad;
-}
 
 static int test_screen(void)
 {
@@ -1599,10 +1308,10 @@ static int test_menu_tabs(void)
             }
     }
     ui_prefs = 0;
-    bad += check("MENU tabs: DISPLAY CONTROL AUDIO MIDI SYSTEM (8 7 6 1 5 rows), 1..8 each in a run, fit the page; tab gaps "
+    bad += check("MENU tabs: DISPLAY CONTROL AUDIO MIDI SYSTEM (8 7 5 1 5 rows), 1..8 each in a run, fit the page; tab gaps "
                  "constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 7u && mtab_rows(MTAB_AUDIO) == 6u &&
+                 mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 7u && mtab_rows(MTAB_AUDIO) == 5u &&
                  mtab_rows(MTAB_MIDI) == 1u && mtab_rows(MTAB_SYSTEM) == 5u && MI_TAB[MI_TUNE] == MTAB_AUDIO &&
                  MI_TAB[MI_MIDIIN] == MTAB_MIDI && MI_TAB[MI_INFO] == MTAB_SYSTEM && MI_INFO >= MI_VALUES);
 
@@ -1819,14 +1528,13 @@ static int test_menu_project_rows(void)
     song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
     project_load(2);
     ok = song.g[G_TUNE] == 19 && song.g[G_ROUTE] == 3 && menu_get(MI_TUNE) == 69u && menu_get(MI_MIDIIN) == 3u;
-    song.g[G_TUNE] = -7; song.g[G_ROUTE] = 4;            /* (another project's values: the rows follow the load) */
-    project_save(3);
-    project_load(2);
-    ok &= song.g[G_TUNE] == 19 && song.g[G_ROUTE] == 3;
-    project_load(3);
+    song.g[G_TUNE] = -7; song.g[G_ROUTE] = 4;            /* (another song's values: the rows follow the load) */
+    project_save(0);
+    song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
+    project_load(0);
     ok &= song.g[G_TUNE] == -7 && song.g[G_ROUTE] == 4 && str_eq(menu_vname(MI_TUNE, menu_get(MI_TUNE)), "-7") &&
           str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "CH13-16");
-    bad += check("TUNE / MIDI IN: saved with the project and loaded back (round trip; each project its own)", ok);
+    bad += check("TUNE / MIDI IN: saved with the song and loaded back (round trip; saved again, the new values)", ok);
     ui_power_on();
     return bad;
 }
@@ -2258,261 +1966,7 @@ static void screen_save(const char *dir, const char *name)
     }
     fclose(f);
 }
-static void chain_screens(const char *dir)
-{
-    uint32_t k;
-    ui_power_on();
-    go_page(GR_SONG);
-    screen_save(dir, "song-empty");
-    for (k = 0; k < 2u; k++) { my_steps(&trk[0]); project_save(k); }
-    chain_config.count = 3;
-    chain_config.row[0] = chain_row_of(0, 2);
-    chain_config.row[1] = chain_row_of(1, 4);
-    chain_config.row[2] = chain_row_of(0, 1);
-    ui.song_row = 1;
-    screen_save(dir, "song-ready");
-    chain_prepare(); events_block(32);
-    screen_save(dir, "song-playing");
-    seq_stop();
-}
 
-static int test_chain(void)
-{
-    uint32_t i, k, period, last, n = 32u;
-    int bad = 0, ok;
-    step_t before[NTRK][NSTEP];
-    int16_t timing[NTRK][4], sounds[NTRK][P_COUNT];
-    ui_power_on();
-    bad += check("SONG empty: PLAY does not start", chain_prepare() == 1 && !transport_req);
-    for (k = 0; k < 2u; k++) {
-        for (i = 0; i < NTRK; i++) {
-            track_defaults_steps(&trk[i]);
-            trk[i].p[P_SLEN] = (int16_t)(2u + k);
-            trk[i].step[0] = (step_t){{(uint8_t)(60u + 5u * k), 0, 0, 0}, 1, ST_NOTE, 0, 96, 0, 0};
-        }
-        project_save(k);
-    }
-    for (i = 0; i < NTRK; i++) {
-        my_steps(&trk[i]);
-        trk[i].p[P_SLEN] = 9;
-        memcpy(before[i], trk[i].step, sizeof before[i]);
-        memcpy(timing[i], &trk[i].p[P_SLEN], sizeof timing[i]);
-        memcpy(sounds[i], trk[i].p, sizeof sounds[i]);
-    }
-    chain_config.count = 2;
-    chain_config.row[0] = chain_row_of(0, 2);
-    chain_config.row[1] = chain_row_of(3, 1);
-    bad += check("SONG missing source: refuses before changing any track", chain_prepare() == 6 && !chain.armed &&
-        !memcmp(trk[0].step, before[0], sizeof before[0]));
-    chain_config.row[1] = chain_row_of(1, 1);
-    project_save(2);
-    chain_defaults(&chain_config);
-    project_load(2);
-    bad += check("SONG rows saved and loaded with their project", chain_config.count == 2 &&
-        chain_config.row[0].repeat == 2 && !memcmp(&chain_config.row[1], &(chain_row_t){{1, 1, 1, 1}, 1}, sizeof(chain_row_t)));
-    song.rec = 3;
-    bad += check("SONG prepares while stopped, no starts over a pending start", chain_prepare() == 0 && chain_prepare() == 2);
-    events_block(n);
-    bad += check("SONG starts all tracks at source step 0, recording paused", chain.running && song.playing &&
-        !song.rec && trk[0].seq_idx == 0 && seq_steps(&trk[0])[0].note[0] == 60 && trk[0].seq_notes[0] == 60);
-    period = div_samples((uint32_t)trk[0].p[P_SDIV]);
-    events_block(period);
-    events_block(period);
-    bad += check("SONG first row repeats without a gap", chain.row == 0 && chain.remaining == 1 && trk[0].seq_idx == 0);
-    events_block(period);
-    events_block(period);
-    ok = chain.row == 1 && chain.remaining == 1;
-    for (i = 0; i < NTRK; i++) {
-        ok &= trk[i].seq_idx == 0 && trk[i].p[P_SLEN] == 3 && seq_steps(&trk[i])[0].note[0] == 65;
-        for (k = 0; k < P_COUNT; k++)
-            if (k < P_SLEN || k > P_SGATE) ok &= trk[i].p[k] == sounds[i][k];
-    }
-    bad += check("SONG row change: four tracks together, sounds unchanged", ok);
-    open_family(FAM_SEQ);
-    for (k = 0; k < NPAGES && cur_page()->scope != SC_STEP; k++) open_family(FAM_SEQ);
-    turn(EN_K2, 1); press(B_EDIT); hold(B_REC); hold(B_SAVE);
-    bad += check("SONG playing: step edits, clears, recording and undo are blocked", !memcmp(trk[0].step, before[0], sizeof before[0]) && !ui.confirm);
-    events_block(period);
-    events_block(period);
-    events_block(period);
-    ok = !song.playing && !chain.running && song.rec == 3;
-    for (i = 0; i < NTRK; i++) ok &= !trk[i].seq_n && !memcmp(trk[i].step, before[i], sizeof before[i]) &&
-        !memcmp(&trk[i].p[P_SLEN], timing[i], sizeof timing[i]);
-    bad += check("SONG end: stops and restores editable patterns, timing and record arms", ok);
-    bad += check("SONG source projects stay unchanged", project_used(0) && project_used(1) && stored_note(0, 0, 0) == 60);
-    chain_config.row[0].repeat = 1;
-    chain_prepare(); events_block(n);
-    trk[0].seq_idx = 1;
-    last = step_samples(&trk[0], div_samples((uint32_t)trk[0].p[P_SDIV]), 1);
-    trk[0].seq_pos = last - n + 19u;
-    events_block(n);
-    ok = chain.row == 1;
-    for (i = 0; i < NTRK; i++) ok &= trk[i].seq_pos == 19u && trk[i].seq_idx == 0;
-    bad += check("SONG transition preserves fractional block time on all tracks", ok);
-    transport_req = 2; events_block(n);
-    bad += check("SONG manual STOP restores the previous pattern", !chain.running && !song.playing && !memcmp(trk[0].step, before[0], sizeof before[0]));
-    chain_prepare(); events_block(n);
-    project_load(0);
-    bad += check("PROJECT load during SONG stops it before loading new timing", !chain.running && !song.playing &&
-        trk[0].p[P_SLEN] == 2 && trk[0].step[0].note[0] == 60 && !chain_config.count);
-    ui_power_on();
-    open_family(FAM_GLO);
-    for (k = 0; k < NPAGES && cur_page()->graph != GR_SONG; k++) open_family(FAM_GLO);
-    press(B_PLAY);
-    bad += check("SONG page (GLO's, 1.2) empty PLAY explains how to start", msg_is("ADD A SECTION") && !transport_req &&
-                 cur_page()->fam == FAM_GLO);
-    turn(EN_K3, 1);
-    bad += check("SONG PAT knob (K3) on + ADD adds the first section: every track on A, one repeat",
-                 chain_config.count == 1 && !memcmp(&chain_config.row[0], &(chain_row_t){{0, 0, 0, 0}, 1}, sizeof(chain_row_t)));
-    turn(EN_K1, 1); turn(EN_K3, 1); turn(EN_K3, 1); turn(EN_K4, 2);
-    bad += check("SONG section, pat and repeat knobs build a chain (the new section a copy, T1 B)",
-                 chain_config.count == 2 && ui.song_row == 1 && !ui.song_trk &&
-                 !memcmp(&chain_config.row[1], &(chain_row_t){{1, 0, 0, 0}, 3}, sizeof(chain_row_t)));
-    turn(EN_K2, 2); turn(EN_K3, 9);
-    bad += check("SONG K2 picks the lane (T3), K3 runs A..D then - (silent)", ui.song_trk == 2 &&
-                 !memcmp(&chain_config.row[1], &(chain_row_t){{1, 0, CHAIN_SILENT, 0}, 3}, sizeof(chain_row_t)));
-    turn(EN_K2, 9); turn(EN_K3, -2);
-    bad += check("SONG K2 stays in T1..T4, K3 back from - to C", ui.song_trk == 3 && chain_config.row[1].slot[3] == 0 &&
-                 chain_config.row[1].slot[2] == CHAIN_SILENT);
-    turn(EN_K3, 2);
-    bad += check("  .. on T4: C", chain_config.row[1].slot[3] == 2);
-    ui.song_trk = 1;
-    k = key_at(0, 3);                                /* B3: the white key place 3, slot B; held over an audio block */
-    fm1_in.notes |= 1u << k; host_notes |= 1u << k; frame(); events_block(32);
-    ok = kb_note[k] == KB_SILENT && song.grid == 3u;
-    fm1_in.notes &= ~(1u << k); frame(); events_block(32);
-    bad += check("SONG white key B (B3) sets the cell's slot, silently; its LED lit", ok && chain_config.row[1].slot[1] == 1 &&
-                 (key_leds(0) >> k & 1u));
-    k = key_at(0, 1);                                /* G3: not one of A..D, it plays */
-    fm1_in.notes |= 1u << k; host_notes |= 1u << k; frame(); events_block(32);
-    ok = kb_note[k] != KB_SILENT;
-    fm1_in.notes &= ~(1u << k); frame(); events_block(32);
-    bad += check("SONG: the other keys play as anywhere", ok && chain_config.row[1].slot[1] == 1);
-    turn(EN_K1, 1); tap_key(key_at(0, 4));           /* (C4 on + ADD: a copy of section 2, its T2 on C) */
-    bad += check("SONG white key C (C4) on + ADD adds a section, a copy with the cell on C", chain_config.count == 3 &&
-                 !memcmp(&chain_config.row[2], &(chain_row_t){{1, 2, CHAIN_SILENT, 2}, 3}, sizeof(chain_row_t)));
-    chain_config.count = 2; ui.song_row = 1; ui.song_trk = 0;
-    turn(EN_K4, 30);
-    project_save(0);
-    chain_config.count = 1;
-    chain_config.row[0] = chain_row_of(0, 1);
-    fm1_in.buttons |= (1u << panel.btn[B_OCTUP]) | (1u << panel.btn[B_OCTDN]);
-    host_pressed |= fm1_in.buttons; frame();
-    fm1_in.buttons = 0; frame();
-    bad += check("SONG OCT chord does not start playback or leave the page", !transport_req && !ui.home);
-    press(B_OCTUP);
-    bad += check("SONG OCT+ on release starts, pending start blocks SAVE", chain.armed && transport_req == 1);
-    project_save(3);
-    bad += check("SONG pending start cannot write a project", msg_is("STOP TO SAVE") && !project_used(3));
-    press(B_PLAY); events_block(32);
-    bad += check("SONG PLAY cancels a pending start", !chain.running && !chain.armed && !song.playing);
-    uint32_t old_count = chain_config.count;
-    ui.song_row = 0;
-    turn(EN_K4, 30);
-    bad += check("SONG K4 on a section: its repeats (at most 16), never the count", chain_config.count == old_count &&
-                 chain_config.row[0].repeat == 16);
-    for (k = chain_config.count; k < CHAIN_ROWS; k++) { turn(EN_K1, 1); turn(EN_K3, 1); }
-    bad += check("SONG append row stays bounded at 16", chain_config.count == CHAIN_ROWS && chain_valid(&chain_config));
-    go_title("TOOLS"); turn(EN_K4, 1); press(B_OCTUP);
-    bad += check("CLEAR SONG requires explicit confirmation", ui.confirm == CF_CLEAR_SONG && chain_config.count == CHAIN_ROWS);
-    press(B_OCTDN);
-    bad += check("cancel preserves the full song", chain_config.count == CHAIN_ROWS);
-    turn(EN_K4, 1); press(B_OCTUP); press(B_OCTUP);
-    bad += check("confirmed CLEAR SONG keeps musical steps", !chain_config.count && !ui.song_row);
-    return bad;
-}
-
-/* SONG's timeline (ui_graph.c song_layout / song_follow / graph_song): widths by bars, the least width, + ADD's slot,
- * the view following the cursor and the playing row, the styles of a slot not saved and of + ADD */
-static int sg_seen(const song_lay_t *L, uint32_t r)  /* row r's block (r == n: + ADD's) wholly in the view */
-{
-    int32_t a = L->x[r], b = r < L->n ? L->x[r + 1u] - SG_GAP : L->x[r] + SG_ADDW;
-    return a >= sgv.off && b <= sgv.off + SG_W;
-}
-static uint16_t sg_px(int32_t x, int32_t y) { return swap16(host_screen[(uint32_t)(Y_GRAPH + y) * 240u + (uint32_t)x]); }
-static int test_song_timeline(void)
-{
-    song_lay_t L;
-    uint32_t k, r;
-    int bad = 0, ok;
-    int32_t w0, w1, w2, x;
-    ui_power_on();
-    trk[0].p[P_SDIV] = 2;                            /* 1/16 */
-    trk[0].p[P_SLEN] = 16; project_save(0);          /* A: 1 bar */
-    trk[0].p[P_SLEN] = 32; project_save(1);          /* B: 2 bars */
-    trk[0].p[P_SLEN] = 1; trk[0].p[P_SDIV] = 3; project_save(2);   /* C: one 1/32, 1/32 bar */
-    fm1_ms += 1000u;                                 /* (the slots read again) */
-    chain_config.count = 3;
-    chain_config.row[0] = chain_row_of(0, 1); chain_config.row[1] = chain_row_of(1, 2); chain_config.row[2] = chain_row_of(0, 1);
-    ui.song_row = 0;
-    go_page(GR_SONG); frame();
-    song_layout(&L);
-    w0 = L.x[1] - L.x[0]; w1 = L.x[2] - L.x[1]; w2 = L.x[3] - L.x[2];
-    bad += check("SONG timeline: 1 + 4 + 1 bars fitted, the widths by bars, + ADD's slot at the end",
-                 L.fit && L.add && L.u0[3] == 6u * SG_BARU && L.x[3] == SG_W - SG_ADDW && L.x[4] == SG_W &&
-                 6 * w1 >= 4 * (SG_W - SG_ADDW) - 6 && 6 * w1 <= 4 * (SG_W - SG_ADDW) + 6 && w0 - w2 <= 1 && w2 - w0 <= 1);
-    chain_config.row[1] = chain_row_of(2, 1);       /* the 1/32 bar between two of 1 bar x 16 */
-    chain_config.row[0].repeat = chain_config.row[2].repeat = 16;
-    song_layout(&L);
-    w0 = L.x[1] - L.x[0]; w1 = L.x[2] - L.x[1];
-    bad += check("SONG timeline: a block far shorter than the rest keeps the least width (its letter)",
-                 L.fit && w1 >= SG_MINW && w1 <= SG_MINW + 1 && L.x[3] == SG_W - SG_ADDW && w0 > 80);
-    chain_config.count = CHAIN_ROWS;                 /* 16 rows of 2 bars x 16: 512 bars, scrolled */
-    for (k = 0; k < CHAIN_ROWS; k++) chain_config.row[k] = chain_row_of(1, 16);
-    song_layout(&L);
-    bad += check("SONG timeline: a long song scrolls (6 px a bar), no + ADD at 16 rows",
-                 !L.fit && !L.add && L.x[1] - L.x[0] == 32 * SG_BAR && L.x[L.n + 1u] == L.x[L.n]);
-    ui_prefs |= PREF_ANIM_OFF;
-    ok = 1;
-    for (r = 0; r < CHAIN_ROWS; r += 3u) {
-        ui.song_row = (uint8_t)r; frame();
-        ok &= sg_seen(&L, r);
-    }
-    ui.song_row = 0; frame();
-    ok &= sgv.off == 0;
-    bad += check("SONG timeline: ANIM OFF, the cursor's block in view at once, every row", ok);
-    ui_prefs &= ~PREF_ANIM_OFF;
-    turn(EN_K1, 15);                                 /* (KNOB 1: the last row) */
-    ok = ui.song_row == 15u && !sg_seen(&L, 15) && sgv.off > 0;   /* on its way */
-    frames(800);
-    bad += check("SONG timeline: ANIM ON, the view glides to the cursor's block, then holds it",
-                 ok && sg_seen(&L, 15) && sgv.off == L.x[L.n + 1u] - SG_W);
-    chain_config.count = 12;                         /* + ADD's slot followed too */
-    song_layout(&L);
-    ui.song_row = 12; frames(800);
-    bad += check("SONG timeline: the cursor on + ADD (after 12 rows): its slot in view", L.add && sg_seen(&L, 12));
-    /* playing: the playing row followed, the cursor after it moves */
-    for (k = 0; k < 12u; k++) chain_config.row[k] = chain_row_of(0, 16);  /* 16 bars each (A saved): scrolled */
-    song_layout(&L);
-    ui.song_row = 0; frames(800);
-    chain_prepare(); events_block(32);
-    for (k = 0; k < 4000u && chain.running && chain.row < 9u; k++) events_block(div_samples(2));
-    frames(800);
-    bad += check("SONG timeline: playing row 10 far from the cursor (row 1): the playing block in view",
-                 chain.running && chain.row == 9u && ui.song_row == 0u && sg_seen(&L, 9) && !sg_seen(&L, 0) &&
-                 song_playx(&L) >= L.x[9] && song_playx(&L) < L.x[10]);
-    turn(EN_K1, 1); frames(800);
-    bad += check("SONG timeline: the cursor moved while playing: its block in view", ui.song_row == 1u && sg_seen(&L, 1));
-    seq_stop(); chain_stop(); frames(100);
-    /* styles: a slot not saved outlined (DIM), the selected one filled (THEME), the others RAISE; + ADD dashed */
-    chain_config.count = 3;
-    chain_config.row[0] = chain_row_of(0, 1); chain_config.row[1] = chain_row_of(3, 1); chain_config.row[2] = chain_row_of(0, 1);
-    ui.song_row = 0; fm1_ms += 1000u; go_page(GR_SONG); frames(100);
-    song_layout(&L);
-    x = SG_X0 + L.x[1] + 4;
-    ok = sg_px(SG_X0 + L.x[0] + 4, SG_Y + SG_LH - 2) == T_THEME && sg_px(SG_X0 + L.x[2] + 4, SG_Y + SG_LH - 2) == T_RAISE;
-    ok &= sg_px(x, SG_Y) == T_DIM && sg_px(x, SG_Y + SG_LH - 3) == T_SURF && sg_px(SG_X0 + L.x[1], SG_Y + 3) == T_DIM;
-    bad += check("SONG timeline: selected THEME, others RAISE, a slot not saved only outlined (DIM)", ok);
-    x = SG_X0 + L.x[3];
-    bad += check("SONG timeline: + ADD's slot dashed (DIM), THEME when selected",
-                 sg_px(x, SG_Y) == T_DIM && sg_px(x + 1, SG_Y) == T_DIM && sg_px(x + 2, SG_Y) == T_SURF &&
-                 sg_px(x + 4, SG_Y) == T_DIM && sg_px(x + 4, SG_Y + 3) == T_SURF);
-    ui.song_row = 3; frames(100);
-    bad += check("SONG timeline: + ADD selected", sg_px(x, SG_Y) == T_THEME && sg_px(x + 2, SG_Y) == T_SURF);
-    chain_defaults(&chain_config);
-    ui.song_row = 0;
-    return bad;
-}
 
 /* Product controls are exercised through the actual button/encoder handlers
  * and canvas, including all pages, both fonts and every shipped palette. */
@@ -2522,7 +1976,7 @@ static int test_song_timeline(void)
  * held undoes it */
 static int test_presets_knob(void)
 {
-    int bad = 0, cur_ok = 1, sel_ok = 1, snd_ok = 1, undo_ok = 1, tools_ok = 1, grid_ok;
+    int bad = 0, cur_ok = 1, sel_ok = 1, snd_ok = 1, undo_ok = 1, tools_ok = 1;
     uint32_t i, n_snd = 0, n_cur = 0;
     for (i = 0; i < NPAGES; i++) {
         track_t before;
@@ -2536,25 +1990,25 @@ static int test_presets_knob(void)
             continue;
         frame();
         before = *TSEL;
-        uslot = ui.uslot; ppick = pat_pick(); slot = song.g[G_SLOT];
+        uslot = ui.uslot; ppick = 0; slot = song.g[G_SLOT];
         turn(EN_PRESET, 1);
         {
             int same_snd = TSEL->preset == before.preset && TSEL->eng_req == before.eng_req &&
                            !memcmp(TSEL->p, before.p, sizeof before.p);
             int same_steps = !memcmp(TSEL->step, before.step, sizeof before.step);
-            if (g == GR_ROLL) {
-                cur_ok &= ui.cursor == 1u && same_snd && same_steps && ui.page == i;
+            if (g == GR_TKPAT) {                       /* (the tracker: the cursor cell's FX command, the last used) */
+                cur_ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_LEVEL && same_snd && ui.page == i;
                 n_cur++;
             } else if (g == GR_USER) {
                 sel_ok &= ui.uslot == uslot + 1u && same_snd && same_steps;
             } else if (g == GR_SLOTS) {
-                sel_ok &= song.g[G_SLOT] == slot + 1 && same_snd && same_steps;
-            } else if (g == GR_PATS) {
-                sel_ok &= pat_pick() == ppick + 1u && same_snd && same_steps;
-            } else if (g == GR_SONG) {
-                sel_ok &= same_snd && same_steps && ui.page == i;
-            } else if (g == GR_EVENTS) {               /* (AUTOMATION: its row, PLAY's to the first record's) */
-                sel_ok &= same_snd && same_steps && ui.page == i && ui.ev_row == 1u;
+                sel_ok &= song.g[G_SLOT] == slot && same_snd && same_steps;   /* (one song: no slot to pick) */
+            } else if (g == GR_TKSONG) {
+                sel_ok &= tku.pos == 1u && same_snd && ui.page == i;
+            } else if (g == GR_TKSET) {
+                sel_ok &= tku.srow == 1u && same_snd && ui.page == i;
+            } else if (g == GR_TKINST) {
+                sel_ok &= tku.slot == 1u && same_snd && ui.page == i;
             } else if (g == GR_TOOLS) {
                 tools_ok &= same_snd && same_steps && !ui.confirm;
             } else {
@@ -2566,23 +2020,12 @@ static int test_presets_knob(void)
             }
         }
     }
-    bad += check("#92 PRESETS on STEP: the step cursor; the sound and the steps stay", cur_ok && n_cur == 1u);
-    bad += check("#94 PRESETS on USER, PROJECT, PHRASES, SONG, AUTOMATION: the selection (KNOB 1's); nothing loaded", sel_ok);
+    bad += check("PRESETS on PATTERN: the FX command of the cursor's cell (the last used); the sound stays", cur_ok && n_cur == 1u);
+    bad += check("#94 PRESETS on USER, PROJECT, SONG, SETTINGS, INSTR: the selection; nothing loaded", sel_ok);
     bad += check("#94 PRESETS on TOOLS does nothing", tools_ok);
     bad += check("#94 PRESETS elsewhere (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, GLOBAL, ...): the next sound, the steps stay",
                  snd_ok && n_snd >= 15u);
     bad += check("#94   SAVE held undoes each of those loads", undo_ok);
-    ui_power_on();
-    set_engine_of(TSEL, ENGI_DRUM);
-    TSEL->engine = TSEL->eng_req;
-    TSEL->p[P_SLEN] = 32;
-    go_page(GR_ROLL);
-    frame();
-    turn(EN_PRESET, 17);
-    grid_ok = grid_on() && ui.cursor == 17u && ui.bank == 1u && TSEL->eng_req == ENGI_DRUM;
-    turn(EN_PRESET, -18);
-    grid_ok &= ui.cursor == 31u;
-    bad += check("#92 the DRUM grid: PRESETS moves the cursor (and the page), as KNOB 1; wraps", grid_ok);
     ui_power_on();
     hold(B_HOME);
     i = ui.menu_sel;
@@ -2605,24 +2048,21 @@ static int steps_but(const track_t *t, const step_t *ref, uint32_t at, const ste
 static uint32_t auto_cur(void) { uint16_t rw[EV_ROWS]; return ev_cur(rw, 0); }
 static int test_page_cycles(void)
 {
-    static const char *const SAVE_CYC[6] = {"USER", "PHRASES", "PROJECT", "TOOLS", "PRESETS", "USER"};
+    static const char *const SAVE_CYC[5] = {"USER", "PROJECT", "TOOLS", "PRESETS", "USER"};
     int bad = 0, ok = 1;
-    uint32_t i, n0;
-    step_t ref[NSTEP], want;
-    int16_t p0[P_COUNT];
-    uint16_t rw[EV_ROWS];
+    uint32_t i;
     /* the cycles: each button's taps, in order */
     ui_power_on();
-    for (i = 0; i < 6u; i++) {
+    for (i = 0; i < 5u; i++) {
         press(B_SAVE); frames(320);
         ok &= !ui.home && cur_page()->fam == FAM_SAVE && str_eq(cur_page()->title, SAVE_CYC[i]);
     }
-    bad += check("1.2: SAVE cycles USER > PHRASES > PROJECT > TOOLS > PRESETS > USER", ok);
+    bad += check("1.5: SAVE cycles USER > PROJECT > TOOLS > PRESETS > USER", ok);
     ok = 1;
     for (i = 0; i < NPAGES; i++) {                       /* every page in a family its button reaches, and its LED */
         uint32_t f = PAGES[i].fam;
-        ok &= f != FAM_SEQ || PAGES[i].graph == GR_ROLL || PAGES[i].graph == GR_EVENTS;
-        ok &= f != FAM_GLO || PAGES[i].graph == GR_SONG;   /* (1.2: GLO's only page) */
+        ok &= f != FAM_SEQ || (PAGES[i].graph >= GR_TKPAT && PAGES[i].graph <= GR_TKINST);   /* (1.5: the tracker) */
+        ok &= f != FAM_GLO;                                /* (1.5: GLO opens the tracker's SONG, SEQ's) */
         ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || str_eq(PAGES[i].title, "CLOCK");   /* HOME's: MIXER CLOCK */
         ok &= PAGES[i].graph != GR_TRK || f == FAM_TRK;
         ui_power_on(); ui.home = 0; ui.page = (uint8_t)i; page_entered();
@@ -2630,9 +2070,9 @@ static int test_page_cycles(void)
                                     f == FAM_SAVE ? B_SAVE : FAM_BTN[f]);
     }
     for (i = 0; i < NPAGES; i++)
-        ok &= !str_eq(PAGES[i].title, "PATTERN") && !str_eq(PAGES[i].title, "CHANCE") && !str_eq(PAGES[i].title, "AUTO LIST");
-    bad += check("1.2: SEQ has STEP and AUTOMATION only; SONG is GLO's only page, PHRASES SAVE's, MIXER and CLOCK HOME's "
-                 "(their LED HOME)", ok);
+        ok &= !str_eq(PAGES[i].title, "STEP") && !str_eq(PAGES[i].title, "AUTOMATION") && !str_eq(PAGES[i].title, "PHRASES");
+    bad += check("1.5: SEQ has PATTERN SONG SETTINGS INSTR (the tracker); no STEP, AUTOMATION, PHRASES; MIXER and CLOCK "
+                 "HOME's (their LED HOME)", ok);
     {   /* 1.2: GLOBAL and SYSTEM are gone; their knobs: BPM SWG CLK on HOME > CLOCK, TUNE and ROUT on no page (the MENU's),
          * MIDI SYNC CPU on none (INFO shows the USB state and the CPU) */
         uint32_t k, clock = 0;
@@ -2655,11 +2095,13 @@ static int test_page_cycles(void)
     ui_power_on();
     for (i = 0; i < NPAGES; i++)
         if (PAGES[i].graph == GR_TRK) ui.fam_last[FAM_GLO] = (uint8_t)i;
-        else if (PAGES[i].graph == GR_PATS) ui.fam_last[FAM_SEQ] = (uint8_t)i;
+        else if (PAGES[i].graph == GR_TKINST) ui.fam_last[FAM_SEQ] = (uint8_t)i;
     ui.fam_last[FAM_SAVE] = 200u;
     ui.fam_last[FAM_ENV] = 250u;
-    open_family(FAM_GLO); ok = str_eq(cur_page()->title, "SONG");
-    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_ROLL;
+    open_family(FAM_GLO); ok = str_eq(cur_page()->title, "SONG") && cur_page()->fam == FAM_SEQ;
+    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TKSET;   /* (the SONG is SEQ's: SEQ goes on round its pages) */
+    go_home();
+    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TKPAT;   /* (1.5: SEQ from elsewhere: PATTERN, always) */
     open_family(FAM_ENV); ok &= str_eq(cur_page()->title, "ENV");
     open_family(FAM_SAVE); ok &= str_eq(cur_page()->title, "USER");
     open_family(FAM_GLO); open_family(FAM_GLO);          /* SONG again (its only page) */
@@ -2674,80 +2116,6 @@ static int test_page_cycles(void)
     bad += check("1.2: a remembered page no longer in its family (or none) lands on the family's first; GLO always SONG, "
                  "HOME always the MIXER first", ok);
 
-    /* AUTOMATION: + ADD CHANCE / RATCH, the knobs, EDIT: the step's fields only */
-    ui_power_on();
-    my_steps(TSEL);
-    memcpy(ref, TSEL->step, sizeof ref);
-    memcpy(p0, TSEL->p, sizeof p0);
-    go_auto_top(); frame();
-    n0 = ev_list(rw);
-    ok = n0 == 3u && rw[0] == EVC(EVK_TOP, 0) && rw[1] == EVC(EVK_QNT, 0) && rw[2] == EVC(EVK_ADD, 0);
-    go_auto_add(EV_CHANCE, 3); frame();
-    press(B_OCTUP);
-    want = ref[3]; step_set_chance(&want, 50);
-    ok &= steps_but(TSEL, ref, 3, &want) && auto_cur() == EVC(EVK_CHANCE, 3) && msg_is("CHANCE ADDED") && !motion_count(TSEL);
-    bad += check("AUTOMATION + ADD CHANCE: step 4's CHANCE 50 %, nothing else; its row selected", ok);
-    turn(EN_K4, 10);
-    want = ref[3]; step_set_chance(&want, 60);
-    ok = steps_but(TSEL, ref, 3, &want);
-    turn(EN_K2, 1);                                     /* to step 5 (at its default): step 4 back to 100 % */
-    want = ref[4]; step_set_chance(&want, 60);
-    ok &= steps_but(TSEL, ref, 4, &want) && auto_cur() == EVC(EVK_CHANCE, 4);
-    bad += check("  KNOB 4 the CHANCE, KNOB 2 moves it to the next step (the old one back to 100 %)", ok);
-    hold(B_SAVE);
-    want = ref[3]; step_set_chance(&want, 60);
-    ok = steps_but(TSEL, ref, 3, &want) && !memcmp(TSEL->p, p0, sizeof p0);
-    hold(B_SAVE);
-    want = ref[4]; step_set_chance(&want, 60);
-    ok &= steps_but(TSEL, ref, 4, &want) && !memcmp(TSEL->p, p0, sizeof p0);
-    bad += check("  SAVE held: the move undone (the sound and LEN untouched); held again: redone", ok);
-    turn(EN_K4, 1000);                                  /* back at 100 %: the row stays while edited */
-    ok = steps_but(TSEL, ref, 0xFFu, 0) && auto_cur() == EVC(EVK_CHANCE, 4);
-    turn(EN_K1, -1);                                    /* (another row: it leaves the list) */
-    ok &= auto_cur() == EVC(EVK_QNT, 0) && ev_list(rw) == 3u;
-    bad += check("  at 100 % it stays listed while edited; another row picked: gone (nothing stored)", ok);
-    memcpy(ref, TSEL->step, sizeof ref);
-    go_auto_add(EV_RATCH, 6); frame();
-    press(B_OCTUP);
-    turn(EN_K4, 1); turn(EN_K4, 1); turn(EN_K4, 1);     /* x2 -> x4 (the end holds) */
-    want = ref[6]; step_set_ratchet(&want, 4);
-    ok = steps_but(TSEL, ref, 6, &want) && auto_cur() == EVC(EVK_RATCH, 6) && step_chance(&TSEL->step[6]) == 100u;
-    hold(B_SAVE);                                       /* the turn (one undo): x2 again */
-    want = ref[6]; step_set_ratchet(&want, 2);
-    ok &= steps_but(TSEL, ref, 6, &want);
-    hold(B_SAVE);
-    press(B_EDIT);                                      /* EDIT: back to x1 */
-    ok &= steps_but(TSEL, ref, 0xFFu, 0) && msg_is("DELETED");
-    hold(B_SAVE);
-    want = ref[6]; step_set_ratchet(&want, 4);
-    ok &= steps_but(TSEL, ref, 6, &want);
-    bad += check("AUTOMATION RATCH: + ADD x2, KNOB 4 to x4, EDIT x1; each one undo (SAVE held), the step's flags only", ok);
-    {   /* the order: PLAY, QUANTIZE, then by step (CHANCE, RATCH, NUDGE, the records), + ADD; a lock on the same step
-         * after them */
-        go_auto_add(EV_CHANCE, 6); frame(); press(B_OCTUP);
-        go_auto_add(EV_NUDGE, 6); frame(); press(B_OCTUP);
-        motion_set_lock(TSEL, 6, P_ATK, 3);
-        motion_set_lock(TSEL, 2, P_ATK, 5);
-        n0 = ev_list(rw);
-        ok = n0 == 8u && rw[0] == EVC(EVK_TOP, 0) && rw[1] == EVC(EVK_QNT, 0) && rw[2] >> 8 == EVK_REC &&
-             rw[3] == EVC(EVK_CHANCE, 6) && rw[4] == EVC(EVK_RATCH, 6) && rw[5] == EVC(EVK_NUDGE, 6) &&
-             rw[6] >> 8 == EVK_REC && rw[7] == EVC(EVK_ADD, 0);
-        go_auto_add(EV_CHANCE, 6); frame(); press(B_OCTUP);
-        ok &= msg_is("ALREADY LISTED") && auto_cur() == EVC(EVK_CHANCE, 6);
-        bad += check("  the rows: PLAY, QUANTIZE, by step (CHANCE, RATCH, NUDGE, then its locks / events), + ADD; one there: "
-                     "ALREADY LISTED", ok);
-        auto_pick(EVC(EVK_NUDGE, 6));
-        press(B_EDIT);                                  /* (the NUDGE out again: the rest as before) */
-        ok = step_nudge(&TSEL->step[6]) == 0;
-        bad += check("  EDIT on the NUDGE row: back to 0", ok);
-    }
-    memcpy(ref, TSEL->step, sizeof ref);
-    chain.running = 1;
-    auto_pick(EVC(EVK_CHANCE, 6));
-    turn(EN_K4, 5); press(B_EDIT);
-    ok = steps_but(TSEL, ref, 0xFFu, 0) && msg_is("STOP TO EDIT");
-    chain.running = 0;
-    bad += check("  while a song plays: STOP TO EDIT, nothing changes", ok);
     return bad;
 }
 
@@ -2762,13 +2130,11 @@ static int test_product_ux(void)
         if (!page_visible(i))
             continue;
         press(B_REC);
-        if (PAGES[i].graph == GR_SONG)
-            ok &= song.rec == 0 && !transport_req && msg_is("[SEQ] TO RECORD");
-        else if (PAGES[i].graph == GR_ROLL)            /* #133: STEP's roll arms step recording, stopped */
+        if (PAGES[i].graph == GR_TKPAT)               /* (the tracker's PATTERN: step entry, stopped) */
             ok &= song.rec == 1 && !transport_req && ui.page == i && !ui.home;
         else ok &= song.rec == 1 && transport_req == 1 && ui.page == i && !ui.home;
     }
-    bad += check("REC stays on every page, SONG stopped asks for pattern recording (STEP: step recording, stopped)", ok);
+    bad += check("REC stays on every page and starts PLAY (PATTERN: step entry, stopped)", ok);
     ui_power_on(); hold(B_HOME); press(B_REC);
     bad += check("REC in the MENU does nothing (the menu stays, no arm, no transport start)",
                  ui.menu == 1 && song.rec == 0 && !transport_req);
@@ -2813,17 +2179,14 @@ static int test_product_ux(void)
     bad += check("1.2: HOME held still opens the menu", ui.menu == 1);
     ui_power_on();
     frames(320);                                       /* (taps further apart than a double tap: #83) */
-    press(B_GLO); frames(320); ok = cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "SONG");
-    press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG") && cur_page()->fam == FAM_GLO && !ui.home;
-    go_title("CLOCK"); press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG");
-    bad += check("1.2: GLO opens SONG directly, again SONG (no GLOBAL, no SYSTEM, no MIXER)", ok);
+    press(B_GLO); frames(320); ok = cur_page()->graph == GR_TKSONG && str_eq(cur_page()->title, "SONG");
+    press(B_GLO); frames(320); ok &= cur_page()->graph == GR_TKSONG && !ui.home;
+    go_title("CLOCK"); press(B_GLO); frames(320); ok &= cur_page()->graph == GR_TKSONG;
+    bad += check("1.5: GLO opens the tracker's SONG directly, again SONG (no GLOBAL, no SYSTEM, no MIXER)", ok);
     go_home(); btn_down(B_SEQ); frames(500);
     ok = ui.layer == LAYER_SEQ && ui.home;
     btn_up(B_SEQ); frame();
     bad += check("1.2: SEQ held on HOME is SEQ TOOLS (no SONG, no tap on release)", ok && ui.home && !ui.layer);
-    go_page(GR_SONG);
-    song.rec = 1; chain.armed = 1; press(B_REC);
-    bad += check("REC cannot write borrowed patterns while SONG is armed", song.rec == 1 && msg_is("STOP TO RECORD"));
     ui_power_on(); open_family(FAM_EDIT);
     ok = 1;
     for (i = 0; i < 8u; i++) { open_family(FAM_EDIT); ok &= page_visible(ui.page) && !(cur_page()->id[0] >= P_FM1_ATK && cur_page()->id[0] <= P_FM4_LEVEL); }
@@ -2844,65 +2207,15 @@ static int test_product_ux(void)
             ok &= !page_visible(i);
     bad += check("DIGITAL retired: engine 1 asked for loads FM6; the OP ENV / OP LEVEL pages never show", ok);
 #endif
-    ui_power_on(); go_auto_add(EV_CHANCE, 0); press(B_OCTUP); turn(EN_K4, 15);
-    bad += check("CHANCE is per step and starts at backward-compatible 100 percent", step_chance(&TSEL->step[0]) == 65 && step_chance(&TSEL->step[1]) == 100);
-    turn(EN_K4, -1000); ok = step_chance(&TSEL->step[0]) == 0;
-    turn(EN_K4, 1000); ok &= step_chance(&TSEL->step[0]) == 100;
-    bad += check("CHANCE controls clamp to 0..100 without changing adjacent steps", ok);
     ui_power_on(); song.rec = 1; seq_start(); go_home();
-    int16_t baseline = TSEL->p[P_E0]; turn(EN_K1, 1);
-    bad += check("REC plus a sound knob records motion through the UI", motion_count(TSEL) == 1 && motion_enabled(TSEL));
-    press(B_PLAY); events_block(32);
-    bad += check("stopping returns the original sound after a recorded knob gesture", TSEL->p[P_E0] == baseline);
-    go_auto_top(); turn(EN_K4, -1);
-    bad += check("#93 the page is AUTOMATION (GR_EVENTS inside)", str_eq(cur_page()->title, "AUTOMATION"));
-    bad += check("MOTION playback OFF preserves its stored events", !motion_enabled(TSEL) && motion_count(TSEL) == 1);
-    press(B_OCTUP);
-    bad += check("MOTION clear always asks confirmation", ui.confirm == CF_CLEAR_MOTION && motion_count(TSEL) == 1);
     {
-        char qa[24], qb[24];
-        confirm_text(qa, qb);
-        bad += check("#93   the dialog asks CLEAR T1 AUTOMATION?", str_eq(qa, "CLEAR T1 AUTOMATION?"));
+        int16_t was = TSEL->p[ENGINES[TSEL->eng_req]->knob[0]];
+        turn(EN_K1, 1);
+        ok = !motion_count(TSEL) && TSEL->p[ENGINES[TSEL->eng_req]->knob[0]] != was && !card_motion(0);
+        press(B_PLAY); events_block(32);
+        ok &= TSEL->p[ENGINES[TSEL->eng_req]->knob[0]] != was;
     }
-    press(B_OCTDN); press(B_OCTUP); press(B_OCTUP);
-    bad += check("confirmed MOTION clear removes events and SAVE hold restores them", motion_count(TSEL) == 0 &&
-                 msg_is("AUTOMATION CLEARED"));
-    hold(B_SAVE);
-    bad += check("motion-clear UNDO restores the recorded events", motion_count(TSEL) == 1);
-    motion_full = 1; frame();
-    bad += check("#93 the events used up: AUTOMATION FULL", msg_is("AUTOMATION FULL") && !motion_full);
-    {   /* #63: a card shows MOTION's icon while the track's motion changes its parameter */
-        uint32_t id = ENGINES[TSEL->eng_req]->knob[0];
-        ui_power_on(); go_home(); frame();
-        ok = !card_motion(0) && !card_motion(1);
-        song.rec = 1; seq_start(); go_home(); turn(EN_K1, 1); frame();
-        ok &= card_motion(0) && !card_motion(1) && !card_motion(2) && !card_motion(3);
-        bad += check("MOTION: a recorded knob marks its HOME card (and no other)", ok && motion_count(TSEL) == 1);
-        song.rec = 0; press(B_PLAY); events_block(32); frame();
-        ok = card_motion(0);
-        go_auto_top(); turn(EN_K4, -1); go_home(); frame();
-        ok &= !card_motion(0) && motion_count(TSEL) == 1;
-        bad += check("MOTION: PLAY OFF takes the icon off the card, the events stay", ok);
-        go_auto_top(); turn(EN_K4, 1); go_home(); frame();
-        ok = card_motion(0);
-        track_select(1); frame();
-        ok &= !card_motion(0);                           /* (another track: its own motion, none) */
-        track_select(0); frame();
-        ok &= card_motion(0);
-        bad += check("MOTION: PLAY ON again shows it; only on the track that has the motion", ok);
-        go_page(GR_TRK); frame();
-        ok = !card_motion(0) && !card_motion(1) && !card_motion(2);
-        motion_set_event(TSEL, 3, P_PAN, 20); frame();
-        ok &= card_motion(1) && !card_motion(0) && !card_motion(2) && !card_motion(3);
-        bad += check("MOTION: a mix parameter's event marks its MIXER card (PAN)", ok);
-        go_auto_top(); press(B_OCTUP); press(B_OCTUP);
-        ok = motion_count(TSEL) == 0;
-        go_home(); frame();
-        ok &= !card_motion(0) && !card_motion(1);
-        go_page(GR_TRK); frame();
-        ok &= !card_motion(1);
-        bad += check("MOTION: CLEAR takes the icon off every card", ok && id < P_COUNT);
-    }
+    bad += check("1.5: REC plus a sound knob records no automation (the tracker's FX column instead); the edit stays", ok);
     ui_power_on(); ui_leds();
     memset(led_pos, 0xFF, sizeof led_pos);
     led_pos[panel.btn[B_PLAY]] = 1; led_pos[panel.btn[B_REC]] = 2;
@@ -3098,21 +2411,19 @@ static int test_layer(void)
     /* combo: a key with FX: at once, silent, no MIDI, no recording, no step */
     ui_power_on();
     usb.config = 1; mo = mo_w;
-    go_page(GR_ROLL); my_steps(TSEL); song.rec = 1; song.playing = 1;
+    go_page(GR_TKPAT); song.rec = 1; song.playing = 1;
     {
-        step_t before[NSTEP];
-        uint32_t cur = ui.cursor;
-        memcpy(before, TSEL->step, sizeof before);
+        uint32_t cur = tku.row;
         btn_down(B_FX); key_down(white(2)); frame();
         ok = ui.layer == LAYER_FX && !gates() && mo_w == mo && (kb_layer >> white(2)) & 1u &&
              (perf_held & PF_BIT(PF_R32));                    /* white key 3 (A3): REPEAT 1/32 */
         for (i = 0; i < 40u; i++) events_block(CTL);
-        ok &= !memcmp(before, TSEL->step, sizeof before) && ui.cursor == cur;
-        bad += check("FX + a key: the map at once; no voice, no MIDI, no recording, no step written", ok);
+        ok &= tk_pat_empty(tk_pl.loop_pat) && tku.row == cur;
+        bad += check("FX + a key: the map at once; no voice, no MIDI, no recording, no cell written", ok);
         key_up(white(2)); frame();
         bad += check("  the key let go: its effect off, no note-off sent", !perf_held && !kb_layer && mo_w == mo);
         btn_up(B_FX); frame();
-        bad += check("  FX let go after a combo: no tap, the map gone", !ui.layer && cur_page()->graph == GR_ROLL);
+        bad += check("  FX let go after a combo: no tap, the map gone", !ui.layer && cur_page()->graph == GR_TKPAT);
     }
     song.playing = 0; song.rec = 0;
     /* FX let go first: the effect stays with its key, the map too; a key pressed now is a note */
@@ -3206,7 +2517,7 @@ static int test_layer(void)
     /* release-act: every page button acts when let go */
     {
         static const uint8_t PB[6] = {B_ENV, B_LFO, B_SCL, B_ARP, B_GLO, B_EDIT};
-        static const uint8_t PF[6] = {FAM_ENV, FAM_LFO, FAM_SCL, FAM_ARP, FAM_GLO, FAM_EDIT};
+        static const uint8_t PF[6] = {FAM_ENV, FAM_LFO, FAM_SCL, FAM_ARP, FAM_SEQ, FAM_EDIT};   /* (GLO: the tracker's SONG) */
         ok = 1;
         for (i = 0; i < 6u; i++) {
             ui_power_on();
@@ -3223,11 +2534,12 @@ static int test_layer(void)
         bad += check("ENV LFO SCL ARP GLO EDIT act when let go, not on press (ENV LFO ARP held long: the same)", ok);
     }
     ui_power_on();
-    go_page(GR_ROLL); my_steps(TSEL); ui.cursor = 0;
+    go_page(GR_TKPAT); tk_put(0, 0, 0, tk_pack(60, 1, 0, 0)); tku.row = 0;
     btn_down(B_EDIT); frame();
-    ok = step_on(&TSEL->step[0]) && ui.cursor == 0;
+    ok = tk_note(tk_at(0, 0, 0)) == 60u && tku.row == 0;
     btn_up(B_EDIT); frame();
-    bad += check("EDIT on STEP clears the step when let go (not on press)", ok && !step_on(&TSEL->step[0]) && ui.cursor == 1);
+    bad += check("EDIT on PATTERN clears the cell when let go (not on press), the cursor a row on",
+                 ok && tk_empty(tk_at(0, 0, 0)) && tku.row == 1);
     ui_power_on(); hold(B_HOME);
     ok = ui.menu == 1; hold(B_HOME); ok &= !ui.menu;
     go_home(); hold(B_SEQ); ok &= ui.home && !ui.layer;
@@ -3477,10 +2789,11 @@ static int test_name(void)
         bad += check("  EDIT renames a project (PNPN); its music unchanged", str_eq(pn, "PNPN") && stored_param(1, 0, P_LEVEL) != 7 &&
                      msg_is("RENAMED (RAM)"));
     }
-    song.g[G_SLOT] = 4;
+    memset(proj_ram_len, 0, sizeof proj_ram_len);       /* (no song stored) */
+    proj_find();
     press(B_EDIT);
-    bad += check("  EDIT on an empty project slot: EMPTY SLOT", !name_on() && msg_is("EMPTY SLOT"));
-    song.g[G_SLOT] = 2;
+    bad += check("  EDIT with no song stored: EMPTY SLOT", !name_on() && msg_is("EMPTY SLOT"));
+    project_save(0);
     press(B_EDIT);
     hold(B_HOME);
     bad += check("  HOME held in NAME: the menu, NAME closed", ui.menu && !name_on());
@@ -4145,33 +3458,6 @@ static int test_bughunt_ui(void)
                  ok && !ui.confirm && !up_used(1));
     turn(EN_K1 + 2, 1); press(B_OCTUP);
     bad += check("  an empty slot: no dialog, EMPTY SLOT", !ui.confirm && msg_is("EMPTY SLOT"));
-    {   /* 4: AUTOMATION (CHANCE's since 1.2) is not STEP: no grid, no key entry, no EDIT clear (its knobs only) */
-        uint32_t before;
-        step_t s0;
-        ui_power_on();
-        track_select(3); frame();                       /* T4 DRUM */
-        go_page(GR_EVENTS); frame();
-        before = lane_steps(TSEL, ui.lane);
-        tap_key(white(2));
-        bad += check("AUTOMATION on a DRUM track: no grid (title, LEDs), a white key toggles no hit",
-                     drum_track(TSEL) && !grid_on() && !keys_mode() && lane_steps(TSEL, ui.lane) == before);
-        ui_power_on(); go_auto_top(); frame();
-        my_steps(TSEL);
-        s0 = TSEL->step[0];
-        tap_key(white(5)); frame();
-        ok = !memcmp(&s0, &TSEL->step[0], sizeof s0) && ui.cursor == 0u;
-        press(B_EDIT);
-        ok &= !memcmp(&s0, &TSEL->step[0], sizeof s0) && !msg_is("STEP CLEARED");
-        ui_power_on(); go_auto_add(EV_CHANCE, 0); frame();
-        s0 = TSEL->step[0];
-        press(B_OCTUP);                                 /* (100 % by default: + ADD CHANCE, 50 %) */
-        bad += check("AUTOMATION on a melodic track: a key writes no step, EDIT clears none; + ADD CHANCE the chance",
-                     ok && step_chance(&TSEL->step[0]) != step_chance(&s0));
-        ui_power_on(); go_page(GR_ROLL); frame(); song.rec = 1;   /* (#133: armed, stopped) */
-        tap_key(white(5)); frame();
-        bad += check("  STEP still: armed, a key writes the cursor step", step_on(&TSEL->step[0]) || TSEL->step[0].n);
-        song.rec = 0;
-    }
     {   /* 5: ALGORITHM does nothing while a layer's button is held (as PRESETS); after it, the track again */
         int16_t r0;
         ui_power_on();
@@ -4191,26 +3477,22 @@ static int test_bughunt_ui(void)
         bad += check("ALGORITHM ignored with a layer's button held (OCT- puts back all); then T2",
                      ok && song.sel == 1u);
     }
-    /* 6: TOOLS: each column its own ready check; nothing to do says so (not STOP TO EDIT) */
+    /* 6: TOOLS (1.5): CLEAR the pattern edited, INIT the sound, NEW song; nothing to clear says so */
     ui_power_on();
     go_title("TOOLS"); frame();
-    chain_defaults(&chain_config);                      /* no song rows */
-    turn(EN_K1 + 2, 1);                                 /* DELETE ROW */
+    turn(EN_K1, 1);                                     /* CLEAR on an empty pattern */
+    ok = !act_ready();
     press(B_OCTUP);
-    ok = !ui.confirm && msg_is("NOTHING TO DELETE") && text_w(&AF_S, ui.msg) <= 236 - 106;   /* (fits the header) */
-    turn(EN_K1 + 3, 1);                                 /* CLEAR SONG */
-    press(B_OCTUP);
-    ok &= !ui.confirm && msg_is("NOTHING TO CLEAR");
-    track_defaults_steps(TSEL);
-    chain_config.count = 1; chain_config.row[0] = chain_row_of(0, 1);
-    turn(EN_K1, 1);                                     /* CLEAR PAT on an empty track, the song with a row */
-    ok &= !act_ready();
-    press(B_OCTUP);
-    ok &= !ui.confirm && msg_is("NOTHING TO CLEAR");
-    turn(EN_K1 + 3, 1);
+    ok &= !ui.confirm && msg_is("NOTHING TO CLEAR") && text_w(&AF_S, ui.msg) <= 236 - 106;   /* (fits the header) */
+    tk_put(0, 3, 0, tk_pack(60, 1, 0, 0));
     ok &= act_ready();
     press(B_OCTUP);
-    bad += check("TOOLS: DELETE ROW / CLEAR SONG / CLEAR PAT with nothing there: NOTHING TO ..; a song: its dialog",
+    ok &= ui.confirm == CF_CLEAR_SEQ;
+    press(B_OCTUP);
+    ok &= !ui.confirm && tk_pat_empty(0) && msg_is("PATTERN CLEARED");
+    turn(EN_K1 + 3, 1);                                 /* NEW */
+    press(B_OCTUP);
+    bad += check("TOOLS: CLEAR an empty pattern: NOTHING TO CLEAR; one with a cell: its dialog, cleared; NEW: its dialog",
                  ok && ui.confirm == CF_CLEAR_SONG);
     /* 7: REC works in the layers, as PLAY: it arms the track (PLAY starts); the layer stays, no page */
     ok = 1;
@@ -4347,98 +3629,6 @@ static int pr_columns_match(const track_t *t, uint32_t *nbars)
     }
     return ok;
 }
-/* 1.2, Discussion #133: step recording on SEQ > STEP. Not armed, the keys only play (being on SEQ writes nothing);
- * REC there arms step recording without starting the transport; armed and stopped a key (keys held together: a
- * chord) writes the cursor step and letting go moves the cursor on one step, wrapping inside LEN; PLAY records live
- * (at the play head, not the cursor). The DRUM grid keeps its own keys (white keys = steps, REC starts PLAY) */
-static int test_step_rec(void)
-{
-    int bad = 0, ok;
-    track_t *t;
-    step_t before[NSTEP];
-    ui_power_on();
-    t = TSEL;
-    t->p[P_VOICE] = V_POLY;
-    track_defaults_steps(t);
-    go_page(GR_ROLL);
-    cursor_set(3);
-    frame();
-    memcpy(before, t->step, sizeof before);
-    key_down(7); frame();
-    ok = kb_chn[7] != 0u;                                             /* it sounds */
-    key_up(7); frame();
-    ok &= !memcmp(before, t->step, sizeof before) && ui.cursor == 3u && !song.rec && !transport_req;
-    bad += check("#133 STEP, not armed, stopped: a key sounds, writes nothing, the cursor stays", ok);
-    song.playing = 1;
-    key_down(7); frame(); key_up(7); frame();
-    song.playing = 0;
-    bad += check("#133 STEP, not armed, playing: nothing written either", !memcmp(before, t->step, sizeof before) &&
-                 ui.cursor == 3u);
-    song.rec = 2u;                                                    /* T2 armed, T1 selected */
-    key_down(7); frame(); key_up(7); frame();
-    bad += check("#133 another track armed: the selected track's STEP writes nothing",
-                 !memcmp(before, t->step, sizeof before) && ui.cursor == 3u);
-    song.rec = 0;
-    press(B_REC);
-    bad += check("#133 REC on STEP arms step recording: stopped, KEYS WRITE STEPS",
-                 song.rec == 1u && !transport_req && !song.playing && !seq_counting() && msg_is("KEYS WRITE STEPS"));
-    key_down(7); frame();
-    ok = t->step[3].n == 1u && t->step[3].note[0] == kb_map(t, 7) && t->step[3].time == ST_NOTE && ui.cursor == 3u;
-    key_up(7); frame();
-    ok &= ui.cursor == 4u && !memcmp(before, t->step, 3u * sizeof before[0]) &&
-          !memcmp(before + 4, t->step + 4, (NSTEP - 4u) * sizeof before[0]);
-    bad += check("#133 armed, stopped: a key writes its note into the cursor step (only), letting go moves on one", ok);
-    key_down(7); frame(); key_down(11); frame(); key_down(14); frame();
-    ok = t->step[4].n == 3u && ui.cursor == 4u;
-    key_up(7); frame();
-    ok &= ui.cursor == 4u;                                            /* (two keys still down: the step stays open) */
-    key_up(11); key_up(14); frame();
-    ok &= ui.cursor == 5u && t->step[4].note[0] == kb_map(t, 7) && t->step[4].note[1] == kb_map(t, 11) &&
-          t->step[4].note[2] == kb_map(t, 14);
-    bad += check("#133 keys held together: one chord step (POLY), the cursor moves on once all are up", ok);
-    t->p[P_VOICE] = V_MONO;
-    key_down(7); frame(); key_down(9); frame(); key_up(7); key_up(9); frame();
-    bad += check("#133 MONO: one note, the last key", t->step[5].n == 1u && t->step[5].note[0] == kb_map(t, 9) &&
-                 ui.cursor == 6u);
-    t->p[P_SLEN] = 8;
-    cursor_set(7);
-    frame();
-    key_down(9); frame(); key_up(9); frame();
-    bad += check("#133 the last step of LEN 8: written, the cursor wraps to step 1", t->step[7].n == 1u && ui.cursor == 0u);
-    cursor_set(4);                                                    /* (an empty step, away from the play head) */
-    step_clear(&t->step[4]);
-    frame();
-    press(B_PLAY);
-    events_block(CTL);
-    ok = song.playing && live_rec_sel() && t->seq_idx < 2u;
-    key_down(7); frame(); key_up(7); frame();
-    ok &= ui.cursor == 4u && !t->step[4].n && !t->step[4].hit && (t->step[0].n || t->step[1].n);
-    bad += check("#133 PLAY with the track armed: live recording at the play head (the cursor and its step stay)", ok);
-    stop_transport();
-    press(B_REC);                                                     /* disarm: the keys only play again */
-    memcpy(before, t->step, sizeof before);
-    key_down(7); frame(); key_up(7); frame();
-    bad += check("#133 REC again disarms: the keys only play, nothing written",
-                 !song.rec && !memcmp(before, t->step, sizeof before) && ui.cursor == 4u);
-    /* the DRUM grid as before: white keys are the steps (armed or not), REC from stop starts PLAY */
-    ui_power_on();
-    t = TSEL;
-    set_engine_of(t, ENGI_DRUM);
-    t->engine = t->eng_req;
-    go_page(GR_ROLL);
-    frame();
-    tap_key(key_at(0, 4));
-    ok = grid_on() && t->step[4].hit != 0u;
-    press(B_REC);
-    ok &= song.rec == 1u && transport_req == 1u && msg_is("LANE KEYS RECORD");
-    transport_req = 0;                                                /* (armed, still stopped) */
-    tap_key(key_at(0, 6));
-    tap_key(key_at(0, 4));
-    ok &= t->step[6].hit != 0u && !t->step[4].hit && ui.cursor == 4u;
-    bad += check("#133 the DRUM grid unchanged: white keys toggle steps armed or not, REC from stop starts PLAY", ok);
-    song.rec = 0;
-    return bad;
-}
 
 /* 1.2: MENU > CONTROL > STEP PREVIEW (Discussion #169) and CHORD ENTRY (#155), MENU > DISPLAY > SCOPE (#165; its sound
  * path: click_test.c). Every new setting 0 by default (today's behaviour), a bit of its own byte */
@@ -4451,219 +3641,7 @@ static uint32_t gated(const track_t *t, uint32_t note)   /* voices of t sounding
 }
 static void blocks(uint32_t n) { while (n--) events_block(CTL); }
 static void tap_k(uint32_t k) { key_down(k); frame(); key_up(k); frame(); }
-static int test_step_preview_chord_entry(void)
-{
-    int bad = 0, ok;
-    track_t *t;
-    step_t before[NSTEP];
-    uint32_t i, rec0, mc0;
-    ui_power_on();
-    ok = !ui_prefs2 && !menu_get(MI_SCOPE) && !menu_get(MI_PREVIEW) && !menu_get(MI_CHADD) && !scope_mix &&
-         str_eq(menu_vname(MI_SCOPE, 0), "OUT") && str_eq(menu_vname(MI_SCOPE, 1), "MIX") &&
-         str_eq(menu_vname(MI_PREVIEW, 1), "ON") && str_eq(menu_vname(MI_CHADD, 0), "HOLD") &&
-         str_eq(menu_vname(MI_CHADD, 1), "ADD") && MI_TAB[MI_SCOPE] == MTAB_DISPLAY && MI_TAB[MI_PREVIEW] == MTAB_CONTROL &&
-         MI_TAB[MI_CHADD] == MTAB_CONTROL;
-    menu_put(MI_SCOPE, 1); ok &= ui_prefs2 == 1u && scope_mix && !ui_prefs && !(ui_rec_prefs & 0x40u);
-    menu_put(MI_PREVIEW, 1); menu_put(MI_CHADD, 1); ok &= ui_prefs2 == 7u;
-    menu_put(MI_SCOPE, 0); menu_put(MI_PREVIEW, 0); menu_put(MI_CHADD, 0); ok &= !ui_prefs2 && !scope_mix;
-    bad += check("1.2 MENU: SCOPE OUT / MIX, STEP PREVIEW OFF / ON, CHORD ENTRY HOLD / ADD: 0 by default, a bit each", ok);
 
-    /* STEP PREVIEW */
-    t = TSEL;
-    t->p[P_VOICE] = V_POLY;
-    track_defaults_steps(t);
-    for (i = 0; i < NSTEP; i++) step_clear(&t->step[i]);
-    t->step[3] = (step_t){{60, 64}, 2, ST_NOTE, 0, 100};
-    t->step[4] = (step_t){{67}, 1, ST_NOTE, 0, 100};
-    t->step[4].probability = 101;                       /* (chance 0: the preview plays it all the same) */
-    go_page(GR_ROLL);
-    cursor_set(2);
-    frame();
-    memcpy(before, t->step, sizeof before);
-    rec0 = song.rec; mc0 = motion.count;
-    turn(EN_K1, 1);
-    blocks(2);
-    ok = ui.cursor == 3u && !aud_req && !gated(t, 128u);
-    bad += check("STEP PREVIEW OFF (the default): moving the cursor sounds nothing", ok);
-    menu_put(MI_PREVIEW, 1);
-    turn(EN_K1, 1);
-    ok = ui.cursor == 4u && aud_req;
-    blocks(1);
-    ok &= gated(t, 67) == 1u && gated(t, 128u) == 1u && !aud_req;
-    turn(EN_K1, -1);
-    blocks(1);
-    ok &= ui.cursor == 3u && gated(t, 60) && gated(t, 64) && !gated(t, 67);
-    blocks(div_samples(2) / CTL + 2u);
-    ok &= !gated(t, 128u);
-    bad += check("STEP PREVIEW ON: KNOB 1 to a step sounds it once on the track (a chord whole; chance not rolled), a 1/16 at GATE", ok);
-    turn(EN_PRESET, 1);
-    blocks(1);
-    ok = ui.cursor == 4u && gated(t, 67) == 1u;
-    blocks(div_samples(2) / CTL + 2u);
-    turn(EN_K1, -3);                                    /* (an empty step: nothing) */
-    blocks(1);
-    ok &= ui.cursor == 1u && !gated(t, 128u);
-    bad += check("STEP PREVIEW: PRESETS moves the cursor too and sounds it; an empty step sounds nothing", ok);
-    ok = !memcmp(before, t->step, sizeof before) && song.rec == rec0 && motion.count == mc0 && !song.playing;
-    bad += check("STEP PREVIEW never writes: the steps, the arming and the motion as they were", ok);
-    song.playing = 1;
-    turn(EN_K1, 2);
-    ok = ui.cursor == 3u && !aud_req;
-    aud_req = (uint16_t)(3u << 8 | 1u);                 /* (one asked for just before PLAY: dropped) */
-    blocks(1);
-    ok &= !aud_req && !gated(t, 60);
-    song.playing = 0;
-    blocks(div_samples(2) / CTL + 2u);
-    song.rec = 1u;                                      /* armed: step recording, stopped: it sounds */
-    turn(EN_K1, 1);
-    blocks(1);
-    ok &= ui.cursor == 4u && gated(t, 67) == 1u && !memcmp(before, t->step, sizeof before);
-    blocks(div_samples(2) / CTL + 2u);
-    tap_k(7);                                           /* step entry's moving on (HOLD): no preview */
-    blocks(1);
-    ok &= ui.cursor == 5u && t->step[4].note[0] == kb_map(t, 7) && !aud_req;
-    song.rec = 0;
-    bad += check("STEP PREVIEW: not while playing (live recording included); armed and stopped it sounds; step entry's move does not", ok);
-    /* the DRUM grid: KNOB 1 STEP sounds the step's hits */
-    ui_power_on();
-    menu_put(MI_PREVIEW, 1);
-    t = TSEL;
-    set_engine_of(t, ENGI_DRUM);
-    t->engine = t->eng_req;
-    go_page(GR_ROLL);
-    frame();
-    tap_key(key_at(0, 2));                              /* a hit at step 3 (the selected lane) */
-    blocks(div_samples(2) / CTL + 2u);
-    for (i = 0; i < NVOICE; i++) t->v[i].active = 0;
-    cursor_set(1);
-    memcpy(before, t->step, sizeof before);
-    turn(EN_K1, 1);
-    ok = grid_on() && ui.cursor == 2u && aud_req && t->step[2].hit;
-    blocks(1);
-    for (i = 0, mc0 = 0; i < NVOICE; i++) mc0 += t->v[i].active;
-    ok &= mc0 >= 1u && !memcmp(before, t->step, sizeof before);
-    bad += check("STEP PREVIEW on the DRUM grid: KNOB 1 to a step sounds its hits, writes nothing", ok);
-    menu_put(MI_PREVIEW, 0);
-
-    /* CHORD ENTRY ADD */
-    ui_power_on();
-    menu_put(MI_CHADD, 1);
-    t = TSEL;
-    t->p[P_VOICE] = V_POLY;
-    track_defaults_steps(t);
-    for (i = 0; i < NSTEP; i++) step_clear(&t->step[i]);
-    t->step[5] = (step_t){{50}, 1, ST_NOTE, 0, 100};
-    go_page(GR_ROLL);
-    cursor_set(3);
-    frame();
-    press(B_REC);
-    ok = song.rec == 1u && !transport_req && !song.playing && msg_is("KEYS ADD TO STEP");
-    bad += check("#155 CHORD ENTRY ADD: REC on STEP arms step recording, KEYS ADD TO STEP", ok);
-    tap_k(7);
-    ok = t->step[3].n == 1u && t->step[3].note[0] == kb_map(t, 7) && t->step[3].time == ST_NOTE && ui.cursor == 3u;
-    tap_k(11); tap_k(14);
-    ok &= t->step[3].n == 3u && t->step[3].note[1] == kb_map(t, 11) && t->step[3].note[2] == kb_map(t, 14) && ui.cursor == 3u;
-    tap_k(16); tap_k(18);
-    ok &= t->step[3].n == 4u && t->step[3].note[3] == kb_map(t, 16) && ui.cursor == 3u;   /* (a 5th: no room) */
-    bad += check("#155 ADD: keys one after another build the cursor step's chord (up to 4), the cursor stays", ok);
-    tap_k(11);
-    ok = t->step[3].n == 3u && t->step[3].note[0] == kb_map(t, 7) && t->step[3].note[1] == kb_map(t, 14) &&
-         t->step[3].note[2] == kb_map(t, 16) && ui.cursor == 3u;
-    tap_k(18);
-    ok &= t->step[3].n == 4u && t->step[3].note[3] == kb_map(t, 18);
-    bad += check("#155 ADD: a key whose note is there takes it out (the others keep their order); then there is room", ok);
-    turn(EN_K1, 2);
-    tap_k(9);
-    ok = ui.cursor == 5u && t->step[5].n == 2u && t->step[5].note[0] == 50u && t->step[5].note[1] == kb_map(t, 9) &&
-         t->step[3].n == 4u && !t->step[4].n;
-    tap_k(9);
-    ok &= t->step[5].n == 1u && t->step[5].note[0] == 50u && t->step[5].time == ST_NOTE;
-    turn(EN_K1, -1);
-    tap_k(9); tap_k(9);
-    ok &= ui.cursor == 4u && !t->step[4].n && t->step[4].time == ST_REST;
-    bad += check("#155 ADD: KNOB 1 moves on; a written step gets notes beside its own; the last one out leaves a REST", ok);
-    t->step[6].time = ST_TIE;
-    turn(EN_K1, 2);
-    tap_k(7);
-    ok = ui.cursor == 6u && t->step[6].time == ST_NOTE && t->step[6].n == 1u;
-    t->p[P_VOICE] = V_MONO;
-    turn(EN_K1, 1);
-    tap_k(7); tap_k(9);
-    ok &= ui.cursor == 7u && t->step[7].n == 1u && t->step[7].note[0] == kb_map(t, 9);
-    tap_k(9);
-    ok &= !t->step[7].n;
-    bad += check("#155 ADD: a TIE step becomes a note step; MONO keeps one note (another key replaces it, the same takes it out)", ok);
-    t->p[P_VOICE] = V_POLY;
-    turn(EN_K1, 1);
-    key_down(7); frame(); key_down(11); frame();       /* keys held together: each adds */
-    key_up(7); key_up(11); frame();
-    ok = ui.cursor == 8u && t->step[8].n == 2u;
-    press(B_EDIT);
-    ok &= !t->step[8].n && ui.cursor == 9u;             /* (EDIT still clears the step and moves on) */
-    bad += check("#155 ADD: keys held together add each; EDIT clears the step and moves on as before", ok);
-    song.rec = 0;
-    memcpy(before, t->step, sizeof before);
-    tap_k(7);
-    bad += check("#155 ADD, not armed: the keys only play, nothing written", !memcmp(before, t->step, sizeof before));
-    menu_put(MI_CHADD, 0);
-    return bad;
-}
-
-static int test_piano_roll(void)
-{
-    int bad = 0, ok;
-    uint32_t i, nb = 0, lo0, steps = 0;
-    track_t *t;
-    ui_power_on();
-    t = TSEL;
-    load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);               /* ACID: A2..A3, ties, accents, slides */
-    t->p[P_ROOT] = 9; t->p[P_SCALE] = 2;
-    go_page(GR_ROLL); ui.cursor = 0; ui.bank = 0;
-    memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
-    ok = pr_columns_match(t, &nb);
-    bad += check("piano roll: ACID's bars drawn at their notes' rows, ties carried, rests empty", ok && nb >= 10u);
-    bad += check("  the view holds the page's notes (A2..A3 in 21 rows), MONO gray", proll.lo <= 45 && proll.lo + PR_ROWS - 1 >= 57 &&
-                 screen_gray());
-    t->p[P_VOICE] = V_POLY;                                           /* chords: up to 4 bars in a column */
-    for (i = 0; i < 16u; i += 4u) {
-        step_t *s = &t->step[i];
-        s->time = ST_NOTE; s->n = 4; s->note[0] = 57; s->note[1] = 60; s->note[2] = 64; s->note[3] = 67;
-        t->step[i + 1u].time = ST_TIE;
-    }
-    nb = 0;
-    memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
-    bad += check("  4-note chords stacked, their ties carry all four", pr_columns_match(t, &nb));
-    for (i = 0; i < NSTEP; i++) {                                     /* LEN 32, page 2 */
-        step_clear(&t->step[i]);
-        if (i >= 16u && i % 2u == 0u) { t->step[i].time = ST_NOTE; t->step[i].n = 1; t->step[i].note[0] = (uint8_t)(72 + i % 7u); }
-    }
-    t->p[P_SLEN] = 32; cursor_set(18);
-    nb = 0;
-    memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
-    bad += check("  LEN 32, the cursor on page 2: its 16 steps drawn", ui.bank == 1u && pr_columns_match(t, &nb) && nb == 8u);
-    lo0 = proll.lo;                                                   /* two octaves up: the view follows in steps */
-    for (i = 16; i < 32u; i++) if (t->step[i].n) t->step[i].note[0] += 24;
-    for (i = 0; i < 20u && proll.lo != lo0 + 24u; i++) { frame(); steps++; }
-    bad += check("  notes moved two octaves: the view follows over frames (not at once), then rests",
-                 proll.lo == lo0 + 24u && steps >= 3u && steps < 20u);
-    {
-        uint32_t sig = ui.graph_sig;
-        frame(); frame();
-        bad += check("  nothing changed: the graph is not drawn again", ui.graph_sig == sig);
-    }
-    nb = 0;
-    bad += check("  after the follow the bars match again", pr_columns_match(t, &nb));
-    song.rec = 1;                                                     /* (#133: armed, the key writes the step) */
-    key_down(7); frames(200);                                         /* a key held: its row lit on the strip */
-    {
-        int32_t r = (int32_t)proll.lo + PR_ROWS - 1 - (int32_t)kb_chord[7][0];
-        uint16_t c = r >= 0 && r < PR_ROWS ? swap16(host_screen[(Y_GRAPH + PR_Y0 + (uint32_t)r * PR_RH + 1u) * 240u + PR_KX + 7]) : 0;
-        bad += check("  a key held: its row on the keyboard strip is the accent", kb_chn[7] && c == T_ACCENT);
-    }
-    key_up(7); frames(100);
-    song.rec = 0;
-    return bad;
-}
 
 /* bug fixes, second round (UI) */
 static uint32_t accent_in(int32_t x0, int32_t y0, int32_t x1, int32_t y1)
@@ -4699,30 +3677,6 @@ static int test_bughunt_ui2(void)
                            : "dead FX held from a dialog: no map, the key plays a note, no effect", ok);
         }
     }
-    {   /* 2. STEP entry with CHRD on writes what the key sounds, as live recording does */
-        static const uint32_t KEY[2] = {7u, 8u};                      /* C4, C#4 (out of C major) */
-        uint32_t v, j, ok = 1;
-        for (v = 0; v < 2u; v++)
-            for (j = 0; j < 2u; j++) {
-                track_t *t;
-                step_t e, r;
-                ui_power_on(); t = TSEL; t->p[P_VOICE] = v ? V_MONO : V_POLY; t->p[P_CHRD] = CH_DIA3; t->p[P_SCALE] = 1;
-                track_defaults_steps(t); go_page(GR_ROLL); cursor_set(0); frame(); song.rec = 1;   /* (#133: armed) */
-                key_down(KEY[j]); frame();
-                e = t->step[0];
-                key_up(KEY[j]); frame(); song.rec = 0;
-                ok &= e.n == (v ? 1u : 3u) && e.note[0] == 60u && (v || (e.note[1] == 64u && e.note[2] == 67u));
-                ui_power_on(); t = TSEL; t->p[P_VOICE] = v ? V_MONO : V_POLY; t->p[P_CHRD] = CH_DIA3; t->p[P_SCALE] = 1;
-                track_defaults_steps(t); go_home(); frame();
-                song.rec = 1; song.playing = 1; t->seq_idx = 3; t->seq_pos = 0;
-                fm1_in.notes = 1u << KEY[j]; keyboard_block();
-                r = t->step[3];
-                fm1_in.notes = 0; keyboard_block();
-                song.rec = 0; song.playing = 0;
-                ok &= r.n == e.n && !memcmp(r.note, e.note, e.n);
-            }
-        bad += check("STEP entry with CHRD: POLY the chord, MONO its root, as live recording writes", ok);
-    }
     {   /* 3. MIXER: the knob just turned is the one drawn in the accent (K1 LEVEL, K2 PAN, K3 REV, K4 the MUTE badge) */
         uint32_t k, a[4][4], ok = 1;
         for (k = 0; k < 4u; k++) {
@@ -4748,21 +3702,22 @@ static int test_bughunt_ui2(void)
         char pn[16];
         uint32_t ok;
         ui_power_on();
-        go_page(GR_SLOTS); song.g[G_SLOT] = 2;
-        project_save_as(1, "OLD");
-        project_save_as(2, "OTHER");
-        project_load(1); frame();
+        go_page(GR_SLOTS);
+        project_save_as(0, "OLD");
+        project_load(0); frame();
         ok = str_eq(proj_name, "OLD");
-        project_rename(2, "ELSE");
-        ok &= str_eq(proj_name, "OLD");                               /* another slot: the music's name stays */
-        press(B_EDIT);                                                /* rename B on the slot list */
+        project_new();
+        project_rename(0, "ELSE");
+        ok &= str_eq(proj_name, "");                                  /* a new song: the stored one's name not its */
+        project_load(0); frame();
+        press(B_EDIT);                                                /* rename the song on the PROJECT page */
         while (nm.len) { nm_do(NB_DEL); }
         nm_white(13); frames(900);
         str_cpy(nm.s, "NEW", sizeof nm.s); nm.len = nm.cur = 3; nm.key = 0;
         press(B_OCTUP);
         project_name(1, pn);
         ok &= str_eq(pn, "NEW") && str_eq(proj_name, "NEW");
-        turn(EN_K4, 1); press(B_OCTUP);                               /* SAVE to B: OVERWRITE? */
+        turn(EN_K4, 1); press(B_OCTUP);                               /* SAVE: OVERWRITE? */
         press(B_OCTUP);                                               /* YES: NAME */
         ok &= name_on() && str_eq(nm.s, "NEW");
         press(B_OCTDN);
@@ -5056,46 +4011,44 @@ static int test_play_leds(void)
     uint32_t i;
     ui_power_on();
     song.sel = 0;
-    t->step[0] = (step_t){.note = {60, 64}, .n = 2, .time = ST_NOTE};
-    t->step[1] = (step_t){.note = {100}, .n = 1, .time = ST_NOTE};
-    trk[1].step[0] = (step_t){.note = {67}, .n = 1, .time = ST_NOTE};
-    t->seq_active = trk[1].seq_active = 1;
+    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));             /* (the tracker: a note per track and row) */
+    tk_put(0, 1, 0, tk_pack(100, 0, 0, 0));
+    tk_put(0, 0, 1, tk_pack(67, 0, 0, 0));
     bad += check("stopped, nothing held: no key lit", key_leds(0) == 0u && play_leds() == 0u);
     seq_start();
     events_block(CTL);
-    bad += check("playing: C4 and E4 of step 1 light keys 8 and 12 (from F3), track 2's G4 does not",
-                 t->seq_n == 2u && trk[1].seq_n == 1u && key_leds(0) == (1u << 7 | 1u << 11));
+    bad += check("playing: row 0's C4 lights key 8 (from F3), track 2's G4 does not",
+                 tk_pl.note[0] == 60u && tk_pl.note[1] == 67u && key_leds(0) == 1u << 7);
     song.sel = 1;
     bad += check("the selected track's notes: track 2's G4 on key 15", play_leds() == 1u << 14);
     song.sel = 0;
     fm1_in.notes = 1u << 0;
-    bad += check("a key held still lights with them", key_leds(0) == (1u << 0 | 1u << 7 | 1u << 11));
+    bad += check("a key held still lights with them", key_leds(0) == (1u << 0 | 1u << 7));
     fm1_in.notes = 0;
     song.octave = -1;
-    ok = play_leds() == (1u << 19 | 1u << 23);
+    ok = play_leds() == 1u << 19;
     song.octave = 1;
-    ok &= play_leds() == 0u;                           /* (C4 and E4 below the keys an octave up) */
+    ok &= play_leds() == 0u;                           /* (C4 below the keys an octave up) */
     song.octave = 0;
     t->p[P_TRANS] = 2;
-    ok &= play_leds() == (1u << 5 | 1u << 9);
+    ok &= play_leds() == 1u << 5;
     t->p[P_TRANS] = 0;
     bad += check("the keys follow the octave and TRN; notes off the keyboard are not shown", ok);
     t->p[P_QUANT] = 1;                                 /* SNAP in C major: C#4 rounds down to C4 too */
     t->p[P_SCALE] = 1;
     t->p[P_ROOT] = 0;
-    ok = kb_map(t, 8) == 60u && play_leds() == (1u << 7 | 1u << 11);
+    ok = kb_map(t, 8) == 60u && play_leds() == 1u << 7;
     t->p[P_QUANT] = t->p[P_SCALE] = 0;
     bad += check("QNT SNAP: only the key of the note itself lights, not the keys rounding onto it", ok);
     t->arp_note = 65;
-    bad += check("the ARP's note lights its key too", play_leds() == (1u << 7 | 1u << 11 | 1u << 12));
+    bad += check("the ARP's note lights its key too", play_leds() == (1u << 7 | 1u << 12));
     t->arp_note = 0;
-    events_block(div_samples((uint32_t)t->p[P_SDIV]) + CTL);
-    bad += check("a note above the keyboard (G#7) lights nothing", t->seq_n == 1u && t->seq_notes[0] == 100u &&
-                 play_leds() == 0u);
+    events_block(div_samples(2) + CTL);
+    bad += check("a note above the keyboard (E7, row 1) lights nothing", tk_pl.note[0] == 100u && play_leds() == 0u);
     transport_req = 2;
     events_block(CTL);
     bad += check("stopped: the notes end, their keys go dark", !song.playing && key_leds(0) == 0u);
-    /* the layer, the grid and NAME keep their keys */
+    /* the layer keeps its keys; a kit's hit lights the key that plays it */
     seq_start();
     events_block(CTL);
     ui.layer = 1;
@@ -5103,80 +4056,16 @@ static int test_play_leds(void)
     ui.layer = 0;
     set_engine_of(t, ENGI_DRUM);
     t->engine = t->eng_req;
-    t->step[0] = (step_t){.hit = 1u << DV_KICK, .time = ST_NOTE};
+    tk_put(0, 0, 0, tk_pack(DRUM_LANE_NOTE[DV_KICK], 0, 0, 0));
     transport_req = 2; events_block(CTL);
     seq_start(); events_block(CTL);
     i = play_leds();
-    ok &= t->seq_n == 1u && i != 0u && kb_map(t, (uint32_t)__builtin_ctz(i)) == DRUM_LANE_NOTE[DV_KICK];
-    open_family(FAM_SEQ);
-    frame();
-    ok &= grid_on() && key_leds(0) == grid_leds();
-    bad += check("the layer's map and the DRUM grid keep their keys; elsewhere a kit's hits light the keys that play them", ok);
+    ok &= i != 0u && kb_map(t, (uint32_t)__builtin_ctz(i)) == DRUM_LANE_NOTE[DV_KICK];
+    bad += check("the layer's map keeps its keys; a kit's hit lights the key that plays it", ok);
     transport_req = 2; events_block(CTL);
     return bad;
 }
 
-/* Discussion #89: on SEQ > STEP (the piano roll) while stopped the keys of the cursor step's notes light, at the
- * octave now (the lowest key that gives each); with the keys held; playing, what plays instead (#38); not on
- * other pages, not for a REST step; the DRUM grid keeps its own map */
-static int test_cursor_step_leds(void)
-{
-    int bad = 0, ok;
-    track_t *t;
-    ui_power_on();
-    song.sel = 0;
-    t = TSEL;
-    t->step[0] = (step_t){.note = {60, 64}, .n = 2, .time = ST_NOTE};
-    t->step[1] = (step_t){.note = {100}, .n = 1, .time = ST_NOTE};
-    t->step[2] = (step_t){.note = {62}, .n = 1, .time = ST_REST};
-    t->step[3] = (step_t){.note = {67}, .n = 1, .time = ST_TIE};
-    t->seq_active = 1;
-    bad += check("#89 HOME, stopped: no step's keys lit", key_leds(0) == 0u);
-    go_page(GR_ROLL);
-    frame();
-    bad += check("#89 STEP, stopped: the cursor step's C4 and E4 light keys 8 and 12",
-                 ui.cursor == 0u && key_leds(0) == (1u << 7 | 1u << 11));
-    song.octave = -1;
-    ok = key_leds(0) == (1u << 19 | 1u << 23);
-    song.octave = 1;
-    ok &= key_leds(0) == 0u;                            /* (below the keys an octave up) */
-    song.octave = 0;
-    bad += check("#89 the step's keys follow the octave; notes off the keyboard are not shown", ok);
-    fm1_in.notes = 1u << 0;
-    bad += check("#89 a key held lights with them", key_leds(0) == (1u << 0 | 1u << 7 | 1u << 11));
-    fm1_in.notes = 0;
-    turn(EN_K1, 1);
-    ok = ui.cursor == 1u && key_leds(0) == 0u;          /* G#7: off the keyboard */
-    turn(EN_K1, 1);
-    ok &= ui.cursor == 2u && key_leds(0) == 0u;         /* a REST */
-    turn(EN_K1, 1);
-    ok &= ui.cursor == 3u && key_leds(0) == 1u << 14;   /* a TIE carries its G4 */
-    turn(EN_K1, 1);
-    ok &= ui.cursor == 4u && key_leds(0) == 0u;         /* empty */
-    bad += check("#89 KNOB 1 moves the cursor and the keys follow its step (REST, empty, off the keys: dark)", ok);
-    turn(EN_K1, -4);
-    seq_start();
-    events_block(CTL);
-    bad += check("#89 playing: the keys show what plays, not the cursor step", song.playing && ui.cursor == 0u &&
-                 key_leds(0) == play_leds());
-    turn(EN_K1, 3);
-    bad += check("#89   (the cursor on G4's step changes nothing while playing)", key_leds(0) == play_leds() &&
-                 !((key_leds(0) >> 14) & 1u));
-    transport_req = 2;
-    events_block(CTL);
-    frame();
-    bad += check("#89 stopped again: the cursor step's keys", !song.playing && key_leds(0) == 1u << 14);
-    go_page(GR_EVENTS);
-    frame();
-    bad += check("#89 AUTOMATION (same cursor): no step keys", key_leds(0) == 0u);
-    set_engine_of(t, ENGI_DRUM);
-    t->engine = t->eng_req;
-    t->step[0] = (step_t){.hit = 1u << DV_KICK, .time = ST_NOTE};
-    go_page(GR_ROLL);
-    frame();
-    bad += check("#89 the DRUM grid keeps its map", grid_on() && key_leds(0) == grid_leds());
-    return bad;
-}
 
 /* Discussion #81: the notes MIDI IN holds on the selected track light their keys as the sequencer's do: USB and TRS,
  * routed by ROUT; at the octave now, the lowest key; off the keyboard nothing; the pedal holds them; the layer's map
@@ -5253,26 +4142,21 @@ static int test_midi_leds(void)
     usb_note(0, 60, 100);
     ok = key_leds(0) == (1u << 0 | 1u << 7);
     fm1_in.notes = 0;
-    trk[0].step[0] = (step_t){.note = {64}, .n = 1, .time = ST_NOTE};
-    trk[0].seq_active = 1;
+    tk_put(0, 0, 0, tk_pack(64, 0, 0, 0));             /* (the tracker's row 0) */
     seq_start();
     events_block(CTL);
     ok &= key_leds(0) == (1u << 7 | 1u << 11);
-    bad += check("  with a key held and the sequencer's notes: all of them lit", ok);
+    bad += check("  with a key held and the tracker's notes: all of them lit", ok);
     ui.layer = LAYER_SCL;
     {
         uint32_t b1, b2;
         ok = key_leds(&b1) == layer_leds(&b2) && b1 == b2 && b1;
     }
     ui.layer = 0;
-    open_family(FAM_SEQ);                              /* STEP on a melodic track: the keys as elsewhere */
+    open_family(FAM_SEQ);                              /* PATTERN: the keys as elsewhere */
     frame();
     ok &= !grid_on() && (key_leds(0) & (1u << 7));
-    set_engine_of(&trk[0], ENGI_DRUM);
-    trk[0].engine = trk[0].eng_req;
-    frame();
-    ok &= grid_on() && key_leds(0) == grid_leds();
-    bad += check("  the layer's map and the DRUM grid keep their keys over the MIDI notes", ok);
+    bad += check("  the layer's map keeps its keys over the MIDI notes; PATTERN shows them", ok);
     transport_req = 2;
     events_block(CTL);
     usb_note(0, 60, 0);
@@ -5464,150 +4348,6 @@ static uint32_t step_keys(uint32_t steps)
             m |= 1u << k;
     return m;
 }
-static int test_step_leds(void)
-{
-    static const int8_t MAP[6][FM1_NCOL] = {     /* (hal/fm1_input.h FM1_KEYMAP; the host stub is zero) */
-        {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-        { 5, 11,  4, 10,  3,  9,  2,  8, -1, -1, -1},
-        {34, 35, 36, 37, 38, 40, 39, 13,  7,  6, 12},
-        {23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33},
-        { 0,  1, 15, 14, 17, 16, 19, 18, 20, 21, 22},
-        {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    };
-    static const uint8_t MODES[LEDS_COUNT] = {LEDS_OFF, LEDS_DIM_LO, LEDS_DIM, LEDS_INV};
-    int bad = 0;
-    uint32_t id, p, r, mi, drum, run, k;
-    ui_power_on();
-    ui_leds();
-    for (id = 0; id < 41u; id++) {
-        led_pos[id] = 0xFF;
-        for (p = 0; p < FM1_NCOL; p++)
-            for (r = 1; r < 5u; r++)
-                if (MAP[r][p] == (int8_t)id)
-                    led_pos[id] = (uint8_t)(p << 3 | r);
-    }
-    for (drum = 0; drum < 2u; drum++)
-        for (run = 0; run < 2u; run++)
-            for (mi = 0; mi < LEDS_COUNT; mi++) {
-                uint32_t m = MODES[mi], glow = m == LEDS_DIM || m == LEDS_DIM_LO, keys_lit = 0, keys_dim = 0, btn_bad = 0;
-                uint32_t want_dim = 0, kc, keys;
-                char what[128];
-                ui_power_on();
-                song.sel = 0;
-                if (drum) {
-                    set_engine_of(TSEL, ENGI_DRUM);
-                    TSEL->engine = TSEL->eng_req;
-                    TSEL->p[P_SLEN] = 16;
-                    TSEL->step[2] = (step_t){.hit = 1u << DV_KICK, .time = ST_NOTE};   /* one hit, on step 3 */
-                } else {
-                    TSEL->step[0] = (step_t){.note = {60}, .n = 1, .time = ST_NOTE};   /* C4 on step 1 */
-                }
-                TSEL->seq_active = 1;
-                settings_leds = (uint8_t)m;
-                open_family(FAM_SEQ);
-                frame();
-                for (k = 0; k < NPAGES && cur_page()->graph != GR_ROLL; k++) {
-                    open_family(FAM_SEQ);
-                    frame();
-                }
-                if (run) {
-                    seq_start();
-                    events_block(CTL);
-                }
-                ui_leds();
-                for (k = 0; k < NB; k++) {                  /* a button: lit if active, else glow / dark / lit */
-                    uint8_t q = led_pos[panel.btn[k]];
-                    uint32_t lit = (fm1_led[q >> 3] >> (q & 7u)) & 1u, dim = (fm1_led_dim[q >> 3] >> (q & 7u)) & 1u;
-                    int active = k == B_SEQ || (k == B_PLAY && run);
-                    btn_bad += m == LEDS_INV ? lit == (uint32_t)active || dim :
-                               active ? (k == B_PLAY ? lit || dim : !lit) : lit || dim != glow;
-                }
-                keys = key_leds(0);
-                for (k = 0; k < 27u; k++) {
-                    uint8_t q = led_pos[14u + k];
-                    keys_lit += (fm1_led[q >> 3] >> (q & 7u)) & 1u;
-                    keys_dim += ((fm1_led_dim[q >> 3] & ~fm1_led[q >> 3]) >> (q & 7u)) & 1u;
-                }
-                kc = (uint32_t)__builtin_popcount(keys);
-                if (glow)
-                    want_dim = (uint32_t)__builtin_popcount((drum ? grid_glow() : 0x7FFFFFFu) & ~keys);
-                else if (drum)                              /* (OFF, INV: the grid's beats alone glow) */
-                    want_dim = (uint32_t)__builtin_popcount(grid_beats() & ~keys);
-                snprintf(what, sizeof what, "STEP %s, %s, LEDS %s: buttons and keys as the mode says (%u lit, %u glow)",
-                         drum ? "DRUM grid" : "piano roll", run ? "playing" : "stopped", LEDS_NAME[m],
-                         (unsigned)keys_lit, (unsigned)keys_dim);
-                bad += check(what, !btn_bad && host_dim_lo == (m == LEDS_DIM_LO) &&
-                                       grid_on() == (int)drum && (!run || kc) &&
-                                       keys_dim == want_dim && keys_lit == (m == LEDS_INV && !drum ? 27u - kc : kc) &&
-                                       (!glow || keys_lit + keys_dim >= 25u) &&
-                                       ((fm1_led[LED_PLAY_GREEN >> 3] >> (LED_PLAY_GREEN & 7u)) & 1u) == run);
-                bad += check("  the mid level: the grid's beats in DIM HI / LO only, never a lit key",
-                             lit_keys(fm1_led_mid) == (glow && drum ? grid_beats() & ~keys : 0u) &&
-                             !(lit_keys(fm1_led_mid) & lit_keys(fm1_led)));
-                if (run) {
-                    transport_req = 2;
-                    events_block(CTL);
-                }
-            }
-    {   /* the DRUM grid's beats (ui_input.c grid_beats): "5111 5111 5111 5111", the first step of each four brighter
-         * where no hit shows, the hits lit and the playhead as before; LEN cuts them, a page shows its own; groups of
-         * four whatever LEN / DIV; DIM HI / LO: fm1_led_mid over the glow, OFF / INV: the glow alone */
-        uint32_t want, beats, keys, kick = 1u << DV_KICK, ok = 1, mi;
-        for (mi = 0; mi < LEDS_COUNT; mi++) {
-            uint32_t m = MODES[mi], glow = m == LEDS_DIM || m == LEDS_DIM_LO;
-            char what[128];
-            ui_power_on();
-            song.sel = 0;
-            set_engine_of(TSEL, ENGI_DRUM);
-            TSEL->engine = TSEL->eng_req;
-            TSEL->p[P_SLEN] = 16;
-            TSEL->step[4] = (step_t){.hit = kick, .time = ST_NOTE};   /* a kick on step 5 (a beat) and on step 3 */
-            TSEL->step[2] = (step_t){.hit = kick, .time = ST_NOTE};
-            TSEL->seq_active = 1;
-            settings_leds = (uint8_t)m;
-            open_family(FAM_SEQ);
-            frame();
-            for (k = 0; k < NPAGES && cur_page()->graph != GR_ROLL; k++) {
-                open_family(FAM_SEQ);
-                frame();
-            }
-            ui.lane = 0;
-            ui_leds();
-            keys = key_leds(0);
-            beats = grid_beats();
-            want = step_keys(1u << 0 | 1u << 8 | 1u << 12);   /* steps 1, 9, 13 (5 holds a hit: lit) */
-            ok = beats == want && (keys & step_keys(1u << 4 | 1u << 2)) == step_keys(1u << 4 | 1u << 2) &&
-                 lit_keys(fm1_led_mid) == (glow ? want : 0u) && (lit_keys(fm1_led_dim) & want) == want &&
-                 (glow || !(lit_keys(fm1_led_dim) & ~want)) && host_dim_lo == (m == LEDS_DIM_LO);
-            snprintf(what, sizeof what, "DRUM grid beats, LEDS %s: steps 1 9 13 %s, the hits 3 5 lit", LEDS_NAME[m],
-                     glow ? "at the mid level over the glow" : "glow (nothing else does)");
-            bad += check(what, ok);
-            if (m != LEDS_DIM)
-                continue;
-            ui.lane = 1;                                /* another lane: none of its hits there, 1 5 9 13 */
-            ok = grid_beats() == step_keys(0x1111u);
-            ui.lane = 0;
-            TSEL->p[P_SLEN] = 12;                       /* LEN 12 (3/4): 1 5 9; 13 is past it */
-            ok &= grid_beats() == step_keys(1u << 0 | 1u << 8);
-            TSEL->p[P_SLEN] = 16; TSEL->p[P_SDIV] = 4;  /* (DIV changes nothing: steps are counted) */
-            ok &= grid_beats() == want;
-            song.playing = 1; TSEL->seq_idx = 8;        /* the playhead on step 9: it lights it, no mid there */
-            ui_leds();
-            ok &= grid_beats() == step_keys(1u << 0 | 1u << 12) && (lit_keys(fm1_led) & step_keys(1u << 8)) &&
-                  !(lit_keys(fm1_led_mid) & step_keys(1u << 8));
-            song.playing = 0;
-            TSEL->p[P_SLEN] = 32;                       /* page 2: its own steps 17 21 25 29 */
-            TSEL->step[20] = (step_t){.hit = kick, .time = ST_NOTE};
-            ui.bank = 1; ui.cursor = 16;
-            ok &= grid_beats() == step_keys(1u << 0 | 1u << 8 | 1u << 12);
-            bad += check("  another lane, LEN 12, DIV, the playhead, page 2: the beats as the steps show", ok);
-        }
-    }
-    settings_leds = LEDS_DIM;
-    led_pos_init();
-    ui_power_on();
-    return bad;
-}
 
 /* Discussion #127 (1.2): MENU > SCALE LEDS ON, outside the keys' own maps the keys of the selected track's scale glow
  * (the others dark), the root's at the mid level; the keys held / playing lit over it; LEDS OFF / DIM LO / DIM HI
@@ -5749,13 +4489,13 @@ static int test_momentary(void)
         ok &= TSEL->p[id0] == after;
     }
     bad += check("  a sound load with LFO held: the values back first (the undo copy is the sound as it was), the load stays", ok);
-    /* STEP: the knobs edit the step as ever (no momentary) */
-    for (k = 0; k < NPAGES && cur_page()->graph != GR_ROLL; k++) { open_family(FAM_SEQ); frame(); }
+    /* the tracker's PATTERN: the knobs edit the cell as ever (no momentary) */
+    go_home(); open_family(FAM_SEQ); frame();
     btn_down(B_LFO); frame();
     turn(EN_K2, 1);
-    ok = !mom.n;
+    ok = !mom.n && tk_note(tk_at(tk_pl.loop_pat, tku.row, song.sel)) != 0u;
     btn_up(B_LFO); frame();
-    bad += check("  on STEP (and the action pages, the lists) the knobs act as ever", ok && cur_page()->graph == GR_ROLL);
+    bad += check("  on PATTERN (and the action pages, the lists) the knobs act as ever", ok && cur_page()->graph == GR_TKPAT);
     /* a layer: its knobs */
     go_home();
     v0 = TSEL->p[id0];
@@ -5947,10 +4687,6 @@ static int test_screen_off(void)
     scr_idle(20u * 60000u);
     ok = host_pw_n == n && host_bl;
     ui.confirm = 0; ui.force = 1;
-    cin_left = 1000u;                                 /* the count-in */
-    scr_idle(20u * 60000u);
-    ok &= host_pw_n == n && host_bl;
-    cin_left = 0;
     scr_idle(6u * 60000u);
     ok &= host_pw_n == n + 1u && !host_bl;
     ui.confirm = CF_CLEAR_SEQ; ui.force = 1;          /* one opening while dark (the editor, MIDI): it wakes */
@@ -5967,7 +4703,7 @@ static int test_screen_off(void)
     n = host_pw_n;
     scr_wake_now();                                   /* main.c: the crash screen, UPDATE, UBOOT */
     ok &= host_pw_n == n + 1u && host_pw[n] == 3u && host_bl && scrn.st == SCR_ON;
-    bad += check("SCREEN OFF: a dialog, the count-in, UPDATE MODE keep it on and wake it; the crash screen at once", ok);
+    bad += check("SCREEN OFF: a dialog, UPDATE MODE keep it on and wake it; the crash screen at once", ok);
 
     {   /* the setting with the settings: SCR_CODE in favorites.factory[15][27]; 1.1.5's codes: 0 (its 30 MIN, its
          * default) now NEVER, 3 (its NEVER) NEVER, 2 1 7 as they were; 30 MIN is 4 now; unknown NEVER */
@@ -6111,16 +4847,7 @@ static int test_scale_leds(void)
     sc = scale_leds(&root);
     ui_leds();
     ok &= !sc && !root && lit_keys(fm1_led_dim) == ALL && !lit_keys(fm1_led_mid);
-    open_family(FAM_SEQ);
-    frame();
-    for (k = 0; k < NPAGES && cur_page()->graph != GR_ROLL; k++) {
-        open_family(FAM_SEQ);
-        frame();
-    }
-    ui_leds();
-    ok &= grid_on() && lit_keys(fm1_led_dim) == grid_glow() &&
-          lit_keys(fm1_led_mid) == (grid_beats() & ~key_leds(0));
-    bad += check("#127 a layer, a DRUM track (its keys as before) and the DRUM grid keep their own LEDs", ok);
+    bad += check("#127 a layer and a DRUM track (its keys as before) keep their own LEDs", ok);
     menu_put(MI_SCLLED, 0);
     ok = !(ui_rec_prefs & 0x40u) && !scale_leds(&root);
     bad += check("#127 SCALE LEDS OFF again: the bit clears", ok);
@@ -6131,40 +4858,6 @@ static int test_scale_leds(void)
     return bad;
 }
 
-/* #37: QNT SEQ on the SCL page: the keys as SNAP, the sequence snapped as it plays, saved with the project */
-static int test_seq_quant(void)
-{
-    int bad = 0, ok;
-    track_t *t = &trk[0];
-    char val[16];
-    const char *unit = 0;
-    ui_power_on();
-    song.sel = 0;
-    open_family(FAM_SCL);
-    frame();
-    ok = cur_page()->id[2] == P_QUANT && t->p[P_QUANT] == 0;
-    turn(EN_K3, 10);
-    param_format(&TP[P_QUANT], t->p[P_QUANT], val, &unit);
-    bad += check("SCL KNOB 3 QNT: OFF SNAP WHITE SEQ, SEQ last (default OFF)", ok && t->p[P_QUANT] == 3 &&
-                 str_eq(val, "SEQ"));
-    t->p[P_SCALE] = 1;
-    t->p[P_ROOT] = 0;
-    ok = kb_map(t, 8) == 60u && kb_map(t, 7) == 60u;   /* C#4 key -> C4, as SNAP */
-    t->step[0] = (step_t){.note = {61, 66}, .n = 2, .time = ST_NOTE};
-    t->seq_active = 1;
-    seq_start();
-    events_block(CTL);
-    ok &= t->seq_n == 2u && t->seq_notes[0] == 60u && t->seq_notes[1] == 65u && t->step[0].note[0] == 61u &&
-          t->step[0].note[1] == 66u;
-    transport_req = 2;
-    events_block(CTL);
-    bad += check("QNT SEQ: the keys snap as SNAP; C#4 F#4 of a step play C4 F4 in C major, the step keeps C#4 F#4", ok);
-    project_save(1);
-    t->p[P_QUANT] = 0;
-    project_load(1);
-    bad += check("QNT SEQ saved and loaded with the project", trk[0].p[P_QUANT] == 3);
-    return bad;
-}
 
 /* #39: KNOB 1..4 with a layer's button held are the layer's only, also as it is let go: a knob turned in the frame
  * the button is let go, while its map still shows (an effect key held after FX), or just after: the page under the
@@ -6345,8 +5038,8 @@ static int test_layer_knob_race(void)
                     if (pg < NPAGES && !page_visible(pg))
                         continue;
                     if (mode == 2u && LB[l] == B_EDIT && pg < NPAGES &&   /* (EDIT's tap acts there: no lock) */
-                        (PAGES[pg].graph == GR_USER || PAGES[pg].graph == GR_SLOTS || PAGES[pg].graph == GR_ROLL ||
-                         PAGES[pg].graph == GR_EVENTS))
+                        (PAGES[pg].graph == GR_USER || PAGES[pg].graph == GR_SLOTS ||
+                         (PAGES[pg].graph >= GR_TKPAT && PAGES[pg].graph <= GR_TKINST)))
                         continue;
                     rc_run(LB[l], mode, k, pg, 0, &a0, &b0);
                     rc_run(LB[l], mode, k, pg, 1, &a1, &b1);
@@ -6486,236 +5179,6 @@ static void tl_drum(void)
     TSEL->p[P_SLEN] = 16;
 }
 
-static int test_seq_tools(void)
-{
-    int bad = 0, ok, okc;
-    uint32_t i, k, a, b2, pg, seed;
-    step_t ref[NSTEP], mid[NSTEP];
-
-    /* where it opens (1.2): every page; up to 1.1.5 away from the SEQ pages SEQ held opened SONG */
-    ok = 1;
-    for (i = 0; i <= NPAGES; i++) {
-        ui_power_on();
-        if (i == NPAGES) go_home(); else { ui.home = 0; ui.page = (uint8_t)i; page_entered(); }
-        if (i < NPAGES && !page_visible(i))
-            continue;
-        frame();
-        pg = ui.page;
-        btn_down(B_SEQ); frames(500);
-        ok &= ui.layer == LAYER_SEQ && ui.page == pg && !ui.confirm;
-        btn_up(B_SEQ); frame();
-        ok &= !ui.layer && ui.page == pg && ui.home == (i == NPAGES);
-    }
-    bad += check("1.2: SEQ held opens SEQ TOOLS on every page and HOME (no SONG, the page stays)", ok);
-    ui_power_on();
-    go_page(GR_ROLL); frame();
-    press(B_SEQ); frames(320);
-    ok = cur_page()->graph == GR_EVENTS && str_eq(cur_page()->title, "AUTOMATION") && msg_is("HOLD [SEQ] QUICK");
-    press(B_SEQ); frames(320);
-    ok &= cur_page()->graph == GR_ROLL;
-    press(B_SEQ); frames(320);
-    ok &= cur_page()->graph == GR_EVENTS;
-    bad += check("1.2: a tap on STEP: AUTOMATION, then STEP again (two SEQ pages; the hint until the layer was opened)", ok);
-    go_title("ENV"); frame();
-    press(B_SEQ); frames(320);
-    ok = cur_page()->graph == GR_EVENTS;                /* (the SEQ page shown last) */
-    go_home(); frame();
-    for (k = 0; k < NPAGES; k++)                        /* a remembered page that is no SEQ page any more: STEP */
-        if (PAGES[k].graph == GR_SONG) ui.fam_last[FAM_SEQ] = (uint8_t)k;
-    press(B_SEQ); frames(320);
-    ok &= cur_page()->graph == GR_ROLL;
-    bad += check("  from elsewhere the SEQ page shown last; one remembered that left SEQ: STEP", ok);
-
-    /* the whole sequence: REVERSE (a note's ties stay after it), SHIFT, CLEAR, locks, LEN, silent keys, undo */
-    ui_power_on();
-    tl_melody();
-    memcpy(ref, TSEL->step, sizeof ref);
-    go_page(GR_ROLL); frame();
-    usb.config = 1;
-    {
-        uint32_t mo = mo_w;
-        btn_down(B_SEQ); frame();
-        tl_key(1);                                      /* G3: REVERSE */
-        ok = ui.layer == LAYER_SEQ && !gates() && mo_w == mo && msg_is("REVERSED");
-    }
-    usb.config = 0;
-    ok &= TSEL->step[6].time == ST_NOTE && TSEL->step[6].note[0] == 60 && TSEL->step[7].time == ST_TIE &&
-          TSEL->step[4].note[0] == 64 && TSEL->step[2].note[0] == 67 && TSEL->step[0].time == ST_REST &&
-          TSEL->step[20].note[0] == 72 && tl_lock_at(4) && !tl_lock_at(3);
-    bad += check("  G3 REVERSE: steps 1..LEN mirrored, C4 + its tie as C4 then the tie, the lock moves with E4", ok);
-    btn_up(B_SEQ); frame();
-    hold(B_SAVE);
-    bad += check("  SAVE held: the reverse undone (steps and the lock)", !memcmp(TSEL->step, ref, sizeof ref) && tl_lock_at(3));
-    btn_down(B_SEQ); frame();
-    tl_key(3);                                          /* B3: SHIFT > */
-    ok = TSEL->step[1].note[0] == 60 && TSEL->step[2].time == ST_TIE && TSEL->step[4].note[0] == 64 && tl_lock_at(4) &&
-         msg_is("SHIFTED RIGHT");
-    tl_key(3);
-    tl_key(2); tl_key(2);                               /* A3: SHIFT < twice */
-    ok &= !memcmp(TSEL->step, ref, sizeof ref) && tl_lock_at(3);
-    TSEL->p[P_SLEN] = 6;
-    tl_key(2);
-    ok &= TSEL->step[5].note[0] == 60 && TSEL->step[2].note[0] == 64 && TSEL->step[6].time == ST_REST &&
-          TSEL->step[20].note[0] == 72;                 /* (inside LEN 6: step 7 and 21 stay) */
-    tl_key(3);
-    TSEL->p[P_SLEN] = 8;
-    ok &= !memcmp(TSEL->step, ref, sizeof ref);
-    bad += check("  B3 / A3 SHIFT > <: one step round inside LEN (the lock with it); back again: as it was", ok);
-    tl_key(0);                                          /* F3: CLEAR */
-    for (ok = msg_is("SEQUENCE CLEARED"), i = 0; i < 8u; i++)
-        ok &= TSEL->step[i].time == ST_REST && !TSEL->step[i].n;
-    ok &= TSEL->step[20].note[0] == 72 && !motion_lock_count(TSEL);
-    bad += check("  F3 CLEAR: steps 1..LEN empty (no dialog), past LEN kept, the locks of the steps cleared go", ok);
-    oct_back();
-    ok = !memcmp(TSEL->step, ref, sizeof ref) && tl_lock_at(3) && TSEL->p[P_SLEN] == 8 && msg_is("SEQUENCE PUT BACK") &&
-         ui.layer == LAYER_SEQ && song.octave == 0;
-    turn(EN_K1, -2);
-    ok &= TSEL->p[P_SLEN] == 6;                         /* KNOB 1: LEN (the PATTERN page's four) */
-    oct_back();
-    ok &= TSEL->p[P_SLEN] == 8;
-    btn_up(B_SEQ); frame();
-    hold(B_SAVE);                                       /* (OCT-'s put back is one undo too: the tools again) */
-    ok &= TSEL->step[0].time == ST_REST;
-    hold(B_SAVE);
-    ok &= !memcmp(TSEL->step, ref, sizeof ref);
-    bad += check("  OCT-: the track as the layer opened (steps, locks, LEN); KNOB 1..4 LEN DIV SWING GATE", ok);
-
-    /* RANDOM / COOK on a melodic track (fixed seeds): the rhythm stays, the notes in the scale, near the middle */
-    ok = okc = 1;
-    for (seed = 1; seed <= 40u; seed++) {
-        ui_power_on();
-        tl_melody();
-        TSEL->p[P_ROOT] = 2; TSEL->p[P_SCALE] = 2;
-        memcpy(ref, TSEL->step, sizeof ref);
-        go_page(GR_ROLL); frame();
-        rng_state = 0x9E3779B9u * seed;
-        btn_down(B_SEQ); frame();
-        tl_key(4);                                      /* C4: RANDOM */
-        ok &= msg_is("RANDOM NOTES") && tl_times_are(TSEL, ref, NSTEP) && tl_in_key(TSEL) && TSEL->step[20].note[0] == 72;
-        for (i = 0; i < 8u; i++)
-            if (TSEL->step[i].n)
-                ok &= TSEL->step[i].note[0] >= 54 && TSEL->step[i].note[0] <= 72;
-        for (k = 0; k < 12u; k++) {                     /* D4: COOK, again and again */
-            memcpy(mid, TSEL->step, sizeof mid);
-            tl_key(5);
-            okc &= tl_times_are(TSEL, ref, NSTEP) && tl_in_key(TSEL) && TSEL->step[20].note[0] == 72 &&
-                   memcmp(mid, TSEL->step, sizeof mid) != 0;
-        }
-        okc &= msg_is("COOKED 12");
-        btn_up(B_SEQ); frame();
-    }
-    bad += check("  C4 RANDOM (melodic): the rhythm kept, new notes in the scale near the middle (40 seeds)", ok);
-    bad += check("  D4 COOK x12: each press changes it, the rhythm and the scale kept, \"COOKED 12\"", okc);
-    hold(B_SAVE);
-    bad += check("  SAVE held after COOKs: the last one undone only", !memcmp(TSEL->step, mid, sizeof mid));
-    ui_power_on();
-    track_defaults_steps(TSEL);
-    TSEL->p[P_SLEN] = 16;
-    go_page(GR_ROLL); frame();
-    rng_state = 12345u;
-    btn_down(B_SEQ); frame();
-    tl_key(5);
-    ok = msg_is("NOTHING TO COOK") && !undo.trk;
-    tl_key(4);
-    for (k = 0, i = 0; i < 16u; i++) {
-        ok &= i % 2u ? TSEL->step[i].time == ST_REST : 1;
-        k += (uint32_t)tl_gate(&TSEL->step[i]);
-    }
-    ok &= tl_gate(&TSEL->step[0]) && k >= 3u && tl_in_key(TSEL);
-    btn_up(B_SEQ); frame();
-    bad += check("  an empty pattern: COOK says NOTHING TO COOK; RANDOM writes 8ths with rests, in the scale", ok);
-
-    /* DRUM: RANDOM (kick 3..5 with one on step 1, snare 2 .. 3 on 2 and 4, closed hat 8..12), COOK keeps the 1 */
-    ok = okc = 1;
-    for (seed = 1; seed <= 60u; seed++) {
-        ui_power_on();
-        tl_drum();
-        go_page(GR_ROLL); frame();
-        rng_state = 0x2545F491u * seed;
-        btn_down(B_SEQ); frame();
-        tl_key(4);
-        a = tl_count(TSEL, DV_KICK); b2 = tl_count(TSEL, DV_SNARE);
-        ok &= msg_is("RANDOM BEAT") && a >= 3u && a <= 5u && (tl_lanes_of(TSEL, DV_KICK) & 1u) && b2 >= 2u && b2 <= 3u &&
-              (tl_lanes_of(TSEL, DV_SNARE) & 0x1010u) == 0x1010u && tl_count(TSEL, DV_HATC) >= 8u &&
-              tl_count(TSEL, DV_HATC) <= 12u;
-        for (k = 0; k < 10u; k++) {
-            memcpy(mid, TSEL->step, sizeof mid);
-            tl_key(5);
-            okc &= (tl_lanes_of(TSEL, DV_KICK) & 1u) && memcmp(mid, TSEL->step, sizeof mid) != 0 && tl_count(TSEL, DV_HATC);
-        }
-        btn_up(B_SEQ); frame();
-    }
-    bad += check("  DRUM RANDOM: kick 3..5 (one on 1), snare on 2 and 4 (+ a ghost), hat 8..12; 60 seeds", ok);
-    bad += check("  DRUM COOK x10: each press changes it, the kick on 1 stays", okc);
-    ui_power_on();
-    tl_drum();
-    go_page(GR_ROLL); frame();
-    btn_down(B_SEQ); frame();
-    tl_key(6);                                          /* E4: BEAT */
-    ok = msg_is("BASIC BEAT") && tl_lanes_of(TSEL, DV_KICK) == 0x1111u && tl_lanes_of(TSEL, DV_SNARE) == 0x1010u &&
-         tl_lanes_of(TSEL, DV_HATC) == 0x5555u;
-    key_down(black(2)); frame(); key_up(black(2)); frame();   /* black key 3: the CLAP lane */
-    ok &= ui.lane == DV_CLAP && !gates();
-    tl_key(10);                                         /* B4: FILL, four times round */
-    ok &= tl_lanes_of(TSEL, DV_CLAP) == 0xFFFFu && msg_is("CLAP EVERY STEP");
-    tl_key(10);
-    ok &= tl_lanes_of(TSEL, DV_CLAP) == 0x5555u;
-    tl_key(10);
-    ok &= tl_lanes_of(TSEL, DV_CLAP) == 0x1111u;
-    tl_key(10);
-    ok &= !tl_lanes_of(TSEL, DV_CLAP) && msg_is("CLAP CLEARED") && tl_lanes_of(TSEL, DV_KICK) == 0x1111u;
-    bad += check("  E4 BEAT: four on the floor, 2 and 4, 8th hats; black key 3 the lane, B4 FILL 1 / 2 / 4 / none", ok);
-    ui.lane = DV_SNARE;
-    grid_acc(TSEL, 4, DV_SNARE, 1);
-    tl_key(9);                                          /* A4: REVERSE the lane */
-    ok = tl_lanes_of(TSEL, DV_SNARE) == 0x0808u && ((step_accents(&TSEL->step[11]) >> DV_SNARE) & 1u) &&
-         !((step_accents(&TSEL->step[3]) >> DV_SNARE) & 1u) && tl_lanes_of(TSEL, DV_KICK) == 0x1111u;
-    tl_key(8);                                          /* G4: CLEAR the lane */
-    ok &= !tl_lanes_of(TSEL, DV_SNARE) && tl_lanes_of(TSEL, DV_HATC) == 0x5555u && msg_is("SNARE CLEARED");
-    ui.lane = DV_TOM;
-    rng_state = 77u;
-    tl_key(11);                                         /* C5: RANDOM the lane: at least one hit */
-    ok &= tl_count(TSEL, DV_TOM) >= 1u && tl_lanes_of(TSEL, DV_KICK) == 0x1111u;
-    bad += check("  A4 / G4 / C5: the lane reversed (its accents with it), cleared, at random; the others stay", ok);
-    a = leds_at(0); b2 = leds_at(250);
-    ok = ((a ^ b2) >> white(0)) & 1u && ((a ^ b2) >> white(11)) & 1u && !(((a | b2) >> white(7)) & 1u) &&
-         ((a & b2) >> black(DV_TOM)) & 1u && ((a ^ b2) >> black(0)) & 1u && !(((a | b2) >> black(8)) & 1u);
-    btn_up(B_SEQ); frame();
-    ui_power_on();
-    tl_melody();
-    go_page(GR_ROLL); frame();
-    btn_down(B_SEQ); frames(500);                       /* (the map: a peek) */
-    memcpy(ref, TSEL->step, sizeof ref);
-    a = leds_at(0); b2 = leds_at(250);
-    ok &= ((a ^ b2) >> white(5)) & 1u && !(((a | b2) >> white(6)) & 1u) && !(((a | b2) >> black(0)) & 1u);
-    tl_key(6); tl_key(10);
-    key_down(black(2)); frame(); key_up(black(2)); frame();
-    ok &= !memcmp(TSEL->step, ref, sizeof ref) && ui.lane == 0u && !gates();
-    btn_up(B_SEQ); frame();
-    bad += check("  LEDs: the tools breathe, the lane lit (DRUM); a melodic track: no BEAT, no lane keys", ok);
-
-    /* the lock (a double tap), a song playing */
-    ui_power_on();
-    tl_melody();
-    go_page(GR_ROLL); frame();
-    pg = ui.page;
-    press(B_SEQ); frames(64); press(B_SEQ); frames(500);
-    ok = ui.lock == LAYER_SEQ && ui.layer == LAYER_SEQ && ui.page == pg;
-    tl_key(1);
-    ok &= TSEL->step[6].note[0] == 60;
-    press(B_SEQ); frames(16);
-    ok &= !ui.lock && !ui.layer && ui.page == pg;
-    bad += check("  double tapped on STEP: locked over STEP, the keys act; a tap closes it", ok);
-    chain.running = 1;
-    memcpy(ref, TSEL->step, sizeof ref);
-    btn_down(B_SEQ); frame();
-    tl_key(4);
-    ok = msg_is("STOP TO EDIT") && !memcmp(TSEL->step, ref, sizeof ref);
-    btn_up(B_SEQ); frame();
-    chain.running = 0;
-    bad += check("  while a song plays: STOP TO EDIT, nothing changes", ok);
-    return bad;
-}
 
 static int test_layer_lock(void)
 {
@@ -6857,15 +5320,15 @@ static int test_layer_lock(void)
     /* unchanged: a single tap, two slow taps, a tap and a peek, a tap and a combo, PLAY / REC in the lock */
     ui_power_on();
     go_page(GR_TRK); frame();
-    press(B_SEQ); frames(400);                          /* (1.2: SEQ, GLO's one page cycles no more) */
-    ok = str_eq(cur_page()->title, "STEP") && !ui.lock;
+    press(B_SEQ); frames(400);                          /* (1.5: SEQ, the tracker's pages; GLO's SONG cycles no more) */
+    ok = str_eq(cur_page()->title, "PATTERN") && !ui.lock;
     press(B_SEQ); frames(400);
-    ok &= str_eq(cur_page()->title, "AUTOMATION") && !ui.lock && !ui.layer;
+    ok &= str_eq(cur_page()->title, "SONG") && !ui.lock && !ui.layer;
     press(B_SEQ);
     btn_down(B_SEQ); frames(500);
     ok &= ui.layer == LAYER_SEQ && !ui.lock;
     btn_up(B_SEQ); frame();
-    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "STEP");
+    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "SETTINGS");
     press(B_GLO); frames(400);
     ok &= str_eq(cur_page()->title, "SONG") && !ui.lock;
     press(B_GLO);
@@ -6892,28 +5355,27 @@ static int test_layer_lock(void)
     ok &= ui.lock == LAYER_FX;
     stop_transport();
     bad += check("  another button between the taps: no lock; PLAY in a locked layer plays, the lock stays", ok);
-    {   /* EDIT on STEP clears a step: two quick taps clear two (no lock) */
-        track_t *t;
+    {   /* EDIT on PATTERN clears a cell: two quick taps clear two (no lock) */
         ui_power_on();
-        t = TSEL;
-        my_steps(t);
-        go_page(GR_ROLL); frame();
-        ui.cursor = 0;
+        tk_put(0, 0, 0, tk_pack(60, 1, 0, 0));
+        tk_put(0, 1, 0, tk_pack(62, 1, 0, 0));
+        go_page(GR_TKPAT); frame();
+        tku.row = 0;
         press(B_EDIT); press(B_EDIT); frames(100);
-        bad += check("  EDIT on STEP (it clears the step): two quick taps clear two steps, no lock",
-                     !ui.lock && !ui.layer && ui.cursor == 2u && t->step[0].time == ST_REST);
+        bad += check("  EDIT on PATTERN (it clears the cell): two quick taps clear two cells, no lock",
+                     !ui.lock && !ui.layer && tku.row == 2u && tk_empty(tk_at(0, 0, 0)) && tk_empty(tk_at(0, 1, 0)));
     }
     return bad;
 }
 
 /* 1.1.5: the REC layer (ui_layer.c). REC held past HOLD on any page opens it (up to 1.1.4 REC held on SEQ asked "CLEAR Tn
  * SEQUENCE?", Discussion #91: gone, and its "HOLD: CLEAR" hint and the footer's REC + trash with it); a tap still
- * arms / disarms. F3 CLEAR (no dialog, SAVE held undoes it), G3 CLICK, A3 COUNT-IN, B3 CLICK LEVEL (each the next
- * value, the same store as MENU > AUDIO, saved when the layer closes), KNOB 1..3 the same; OCT- puts back; the LEDs;
+ * arms / disarms. F3 CLEAR (no dialog, SAVE held undoes it), G3 CLICK, A3 CLICK LEVEL (each the next value, the same
+ * store as MENU > AUDIO, saved when the layer closes; 1.5: COUNT-IN is gone), KNOB 1..2 the same; OCT- puts back; the LEDs;
  * the double-tap lock (the arming as before the taps); REC in another layer still arms */
 static void rec_down(void) { btn_down(B_REC); }
 static void rec_up(void) { btn_up(B_REC); frame(); }
-static uint32_t menu_rec(uint32_t r) { return menu_get(r == 0u ? MI_CLICK : r == 1u ? MI_COUNTIN : MI_CLKLVL); }
+static uint32_t menu_rec(uint32_t r) { return menu_get(r == 0u ? MI_CLICK : MI_CLKLVL); }
 static int test_rec_layer(void)
 {
     static const uint8_t G[8] = {GR_ROLL, GR_EVENTS, GR_USER, GR_PATS, GR_SONG, GR_TOOLS, GR_ADSR, GR_TRK};
@@ -6956,10 +5418,10 @@ static int test_rec_layer(void)
     press(B_REC);
     ok &= song.rec == 0u && !ui.layer && song.playing;
     song.playing = 0;
-    go_page(GR_ROLL); frame(); frames(400);
+    go_page(GR_TKPAT); frame(); frames(400);
     press(B_REC);
-    ok &= song.rec == 1u && transport_req == 0u && msg_is("KEYS WRITE STEPS");
-    bad += check("  a tap still arms / disarms when let go (HOME starts PLAY, STEP: step recording)", ok);
+    ok &= song.rec == 1u && transport_req == 0u && msg_is("KEYS WRITE NOTES");
+    bad += check("  a tap still arms / disarms when let go (HOME starts PLAY, PATTERN: step entry)", ok);
     ui_power_on();
     rec_down(); frame();
     press(B_PLAY);                                      /* REC + PLAY: PLAY plays, REC let go arms (no map) */
@@ -6970,10 +5432,7 @@ static int test_rec_layer(void)
     bad += check("  REC held + PLAY: plays, and REC let go before HOLD still arms (no combo)", ok);
     ui_power_on();
     song.sel = 2;
-    chain.running = 1;
-    press(B_REC);
-    ok = song.rec == 0u && msg_is("STOP TO RECORD");
-    chain.running = 0;
+    ok = 1;
     frames(400);
     btn_down(B_GLO); frame();
     press(B_REC);                                       /* REC in GLO's layer: a tap, armed */
@@ -6983,67 +5442,56 @@ static int test_rec_layer(void)
     btn_down(B_GLO); frames(512); press(B_REC);
     ok &= song.rec == 0u && ui.layer == LAYER_GLO;
     btn_up(B_GLO); frame();
-    bad += check("  a song playing: STOP TO RECORD; REC in another layer still arms / disarms", ok);
+    bad += check("  REC in another layer still arms / disarms", ok);
 
-    /* F3 CLEAR: no dialog, SAVE held undoes it; an empty track: NOTHING TO CLEAR; a song playing: STOP TO EDIT */
+    /* F3 CLEAR (1.5): the selected track's column of the pattern edited, no dialog; an empty one: NOTHING TO CLEAR */
     ui_power_on();
     song.sel = 1;
-    my_steps(&trk[1]);
-    go_page(GR_ROLL); frame();
-    memcpy(before, trk[1].step, sizeof before);
+    tk_put(0, 0, 1, tk_pack(60, 1, 0, 0));
+    tk_put(0, 9, 1, tk_pack(64, 0, TKC_CUT, 30));
+    tk_put(0, 9, 2, tk_pack(67, 0, 0, 0));
     rec_down(); frame();
     key_down(white(0)); frame();                        /* a combo: the map at once, cleared */
-    ok = ui.layer == LAYER_REC && seq_is_empty(&trk[1]) && !ui.confirm && msg_is("SEQUENCE CLEARED") && !gates() &&
-         str_eq(ui.msg2, "[SAVE] HOLD TO UNDO");
+    ok = ui.layer == LAYER_REC && !rec_clearable() && !ui.confirm && msg_is("TRACK CLEARED") && !gates() &&
+         tk_note(tk_at(0, 9, 2)) == 67u;
     key_up(white(0)); frame();
     rec_up();
-    ok &= !ui.layer && song.rec == 0u && !transport_req && seq_is_empty(&trk[1]);
-    bad += check("REC + F3: CLEAR T2's sequence at once (no dialog, the key silent), nothing armed", ok);
+    ok &= !ui.layer && song.rec == 0u && !transport_req && !rec_clearable();
+    bad += check("REC + F3: CLEAR T2's column at once (no dialog, the key silent, T3 kept), nothing armed", ok);
     frames(400);
-    hold(B_SAVE);
-    bad += check("  SAVE held undoes the clear", !memcmp(trk[1].step, before, sizeof before));
-    rec_down(); frame(); key_down(white(0)); frame(); key_up(white(0)); frame(); rec_up();
-    track_defaults_steps(&trk[1]);
     rec_down(); frame(); key_down(white(0)); frame();
     ok = msg_is("NOTHING TO CLEAR");
     key_up(white(0)); frame(); rec_up();
-    my_steps(&trk[1]);
-    chain.running = 1;
-    rec_down(); frame(); key_down(white(0)); frame();
-    ok &= msg_is("STOP TO EDIT") && !seq_is_empty(&trk[1]);
-    key_up(white(0)); frame(); rec_up();
-    chain.running = 0;
+    tk_put(0, 4, 1, tk_pack(60, 0, 0, 0));
     song.playing = 1; song.rec = 2u;                    /* recording live: a retake, the arming and PLAY stay */
     rec_down(); frame(); key_down(white(0)); frame();
-    ok &= seq_is_empty(&trk[1]) && song.rec == 2u && song.playing;
+    ok &= !rec_clearable() && song.rec == 2u && song.playing;
     key_up(white(0)); frame(); rec_up();
     song.playing = 0;
-    bad += check("  empty: NOTHING TO CLEAR; a song playing: STOP TO EDIT; armed and playing: clears, records on", ok);
+    bad += check("  empty: NOTHING TO CLEAR; armed and playing: clears, records on", ok);
 
-    /* G3 A3 B3: the settings, the next value each press, MENU > AUDIO's values; KNOB 1..3 */
+    /* G3 A3: the settings, the next value each press, MENU > AUDIO's values; KNOB 1..2 */
     ui_power_on();
     ui_rec_prefs = 0;
     rp_apply();
     ok = 1;
     rec_down(); frames(512);
-    for (k = 0; k < 3u; k++) {
-        static const char *const NM[3][3] = {{"CLICK REC", "CLICK ON", "CLICK OFF"},
-                                             {"COUNT-IN 1 BAR", "COUNT-IN 2 BARS", "COUNT-IN OFF"},
+    for (k = 0; k < 2u; k++) {
+        static const char *const NM[2][3] = {{"CLICK REC", "CLICK ON", "CLICK OFF"},
                                              {"CLICK LEVEL HIGH", "CLICK LEVEL LOW", "CLICK LEVEL MID"}};
-        static const uint32_t WANT[3][3] = {{1, 2, 0}, {1, 2, 0}, {2, 0, 1}};
+        static const uint32_t WANT[2][3] = {{1, 2, 0}, {2, 0, 1}};
         for (i = 0; i < 3u; i++) {
             key_down(white(k + 1u)); frame(); key_up(white(k + 1u)); frame();
             ok &= menu_rec(k) == WANT[k][i] && msg_is(NM[k][i]) && !gates() &&
-                  str_eq(menu_vname(k == 0u ? MI_CLICK : k == 1u ? MI_COUNTIN : MI_CLKLVL, menu_rec(k)),
-                         rl_name(k, rp_get(RL_F[k])));
+                  str_eq(menu_vname(k == 0u ? MI_CLICK : MI_CLKLVL, menu_rec(k)), rl_name(k, rp_get(RL_F[k])));
         }
     }
-    ok &= ui_rec_prefs == 0u;                           /* (round: as it was) */
-    bad += check("REC + G3 CLICK OFF>REC>ON, A3 COUNT-IN OFF>1 BAR>2 BARS, B3 LEVEL MID>HIGH>LOW: MENU's values", ok);
+    key_down(white(3)); frame(); key_up(white(3)); frame();        /* (B3: nothing any more) */
+    ok &= ui_rec_prefs == 0u && !gates();               /* (round: as it was) */
+    bad += check("REC + G3 CLICK OFF>REC>ON, A3 LEVEL MID>HIGH>LOW: MENU's values; B3 nothing (no COUNT-IN)", ok);
     key_down(white(1)); frame(); key_up(white(1)); frame();        /* CLICK REC */
-    key_down(white(2)); frame(); key_up(white(2)); frame();        /* COUNT-IN 1 BAR */
-    key_down(white(3)); frame(); key_up(white(3)); frame();        /* LEVEL HIGH */
-    ok = click_mode == 1u && cin_bars == 1u && click_lvl == 2u && lys.rp_dirty;
+    key_down(white(2)); frame(); key_up(white(2)); frame();        /* LEVEL HIGH */
+    ok = click_mode == 1u && click_lvl == 2u && lys.rp_dirty;
     rec_up();
     ok &= !ui.layer && !lys.rp_dirty;                  /* (closed: settings_save) */
     {
@@ -7052,30 +5500,31 @@ static int test_rec_layer(void)
         p.magic = PERSIST_MAGIC; p.panel = panel;
         settings_export(&p); ui_rec_prefs = 0;
         ok &= settings_import(&p, sizeof p) && ui_rec_prefs == was && menu_get(MI_CLICK) == 1u &&
-              menu_get(MI_COUNTIN) == 1u && menu_get(MI_CLKLVL) == 2u;
+              menu_get(MI_CLKLVL) == 2u;
     }
-    bad += check("  applied at once (click.c, seq.c), saved when the layer closes, kept with the settings", ok);
+    bad += check("  applied at once (click.c), saved when the layer closes, kept with the settings", ok);
     rec_down(); frames(512);
     turn(EN_K1, 1);                                     /* CLICK REC -> ON */
-    turn(EN_K2, -1);                                    /* COUNT-IN 1 BAR -> OFF */
-    turn(EN_K3, -5);                                    /* LEVEL HIGH -> LOW (stops at the end) */
+    turn(EN_K2, -5);                                    /* LEVEL HIGH -> LOW (stops at the end) */
+    turn(EN_K3, -3);                                    /* nothing */
     turn(EN_K4, 3);                                     /* nothing */
-    ok = menu_get(MI_CLICK) == 2u && menu_get(MI_COUNTIN) == 0u && menu_get(MI_CLKLVL) == 0u && ui.home;
+    ok = menu_get(MI_CLICK) == 2u && menu_get(MI_CLKLVL) == 0u && ui.home;
     rec_up();
-    bad += check("  KNOB 1..3 CLICK COUNT-IN LEVEL, stopping at the ends; KNOB 4 nothing; the page untouched", ok);
+    bad += check("  KNOB 1..2 CLICK LEVEL, stopping at the ends; KNOB 3, 4 nothing; the page untouched", ok);
 
     /* OCT- puts back the settings and the track as the layer opened */
     ui_power_on();
     ui_rec_prefs = 0; rp_apply();
     song.sel = 1;
-    my_steps(&trk[1]);
-    memcpy(before, trk[1].step, sizeof before);
+    tk_put(0, 2, 1, tk_pack(60, 1, TKC_CUT, 40));
+    tk_put(0, 7, 1, tk_pack(TK_OFF, 0, 0, 0));
     rec_down(); frames(512);
     key_down(white(1)); frame(); key_up(white(1)); frame();
     key_down(white(0)); frame(); key_up(white(0)); frame();
-    ok = seq_is_empty(&trk[1]) && click_mode == 1u;
+    ok = !rec_clearable() && click_mode == 1u;
     press(B_OCTDN);
-    ok &= !memcmp(trk[1].step, before, sizeof before) && ui_rec_prefs == 0u && click_mode == 0u &&
+    ok &= cell_is(0, 2, 1, tk_pack(60, 1, TKC_CUT, 40)) && cell_is(0, 7, 1, tk_pack(TK_OFF, 0, 0, 0)) &&
+          ui_rec_prefs == 0u && click_mode == 0u &&
           msg_is("REC PUT BACK") && song.octave == 0 && ui.layer == LAYER_REC;
     rec_up();
     bad += check("  OCT- puts back CLICK and the cleared track; no octave shift", ok);
@@ -7083,21 +5532,20 @@ static int test_rec_layer(void)
     /* the LEDs: CLEAR breathes when there is something; a setting on lit (LEVEL: with the click on), else breathing */
     ui_power_on();
     ui_rec_prefs = 0; rp_apply();
-    my_steps(TSEL);
+    tk_put(0, 0, song.sel, tk_pack(60, 0, 0, 0));
     rec_down(); frames(512);
     {
-        uint32_t a = leds_at(0), b = leds_at(250), w0 = 1u << white(0), w1 = 1u << white(1), w2 = 1u << white(2),
-                 w3 = 1u << white(3);
-        ok = ((a ^ b) & (w0 | w1 | w2 | w3)) == (w0 | w1 | w2 | w3) && !(a & b) && !((a | b) & ~(w0 | w1 | w2 | w3));
-        rp_put(RP_CLICK, 2); rp_put(RP_COUNTIN, 2);
+        uint32_t a = leds_at(0), b = leds_at(250), w0 = 1u << white(0), w1 = 1u << white(1), w2 = 1u << white(2);
+        ok = ((a ^ b) & (w0 | w1 | w2)) == (w0 | w1 | w2) && !(a & b) && !((a | b) & ~(w0 | w1 | w2));
+        rp_put(RP_CLICK, 2);
         a = leds_at(0); b = leds_at(250);
-        ok &= (a & b) == (w1 | w2 | w3) && (a ^ b) == w0;
-        track_defaults_steps(TSEL);
+        ok &= (a & b) == (w1 | w2) && (a ^ b) == w0;
+        tk_clear_column(0, song.sel);
         a = leds_at(0); b = leds_at(250);
         ok &= !((a | b) & w0);
     }
     rec_up();
-    bad += check("  LEDs: CLEAR breathes (dark when empty), CLICK / COUNT-IN lit when on, LEVEL with the click", ok);
+    bad += check("  LEDs: CLEAR breathes (dark when empty), CLICK lit when on, LEVEL with the click", ok);
 
     /* the double-tap lock: the arming as before the taps, the keys and knobs as held, a tap of REC closes it */
     ui_power_on();
@@ -7113,7 +5561,7 @@ static int test_rec_layer(void)
           ui.page == n && !fm1_in.buttons && !msg_is("HOLD [REC] QUICK") && ((layer_seen >> LAYER_REC) & 1u);
     key_down(white(1)); frame(); key_up(white(1)); frame();
     turn(EN_K2, 1);
-    ok &= click_mode == 1u && cin_bars == 1u && !gates() && ui.lock == LAYER_REC;
+    ok &= click_mode == 1u && click_lvl == 2u && !gates() && ui.lock == LAYER_REC;
     press(B_PLAY);                                      /* PLAY works in it */
     ok &= transport_req == 1u && ui.lock == LAYER_REC;
     transport_req = 0;
@@ -7397,16 +5845,17 @@ static int test_div_order(void)
             turn(EN_K1 + c, -2);
             ok &= *vp == (d->names == N_DIV ? 4 : 3);  /* 8T */
         }
-    ui_power_on();                                  /* SEQ's DIV: SEQ TOOLS' KNOB 2 (1.2: the PATTERN page is gone) */
-    go_page(GR_ROLL); frame();
+    bad += check("#48 the pages' knobs step the divisions by length (ARP, DLY, SLICER)", ok && found >= 3u);
+    ui_power_on();                                  /* SEQ held (1.5): the tracker's pattern, its length, EDIT STEP */
     btn_down(B_SEQ); frames(500);
-    TSEL->p[P_SDIV] = 2;
-    turn(EN_K2, 1);
-    ok &= ui.layer == LAYER_SEQ && TSEL->p[P_SDIV] == 5;
-    turn(EN_K2, -2);
-    ok &= TSEL->p[P_SDIV] == 4;
+    turn(EN_K1, 3);
+    ok = ui.layer == LAYER_SEQ && tk_pl.loop_pat == 3u;
+    turn(EN_K2, -16);
+    ok &= tk.len[3] == 48u && tk.len[0] == TK_ROWS;
+    turn(EN_K3, 2);
+    ok &= tku.step == 3u;
     btn_up(B_SEQ); frame();
-    bad += check("#48 the pages' knobs step the divisions by length (SEQ TOOLS, ARP, DLY, SLICER)", ok && found >= 3u);
+    bad += check("1.5: SEQ held: KNOB 1 the pattern edited, 2 its length, 3 EDIT STEP", ok);
     return bad;
 }
 
@@ -7619,33 +6068,26 @@ static int test_usb_level(void)
     return bad;
 }
 
-/* 1.1 (Discussion #131) MENU > AUDIO CLICK (OFF REC ON), CLICK LEVEL (LOW MID HIGH), COUNT-IN (OFF 1 BAR 2 BARS): OFF / MID /
- * OFF by default and in every older setting; a knob applies at once (click.c, seq.c); saved and read back, a stored 3
- * (no value) the default. The count-in from the UI: REC while stopped arms and counts in, the screen counts 4 3 2 1 (the
- * beat's cell moves), PLAY's green LED on each beat (its own dark), the STEP keys' entry paused, PLAY stops it (the page
- * back); at its end the sequencer plays and the page is back */
-static uint16_t px_at(uint32_t x, uint32_t y) { return host_screen[y * 240u + x]; }
-static void cin_beat(void)                       /* the audio until the count-in's next beat (or its end) */
-{
-    uint32_t left = cin_left, k;
-    for (k = 0; k < 4000u && cin_left == left && seq_counting(); k++)
-        events_block(CTL);
-}
+/* 1.1 (Discussion #131) MENU > AUDIO CLICK (OFF REC ON), CLICK LEVEL (LOW MID HIGH): OFF / MID by default and in
+ * every older setting; a knob applies at once (click.c); saved and read back, a stored 3 (no value) the default. 1.5:
+ * no COUNT-IN (the row, the screen and seq.c's count are gone): PLAY armed from a stop plays at once, whatever an older
+ * setting's COUNT-IN bits say (kept as saved) */
 static int test_click_menu(void)
 {
     int bad = 0, ok;
     uint32_t i;
     ui_power_on();
     frame();
-    ok = !ui_rec_prefs && click_mode == CLICK_OFF && click_lvl == 1u && !cin_bars &&
-         str_eq(MI_NAME[MI_CLICK], "CLICK") && str_eq(MI_NAME[MI_CLKLVL], "CLICK LEVEL") && str_eq(MI_NAME[MI_COUNTIN], "COUNT-IN") &&
-         MI_TAB[MI_CLICK] == MTAB_AUDIO && MI_TAB[MI_CLKLVL] == MTAB_AUDIO && MI_TAB[MI_COUNTIN] == MTAB_AUDIO &&
-         menu_get(MI_CLICK) == 0u && menu_get(MI_CLKLVL) == 1u && menu_get(MI_COUNTIN) == 0u;
+    ok = !ui_rec_prefs && click_mode == CLICK_OFF && click_lvl == 1u &&
+         str_eq(MI_NAME[MI_CLICK], "CLICK") && str_eq(MI_NAME[MI_CLKLVL], "CLICK LEVEL") &&
+         MI_TAB[MI_CLICK] == MTAB_AUDIO && MI_TAB[MI_CLKLVL] == MTAB_AUDIO &&
+         menu_get(MI_CLICK) == 0u && menu_get(MI_CLKLVL) == 1u;
+    for (i = 0; i < MI_COUNT; i++)
+        ok &= !str_eq(MI_NAME[i], "COUNT-IN");
     for (i = 0; i < 3u; i++)
         ok &= str_eq(menu_vname(MI_CLICK, i), (const char *[]){"OFF", "REC", "ON"}[i]) &&
-              str_eq(menu_vname(MI_CLKLVL, i), (const char *[]){"LOW", "MID", "HIGH"}[i]) &&
-              str_eq(menu_vname(MI_COUNTIN, i), (const char *[]){"OFF", "1 BAR", "2 BARS"}[i]);
-    bad += check("MENU > AUDIO: CLICK OFF / REC / ON, CLICK LEVEL LOW / MID / HIGH, COUNT-IN OFF / 1 BAR / 2 BARS; OFF MID OFF by default", ok);
+              str_eq(menu_vname(MI_CLKLVL, i), (const char *[]){"LOW", "MID", "HIGH"}[i]);
+    bad += check("MENU > AUDIO: CLICK OFF / REC / ON, CLICK LEVEL LOW / MID / HIGH; OFF MID by default; no COUNT-IN", ok);
     hold(B_HOME);
     ui.menu_sel = MI_LOWCUT; ui.force = 1; ui_draw();
     turn(EN_PRESET, 1); turn(EN_PRESET, 1);
@@ -7656,74 +6098,45 @@ static int test_click_menu(void)
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_CLKLVL;
     press(B_OCTDN); ok &= click_lvl == 0u;
     press(B_OCTUP); press(B_OCTUP); ok &= click_lvl == 2u;
-    turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_COUNTIN;
-    turn(EN_K4, 1); ok &= cin_bars == 1u;
-    turn(EN_K4, 1); ok &= cin_bars == 2u;
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_TUNE;     /* (1.2: TUNE, AUDIO's last) */
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_LOWCUT;   /* (wraps within AUDIO) */
     press(B_HOME);
     ok &= !ui.menu;
-    bad += check("MENU > AUDIO: PRESETS to CLICK, CLICK LEVEL, COUNT-IN, TUNE; knobs / OCT step them, applied at once", ok);
+    bad += check("MENU > AUDIO: PRESETS to CLICK, CLICK LEVEL, TUNE; knobs / OCT step them, applied at once", ok);
     {
         persist_t p;
         settings_export(&p);
         ui_rec_prefs = 0; frame();
-        ok = settings_import(&p, (int)sizeof p) == 1 && (frame(), click_mode == CLICK_ON && click_lvl == 2u && cin_bars == 2u);
-        p.favorites.factory[15][28] = 3u | 3u << 2 | 1u << 4;   /* CLICK and LEVEL no value, COUNT-IN 1 BAR */
+        ok = settings_import(&p, (int)sizeof p) == 1 && (frame(), click_mode == CLICK_ON && click_lvl == 2u);
+        p.favorites.factory[15][28] = 3u | 3u << 2 | 1u << 4;   /* CLICK and LEVEL no value, an old COUNT-IN 1 BAR */
         ok &= settings_import(&p, (int)sizeof p) == 1 && p.favorites.factory[15][28] == 1u << 4;
         frame();
-        ok &= click_mode == CLICK_OFF && click_lvl == 1u && cin_bars == 1u;
+        ok &= click_mode == CLICK_OFF && click_lvl == 1u;
         memset(&p.favorites, 0, sizeof p.favorites);   /* settings from before the favorites (PER3): the defaults */
         p.magic = 0x50455233u;
         ok &= settings_import(&p, (int)(sizeof p - sizeof p.favorites)) == 2 && !ui_rec_prefs;
         frame();
-        ok &= click_mode == CLICK_OFF && click_lvl == 1u && !cin_bars;
+        ok &= click_mode == CLICK_OFF && click_lvl == 1u;
     }
-    bad += check("CLICK / CLICK LEVEL / COUNT-IN saved and read back; a stored 3 the default; older settings OFF / MID / OFF", ok);
+    bad += check("CLICK / CLICK LEVEL saved and read back; a stored 3 the default; older settings OFF / MID", ok);
 
-    /* the count-in from the UI */
+    /* no count-in: armed on PATTERN, PLAY plays at once (an older setting's COUNT-IN 2 BARS bits too) */
     ui_power_on();
-    menu_put(MI_COUNTIN, 1u);
-    go_page(GR_ROLL);
+    ui_rec_prefs = 2u << 4;
+    rp_apply();
+    go_page(GR_TKPAT);
     frame();
-    press(B_REC);                                       /* (#133: on STEP REC arms step recording, stopped) */
+    press(B_REC);                                       /* (on PATTERN REC arms step entry, stopped) */
     ok = (song.rec & 1u) && transport_req == 0u && !live_rec_sel();
     press(B_PLAY);
     ok &= transport_req == 1u;
     events_block(CTL);
-    ok &= seq_counting() && !song.playing && cin_left == 4u && live_rec_sel();
     frame();
-    {
-        uint16_t now0 = px_at(16, CI_Y + 4), next0 = px_at(16 + 56, CI_Y + 4);
-        ok &= now0 != next0;                            /* the first beat's cell lit, the next not */
-        ui_leds();
-        ok &= (fm1_led[8] & 2u) != 0u;                  /* PLAY's green: on the beat */
-        for (i = 0; i < 400u; i++) events_block(CTL);    /* (~0.3 s: past the first quarter of the beat) */
-        ui_leds();
-        ok &= !(fm1_led[8] & 2u);
-        cin_beat();
-        frame();
-        ok &= cin_left == 3u && px_at(16 + 56, CI_Y + 4) == now0 && px_at(16, CI_Y + 4) == next0;   /* the cell moved */
-        ui_leds();
-        ok &= (fm1_led[8] & 2u) != 0u;
-    }
-    bad += check("count-in from the UI: REC on STEP arms, PLAY counts in (STEP entry paused); 4 3 2 1 on screen; PLAY's green on the beats", ok);
-    press(B_PLAY);
-    ok = transport_req == 2u;
-    events_block(CTL);
-    frame();
-    ok &= !seq_counting() && !song.playing && (song.rec & 1u) && px_at(16, CI_Y + 4) == px_at(16 + 56, CI_Y + 4);
-    bad += check("PLAY while counting in stops it: nothing plays, still armed, the page back", ok);
+    ok &= song.playing && tk_pl.row == 0u && live_rec_sel() && cur_page()->graph == GR_TKPAT;
+    bad += check("no count-in: REC on PATTERN arms, PLAY plays (and records live) at once, the page stays", ok);
     press(B_PLAY);
     events_block(CTL);
-    ok = seq_counting() && cin_left == 4u;
-    for (i = 0; i < 4u; i++) cin_beat();
-    frame();
-    ok &= !seq_counting() && song.playing && trk[0].seq_idx == 0u && px_at(16, CI_Y + 4) == px_at(16 + 56, CI_Y + 4);
-    bad += check("PLAY armed and stopped: the count-in again; at its end the sequencer plays from step 1, the page back", ok);
-    press(B_PLAY);
-    events_block(CTL);
-    menu_put(MI_COUNTIN, 0u);
+    ui_rec_prefs = 0;
     stop_transport();
     return bad;
 }
@@ -7985,7 +6398,7 @@ static int test_large(void)
     /* per page type: lists and rolls keep the layout, the layers too; MIXER's tracks in the strip */
     go_page(GR_BROWSE); frame();
     ok = large_kind() == LK_LABEL && card_h() == CARD_H && graph_y() == Y_GRAPH && graph_h() == H_GRAPH;
-    go_page(GR_ROLL); frame();
+    go_page(GR_TKPAT); frame();
     ok &= large_kind() == LK_LABEL;
     go_page(GR_TRK); frame();
     ok &= large_kind() == LK_TALL && strip_kind() == SK_TRK && lg_px(CARD_X(0) + 8, LG_Y_GRAPH + 56) == T_SURF;
@@ -7994,7 +6407,7 @@ static int test_large(void)
     ok &= ui.layer && large_kind() == LK_LABEL && card_h() == CARD_H;
     btn_up(B_GLO); frame(); frame();
     ok &= !ui.layer && large_kind() == LK_TALL && lg_px(30, LG_Y_GRAPH - 2) == T_BG;
-    bad += check("#15 LARGE: PRESETS and the roll keep the layout (labels in M), the layers too; MIXER tall, its tracks in the strip", ok);
+    bad += check("#15 LARGE: PRESETS and PATTERN keep the layout (labels in M), the layers too; MIXER tall, its tracks in the strip", ok);
 
     {   /* saved with the settings; settings from before it: OFF (and so again: idempotent) */
         persist_t p, q;
@@ -8210,17 +6623,17 @@ static int32_t head_span2(int32_t a, int32_t b, int32_t *x0, int32_t *x1)
     return *x1 < 0 ? 0 : *x0 + *x1 + 1;
 }
 enum { HS_STOPPED, HS_PLAY_REC, HS_SONG, HS_MSG, HS_OCT, HS_USB, HS_KEYCAP, HS_REC_OTHER, HS_BPM_TURN, HS_BPM_LOCK,
-       HS_NOFILE, HS_REC_LAYER, HS_LAYER_LOCK, HS_GLO_TURN, HS_MSG2, HS_BEAT2, HS_COUNTIN, HS_BATT1, HS_BATT0, HS_BPM90,
+       HS_NOFILE, HS_REC_LAYER, HS_LAYER_LOCK, HS_GLO_TURN, HS_MSG2, HS_BEAT2, HS_BATT1, HS_BATT0, HS_BPM90,
        HS_N };
 static const char *const HS_NAME[HS_N] = {"stopped", "play+REC", "song", "message", "OCT", "USB", "keycap", "REC other",
-    "BPM turn", "BPM LOCK", "NO SAMPLE", "REC layer", "EDIT lock", "GLO turn", "msg2", "beat 2", "count-in", "battery 1",
+    "BPM turn", "BPM LOCK", "NO SAMPLE", "REC layer", "EDIT lock", "GLO turn", "msg2", "beat 2", "battery 1",
     "battery 0", "BPM 90"};
 static void head_state(uint32_t s)
 {
     song.playing = s == HS_PLAY_REC || s == HS_SONG || s == HS_BEAT2 || s == HS_OCT;
-    song.rec = s == HS_PLAY_REC || s == HS_COUNTIN ? 1u << song.sel : s == HS_REC_OTHER ? 1u << ((song.sel + 1u) % NTRK) : 0u;
+    song.rec = s == HS_PLAY_REC ? 1u << song.sel : s == HS_REC_OTHER ? 1u << ((song.sel + 1u) % NTRK) : 0u;
     clk_pos = 0; clk_step = s == HS_BEAT2 ? 4u : 8u;    /* (the 2nd beat: the metronome mirrored; else the 3rd) */
-    if (s == HS_SONG) { chain.running = 1; chain.row = 2; }
+    if (s == HS_SONG) { tk_pl.mode = TK_SONG; tk_pl.pos = 2; }
     if (s == HS_MSG) ui_message("SAVED 03 BASS");
     if (s == HS_MSG2) ui_say("LOADED ", "07 A VERY LONG PATTERN NAME");
     if (s == HS_OCT) song.octave = 2;
@@ -8233,14 +6646,13 @@ static void head_state(uint32_t s)
     if (s == HS_REC_LAYER) { song.rec = 1u << song.sel; ui.layer = LAYER_REC; }
     if (s == HS_LAYER_LOCK) ui.layer = ui.lock = LAYER_EDIT;
     if (s == HS_GLO_TURN) ui.layer = LAYER_GLO;
-    if (s == HS_COUNTIN) { cin_total = 4; cin_left = 3; }
     song.g[G_BPM] = s == HS_BPM90 ? 90 : 124;
     ui.roll_bpm = song.g[G_BPM];
 }
 static void head_clear(void)
 {
-    chain.running = 0; ui.msg_t = 0; song.octave = 0; usb.config = 0; song.playing = 0; song.rec = 0; ui.bpm_t = 0;
-    ui_prefs &= ~PREF_BPM_LOCK; ui.layer = ui.lock = 0; cin_total = cin_left = 0; song.batt_raw = 600;
+    tk_pl.mode = TK_LOOP; ui.msg_t = 0; song.octave = 0; usb.config = 0; song.playing = 0; song.rec = 0; ui.bpm_t = 0;
+    ui_prefs &= ~PREF_BPM_LOCK; ui.layer = ui.lock = 0; song.batt_raw = 600;
 }
 static int test_head_centres(void)
 {
@@ -8327,326 +6739,6 @@ static int test_head_metronome(void)
     bad += check("header metronome: a beat changes nothing in the header", only);
     song.playing = 0;
     ui_power_on();
-    return bad;
-}
-
-/* SONG lanes (1.2, song_chain.c): a section names a slot per track ("-": silent). The rows of before (one slot each)
- * play bit for bit as before lanes (tests/song_probe.h, against the firmware before); each lane plays its own slot's
- * steps, LEN / DIV, QUANTIZE and automation; "-" plays nothing and releases; the section's length is its clock
- * track's loop (the first lane not silent; every lane silent: a 4/4 bar); all four restart together; STOP restores */
-#include "song_probe.h"
-static uint32_t lanes_until(uint32_t row, uint32_t max)   /* blocks of 32 until the section changes (or the song ends) */
-{
-    uint32_t n = 0;
-    while (n < max && chain.running && chain.row == row) {
-        events_block(32);
-        n++;
-    }
-    return n;
-}
-static int lanes_near(uint32_t blocks, uint32_t samples) { return blocks * 32u + 32u >= samples && blocks * 32u <= samples + 32u; }   /* (to a block) */
-static int test_song_lanes(void)
-{
-    int bad = 0, ok;
-    uint32_t n = 0, h, k, i, st, rev[NTRK];
-    h = song_probe(&n);
-    bad += check("SONG of rows (one slot each): bit for bit as before lanes, block by block (song_probe.h)",
-                 h == SONG_PROBE_GOLDEN && n == SONG_PROBE_BLOCKS);
-    seq_stop();
-    ui_power_on();
-    for (k = 0; k < NTRK; k++) rev[k] = (uint32_t)trk[k].p[P_REV];
-    /* A: notes 60 + k, LEN 4 of 1/16, QUANTIZE ON; T3 automated (REV 100 on its step 1). B: notes 72 + k, T1 LEN 8,
-     * T2 LEN 6, T3 LEN 4 of 1/8 QUANTIZE OFF, T4 LEN 2 */
-    for (st = 0; st < 2u; st++) {
-        static const int16_t LEN[2][NTRK] = {{4, 4, 4, 4}, {8, 6, 4, 2}};
-        for (k = 0; k < NTRK; k++) {
-            track_t *t = &trk[k];
-            track_defaults_steps(t);
-            motion_clear(t);
-            for (i = 0; i < 16u; i++) {
-                t->step[i].note[0] = (uint8_t)((st ? 72u : 60u) + k);
-                t->step[i].n = 1;
-                t->step[i].time = ST_NOTE;
-                t->step[i].vel = 100;
-            }
-            t->p[P_SLEN] = LEN[st][k];
-            t->p[P_SDIV] = st && k == 2u ? 1 : 2;
-            t->p[P_SSWING] = 0;
-            t->p[P_SGATE] = 120;
-            t->p[P_SQNT] = !(st && k == 2u);
-        }
-        if (!st) {
-            motion_set_enabled(&trk[2], 1);
-            motion_set_event(&trk[2], 0, P_REV, 100);
-        }
-        project_save(st);
-    }
-    for (k = 0; k < NTRK; k++) {                      /* the working patterns: notes 48 + k, LEN 3 of 1/16, no automation */
-        track_t *t = &trk[k];
-        motion_clear(t);
-        for (i = 0; i < 16u; i++) t->step[i].note[0] = (uint8_t)(48u + k);
-        t->p[P_SLEN] = 3;
-        t->p[P_SDIV] = 2;
-        t->p[P_SQNT] = 1;
-    }
-    chain_config.count = 4;
-    chain_config.row[0] = (chain_row_t){{0, 1, CHAIN_SILENT, 1}, 1};
-    chain_config.row[1] = (chain_row_t){{CHAIN_SILENT, 1, 0, CHAIN_SILENT}, 2};
-    chain_config.row[2] = (chain_row_t){{CHAIN_SILENT, CHAIN_SILENT, CHAIN_SILENT, CHAIN_SILENT}, 1};
-    chain_config.row[3] = (chain_row_t){{1, 0, 1, 0}, 1};
-    bad += check("SONG lanes prepare: the slots the lanes name (A, B), the silent ones none", chain_prepare() == 0);
-    events_block(32);
-    ok = chain.running && chain.row == 0u && chain.clk == 0u;
-    ok &= seq_steps(&trk[0])[0].note[0] == 60 && seq_steps(&trk[1])[0].note[0] == 73 && seq_steps(&trk[3])[0].note[0] == 75;
-    ok &= seq_steps(&trk[2]) == chain_silent && !trk[2].seq_n && trk[0].seq_n == 1 && trk[0].seq_notes[0] == 60;
-    ok &= trk[0].p[P_SLEN] == 4 && trk[1].p[P_SLEN] == 6 && trk[3].p[P_SLEN] == 2 && trk[1].seq_notes[0] == 73;
-    bad += check("SONG lanes: each track its own slot's steps and LEN (T1 A, T2 B, T3 -, T4 B)", ok);
-    n = 1u + lanes_until(0, 4000);
-    bad += check("  section 1 lasts T1's loop (A: 4 x 1/16)", chain.row == 1u && lanes_near(n, 4u * div_samples(2)));
-    ok = chain.clk == 1u && !trk[0].seq_n && !trk[3].seq_n && trk[2].seq_notes[0] == 62 && trk[1].seq_notes[0] == 73;
-    for (k = 0; k < NTRK; k++) ok &= trk[k].seq_idx == 0u;
-    ok &= trk[2].p[P_REV] == 100 && trk[2].p[P_SLEN] == 4 && trk[2].p[P_SQNT] == 1;
-    bad += check("SONG lanes: T1 \"-\" releases its note; all four from step 1 together; T3 plays A with its automation", ok);
-    ok = 1;
-    n = 0;
-    while (n < 8000u && chain.running && chain.row == 1u) {
-        events_block(32);
-        n++;
-        ok &= chain.row != 1u || (!trk[0].seq_n && !trk[3].seq_n);
-    }
-    bad += check("SONG lanes: T1 silent: the section counts T2's loop (B: 6 x 1/16) x 2, the silent lanes stay silent",
-                 ok && chain.row == 2u && lanes_near(n, 12u * div_samples(2)));
-    ok = chain.clk == 0u && trk[2].p[P_REV] == (int16_t)rev[2];
-    n = 0;
-    while (n < 8000u && chain.running && chain.row == 2u) {
-        events_block(32);
-        n++;
-        for (k = 0; k < NTRK; k++) ok &= chain.row != 2u || !trk[k].seq_n;   /* (the block it ends in plays the next) */
-    }
-    bad += check("SONG lanes: every lane silent: nothing plays for a 4/4 bar (16 x 1/16); T3's automation back",
-                 ok && chain.row == 3u && lanes_near(n, 16u * div_samples(2)));
-    ok = trk[0].seq_notes[0] == 72 && trk[1].seq_notes[0] == 61 && trk[2].seq_notes[0] == 74 && trk[3].seq_notes[0] == 63;
-    ok &= trk[0].p[P_SLEN] == 8 && trk[1].p[P_SLEN] == 4 && trk[2].p[P_SDIV] == 1 && !trk[2].p[P_SQNT] && trk[3].p[P_SLEN] == 4;
-    bad += check("SONG lanes: B A B A: T3 B's 1/8 and QUANTIZE OFF, the others theirs", ok);
-    n = lanes_until(3, 8000);
-    ok = !chain.running && !song.playing && lanes_near(n + 1u, 8u * div_samples(2));
-    for (k = 0; k < NTRK; k++)
-        ok &= trk[k].p[P_SLEN] == 3 && trk[k].p[P_SDIV] == 2 && trk[k].p[P_SQNT] == 1 && trk[k].step[0].note[0] == 48u + k &&
-              trk[k].p[P_REV] == (int16_t)rev[k] && !trk[k].seq_n;
-    bad += check("SONG lanes: the end (T1 B's 8 steps) stops; the working patterns, LEN DIV and QUANTIZE back", ok);
-    chain_config.count = 1;
-    chain_config.row[0] = (chain_row_t){{CHAIN_SILENT, 2, CHAIN_SILENT, CHAIN_SILENT}, 1};
-    ok = chain_prepare() == 3u + 2u && !chain.armed;
-    chain_config.row[0].slot[1] = CHAIN_SILENT;
-    memset(proj_slot, 0, sizeof proj_slot);
-    ok &= chain_prepare() == 0 && chain.armed;
-    events_block(32);
-    ok &= chain.running && seq_steps(&trk[1]) == chain_silent;
-    seq_stop();
-    bad += check("SONG lanes: a lane on an empty slot refuses (PATTERN C EMPTY); a silent song needs none", ok);
-    chain_config.row[0].slot[0] = 5;
-    bad += check("SONG lanes: a slot past \"-\" is no section", !chain_valid(&chain_config));
-    chain_defaults(&chain_config);
-    return bad;
-}
-
-/* SONG's lanes drawn (ui_graph.c graph_song): a run of one slot merges into one block (no gap at the boundary), "-" is a
- * gap, the cell selected is THEME (only its section), the playhead crosses all four lanes */
-static int test_song_lanes_drawn(void)
-{
-    song_lay_t L;
-    int bad = 0, ok;
-    int32_t xb, y0, y1, y2;
-    uint32_t k;
-    ui_power_on();
-    trk[0].p[P_SLEN] = 16; trk[0].p[P_SDIV] = 2;
-    project_save(0); project_save(1);
-    fm1_ms += 1000u;
-    chain_config.count = 3;
-    chain_config.row[0] = (chain_row_t){{0, 0, CHAIN_SILENT, 1}, 1};
-    chain_config.row[1] = (chain_row_t){{0, 1, CHAIN_SILENT, 1}, 1};
-    chain_config.row[2] = (chain_row_t){{1, 1, 0, CHAIN_SILENT}, 1};
-    ui.song_row = 1; ui.song_trk = 0;
-    ui_prefs |= PREF_ANIM_OFF;
-    go_page(GR_SONG); frames(100);
-    song_layout(&L);
-    xb = SG_X0 + L.x[1] - 1;                         /* the boundary between sections 1 and 2 */
-    y0 = SG_LY(0) + SG_LH - 1; y1 = SG_LY(1) + SG_LH - 1; y2 = SG_LY(2) + SG_LH - 1;   /* (under the letters) */
-    ok = sg_px(xb, SG_LY(3) + SG_LH - 1) == T_RAISE;  /* T4: B B -: one block over the boundary */
-    ok &= sg_px(xb, y1) != T_RAISE && sg_px(xb, y1) != T_THEME;   /* T2: A then B: two blocks, the gap */
-    ok &= sg_px(SG_X0 + L.x[0] + 4, y2) != T_RAISE && sg_px(SG_X0 + L.x[0] + 4, y2) != T_THEME;   /* T3 "-": nothing */
-    bad += check("SONG lanes drawn: a run of one slot one block, another slot a new one, \"-\" a gap", ok);
-    ok = sg_px(SG_X0 + L.x[1] + 2, y0) == T_THEME && sg_px(SG_X0 + L.x[0] + 2, y0) == T_RAISE && sg_px(xb, y0) == T_RAISE;
-    bad += check("SONG lanes drawn: the cell (section 2, T1) THEME, the rest of its block RAISE", ok);
-    ui.song_trk = 2; ui.song_row = 0; frames(100);
-    ok = sg_px(SG_X0 + L.x[0] + 4, SG_LY(2)) == T_THEME && sg_px(SG_X0 + L.x[0], SG_LY(2) + 4) == T_THEME &&
-         sg_px(SG_X0 + L.x[0] + 4, SG_LY(2) + 4) != T_THEME;
-    bad += check("SONG lanes drawn: the cursor on a \"-\" cell: its outline only", ok);
-    chain_prepare(); events_block(32);
-    for (k = 0; k < 600u; k++) events_block(32);
-    ui.song_row = 2; frames(50);
-    ok = 1;
-    {
-        int32_t sp = SG_X0 + song_playx(&L) - sgv.off;
-        for (k = 0; k < NTRK; k++) ok &= sg_px(sp, SG_LY(k) + 1) == T_ACCENT;
-        ok &= sp > SG_X0 + 4 && sg_px(sp, SG_Y + SG_H) == T_ACCENT && sg_px(sp, SG_RY + 3) == T_ACCENT;
-    }
-    bad += check("SONG lanes drawn: the playhead crosses the four lanes to the ruler (ACCENT)", ok);
-    seq_stop(); frames(50);
-    ui_prefs &= ~PREF_ANIM_OFF;
-    chain_defaults(&chain_config);
-    ui.song_row = ui.song_trk = 0;
-    return bad;
-}
-
-/* SONG's pictures (project.c proj_density, ui_graph.c sg_picture): a slot's picture is that track's steps there (a
- * cell a step at LEN 16: rest 0, tie 1, note or hit 2, accent 3; at LEN 32 two steps a cell, their mean rounded up),
- * the other tracks' their own; drawn in its lane as bars that high (THEME on RAISE, INK in the cell selected), REPS
- * passes notched; a slot saved again is read again. (The panel's text in its bands: tests/ui_render.c song_bands) */
-static uint32_t sg_bar(int32_t x, int32_t k)          /* lane k's bar height at column x (THEME or INK pixels) */
-{
-    uint32_t n = 0;
-    int32_t y;
-    for (y = SG_LY(k) + SG_PAD; y < SG_LY(k) + SG_PAD + SG_PH; y++)
-        n += sg_px(x, y) == T_THEME || sg_px(x, y) == T_INK;
-    return n;
-}
-static int test_song_pictures(void)
-{
-    song_lay_t L;
-    int bad = 0, ok;
-    uint32_t i, d, want, lv[16] = {0};
-    int32_t sx, wt;
-    ui_power_on();
-    for (i = 0; i < NTRK; i++) {                     /* every track empty, 1/16, LEN 16 */
-        memset(trk[i].step, 0, sizeof trk[i].step);
-        for (d = 0; d < NSTEP; d++) trk[i].step[d].time = ST_REST;
-        trk[i].p[P_SLEN] = 16; trk[i].p[P_SDIV] = 2;
-    }
-    trk[2].step[5] = (step_t){{60}, 1, ST_NOTE, SF_ACCENT, 100, 0, 0, 0};   /* T3: an accent, its tie, a note, a hit */
-    trk[2].step[6].time = ST_TIE;
-    trk[2].step[8] = (step_t){{62}, 1, ST_NOTE, 0, 100, 0, 0, 0};
-    trk[2].step[12] = (step_t){{0}, 0, ST_NOTE, 0, 100, 1, 0, 0};
-    trk[2].step[14] = (step_t){{64}, 1, ST_NOTE, 0, 100, 0, 0, 101};      /* (CHANCE 0: silent, none) */
-    trk[0].step[0] = (step_t){{40}, 1, ST_NOTE, 0, 100, 0, 0, 0};         /* T1: step 1 only */
-    project_save(1);
-    fm1_ms += 1000u;
-    chain_config.count = 1;
-    chain_config.row[0] = (chain_row_t){{CHAIN_SILENT, CHAIN_SILENT, 1, CHAIN_SILENT}, 1};   /* T3 alone: it clocks */
-    ui.song_row = 0; ui.song_trk = 0;
-    ui_prefs |= PREF_ANIM_OFF;
-    go_page(GR_SONG); frames(100);
-    lv[5] = 3; lv[6] = 1; lv[8] = 2; lv[12] = 2;
-    for (want = 0, i = 0; i < 16u; i++) want |= lv[i] << (2u * i);
-    ok = graph_pcell[1][2] == 16u && graph_pden[1][2] == want && graph_pden[1][0] == 2u && !graph_pden[1][1] &&
-         !graph_pden[1][3];
-    bad += check("SONG pictures: a slot's picture is that track's steps (rest 0, tie 1, note / hit 2, accent 3), "
-                 "the others their own", ok);
-    song_layout(&L);
-    sx = SG_X0 + L.x[0]; wt = L.x[1] - L.x[0] - SG_GAP;
-    ok = 1;
-    for (i = 4; i < 16u; i++) {                      /* (cells 0..3 hold the letter) */
-        int32_t x = sx + (int32_t)((2u * i + 1u) * (uint32_t)wt / 32u);
-        ok &= sg_bar(x, 2) == lv[i] * SG_PH / 3u && sg_px(x, SG_LY(2) + SG_LH - 2) == T_RAISE;
-    }
-    bad += check("SONG pictures: drawn in the lane, a bar a cell as high as its level (THEME on RAISE)", ok);
-    ui.song_trk = 2; frames(100);                     /* the cell selected: INK bars on THEME */
-    ok = 1;
-    for (i = 4; i < 16u; i++) {
-        int32_t x = sx + (int32_t)((2u * i + 1u) * (uint32_t)wt / 32u), y;
-        uint32_t n = 0;
-        for (y = SG_LY(2) + SG_PAD; y < SG_LY(2) + SG_PAD + SG_PH; y++) n += sg_px(x, y) == T_INK;
-        ok &= n == lv[i] * SG_PH / 3u && sg_px(x, SG_LY(2) + SG_LH - 2) == T_THEME;
-    }
-    bad += check("SONG pictures: in the cell selected INK bars on THEME", ok);
-    chain_config.row[0].repeat = 2;                  /* x2: the pattern twice, a notch between */
-    ui.song_trk = 0; frames(100);
-    song_layout(&L);
-    sx = SG_X0 + L.x[0]; wt = L.x[1] - L.x[0] - SG_GAP;
-    ok = sg_bar(sx + wt / 2 + (int32_t)(5u * (uint32_t)wt / 32u + (uint32_t)wt / 64u), 2) == SG_PH &&
-         sg_px(sx + wt / 2, SG_LY(2) + SG_PAD + 1) == T_SURF && sg_px(sx + wt / 2, SG_LY(2) + 1) == T_RAISE;
-    bad += check("SONG pictures: REPS 2 draws the pattern twice, notched between (the block whole)", ok);
-    trk[2].p[P_SLEN] = 32;                           /* LEN 32: two steps a cell, the mean rounded up */
-    memset(trk[2].step, 0, sizeof trk[2].step);
-    for (d = 0; d < NSTEP; d++) trk[2].step[d].time = ST_REST;
-    trk[2].step[0].time = trk[2].step[1].time = ST_NOTE; trk[2].step[0].n = trk[2].step[1].n = 1;   /* 2+2: 2 */
-    trk[2].step[2].time = ST_NOTE; trk[2].step[2].n = 1;                                             /* 2+0: 1 */
-    trk[2].step[4].time = ST_NOTE; trk[2].step[4].n = 1; trk[2].step[4].flags = SF_ACCENT;         /* 3+0: 2 */
-    trk[2].step[6].time = ST_NOTE; trk[2].step[6].hit = 2; trk[2].step[6].acc = 2;                 /* 3+1: 2 */
-    trk[2].step[7].time = ST_TIE;
-    project_save(1);
-    fm1_ms += 1000u; frames(100);
-    bad += check("SONG pictures: LEN 32, two steps a cell (their mean rounded up); saved again: read again",
-                 graph_pcell[1][2] == 16u && graph_pden[1][2] == (2u | 1u << 2 | 2u << 4 | 2u << 6));
-    trk[2].p[P_SLEN] = 5;
-    project_save(1);
-    fm1_ms += 1000u; frames(100);
-    bad += check("SONG pictures: LEN 5, a cell a step", graph_pcell[1][2] == 5u && graph_pden[1][2] == (2u | 2u << 2 | 2u << 4 | 3u << 8));
-    ui_prefs &= ~PREF_ANIM_OFF;
-    chain_defaults(&chain_config);
-    ui.song_row = ui.song_trk = 0;
-    return bad;
-}
-
-/* the header's slot letter (ui_draw.c head_slot): the PROJECT slot of the selected track's pattern; "A*" edited since;
- * none at power-on and after a PHRASES pattern; a song playing: its section's slot ("-" silent); a message hides it */
-static uint32_t head_ink_cols(int32_t x0, int32_t x1)  /* header columns x0..x1 with anything not BG */
-{
-    uint32_t n = 0;
-    for (int32_t x = x0; x <= x1; x++)
-        for (int32_t y = 2; y < 22; y++)
-            if (swap16(host_screen[(uint32_t)y * 240u + (uint32_t)x]) != T_BG) { n++; break; }
-    return n;
-}
-static int head_is(const char *s)
-{
-    char b[3];
-    int on = head_slot(b);
-    return s ? on && b[0] == s[0] && b[1] == s[1] : !on;
-}
-static int test_head_slot(void)
-{
-    int bad = 0, ok;
-    ui_power_on();
-    frames(50);
-    ok = head_is(0) && !head_ink_cols(23, 32);
-    project_save(1); ui.msg_t = 0; frames(50);
-    ok &= head_is("B") && head_ink_cols(23, 32) > 4;
-    bad += check("header: no letter at power-on; \"1 B\" after PROJECT SAVE to B", ok);
-    trk[0].step[0].note[0] = 70; trk[0].step[0].n = 1; frames(50);
-    ok = head_is("B*");
-    song.sel = 1; ok &= head_is("B");
-    song.sel = 0;
-    bad += check("header: an edit since marks it (\"B*\"), on that track only", ok);
-    project_load(1);
-    ok = head_is("B");
-    project_save(0);
-    ok &= head_is("A");
-    {
-        int16_t len = trk[0].p[P_SLEN];
-        trk[0].p[P_SLEN] = (int16_t)(len == 7 ? 8 : 7); ok &= head_is("A*");
-        trk[0].p[P_SLEN] = len; ok &= head_is("A");
-    }
-    motion_set_enabled(&trk[0], 1); motion_set_event(&trk[0], 3, P_REV, 90); ok &= head_is("A*");
-    motion_clear(&trk[0]); motion_set_enabled(&trk[0], 0);
-    bad += check("header: a load of B \"B\", a save to A \"A\"; LEN and automation edits mark it, undone clear it",
-                 ok && head_is("A"));
-    pat_load(&trk[0], 2);
-    ok = head_is(0);
-    undo_swap();
-    bad += check("header: a PHRASES pattern shows none, SAVE held (undo) brings the letter back", ok && head_is("A"));
-    chain_config.count = 1;
-    chain_config.row[0] = (chain_row_t){{1, CHAIN_SILENT, 0, 0}, 4};
-    chain_prepare(); events_block(32); frames(50);
-    ok = chain.running && head_is("B");
-    song.sel = 1; ok &= head_is("-");
-    song.sel = 0;
-    ui_message("SAVED"); frames(20);
-    ok &= !head_ink_cols(23, 32);
-    seq_stop(); ui.msg_t = 0; frames(50);
-    bad += check("header: a song playing: its section's slot (\"1 B\", T2 \"-\"); a message hides it; STOP: \"A\"", ok &&
-                 head_is("A"));
-    chain_defaults(&chain_config);
     return bad;
 }
 
@@ -8776,6 +6868,7 @@ static int test_fm6_ops(void)
     fm6_unpack(FM6_INIT, v);
     fm6_set_patch(tr, v);
     fm6_adopt(tr);
+    (void)fm6_sound();                               /* (a note first: whatever the tests before left decays) */
     s0 = fm6_sound();
     go_title("OPERATOR"); frame();
     fop_pick(2);
@@ -8879,175 +6972,613 @@ static int test_fm6_ops(void)
 static uint16_t tr_px(int32_t x, int32_t y) { return swap16(host_screen[(uint32_t)y * 240u + (uint32_t)x]); }
 static int32_t tr_y(uint32_t c) { return Y_GRAPH + (int32_t)c * TR_PITCH; }
 static int32_t tr_x(uint32_t i) { return 3 + tr_bx(i) + TR_BW / 2; }   /* a step's bar, its middle column */
-static int test_home_tracks(void)
+
+/* 1.5: the tracker (src/tracker.c plays the song, src/ui_tracker.c its pages, src/project.c keeps it). PLAY on PATTERN
+ * loops the pattern edited, on SONG plays the order list from the position picked; a row is a 1/16 (swung by CLOCK's
+ * SWING); a column's note rings until the next note or OFF; a row's instrument becomes the track's sound from that row
+ * on (the engine, its EDIT values; not the track's ENV and sends); a row's FX sets a parameter for that row only; the
+ * track's CUT / RES hold the filter over the instruments; live recording into the rows; the pages' knobs, PRESETS,
+ * EDIT and keys; playing, the cursor follows the row playing, 8 rows a page; the song saved and loaded whole */
+static uint32_t tk_gated(const track_t *t, uint32_t note)   /* track t's voices held on note */
+{
+    uint32_t i, n = 0;
+    for (i = 0; i < NVOICE; i++)
+        n += t->v[i].active && t->v[i].gate && t->v[i].note == note;
+    return n;
+}
+static int test_tracker_play(void)
 {
     int bad = 0, ok;
-    uint8_t before[32];
-    persist_t p;
-    track_t *t;
-    uint32_t i, id;
-    int16_t v0;
+    uint32_t row, i, id, base;
+    int16_t atk, rev;
+    track_t *t0 = &trk[0], *t1 = &trk[1];
+    const preset_t *dp = &ENGINES[ENGI_DRUM]->presets[0];
     ui_power_on();
-    memcpy(before, favorites.factory[15], 32);
-    ok = ui_home_view == 0u && !home_tracks() && menu_get(MI_HOME) == 0u && menu_n(MI_HOME) == 2u &&
-         str_eq(MI_NAME[MI_HOME], "HOME") && str_eq(menu_vname(MI_HOME, 0), "SCOPE") &&
-         str_eq(menu_vname(MI_HOME, 1), "TRACKS") && MI_TAB[MI_HOME] == MTAB_DISPLAY && MI_HOME < MI_VALUES;
-    menu_put(MI_HOME, 1);
-    ok &= ui_home_view == 1u && home_tracks() && menu_get(MI_HOME) == 1u;
-    for (i = 0; i < 32u; i++)                           /* (byte 26 only: SCREEN OFF, the 1.2 flags, the FX keys kept) */
-        ok &= i == 26u || favorites.factory[15][i] == before[i];
-    memset(&p, 0, sizeof p);
-    settings_export(&p);
-    ok &= p.favorites.factory[15][26] == 1u;
-    menu_put(MI_HOME, 0);
-    ok &= settings_import(&p, (int)sizeof p) == 1 && ui_home_view == 1u;   /* (back from the record) */
-    ui_home_view = 9;                                   /* a later firmware's view: SCOPE here, kept as saved */
-    ok &= !home_tracks() && menu_get(MI_HOME) == 0u;
-    settings_export(&p);
-    ok &= settings_import(&p, (int)sizeof p) == 1 && ui_home_view == 9u;
-    bad += check("1.3 MENU > DISPLAY > HOME: SCOPE (0, the default) / TRACKS, its own settings byte, saved; unknown = SCOPE", ok);
+    song.g[G_SWING] = 0;
+    row = div_samples(2);
+    tk.len[0] = 4;
+    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));
+    tk_put(0, 2, 0, tk_pack(62, 0, 0, 0));
+    tk_put(0, 3, 0, tk_pack(TK_OFF, 0, 0, 0));
+    tk_put(0, 1, 1, tk_pack(48, 0, 0, 0));
+    go_page(GR_TKPAT); frame();
+    press(B_PLAY);
+    events_block(CTL);
+    ok = song.playing && tk_pl.mode == TK_LOOP && tk_pl.pat == 0u && tk_pl.row == 0u && tk_gated(t0, 60) && !tk_gated(t1, 48);
+    events_block(row);
+    ok &= tk_pl.row == 1u && tk_gated(t0, 60) && tk_gated(t1, 48);
+    events_block(row);
+    ok &= tk_pl.row == 2u && tk_gated(t0, 62) && !tk_gated(t0, 60) && tk_gated(t1, 48);
+    events_block(row);
+    ok &= tk_pl.row == 3u && !tk_gated(t0, 62) && tk_gated(t1, 48);
+    events_block(row);
+    ok &= tk_pl.row == 0u && tk_pl.pat == 0u && tk_gated(t0, 60) && tk_pl.rows == 5u;
+    bad += check("tracker LOOP (PLAY on PATTERN): a row a 1/16, a note rings to the next or OFF, the 4 rows again", ok);
+    tk.len[1] = 2;
+    tk_put(1, 0, 0, tk_pack(72, 0, 0, 0));
+    tk_pl.loop_pat = 1;                                 /* (SEQ held, KNOB 1: another pattern while it plays) */
+    events_block(row);
+    frame();
+    ok = tk_pl.pat == 0u && tk_pl.row == 1u && tk_view_pat() == 1u && !tk_following();
+    events_block(3u * row);
+    ok &= tk_pl.pat == 1u && tk_pl.row == 0u && tk_gated(t0, 72);
+    events_block(2u * row);
+    ok &= tk_pl.pat == 1u && tk_pl.row == 0u;
+    bad += check("  another pattern picked plays from the end of the one playing (CUED), then loops", ok);
+    transport_req = 2;
+    events_block(CTL);
+    bad += check("  STOP: the notes end", !song.playing && !tk_gated(t0, 72) && !tk_pl.note[0] && !tk_pl.note[1]);
 
+    /* SONG */
     ui_power_on();
-    hold(B_HOME);                                       /* the menu: DISPLAY, down to HOME, K1 right */
-    for (i = 0; i < 7u; i++) turn(EN_PRESET, 1);
-    ok = ui.menu == 1 && ui.menu_sel == MI_HOME;
-    turn(EN_K1, 1); ok &= home_tracks();
-    turn(EN_K3, 1); ok &= home_tracks();               /* (stops at TRACKS) */
-    press(B_OCTDN); ok &= !home_tracks();
-    press(B_OCTUP); ok &= home_tracks();
-    press(B_HOME); frame();
-    ok &= !ui.menu && ui.home;
-    bad += check("1.3 MENU: HOME's row (any knob, OCT+ / OCT-), the menu closed: HOME", ok);
+    song.g[G_SWING] = 0;
+    tk.len[0] = 2; tk.len[1] = 3;
+    tk.order[0] = 0; tk.order[1] = 1; tk.order[2] = 0; tk.norder = 3;
+    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));
+    tk_put(1, 0, 0, tk_pack(64, 0, 0, 0));
+    tk_put(1, 2, 0, tk_pack(67, 0, 0, 0));
+    go_page(GR_TKSONG); frame();
+    tku.pos = 1;
+    press(B_PLAY);
+    events_block(CTL);
+    ok = tk_pl.mode == TK_SONG && tk_pl.pos == 1u && tk_pl.pat == 1u && tk_pl.row == 0u && tk_gated(t0, 64);
+    events_block(2u * row);
+    ok &= tk_pl.pos == 1u && tk_pl.row == 2u && tk_gated(t0, 67);
+    events_block(row);
+    ok &= tk_pl.pos == 2u && tk_pl.pat == 0u && tk_pl.row == 0u && tk_gated(t0, 60);
+    events_block(2u * row);
+    ok &= tk_pl.pos == 0u && tk_pl.pat == 0u && tk_pl.row == 0u;
+    go_page(GR_TKPAT); frame();
+    ok &= tk_view_pat() == tk_pl.pat && tku.row == tk_pl.row;
+    bad += check("tracker SONG (PLAY on SONG): the positions from the one picked, pattern by pattern, round; PATTERN shows "
+                 "the one playing", ok);
+    transport_req = 2;
+    events_block(CTL);
+    frame();
+    bad += check("  stopped: PATTERN keeps the pattern the song was on", tk_pl.loop_pat == 0u && tku.pos == 0u);
 
-    /* the rows: T1 (not selected) a line, T2 selected, T3 muted, T4 the DRUM beat */
+    /* the cursor follows the row playing, 8 rows a page */
     ui_power_on();
-    ui_home_view = HV_TRACKS;
+    song.g[G_SWING] = 0;
+    go_page(GR_TKPAT); frame();
+    press(B_PLAY);
+    events_block(CTL);
+    frame();
+    ok = tku.row == 0u;
+    events_block(9u * row);
+    frame();
+    ok &= tk_pl.row == 9u && tku.row == 9u && tku.row / TK_VIEW == 1u;
+    turn(EN_K1, 3);
+    ok &= tku.row == tk_pl.row;
+    bad += check("  playing: the cursor is the row playing (KNOB 1 too); the rows shown, the 8 that hold it (08..0F)", ok);
+    transport_req = 2;
+    events_block(CTL);
+
+    /* swing */
+    song.g[G_SWING] = 50;
+    base = div_samples(2);
+    bad += check("  CLOCK's SWING: even rows longer, odd ones shorter, a pair as two straight rows",
+                 tk_row_len(0) > base && tk_row_len(1) < base && tk_row_len(0) + tk_row_len(1) == 2u * base);
+    song.g[G_SWING] = 0;
+
+    /* instruments and FX */
+    ui_power_on();
+    song.g[G_SWING] = 0;
+    tk.instr[4].src = ENGI_DRUM;                        /* instrument 05: DRUM's first kit */
+    tk.instr[4].preset = 0;
+    atk = t0->p[P_ATK];
+    rev = t0->p[P_REV];
+    tk_put(0, 0, 0, tk_pack(DRUM_LANE_NOTE[DV_KICK], 5, 0, 0));
+    tk_put(0, 1, 0, tk_pack(60, 1, 0, 0));               /* 01: track 1's power-on sound */
+    tk_put(0, 2, 0, tk_pack(0, 0, TKC_REV, 127));
+    tk_put(0, 3, 0, tk_pack(0, 0, TKC_CUT, 0));
+    go_page(GR_TKPAT); frame();
+    press(B_PLAY);
+    events_block(CTL);
+    ok = t0->eng_req == ENGI_DRUM && t0->p[P_ATK] == atk && t0->p[P_REV] == rev;
+    for (i = 0; i < 8u; i++)
+        ok &= t0->p[P_E0 + i] == dp->e[i];
+    events_block(row);
+    ok &= t0->eng_req == TRK_DEF[0][0] && t0->preset == TRK_DEF[0][1] && t0->p[P_ATK] == atk && t0->p[P_REV] == rev;
+    bad += check("tracker: a row's instrument is the track's sound from it on (engine, EDIT values); its ENV, sends stay", ok);
+    events_block(row);
+    ok = t0->p[P_REV] == TP[P_REV].max;
+    events_block(row);
+    id = tk_filter_id(t0, TKP_CUT);
+    ok &= t0->p[P_REV] == rev && id < P_COUNT && t0->p[id] == param_desc_of(t0->eng_req, id)->min;
+    events_block(row);
+    ok &= t0->p[id] == ENGINES[TRK_DEF[0][0]]->presets[TRK_DEF[0][1]].e[id - P_E0];
+    bad += check("  a row's FX: that parameter for that row only (REVERB 7F the top, CUTOFF 00 the engine's lowest)", ok);
+    transport_req = 2;
+    events_block(CTL);
+    tk.cut[0] = 10;
+    tk_inst_apply(t0, 1);
+    bad += check("  the track's CUT over the instruments: the filter there after an instrument (INST: its own)",
+                 t0->p[id] == tk_scale(t0, id, 10));
+    tk.cut[0] = TK_INST_VAL;
+
+    /* live recording */
+    ui_power_on();
+    song.g[G_SWING] = 0;
+    tk.len[0] = 16;
+    go_page(GR_TKPAT); frame();
+    song.rec = 1;
+    transport_req = 1;
+    events_block(CTL);
+    events_block(2u * row + row / 4u);                  /* early in row 2 */
+    input_on(t0, 65, 100);
+    ok = song.playing && tk_note(tk_at(0, 2, 0)) == 65u && tk_gated(t0, 65);
+    events_block(row / 2u);                             /* late in row 2: let go, OFF on row 3 */
+    input_off(t0, 65);
+    ok &= tk_note(tk_at(0, 3, 0)) == TK_OFF;
+    events_block(row / 4u + 2u * row + row * 3u / 4u);  /* late in row 5: into row 6, not again there */
+    input_on(t0, 67, 100);
+    ok &= tk_note(tk_at(0, 6, 0)) == 67u && tk_gated(t0, 67) == 1u;
+    events_block(row / 2u);
+    ok &= tk_pl.row == 6u && tk_gated(t0, 67) == 1u;
+    input_off(t0, 67);
+    bad += check("tracker: live recording into the nearest row (OFF where let go); a row still to come does not play it again",
+                 ok);
+    transport_req = 2;
+    events_block(CTL);
+    song.rec = 0;
+    return bad;
+}
+
+static int test_tracker_pages(void)
+{
+    int bad = 0, ok;
+    uint32_t i, src;
+    int16_t v;
+    ui_power_on();
+    open_family(FAM_SEQ); frame();
+    ok = cur_page()->graph == GR_TKPAT && str_eq(cur_page()->title, "PATTERN") && tku.row == 0u;
+    turn(EN_K2, 1);                                     /* none -> the last note (C-4) */
+    ok &= cell_is(0, 0, 0, tk_pack(60, 0, 0, 0));
+    turn(EN_K2, 2);
+    ok &= tk_note(tk_at(0, 0, 0)) == 62u;
+    turn(EN_K3, 3);                                     /* instrument 03, the one the keys record with now */
+    ok &= tk_inst(tk_at(0, 0, 0)) == 3u && tk_cur_inst == 3u;
+    turn(EN_K4, 1);                                     /* a new FX: LEVEL (the last), from the track's value */
+    v = TSEL->p[P_LEVEL];
+    ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_LEVEL && tk_val(tk_at(0, 0, 0)) == tk_unscale(TSEL, P_LEVEL, v);
+    turn(EN_K4, 5);
+    ok &= tk_val(tk_at(0, 0, 0)) == tk_unscale(TSEL, P_LEVEL, v) + 5u;
+    turn(EN_PRESET, 1);
+    ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_ATK && tku.cmd == TKC_ATK;
+    bad += check("PATTERN: KNOB 2 the note (from none: the last), 3 the instrument, 4 the FX value, PRESETS its command", ok);
+    turn(EN_PRESET, -2);
+    ok = tk_cmd(tk_at(0, 0, 0)) == TKC_NONE && tk_val(tk_at(0, 0, 0)) == 0u && tk_note(tk_at(0, 0, 0)) == 62u;
+    turn(EN_K1, 1);
+    turn(EN_K2, 1);                                     /* row 1: a new note takes the instrument used last */
+    ok &= tku.row == 1u && cell_is(0, 1, 0, tk_pack(62, 3, 0, 0));
+    turn(EN_K2, -100);                                  /* below the lowest: OFF, then none */
+    ok &= tk_note(tk_at(0, 1, 0)) == TK_OFF;
+    turn(EN_K2, -1);
+    ok &= tk_note(tk_at(0, 1, 0)) == 0u;
+    turn(EN_K1, -3);                                    /* the rows wrap in the pattern's length (half speed: the */
+    ok &= tku.row == TK_ROWS - 1u;                      /* first detent at once, then every second one: 2 rows) */
+    turn(EN_K1, -1);                                    /* (the same turn: its second detent waits) */
+    ok &= tku.row == TK_ROWS - 1u;
+    turn(EN_K1, -1);
+    ok &= tku.row == TK_ROWS - 2u;
+    frames(300);
+    turn(EN_K1, 1);                                     /* after a pause: one click, one row */
+    ok &= tku.row == TK_ROWS - 1u;
+    tku.row = 0;
+    press(B_EDIT);
+    ok &= tk_empty(tk_at(0, 0, 0)) && tku.row == 1u && msg_is("CELL CLEARED");
+    bad += check("  PRESETS to NO FX clears it; OFF below the lowest note, then none; the rows wrap, KNOB 1 at half speed; EDIT clears the cell", ok);
+    turn(EN_ALGO, 1); frame();
+    tku.row = 4;
+    turn(EN_K2, 1);
+    ok = song.sel == 1u && tk_note(tk_at(0, 4, 1)) != 0u && tk_empty(tk_at(0, 4, 0));
+    bad += check("  ALGORITHM: the cursor's track (its column)", ok);
+
+    /* SONG */
+    ui_power_on();
+    go_page(GR_TKSONG); frame();
+    turn(EN_K1, 1);                                     /* + ADD */
+    ok = tku.pos == 1u;
+    turn(EN_K2, 1);                                     /* a new position (the one before's pattern) */
+    ok &= tk.norder == 2u && tk.order[1] == 0u;
+    turn(EN_K2, 5);
+    ok &= tk.order[1] == 5u;
+    turn(EN_K3, -16);                                   /* that pattern's length */
+    ok &= tk.len[5] == 48u;
+    turn(EN_K4, 1);                                     /* a copy after it */
+    ok &= tk.norder == 3u && tk.order[2] == 5u && tku.pos == 2u;
+    turn(EN_K4, -1);                                    /* deleted */
+    ok &= tk.norder == 2u;
+    press(B_EDIT);
+    ok &= tk.norder == 1u && tk.order[0] == 0u;
+    press(B_EDIT);
+    ok &= tk.norder == 1u;                              /* (the last one stays) */
+    bad += check("SONG: KNOB 1 the position (+ ADD), 2 its pattern (adds one), 3 the length, 4 copy / delete; EDIT deletes",
+                 ok);
+
+    /* SETTINGS */
+    ui_power_on();
+    go_page(GR_TKSET); frame();
+    v = trk[1].p[P_ATK];
+    src = (uint32_t)trk[0].p[P_ATK];
+    turn(EN_K2, 3);                                     /* ATTACK of track 2 */
+    ok = trk[1].p[P_ATK] == v + 3 && trk[0].p[P_ATK] == (int16_t)src;
+    for (i = 0; i < TK_NSET && TK_SET[i].id != TKS_CUT; i++)
+        ;
+    turn(EN_PRESET, (int32_t)i);
+    ok &= tku.srow == i;
+    turn(EN_K1, 1);                                     /* CUTOFF: INST -> the instrument's own, then the knob's */
+    ok &= tk.cut[0] != TK_INST_VAL;
+    turn(EN_K1, -127);
+    ok &= tk.cut[0] == TK_INST_VAL;
+    turn(EN_K1, 1);
+    song.sel = 0;
+    press(B_EDIT);
+    ok &= tk.cut[0] == TK_INST_VAL;
+    bad += check("SETTINGS: a row a setting, KNOB 1..4 tracks 1..4; CUTOFF INST <-> the knob's (EDIT: INST)", ok);
+
+    /* INSTR */
+    ui_power_on();
+    go_page(GR_TKINST); frame();
+    turn(EN_K1, 6);                                     /* slot 07 */
+    ok = tku.slot == 6u && tk_cur_inst == 7u && tk.instr[6].src == TK_SRC_NONE;
+    turn(EN_K2, 1);                                     /* the first engine */
+    src = tk.instr[6].src;
+    ok &= src == eng_vis(0) && TSEL->eng_req == src;
+    turn(EN_K3, 1);
+    ok &= tk.instr[6].preset == 1u && TSEL->preset == 1u;
+    press(B_EDIT);
+    ok &= tk.instr[6].src == TK_SRC_NONE;
+    bad += check("INSTR: KNOB 1 the slot, 2 its engine, 3 its preset: the track plays it at once; EDIT empties it", ok);
+    return bad;
+}
+
+/* 1.5: a cell's chord (two intervals above its note): three notes in the column, released together; a track not
+ * POLY plays the note alone; the preview, step entry (keys held together), live recording, the SEQ layer's KNOB 4,
+ * the footer, the page title */
+/* PATTERN's column heads: the instrument each track sounds now and its engine; a sound loaded since: the engine alone */
+static int test_tracker_heads(void)
+{
+    int bad = 0, ok;
+    ui_power_on();
+    go_page(GR_TKPAT); frame();
+    ok = !tk_track_inst(0) && !tk_track_inst(1);                 /* (power on: the tracks' own sounds) */
+    tk.instr[4].src = ENGI_PHYS; tk.instr[4].preset = 0;
+    tk_put(0, 0, 1, tk_pack(60, 5, 0, 0));
+    press(B_PLAY);
+    events_block(CTL);
+    ok &= tk_track_inst(1) == 5u && trk[1].eng_req == ENGI_PHYS;
+    frame();
+    stop_transport();
+    tk.instr[4].preset = 1;                                      /* the instrument changed on INSTR: not the sound now */
+    ok &= !tk_track_inst(1);
+    tk.instr[4].preset = 0;
+    ok &= tk_track_inst(1) == 5u;
     song.sel = 1;
-    t = &trk[0];
-    track_defaults_steps(t);
-    t->p[P_SLEN] = 16;
-    for (i = 0; i < NSTEP; i++) step_clear(&t->step[i]);
-    t->step[0] = (step_t){{60}, 1, ST_NOTE, 0, 100};
-    t->step[4] = (step_t){{62}, 1, ST_NOTE, 0, 100};
-    t->step[5] = (step_t){{62}, 0, ST_TIE, 0, 100};     /* (carried on from step 4's note) */
-    t->step[6] = (step_t){{62}, 0, ST_TIE, 0, 100};
-    t->step[8] = (step_t){{64}, 1, ST_NOTE, SF_ACCENT, 100};
-    t->step[10] = (step_t){{0}, 0, ST_TIE, 0, 100};     /* (a TIE after an empty step: nothing to carry) */
-    go_home(); frame();
-    {
-        int32_t y = tr_y(0);
-        ok = tr_px(tr_x(0), y + TR_SB - 3) == T_THEME && tr_px(tr_x(0), y + TR_SB - 9) == T_SURF &&   /* a note */
-             tr_px(tr_x(1), y + TR_SB - 1) == T_RAISE && tr_px(tr_x(1), y + TR_SB - 4) == T_SURF &&   /* empty */
-             tr_px(tr_x(5), y + TR_SB - 3) == T_THEME && tr_px(tr_x(6), y + TR_SB - 3) == T_THEME &&  /* tied */
-             tr_px(3 + tr_bx(5) - 1, y + TR_SB - 3) == T_THEME &&                                    /* .. joined */
-             tr_px(3 + tr_bx(4) - 1, y + TR_SB - 3) == T_SURF &&                                     /* (not before its note) */
-             tr_px(tr_x(8), y + TR_SB - 9) == T_ACCENT &&                                             /* accented */
-             tr_px(tr_x(10), y + TR_SB - 1) == T_MID && tr_px(tr_x(10), y + TR_SB - 3) == T_SURF &&   /* a lone TIE */
-             tr_px(3 + 22, y + 1) == T_SURF && tr_px(3 + 22, tr_y(1) + 1) == T_THEME &&               /* T2 selected */
-             home_tracks() && large_kind() == LK_OFF;
-        bad += check("1.3 HOME > TRACKS: a row's steps: notes, empty stubs, TIEs carried on (joined), accents, a lone TIE", ok);
-    }
-    song.playing = 1;                                   /* the play head on step 3 (empty), then on the note 4 */
-    t->seq_idx = 3;
-    frame();
-    ok = tr_px(3 + tr_bx(3), tr_y(0) + 20) == T_RAISE && tr_px(tr_x(3), tr_y(0) + TR_SB - 1) == T_MID &&
-         tr_px(3 + tr_bx(2), tr_y(0) + 20) == T_SURF;
-    t->seq_idx = 4;
-    frame();
-    ok &= tr_px(tr_x(4), tr_y(0) + TR_SB - 3) == T_TEXT && tr_px(3 + tr_bx(3), tr_y(0) + 20) == T_SURF &&
-          tr_px(3 + tr_bx(4) - 1, tr_y(0) + 20) == T_RAISE;
-    bad += check("1.3 HOME > TRACKS: the step playing on a raised cell, its bar bright; it moves with the play head", ok);
+    presets_turn(1);                                             /* PRESETS: another sound */
+    ok &= !tk_track_inst(1);
+    bad += check("tracker heads: the instrument a track sounds (05 PHYS), none after INSTR or PRESETS change it", ok);
+    return bad;
+}
 
-    t->p[P_SLEN] = 40;                                  /* LEN 40: 3 pages; step 20 a note, step 16 empty */
-    t->step[20] = (step_t){{65}, 1, ST_NOTE, 0, 100};
-    t->seq_idx = 21;
-    frame();
-    ok = tr_px(tr_x(4), tr_y(0) + TR_SB - 3) == T_THEME && tr_px(tr_x(0), tr_y(0) + TR_SB - 3) == T_SURF &&
-         tr_px(3 + tr_bx(5), tr_y(0) + 20) == T_RAISE &&                                    /* playing 21 = its 6th */
-         tr_px(3 + TR_PX + 1, tr_y(0) + TR_SB - 5) == T_THEME &&                            /* the 2nd of 3 pips */
-         tr_px(3 + TR_PX + 1, tr_y(0) + TR_SB - 8) == T_RAISE && tr_px(3 + TR_PX + 1, tr_y(0) + TR_SB - 2) == T_RAISE;
-    t->seq_idx = 36;                                   /* the last page: 8 steps, the rest blank */
-    frame();
-    ok &= tr_px(tr_x(7), tr_y(0) + TR_SB - 1) == T_RAISE && tr_px(tr_x(8), tr_y(0) + TR_SB - 1) == T_SURF &&
-          tr_px(3 + TR_PX + 1, tr_y(0) + TR_SB - 2) == T_THEME;
-    song.playing = 0;                                   /* stopped: T1 not selected, its first page */
-    frame();
-    ok &= tr_px(tr_x(0), tr_y(0) + TR_SB - 3) == T_THEME && tr_px(tr_x(4), tr_y(0) + TR_SB - 3) == T_THEME &&
-          tr_px(3 + TR_PX + 1, tr_y(0) + TR_SB - 8) == T_THEME;
-    song.sel = 0;                                       /* .. selected: its cursor's page (INK on THEME) */
-    ui.cursor = 20; ui.bank = 1;
-    frame();
-    ok &= tr_px(tr_x(0), tr_y(0) + TR_SB - 3) == T_THEME && tr_px(tr_x(4), tr_y(0) + TR_SB - 3) == T_INK &&
-          tr_px(3 + TR_PX + 1, tr_y(0) + TR_SB - 5) == T_INK;
-    bad += check("1.3 HOME > TRACKS: LEN > 16: the play head's page (stopped: the cursor's, selected), pips, past LEN blank", ok);
-
-    song.sel = 1;
-    t = &trk[3];                                        /* T4, DRUM: one hit, two hits, an accented hit */
-    ok = drum_track(t);
-    for (i = 0; i < NSTEP; i++) step_clear(&t->step[i]);
-    t->p[P_SLEN] = 16;
-    t->step[0].time = t->step[2].time = t->step[4].time = ST_NOTE;
-    t->step[0].hit = 1; t->step[2].hit = 1 | 8; t->step[4].hit = 2; t->step[4].acc = 2;
-    t->p[P_MUTE] = 0;
-    frame();
-    {
-        int32_t y = tr_y(3);
-        ok &= tr_px(tr_x(0), y + TR_SB - 2) == T_THEME && tr_px(tr_x(0), y + TR_SB - 7) == T_SURF &&
-              tr_px(tr_x(2), y + TR_SB - 2) == T_THEME && tr_px(tr_x(2), y + TR_SB - 7) == T_THEME &&
-              tr_px(tr_x(4), y + TR_SB - 2) == T_ACCENT && tr_px(tr_x(1), y + TR_SB - 1) == T_RAISE;
-    }
-    bad += check("1.3 HOME > TRACKS: DRUM hits as pads (two for two hits or more), an accented hit the accent", ok);
-
-    t = &trk[2];                                        /* T3 muted: the MUTE badge, its steps DIM, no meter */
-    for (i = 0; i < NSTEP; i++) step_clear(&t->step[i]);
-    t->p[P_SLEN] = 16;
-    t->step[0] = (step_t){{60}, 1, ST_NOTE, 0, 100};
-    t->p[P_MUTE] = 1;
-    trk[3].peak = 20000;
-    frame();
-    ok = tr_px(tr_x(0), tr_y(2) + TR_SB - 3) == T_DIM && tr_px(3 + 222 - kc_w(KC_MUTE) + 2, tr_y(2) + TR_NY(0) + 4) == T_KEY &&
-         tr_px(3 + 222 - kc_w(KC_MUTE) + 2, tr_y(3) + TR_NY(0) + 4) != T_KEY &&
-         tr_px(3 + TR_MX + 1, tr_y(3) + TR_MY + TR_MH - 2) == T_MID && tr_px(3 + TR_MX + 1, tr_y(2) + TR_MY + TR_MH - 2) == T_RAISE;
-    t->p[P_MUTE] = 0;
-    frame();
-    ok &= tr_px(tr_x(0), tr_y(2) + TR_SB - 3) == T_THEME && tr_px(3 + 222 - kc_w(KC_MUTE) + 2, tr_y(2) + TR_NY(0) + 4) != T_KEY;
-    bad += check("1.3 HOME > TRACKS: MUTE: its badge, the steps DIM; unmuted again: as before; the output meter", ok);
-
-    /* HOME's knobs: the selected track's; ALGORITHM moves the selection; HOME tapped: MIXER, CLOCK, HOME */
-    song.sel = 2; ui.force = 1; frame();
-    id = ENGINES[trk[2].eng_req % NENGINES]->knob[0];
-    v0 = trk[2].p[id];
-    {
-        int16_t o0 = trk[0].p[id], o1 = trk[1].p[id];
-        turn(EN_K1, 3);
-        if (trk[2].p[id] == v0) turn(EN_K1, -6);        /* (at its top: the other way) */
-        ok = trk[2].p[id] != v0 && trk[0].p[id] == o0 && trk[1].p[id] == o1 && ui.home && home_tracks();
-    }
-    turn(EN_ALGO, 1);
-    frame();
-    ok &= song.sel == 3u && tr_px(3 + 22, tr_y(3) + 1) == T_THEME && tr_px(3 + 22, tr_y(2) + 1) == T_SURF;
-    id = ENGINES[trk[3].eng_req % NENGINES]->knob[1];
-    v0 = trk[3].p[id];
-    turn(EN_K2, -2);
-    if (trk[3].p[id] == v0) turn(EN_K2, 4);
-    ok &= trk[3].p[id] != v0;
-    bad += check("1.3 HOME > TRACKS: K1..K4 edit the selected track (HOME's four), ALGORITHM moves the selected row", ok);
-    press(B_HOME); ok = !ui.home && cur_page()->graph == GR_TRK;
-    press(B_HOME); ok &= !ui.home && str_eq(cur_page()->title, "CLOCK");
-    press(B_HOME); ok &= ui.home;
-    frame();
-    ok &= tr_px(3 + 22, tr_y(3) + 1) == T_THEME;
-    bad += check("1.3 HOME > TRACKS: HOME tapped still goes HOME > MIXER > CLOCK > HOME (the rows back)", ok);
-
-    ui_prefs |= PREF_LARGE;                             /* MENU > LARGE: the cards as on a list page, the rows */
-    ui.force = 1; frame();
-    ok = large_kind() == LK_LABEL && card_h() == CARD_H && graph_y() == Y_GRAPH && tr_px(3 + 22, tr_y(3) + 1) == T_THEME &&
-         tr_px(tr_x(4), tr_y(3) + TR_SB - 2) == T_INK;
-    ui_home_view = HV_SCOPE; ui.force = 1; frame();
-    ok &= large_kind() == LK_TALL;
-    ui_prefs = 0;
-    bad += check("1.3 HOME > TRACKS with LARGE: cards with M labels, the rows kept (SCOPE: the tall cards as before)", ok);
+/* 1.5 tracker editing: SAVE held undoes the last pattern edit (a knob's turn one undo; held again redo), SEQ held + the
+ * white keys from F3 COPY TRK, PASTE TRK, COPY PAT, PASTE PAT, INS ROW, DEL ROW, INS ALL, DEL ALL (each one undo; OCT-
+ * puts back the pattern as the layer opened), SEQ + PLAY from the cursor's row, a silent track's head dim */
+static void seq_open(void) { btn_down(B_SEQ); frames(512); }
+static void seq_close(void) { btn_up(B_SEQ); frame(); frames(400); }
+static int test_tracker_tools(void)
+{
+    int bad = 0, ok;
+    uint32_t r, k;
     ui_power_on();
+    tk_clip.has = 0;
+    go_page(GR_TKPAT); frame();
+    turn(EN_K2, 1); turn(EN_K2, 2);                     /* C-4, then D-4: one turn of KNOB 2 */
+    ok = tk_note(tk_at(0, 0, 0)) == 62u;
+    hold(B_SAVE);
+    ok &= tk_empty(tk_at(0, 0, 0)) && msg_is("UNDO/REDO PATTERN 00");
+    hold(B_SAVE);
+    ok &= tk_note(tk_at(0, 0, 0)) == 62u;
+    frames(1600);
+    turn(EN_K3, 2);                                     /* another edit: its own undo */
+    ok &= tk_inst(tk_at(0, 0, 0)) == 2u;
+    hold(B_SAVE);
+    ok &= tk_note(tk_at(0, 0, 0)) == 62u && tk_inst(tk_at(0, 0, 0)) == 0u;
+    hold(B_SAVE);
+    press(B_EDIT);                                      /* EDIT's clear: one undo */
+    ok &= tk_empty(tk_at(0, 0, 0));
+    hold(B_SAVE);
+    ok &= tk_note(tk_at(0, 0, 0)) == 62u && tk_inst(tk_at(0, 0, 0)) == 2u;
+    bad += check("tracker undo: SAVE held undoes the last pattern edit (a knob's turn at once), held again redoes", ok);
+    tku.row = 0;                                        /* (EDIT moved the cursor on by EDIT STEP) */
+    frames(400);
+    turn(EN_K3, -5);                                    /* (clamped at none, then nothing changes: no new copy) */
+    frames(1600);
+    turn(EN_K3, -1);
+    hold(B_SAVE);
+    ok = tk_inst(tk_at(0, 0, 0)) == 2u;
+    tk.len[0] = 16;
+    seq_open(); turn(EN_K2, -4); seq_close();           /* the length (SEQ + KNOB 2): one undo too */
+    ok &= tk.len[0] == 12u;
+    hold(B_SAVE);
+    ok &= tk.len[0] == 16u;
+    bad += check("  an edit that changes nothing takes no copy; the pattern's length undoes too", ok);
+
+    /* the tools */
+    ui_power_on();
+    tk_clip.has = 0;
+    go_page(GR_TKPAT); frame();
+    tk_put(0, 0, 0, tk_pack_ch(60, 1, TKC_CUT, 20, 0x74));
+    tk_put(0, 1, 0, tk_pack(62, 0, 0, 0));
+    tk_put(0, 3, 0, tk_pack(TK_OFF, 0, 0, 0));
+    tk_put(0, 2, 1, tk_pack(48, 2, 0, 0));
+    tk.len[0] = 8;
+    seq_open();
+    tl_key(1);                                          /* PASTE TRK, nothing copied */
+    ok = msg_is("NOTHING COPIED") && tk_empty(tk_at(0, 0, 2)) && !(leds_at(0) & 1u << white(1)) &&
+         !(leds_at(250) & 1u << white(1));
+    tl_key(0);                                          /* COPY TRK: track 1 */
+    ok &= msg_is("TRACK 1 COPIED") && (tk_clip.has & 1u);
+    seq_close();
+    song.sel = 2;
+    seq_open();
+    tl_key(1);                                          /* PASTE TRK onto track 3 */
+    for (r = 0; r < TK_ROWS; r++) ok &= !memcmp(tk_at(0, r, 2), tk_at(0, r, 0), sizeof(tk_cell_t));
+    ok &= msg_is("PASTED TO 3");
+    seq_close();
+    hold(B_SAVE);
+    ok &= tk_empty(tk_at(0, 0, 2)) && tk_empty(tk_at(0, 1, 2)) && tk_note(tk_at(0, 0, 0)) == 60u;
+    bad += check("SEQ + F3 COPY TRK, G3 PASTE TRK (nothing copied: NOTHING COPIED, the key dark); SAVE held undoes it", ok);
+    song.sel = 0;
+    seq_open();
+    tl_key(2);                                          /* COPY PAT */
+    ok = msg_is("COPIED PATTERN 00") && (tk_clip.has & 2u);
+    turn(EN_K1, 3);                                     /* (SEQ + KNOB 1: pattern 03) */
+    tl_key(3);                                          /* PASTE PAT into it */
+    ok &= tk_pl.loop_pat == 3u && tk.len[3] == 8u && msg_is("PASTED TO PATTERN 03");
+    for (r = 0; r < TK_ROWS; r++)
+        for (k = 0; k < NTRK; k++) ok &= !memcmp(tk_at(3, r, k), tk_at(0, r, k), sizeof(tk_cell_t));
+    seq_close();
+    bad += check("  A3 COPY PAT, B3 PASTE PAT: every cell and the length into the pattern edited", ok);
+    tk_pl.loop_pat = 0;
+    tku.row = 1;
+    seq_open();
+    tl_key(4);                                          /* INS ROW: track 1 from row 01 down */
+    ok = tk_empty(tk_at(0, 1, 0)) && tk_note(tk_at(0, 2, 0)) == 62u && tk_note(tk_at(0, 4, 0)) == TK_OFF &&
+         tk_note(tk_at(0, 2, 1)) == 48u && tk_note(tk_at(0, 0, 0)) == 60u && msg_is("ROW INSERTED");
+    tl_key(5);                                          /* DEL ROW: back */
+    ok &= tk_note(tk_at(0, 1, 0)) == 62u && tk_note(tk_at(0, 3, 0)) == TK_OFF && tk_empty(tk_at(0, 7, 0)) &&
+          msg_is("ROW DELETED");
+    tl_key(6);                                          /* INS ALL: every track */
+    ok &= tk_empty(tk_at(0, 1, 0)) && tk_note(tk_at(0, 3, 1)) == 48u && tk_note(tk_at(0, 2, 0)) == 62u;
+    tl_key(7);                                          /* DEL ALL */
+    ok &= tk_note(tk_at(0, 2, 1)) == 48u && tk_note(tk_at(0, 1, 0)) == 62u;
+    tku.row = 6;
+    tl_key(4);                                          /* (the length's last row goes; rows past it stay) */
+    ok &= tk_empty(tk_at(0, 6, 0)) && tk_empty(tk_at(0, 7, 0)) && tk_chord(tk_at(0, 0, 0)) == 0x74u;
+    tl_key(4); tl_key(4); tl_key(4); tl_key(4);
+    press(B_OCTDN);                                     /* OCT-: the pattern as the layer opened */
+    ok &= tk_note(tk_at(0, 1, 0)) == 62u && tk_note(tk_at(0, 3, 0)) == TK_OFF && msg_is("PATTERN PUT BACK");
+    seq_close();
+    bad += check("  C4 INS ROW, D4 DEL ROW (the cursor's track), E4 INS ALL, F4 DEL ALL, in the length; OCT- puts back", ok);
+
+    /* SEQ + PLAY: from the cursor's row (LOOP), stopped on PATTERN; PLAY then from row 00 again */
+    tku.row = 5;
+    seq_open();
+    press(B_PLAY);
+    events_block(CTL);
+    ok = song.playing && tk_pl.mode == TK_LOOP && tk_pl.row == 5u;
+    seq_close();
+    press(B_PLAY); events_block(CTL);
+    ok &= !song.playing;
+    press(B_PLAY); events_block(CTL);
+    ok &= song.playing && tk_pl.row == 0u;
+    press(B_PLAY); events_block(CTL);
+    bad += check("  SEQ + PLAY: LOOP from the cursor's row; PLAY alone from row 00", ok);
+    stop_transport();
+
+    /* a silent track's head: MUTE (GLO's black keys) or another one soloed */
+    ok = !tk_silent(0) && !tk_silent(1);
+    trk[1].p[P_MUTE] = 1;
+    ok &= tk_silent(1) && !tk_silent(0);
+    trk[1].p[P_MUTE] = 0;
+    perf_solo = 1u;
+    ok &= !tk_silent(0) && tk_silent(1) && tk_silent(2) && tk_silent(3);
+    perf_solo = 0;
+    bad += check("  heads: a muted track, or one not soloed, shows as silent", ok);
+    return bad;
+}
+
+static int test_tracker_chords(void)
+{
+    int bad = 0, ok;
+    uint32_t row, k0, k1, k2, n0, n1, n2;
+    track_t *t0 = &trk[0], *t1 = &trk[1];
+    char foot[48], ti[20];
+    ui_power_on();
+    song.g[G_SWING] = 0;
+    row = div_samples(2);
+    t1->p[P_VOICE] = V_POLY;
+    tk.len[0] = 4;
+    tk_put(0, 0, 1, tk_pack_ch(60, 0, 0, 0, 0x74));     /* C-4 MAJ */
+    tk_put(0, 2, 1, tk_pack_ch(62, 0, 0, 0, 0x73));     /* D-4 MIN */
+    tk_put(0, 3, 1, tk_pack(TK_OFF, 0, 0, 0));
+    tk_put(0, 0, 0, tk_pack_ch(48, 0, 0, 0, 0x74));     /* (track 1: ACID, MONO) */
+    go_page(GR_TKPAT); frame();
+    press(B_PLAY);
+    events_block(CTL);
+    ok = tk_gated(t1, 60) && tk_gated(t1, 64) && tk_gated(t1, 67) && tk_pl.note[1] == 60u && tk_pl.ch[1][0] == 64u &&
+         tk_pl.ch[1][1] == 67u;
+    events_block(row);
+    ok &= tk_gated(t1, 60) && tk_gated(t1, 64) && tk_gated(t1, 67);
+    events_block(row);
+    ok &= tk_gated(t1, 62) && tk_gated(t1, 65) && tk_gated(t1, 69) && !tk_gated(t1, 60) && !tk_gated(t1, 64) &&
+          !tk_gated(t1, 67);
+    events_block(row);
+    ok &= !tk_gated(t1, 62) && !tk_gated(t1, 65) && !tk_gated(t1, 69) && !tk_pl.ch[1][0];
+    bad += check("tracker chord: C-4 MAJ plays C E G, rings, D-4 MIN replaces all three, OFF releases them", ok);
+    bad += check("  a track not POLY (ACID, MONO) plays the chord's note alone", t0->p[P_VOICE] != V_POLY &&
+                 tk_pl.note[0] == 48u && !tk_pl.ch[0][0] && !tk_pl.ch[0][1] && !tk_gated(t0, 52) && !tk_gated(t0, 55));
+    transport_req = 2;
+    events_block(CTL);
+    ok = !tk_gated(t1, 60) && !tk_pl.note[1];
+    /* STEP PREVIEW: the cursor onto the chord: the three sound once */
+    ui_prefs2 |= PREF_PREVIEW >> 16;
+    song.sel = 1; tku.row = 1; frame();
+    turn(EN_K1, -1);
+    events_block(CTL);
+    ok &= tk_gated(t1, 60) && tk_gated(t1, 64) && tk_gated(t1, 67);
+    events_block(row + CTL);
+    ok &= !tk_gated(t1, 60) && !tk_gated(t1, 67);
+    ui_prefs2 &= ~(PREF_PREVIEW >> 16);
+    bad += check("  STEP PREVIEW: the chord under the cursor sounds once", ok);
+    /* the footer and the title */
+    tku.row = 0; frame();
+    tk_foot(foot, sizeof foot);
+    page_title(ti);
+    bad += check("  the footer spells it (C-4 MAJ); the title is PATTERN 00 (no 1/4)", str_eq(foot, "C-4 MAJ") &&
+                 str_eq(ti, "PATTERN 00"));
+    tk_put(0, 0, 1, tk_pack_ch(60, 0, 0, 0, 0x92));     /* (+2 +9: no shape) */
+    tk_foot(foot, sizeof foot);
+    bad += check("  a chord that is no shape: its intervals (C-4 +2+9)", str_eq(foot, "C-4 +2+9"));
+    /* the SEQ layer's KNOB 4: the shapes */
+    tk_put(0, 0, 1, tk_pack(60, 2, 0, 0));
+    btn_down(B_SEQ); frames(500);
+    turn(EN_K4, 1);
+    ok = tk_chord(tk_at(0, 0, 1)) == 0x74u && tk_inst(tk_at(0, 0, 1)) == 2u;
+    turn(EN_K4, 1);
+    ok &= tk_chord(tk_at(0, 0, 1)) == 0x73u;
+    turn(EN_K4, -5);
+    ok &= tk_chord(tk_at(0, 0, 1)) == 0u;
+    tku.row = 1;
+    turn(EN_K4, 1);
+    ok &= tk_empty(tk_at(0, 1, 1));
+    btn_up(B_SEQ); frame();
+    bad += check("  SEQ held, KNOB 4: the cursor cell's chord (NONE MAJ MIN ...); a cell without a note takes none", ok);
+    /* KNOB 2 takes the chord along; none drops it */
+    tku.row = 0; tk_put(0, 0, 1, tk_pack_ch(60, 0, 0, 0, 0x74)); frames(400);
+    turn(EN_K2, 2);
+    ok = tk_note(tk_at(0, 0, 1)) == 62u && tk_chord(tk_at(0, 0, 1)) == 0x74u;
+    tk_put(0, 0, 1, tk_pack_ch(TK_OFF + 0u - 126u, 0, 0, 0, 0x74));   /* (note 1, the lowest) */
+    turn(EN_K2, -1);
+    ok &= tk_note(tk_at(0, 0, 1)) == TK_OFF && !tk_chord(tk_at(0, 0, 1));
+    bad += check("  KNOB 2 moves the chord with its note; OFF (or none) drops it", ok);
+    /* step entry: keys held together write a chord, the cursor moves once */
+    ui_power_on();
+    go_page(GR_TKPAT); frame();
+    song.rec = 1;
+    k0 = 7; k1 = 11; k2 = 14;
+    n0 = kb_map(t0, k0); n1 = kb_map(t0, k1); n2 = kb_map(t0, k2);
+    fm1_in.notes = host_notes = 1u << k0; frame();
+    fm1_in.notes = host_notes = 1u << k0 | 1u << k1; frame();
+    fm1_in.notes = host_notes = 1u << k0 | 1u << k1 | 1u << k2; frame();
+    ok = tk_note(tk_at(0, 0, 0)) == n0 && tk_iv(tk_at(0, 0, 0), 0) == n1 - n0 && tk_iv(tk_at(0, 0, 0), 1) == n2 - n0 &&
+         tku.row == 1u && tk_empty(tk_at(0, 1, 0));
+    fm1_in.notes = host_notes = 0; frame();
+    fm1_in.notes = host_notes = 1u << k1; frame();
+    fm1_in.notes = host_notes = 0; frame();
+    ok &= tk_note(tk_at(0, 1, 0)) == n1 && !tk_chord(tk_at(0, 1, 0)) && tku.row == 2u;
+    bad += check("  step entry: keys held together write one cell with its chord; let go, the next key a new cell", ok &&
+                 n1 - n0 <= 15u && n2 - n0 <= 15u);
+    /* live recording: the keys of a chord into one row */
+    ui_power_on();
+    song.g[G_SWING] = 0;
+    t0->p[P_VOICE] = V_POLY;
+    go_page(GR_TKPAT); frame();
+    song.rec = 1;
+    press(B_PLAY);
+    events_block(CTL);
+    fm1_in.notes = host_notes = 1u << k0 | 1u << k1 | 1u << k2; frame();
+    events_block(CTL);
+    ok = tk_note(tk_at(0, 0, 0)) == n0 && tk_iv(tk_at(0, 0, 0), 0) == n1 - n0 && tk_iv(tk_at(0, 0, 0), 1) == n2 - n0;
+    fm1_in.notes = host_notes = 0; frame();
+    transport_req = 2;
+    events_block(CTL);
+    bad += check("  live recording: a chord's keys into one row (the first the note, the others its intervals)", ok);
+    return bad;
+}
+
+static int test_tracker_project(void)
+{
+    int bad = 0, ok;
+    uint32_t p, r, k, h0, h1, n;
+    tk_song_t keep;
+    uint8_t patch[FP_SIZE + 1u];
+    ui_power_on();
+    tk_put(0, 0, 0, tk_pack_ch(60, 1, 0, 0, 0x74));     /* (a chord: MAJ) */
+    tk_put(7, 3, 2, tk_pack(TK_OFF, 0, TKC_DLY, 99));
+    tk_put(TK_LO - 1u, 63, 3, tk_pack_ch(36, 0, 0, 0, 0xF1));   /* (the last pattern in .noinit, the first in .bss) */
+    tk_put(TK_LO, 0, 1, tk_pack(0, 9, TKC_PAN, 0));
+    tk_put(TK_PATS - 1u, 31, 0, tk_pack_ch(127u - 1u, 63, TKC_GLIDE, 127, 0x0C));
+    tk.order[1] = 7; tk.order[2] = TK_PATS - 1u; tk.order[3] = TK_LO; tk.norder = 4;
+    tk.len[7] = 12; tk.len[TK_PATS - 1u] = 1;
+    tk.instr[8].src = ENGI_FM6; tk.instr[8].preset = 3;
+    tk.instr[9].src = TK_SRC_USER + 4u;
+    tk.cut[1] = 40; tk.res[2] = 100;
+    song.g[G_BPM] = 99;
+    trk[2].p[P_REV] = 77;
+    memcpy(patch, fm6_patch[1], sizeof patch);
+    keep = tk;
+    for (p = 0, h0 = 2166136261u; p < TK_PATS; p++)
+        for (r = 0; r < TK_ROWS; r++)
+            for (k = 0; k < NTRK; k++)
+                h0 = proj_fnv(h0, tk_at(p, r, k)->b, sizeof(tk_cell_t));
+    ok = project_save_as(0, "MYSONG") == 0 && project_used(0) && msg_is("SAVED (RAM)");
+    project_new();
+    song.g[G_BPM] = 120;
+    trk[2].p[P_REV] = 0;
+    ok &= tk_pat_empty(7) && tk.norder == 1u && !proj_name[0];
+    project_load(0);
+    for (p = 0, h1 = 2166136261u; p < TK_PATS; p++)
+        for (r = 0; r < TK_ROWS; r++)
+            for (k = 0; k < NTRK; k++)
+                h1 = proj_fnv(h1, tk_at(p, r, k)->b, sizeof(tk_cell_t));
+    ok &= msg_is("LOADED") && h0 == h1 && !memcmp(&keep, &tk, sizeof tk) && song.g[G_BPM] == 99 &&
+          trk[2].p[P_REV] == 77 && str_eq(proj_name, "MYSONG") && !memcmp(patch, fm6_patch[1], FP_SIZE);
+    bad += check("tracker project: the song (cells of every pattern with their chords, order, lengths, instruments, CUT / RES), "
+                 "the sounds, the name: saved and loaded back whole", ok);
+    /* a song too big for the store: refused, the stored one kept */
+    for (p = 0; p < TK_PATS; p++)
+        for (r = 0; r < TK_ROWS; r++)
+            for (k = 0; k < NTRK; k++)
+                *tk_at(p, r, k) = tk_pack(40u + r % 40u, 1u + k, TKC_LEVEL, r);
+    ok = project_save(0) == 2 && msg_is("SONG TOO BIG");
+    project_load(0);
+    ok &= str_eq(proj_name, "MYSONG") && tk_note(tk_at(0, 0, 0)) == 60u && tk_pat_empty(1);
+    bad += check("  a song too big for the store: SONG TOO BIG, the stored one kept", ok);
+    /* a stream damaged in the store: LOAD ERROR, the music as it was */
+    for (p = 0, n = 0; p < 6u; p++)                     /* (two chunks' worth) */
+        for (r = 0; r < TK_ROWS; r++)
+            for (k = 0; k < NTRK; k++, n++)
+                *tk_at(p, r, k) = tk_pack(40u + n % 40u, 0, 0, 0);
+    ok = project_save(0) == 0 && proj_good.count >= 2u;
+    proj_ram[1][PROJ_HDR + 100u] ^= 0x55u;
+    project_new();
+    tk_put(3, 3, 3, tk_pack(50, 0, 0, 0));
+    project_load(0);
+    ok &= msg_is("LOAD ERROR") && tk_note(tk_at(3, 3, 3)) == 50u && tk_pat_empty(0);
+    bad += check("  a damaged chunk: LOAD ERROR, the music as it was", ok);
     return bad;
 }
 
@@ -9243,16 +7774,7 @@ static int test_edit_quick_actions(void)
     TSEL->p[P_E0] = 0;
     bad += check("  a model kit: the cells and messages its lanes' names (CG, CONGA MUTED)", ok);
 
-    /* the grid shows them (its signature changes: redrawn) */
-    go_page(GR_ROLL); frame();
-    {
-        uint32_t s0 = graph_signature();
-        drum_mute[3] ^= 2u;
-        ok = graph_signature() != s0;
-        drum_mute[3] ^= 2u;
-        ok &= graph_signature() == s0;
-    }
-    bad += check("  the DRUM grid redraws when a lane is muted / unmuted", ok);
+
 
     /* not saved: a sound load into the track and a project load clear them */
     go_home(); frame();
@@ -9327,17 +7849,12 @@ int main(void)
     int bad = 0;
     bad += test_large_face();
     bad += test_sound_loads();
-    bad += test_patterns();
     bad += test_rec();
-    bad += test_step_rec();
-    bad += test_step_rec();
-    bad += test_step_preview_chord_entry();
     bad += test_presets_knob();
     bad += test_midi();
     bad += test_save();
     bad += test_actions();
     bad += test_tracks();
-    bad += test_grid();
     bad += test_screen();
     bad += test_favorites();
     bad += test_categories();
@@ -9345,12 +7862,6 @@ int main(void)
     bad += test_menu_tabs();
     bad += test_menu_project_rows();
     bad += test_information();
-    bad += test_chain();
-    bad += test_song_timeline();
-    bad += test_song_lanes();
-    bad += test_song_lanes_drawn();
-    bad += test_song_pictures();
-    bad += test_head_slot();
     bad += test_product_ux();
     bad += test_page_cycles();
     bad += test_mono_screens();
@@ -9364,7 +7875,6 @@ int main(void)
     bad += test_fx_map();
     bad += test_layer_lock();
     bad += test_rec_layer();
-    bad += test_seq_tools();
     bad += test_edit_quick_actions();
     bad += test_menu_prefs();
     bad += test_style();
@@ -9388,29 +7898,29 @@ int main(void)
     bad += test_chord_page();
     bad += test_bughunt_ui();
     bad += test_bughunt_ui2();
-    bad += test_piano_roll();
     bad += test_play_leds();
-    bad += test_cursor_step_leds();
     bad += test_midi_leds();
-    bad += test_seq_quant();
     bad += test_idle_glow();
     bad += test_breath();
-    bad += test_step_leds();
     bad += test_scale_leds();
     bad += test_screen_off();
     bad += test_idle_leds();
     bad += test_momentary();
     bad += test_fm6_charts();
     bad += test_fm6_ops();
-    bad += test_home_tracks();
     bad += test_no_flash();
+    bad += test_tracker_play();
+    bad += test_tracker_pages();
+    bad += test_tracker_project();
+    bad += test_tracker_chords();
+    bad += test_tracker_heads();
+    bad += test_tracker_tools();
 #if FELUCCA_FM4
     bad += test_fm_charts();                        /* (DIGITAL's charts: built with FELUCCA_FM4=1 only) */
 #else
     bad += test_fm4_retired();
 #endif
 
-    if (getenv("UI_SCREEN_DIR")) chain_screens(getenv("UI_SCREEN_DIR"));
     printf(bad ? "ui: %d FAILED\n" : "ui: all passed\n", bad);
     return bad ? 1 : 0;
 }

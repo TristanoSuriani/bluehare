@@ -218,7 +218,8 @@ static int motion_capture(track_t *t, uint32_t id, int16_t value)
 {
     uint32_t k = trk_index(t), idx, len, period, f;
     if (!motion_param(id)) return 0;
-    if (!rec_on(t) || t != TSEL) {
+    if (1) {                                    /* 1.5: the tracker plays (its FX column sets a value on a row); knob
+                                                 * moves are recorded no more: a live edit is the new value */
         /* A live edit becomes a new base, even when an earlier motion value is
          * currently sounding. Subsequent recorded events can still override it. */
         f = motion_guard();

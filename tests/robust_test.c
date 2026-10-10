@@ -3,8 +3,8 @@
 /* Robustness against damaged or crafted stored data and editor requests (the 1.0.4 audit's items 5-10): the real
  * C paths of the editor build (editor_test.c is the base: hostsim, stubs, RAM flash).
  *   user sample slots   a SLICE scan bounded by the slot's size; a slot that fails its check leaves no zone behind
- *   projects            an engine number past the last refused (every format, and a RAM restore); a retained
- *                       older-format RAM slot bounded as one from flash
+ *   projects            (1.5: the song's stream) an engine number past the last refused under a valid hash; no
+ *                       position, a pattern of no row, an unknown FX refused; values out of range loaded inside it
  *   user presets        a bank from flash or a backup: each record's pattern inside its fields
  *   editor              a malformed SMP_END / BACKUP_PUT does not stop the transport */
 #define EDITOR_TEST_NO_MAIN 1
@@ -47,45 +47,67 @@ static int sample_slots(void)
     return bad;
 }
 
+static int msg_is_ed(const char *m) { return ui.msg_t && str_eq(ui.msg, m); }
+/* the song's stream as the store holds it (project.c), its hash made valid again after an edit (the name not in it) */
+static void stream_rehash(void)
+{
+    uint32_t i, j, at = 0, h = 2166136261u, sel = 3u + 2u * G_COUNT, len = 0;   /* (the track, the name: not hashed) */
+    for (i = 0; i < PROJ_CHUNKS && proj_ram_len[i]; i++)
+        len += proj_ram_len[i] - PROJ_HDR;
+    for (i = 0; i < PROJ_CHUNKS && proj_ram_len[i]; i++)
+        for (j = PROJ_HDR; j < proj_ram_len[i]; j++, at++) {
+            uint8_t *b = &proj_ram[i][j];
+            if (at >= len - 4u)                         /* (the hash: the stream's last 4 bytes) */
+                *b = (uint8_t)(h >> (8u * (at - (len - 4u))));
+            else if (at < sel || at > sel + PROJ_NAME_LEN)
+                h = (h ^ *b) * 16777619u;
+        }
+}
+/* a field outside its range is refused even under a valid hash (a crafted or damaged store); a track's value outside
+ * its range loads inside it; an instrument naming no engine loads empty */
 static int projects(void)
 {
-    static project_t p, q;
-    static project_store_t st;
-    static project_v5_t v5;
     int bad = 0;
-    uint32_t i, pos, sum, e0;
+    uint32_t e0, off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN, refused = 1;   /* track 1's engine byte */
+    uint8_t keep;
     reset();
-    project_capture(&p);
-    bad += check("a captured project packs and imports", proj_pack(&st, &p) && proj_import(&q, &st, PROJ_STORE_SIZE));
-    pos = 68u + st.raw[66];                                 /* track 1's engine byte (after its parameters) */
+    *tk_at(0, 0, 0) = tk_pack(60, 0, 0, 0);
+    bad += check("a song saves and loads", !project_save(0) && (project_load(0), tk_note(tk_at(0, 0, 0)) == 60u));
+    keep = proj_ram[0][off];
     for (e0 = NENGINES; e0 < 256u; e0 += 37u) {
-        st.raw[pos] = (uint8_t)e0;
-        sum = proj_hash(st.raw, PROJ_STORE_SIZE - 4u);
-        memcpy(st.raw + PROJ_STORE_SIZE - 4u, &sum, 4);
-        if (proj_import(&q, &st, PROJ_STORE_SIZE)) break;
+        proj_ram[0][off] = (uint8_t)e0;
+        stream_rehash();
+        project_new();
+        project_load(0);
+        refused &= !tk_note(tk_at(0, 0, 0)) && trk[0].eng_req < NENGINES;
     }
-    bad += check("FUN8 with an engine past the last (a valid hash) is not a project", e0 >= 256u);
-    memset(&v5, 0, sizeof v5);                              /* FUN5 the same */
-    v5.magic = PROJ_MAGIC_V5; v5.size = sizeof v5;
-    for (i = 0; i < G_COUNT; i++) v5.g[i] = GP[i].def;
-    for (i = 0; i < NTRK; i++) { v5.t[i].engine = trk[i].engine; memcpy(v5.t[i].p, trk[i].p, sizeof v5.t[i].p); }
-    v5.t[2].engine = NENGINES;
-    v5.sum = proj_hash(&v5, sizeof v5 - 4u);
-    bad += check("FUN5 with an engine past the last is not a project", !proj_import(&q, &v5, sizeof v5));
-    p.t[1].engine = 200; p.sum = proj_sum(&p);              /* a RAM project_t (valid magic, size and sum) */
-    e0 = trk[1].eng_req;
-    bad += check("restoring a project with an engine past the last is refused, nothing changes",
-                 project_restore_runtime(&p) == 1 && trk[1].eng_req == e0);
-    /* a retained RAM slot holding FUN5 (its own size): bounded as one from flash (vel 200 cannot be packed) */
+    proj_ram[0][off] = keep;
+    stream_rehash();
+    project_load(0);
+    bad += check("a song with an engine past the last (a valid hash) is refused, the music as it was",
+                 refused && tk_note(tk_at(0, 0, 0)) == 60u);
+    tk.norder = 0;
+    project_save(0);
+    project_new();
+    project_load(0);
+    refused = msg_is_ed("LOAD ERROR") && tk.norder == 1u;
+    tk.len[5] = 0;
+    project_save(0);
+    project_load(0);
+    refused &= msg_is_ed("LOAD ERROR");
+    tk.len[5] = TK_ROWS;
+    *tk_at(3, 3, 3) = tk_pack(60, 0, 15, 0);            /* (command 15: none such) */
+    project_save(0);
+    project_load(0);
+    refused &= msg_is_ed("LOAD ERROR");
+    bad += check("no position, a pattern of no row, an FX command past the last: refused", refused);
     reset();
-    v5.t[2].engine = trk[2].engine;
-    v5.t[0].step[0] = (step10_t){{60}, 1, ST_NOTE, 0, 200, 0, 0};
-    v5.sum = proj_hash(&v5, sizeof v5 - 4u);
-    memset(&proj_slot[2], 0, sizeof proj_slot[2]);
-    memcpy(&proj_slot[2], &v5, sizeof v5);
-    project_load(2);
-    bad += check("a retained FUN5 RAM slot loads bounded (velocity 200 -> inside 0..127)",
-                 trk[0].step[0].n == 1u && trk[0].step[0].note[0] == 60u && trk[0].step[0].vel <= 127u);
+    trk[1].p[P_LEVEL] = 999;
+    tk.instr[7].src = 50;                               /* (no engine, no user preset) */
+    project_save(0);
+    project_load(0);
+    bad += check("a track's value out of its range loads inside it; an instrument of no engine loads empty",
+                 trk[1].p[P_LEVEL] == TP[P_LEVEL].max && tk.instr[7].src == TK_SRC_NONE);
     return bad;
 }
 

@@ -144,10 +144,10 @@ static int test_timing(void)
         slicer_track(t, out + f, CTL);
         f += CTL;
     }
-    for (k = 0; k < steps; k++) {                 /* the step lengths as seq.c step_samples has them */
+    for (k = 0; k < steps; k++) {                 /* the step lengths as core.h swing_step_len has them */
         uint32_t base = (uint32_t)FS * 60u / 97u / 4u, len, idx = k & 15u, on = (SL_PAT[pat - 1u] >> idx) & 1u;
         uint32_t non = (SL_PAT[pat - 1u] >> ((idx + 1u) & 15u)) & 1u;
-        int32_t sw = (20 + 10) * (int32_t)base / 250;
+        int32_t sw = 10 * (int32_t)base / 250;        /* (1.5: CLOCK's SWG alone; the track's 20 unread) */
         len = base + (uint32_t)((idx & 1u) ? -sw : sw);
         if (b0 + len >= f)
             break;
@@ -229,11 +229,11 @@ static int test_sync(void)
         blocks++;
         for (k = 0; k < NTRK; k++) {              /* the SLICER step that holds the block's first sample */
             uint32_t idx = sl[k].pos >= CTL ? sl[k].idx : (sl[k].idx + 15u) & 15u;
-            miss += idx != trk[k].seq_idx % 16u;
+            miss += song.playing && idx != tk_pl.row % 16u;   /* (1.5: the tracker's row) */
         }
     }
     transport_req = 2;
-    snprintf(what, sizeof what, "sync: 4 tracks, 131 BPM, swing per track: the sequencer's step at %u blocks x 4", blocks);
+    snprintf(what, sizeof what, "sync: 4 tracks, 131 BPM, swing: the tracker's row at %u blocks x 4", blocks);
     return check(what, !miss);
 }
 

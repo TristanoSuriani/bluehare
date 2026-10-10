@@ -212,6 +212,8 @@ static uint32_t play_leds(void)
     uint32_t n = t->seq_n < 4u + NLANE ? t->seq_n : 4u + NLANE, i, k, note, used = 0, m = 0, hit;
     for (i = 0; i < n; i++)
         s[i] = t->seq_notes[i];
+    if (tk_pl.note[song.sel] && n < 4u + NLANE)           /* the tracker's (tracker.c: the column's note sounding) */
+        s[n++] = tk_pl.note[song.sel];
     if (t->arp_note)
         s[n++] = t->arp_note;
     for (i = 0; i < 3u; i++)                            /* (the ARP's CHORD) */
@@ -297,7 +299,6 @@ static uint32_t scale_leds(uint32_t *root)
     return m;
 }
 
-static uint32_t song_leds(void);
 /* MENU > ANIM IDLE (1.2, Discussion #135): after IDLE_LEDS_MS without panel input (ui.c scrn.idle: a button or key
  * pressed or held, a knob turned; what SCREEN OFF counts) the LEDs play the idle animation (hal/fm1_led_anim.h
  * fm1_idle_level: a soft light drifting over the keys and back, the buttons breathing with it; the scan draws it,
@@ -310,7 +311,7 @@ static uint32_t song_leds(void);
 #define IDLE_LEDS_MS 60000u
 static int idle_leds(void)
 {
-    int due = (ui_idle & 1u) && !(ui_prefs & PREF_ANIM_OFF) && !song.playing && !seq_counting() && !chain_busy() &&
+    int due = (ui_idle & 1u) && !(ui_prefs & PREF_ANIM_OFF) && !song.playing && !chain_busy() &&
               !song.rec && !transport_req && !ui.layer && !ui.lock && !ui.menu && !ui.confirm && !ui.uboot && !name_on() &&
               !(fm1_in.notes | fm1_in.buttons) && !panel_moved && !play_leds() && fm1_ms - scrn.idle >= IDLE_LEDS_MS;
     if (!due) {
@@ -331,7 +332,7 @@ static uint32_t key_leds(uint32_t *br)                 /* (*br: a layer's keys t
     if (br)
         *br = 0;
     c = name_on() && !ui.menu ? name_leds() : ui.layer ? layer_leds(br) : grid_on() ? grid_leds() :
-                 (fm1_in.notes & ~kb_layer) | play_leds() | step_leds() | (song_keys_on() ? song_leds() : 0u);
+                 (fm1_in.notes & ~kb_layer) | play_leds() | step_leds();
 #if FELUCCA_SLICE
     if (!ui.layer && !ui.menu && !name_on() && slice_page_on())
         c |= slice_leds();                              /* SLICES: and the keys of the selected slice */
@@ -403,7 +404,7 @@ static void ui_leds(void)
     }
     for (k = 0; k < NB; k++)
         led_put(nd, panel.btn[k], 1);
-    if (song.playing || seq_counting())                 /* playing: PLAY's green, its own LED dark in every mode */
+    if (song.playing)                                   /* playing: PLAY's green, its own LED dark in every mode */
         led_clear(nd, panel.btn[B_PLAY]);
     for (c = 0; c < FM1_NCOL; c++) {
         if (mode == LEDS_INV)                           /* INV: the active ones dark, the rest lit */
@@ -418,7 +419,7 @@ static void ui_leds(void)
         nl[c] &= (uint8_t)~nb[c];                       /* breathing: neither lit (INV's idle) nor the glow */
         nd[c] &= (uint8_t)~nb[c];
     }
-    if (song.playing || (seq_counting() && cin_pos < click_beat_len() / 4u))   /* counting in: green on each beat */
+    if (song.playing)
         nl[LED_PLAY_GREEN >> 3] |= (uint8_t)(1u << (LED_PLAY_GREEN & 7u));
     fm1_led_dim_level(mode == LEDS_DIM_LO);
     for (c = 0; c < FM1_NCOL; c++) {
@@ -494,50 +495,6 @@ static int roll_on(void)
     return !ui.home && !ui.menu && !ui.confirm && song.seq_mode && cur_page()->graph == GR_ROLL && !drum_track(TSEL);
 }
 
-/* SONG: + ADD selected (song_row == count < CHAIN_ROWS): a section there, copying the one before it (the first: every
- * track on A, x1) */
-static void song_add(void)
-{
-    uint32_t n = chain_config.count;
-    if (n >= CHAIN_ROWS)
-        return;
-    chain_config.row[n] = n ? chain_config.row[n - 1u] : chain_row_of(0, 1);
-    chain_config.count = (uint8_t)(n + 1u);
-    ui.song_row = (uint8_t)n;
-}
-/* SONG's keys (song.grid 3): a press of A3 B3 C4 D4 (seq.c song_key) sets the selected cell's slot A..D (on + ADD it
- * adds the section first: a copy of the one before, the first with every track on that slot) */
-static void song_keys(uint32_t notes)
-{
-    uint32_t k;
-    for (k = 0; k < 27u; k++) {
-        int32_t s = (notes >> k) & 1u ? song_key(k) : -1;
-        if (s < 0)
-            continue;
-        if (chain_busy()) { ui_message("STOP TO EDIT"); return; }
-        if (ui.song_row >= chain_config.count) {
-            if (ui.song_row >= CHAIN_ROWS)
-                return;
-            song_add();
-            if (chain_config.count == 1u)
-                chain_config.row[0] = chain_row_of((uint32_t)s, 1);
-        }
-        chain_config.row[ui.song_row].slot[ui.song_trk % NTRK] = (uint8_t)s;
-        ui.force = 1;
-    }
-}
-/* the key LEDs of SONG: the key of the selected cell's slot (none for "-" and on + ADD) */
-static uint32_t song_leds(void)
-{
-    uint32_t k, s;
-    if (ui.song_row >= chain_config.count || (s = chain_config.row[ui.song_row].slot[ui.song_trk % NTRK]) >= 4u)
-        return 0;
-    for (k = 0; k < 27u; k++)
-        if (song_key(k) == (int32_t)s)
-            return 1u << k;
-    return 0;
-}
-
 /* REC tap on every page: arm / disarm recording on the selected track without navigating; arming while stopped
  * starts the transport too (live recording), except on STEP's piano roll (1.2, Discussion #133): there it arms step
  * recording and the transport stays stopped: the keys write the cursor step (seq_entry), PLAY then records live.
@@ -555,24 +512,29 @@ static int rec_tap(void)                                /* 1: the arming changed
     }
     song.rec ^= bit;
     ui.force = 1;                                     /* also refresh the status on MENU / ABOUT */
-    if ((song.rec & bit) && !song.playing && !seq_counting() && roll_on()) {
+    if ((song.rec & bit) && !song.playing && !ui.home && cur_page()->graph == GR_TKPAT) {
+        ui_message("KEYS WRITE NOTES");               /* the tracker's PATTERN, stopped: the keys at the cursor
+                                                       * (ui_tracker.c tk_page_keys); PLAY then records live */
+        return 1;
+    }
+    if ((song.rec & bit) && !song.playing && roll_on()) {
         ui_message(ui_prefs2 & (PREF_CHORD_ADD >> 16) ? "KEYS ADD TO STEP" : "KEYS WRITE STEPS");   /* step recording:
                                                          * stopped, at the cursor (CHORD ENTRY ADD: adding) */
         return 1;
     }
-    if ((song.rec & bit) && !song.playing && !seq_counting())
+    if ((song.rec & bit) && !song.playing)
         transport_req = 1;
     if ((song.rec & bit) && grid_on())
         ui_message("LANE KEYS RECORD");               /* (the white keys stay the steps) */
-    else if ((song.rec & bit) && !ui.home && cur_page()->graph == GR_ROLL)
-        ui_message("KEYS RECORD LIVE");               /* (seq_entry pauses while armed and playing) */
+    else if ((song.rec & bit) && !ui.home && (cur_page()->graph == GR_ROLL || cur_page()->graph == GR_TKPAT))
+        ui_message("KEYS RECORD LIVE");               /* (the cursor's entry pauses while armed and playing) */
     return 1;
 }
 
 /* live recording into the selected track now: the STEP page's key entry pauses meanwhile */
 static int live_rec_sel(void)
 {
-    return ((song.rec >> song.sel) & 1u) && (song.playing || transport_req == 1u || seq_counting());
+    return ((song.rec >> song.sel) & 1u) && (song.playing || transport_req == 1u);
 }
 
 /* the OCT- / OCT+ dialog (ui_draw.c draws it); trk: the track or the slot it is about */
@@ -589,13 +551,7 @@ static void confirm_open(uint32_t kind, uint32_t trk)
  * on the selected track (seq.c seq_audition). Not while playing, counting in or in a song; step recording moving on
  * after its keys (seq_entry) does not; a grid key on a step neither (it edits the step, a lane key plays the lane).
  * OFF (the default): the cursor moves silently, as before */
-static void cursor_move(int32_t c)
-{
-    cursor_set(c);
-    if ((ui_prefs2 & (PREF_PREVIEW >> 16)) && !song.playing && !seq_counting() && transport_req != 1u && !chain_busy() &&
-        !ui.home && song.seq_mode && cur_page()->graph == GR_ROLL)
-        aud_req = (uint16_t)((uint32_t)ui.cursor << 8 | (song.sel + 1u));
-}
+static void cursor_move(int32_t c) { cursor_set(c); }
 
 /* the grid's page down (-1) / up (+1): the cursor to the same place on it (at most the last step) */
 static void page_go(int32_t d)
@@ -819,29 +775,6 @@ static void edit_param(uint32_t slot, int32_t steps)
         ev_knob(slot, steps);
         return;
     }
-    if (pg->graph == GR_SONG) {                       /* KNOB 1 SECTION, 2 TRACK, 3 PAT (A..D, -), 4 REPS */
-        chain_row_t *r;
-        if (slot == 0u) {
-            ui.song_row = (uint8_t)clamp((int32_t)ui.song_row + steps, 0,
-                chain_config.count < CHAIN_ROWS ? chain_config.count : CHAIN_ROWS - 1u);
-            return;
-        }
-        if (slot == 1u) {
-            ui.song_trk = (uint8_t)clamp((int32_t)ui.song_trk + steps, 0, NTRK - 1);
-            return;
-        }
-        if (chain_busy()) { ui_message("STOP TO EDIT"); return; }
-        if (ui.song_row >= chain_config.count) {     /* + ADD: a turn adds the section (KNOB 3: only that) */
-            song_add();
-            if (slot == 2u) return;
-        }
-        r = &chain_config.row[ui.song_row];
-        if (slot == 2u)
-            r->slot[ui.song_trk % NTRK] = (uint8_t)clamp((int32_t)r->slot[ui.song_trk % NTRK] + steps, 0, CHAIN_SILENT);
-        else
-            r->repeat = (uint8_t)clamp((int32_t)r->repeat + steps, 1, 16);
-        return;
-    }
     if (chain_busy() && (pg->scope == SC_STEP || pg->graph == GR_STEPS ||
         0)) {
         ui_message("STOP TO EDIT"); return;
@@ -922,17 +855,13 @@ static void act_do(void)
     }
     if (cur_page()->graph == GR_TOOLS) {
         if (chain_busy()) { ui_message("STOP TO EDIT"); return; }
-        if (!act_ready()) {                               /* nothing there to clear or delete */
-            ui_message(c == 2u ? "NOTHING TO DELETE" : "NOTHING TO CLEAR");
+        if (c == 2u)
+            return;
+        if (!act_ready()) {                               /* nothing there to clear; a song is made while stopped */
+            ui_message(c == 3u ? "STOP FIRST" : "NOTHING TO CLEAR");
             return;
         }
-        confirm_open(c == 0u ? CF_CLEAR_SEQ : c == 1u ? CF_INIT_SOUND :
-                     c == 2u ? CF_DEL_ROW : CF_CLEAR_SONG, c == 2u ? ui.song_row : song.sel);
-        return;
-    }
-    if (cur_page()->graph == GR_SONG) {
-        if (song.playing || chain_busy() || seq_counting()) transport_req = 2;
-        else chain_play_ui();
+        confirm_open(c == 0u ? CF_CLEAR_SEQ : c == 1u ? CF_INIT_SOUND : CF_CLEAR_SONG, tk_pl.loop_pat);
         return;
     }
     if (cur_page()->graph == GR_PATS) {
@@ -980,9 +909,8 @@ static void act_do(void)
         else
             name_open(NK_PROJ_SAVE, k);
         break;
-    case G_CLRSEQ:
-        if (chain_busy()) { ui_message("STOP TO EDIT"); break; }
-        confirm_open(CF_CLEAR_SEQ, song.sel);
+    case G_CLRSEQ:                                        /* the pattern edited (tracker.c) */
+        confirm_open(CF_CLEAR_SEQ, tk_pl.loop_pat);
         break;
     default:                                              /* G_INITSND */
         set_engine(TSEL->eng_req);                        /* engine defaults + its first preset (the steps stay) */
@@ -1177,6 +1105,9 @@ static void layer_lock_input(uint32_t pressed);
 static int page_tap(uint32_t b)
 {
     uint32_t f;
+    if (b == B_EDIT && tk_edit_tap())                   /* the tracker's pages: EDIT clears (ui_tracker.c) */
+        return 1;
+
     if (b == B_EDIT && song.seq_mode && !ui.home && cur_page()->graph == GR_ROLL) {   /* STEP: EDIT clears the step */
         uint64_t held = lock_held();
         if (chain_busy()) { ui_message("STOP TO EDIT"); return 1; }
@@ -1266,7 +1197,7 @@ static void ui_input(void)
     fx_map_sync();                                      /* (the FX layer's key map: ui_layer.c, a settings load too) */
     fx_usb_fixed = (ui_prefs & PREF_USB_FIXED) != 0u;   /* (MENU > USB LEVEL: fx.c, audio.c) */
     scope_mix = (ui_prefs2 & (PREF_SCOPE_MIX >> 16)) != 0u;   /* (MENU > SCOPE: fx.c, audio.c) */
-    rp_apply();                                         /* (MENU > CLICK, CLICK LEVEL, COUNT-IN: click.c, seq.c) */
+    rp_apply();                                         /* (MENU > CLICK, CLICK LEVEL: click.c) */
     if (!ui.menu)
         usb_serial_apply();                             /* (MENU > USB SERIAL: when the menu has closed) */
     if (scr_input(pressed, notes))                      /* MENU > SCREEN OFF: dark, or the wake gesture: swallowed */
@@ -1371,14 +1302,16 @@ static void ui_input(void)
     if (name_on() && !ui.confirm) {                     /* NAME: the keys type, KNOB 1 / 2, OCT+ / OCT- (ui_name.c); */
         if (ui.save_t0)                                 /* SAVE does nothing */
             ui.save_t0 |= 2u;
-        if (((pressed >> panel.btn[B_PLAY]) & 1u) && (song.playing || chain_busy() || seq_counting()))
+        if (((pressed >> panel.btn[B_PLAY]) & 1u) && (song.playing || chain_busy()))
             transport_req = 2;                          /* PLAY stops a transport started meanwhile (MIDI Start, the
                                                          * editor) so the name can be saved; it never starts one */
         ui.pg_down = 0;
         name_input(notes, oct);
         return;
     }
-    if (save == BT_HOLD && chain_busy())
+    if (save == BT_HOLD && tk_page())                   /* the tracker's pages: the last pattern edit (ui_tracker.c) */
+        tk_undo_swap();
+    else if (save == BT_HOLD && chain_busy())
         ui_message("STOP TO UNDO");
     else if (save == BT_HOLD)                                /* SAVE held: undo the last sound load */
         undo_swap();
@@ -1401,32 +1334,21 @@ static void ui_input(void)
             } else if (kind == CF_CLEAR_MOTION) {
                 track_t *t = &trk[ui.confirm_trk % NTRK];
                 if (!chain_busy()) { load_begin(t, UNDO_PAT); motion_clear(t); load_end(t); ui_message("AUTOMATION CLEARED"); }
-            } else if (kind == CF_DEL_ROW) {
-                uint32_t r = ui.confirm_trk;
-                if (!chain_busy() && r < chain_config.count) {
-                    for (; r + 1u < chain_config.count; r++) chain_config.row[r] = chain_config.row[r + 1u];
-                    chain_config.count--;
-                    if (ui.song_row > chain_config.count) ui.song_row = chain_config.count;
-                    ui_message("SECTION DELETED");
-                }
             } else if (kind == CF_CLEAR_SONG) {
-                if (!chain_busy()) { chain_defaults(&chain_config); ui.song_row = 0; ui_message("SONG CLEARED"); }
+                if (!transport_busy()) { project_new(); tku.row = tku.pos = 0; ui_message("NEW SONG"); }
             } else if (kind == CF_INIT_SOUND) {
                 if (!chain_busy()) { set_engine(TSEL->eng_req); ui_message("SOUND INIT"); }
-            } else {
+            } else if (kind == CF_CLEAR_TRK) {            /* (REC > CLEAR: the track's column of the pattern) */
                 track_t *t = &trk[ui.confirm_trk % NTRK];
-                load_begin(t, UNDO_PAT);
-                track_defaults_steps(t);
-                load_end(t);
+                char b[12] = "1 CLEARED";
+                tk_clear_column(tk_pl.loop_pat, ui.confirm_trk % NTRK);
                 t->nheld = 0;                           /* and the latched arp chord */
                 t->arp_phys = 0;
-                if (kind == CF_CLEAR_TRK) {
-                    char b[12] = "1 CLEARED";
-                    b[0] = (char)('1' + ui.confirm_trk);
-                    ui_say("TRACK ", b);
-                } else {
-                    ui_message("PATTERN CLEARED");
-                }
+                b[0] = (char)('1' + ui.confirm_trk);
+                ui_say("TRACK ", b);
+            } else {                                    /* CF_CLEAR_SEQ: the pattern */
+                tk_clear_pattern(ui.confirm_trk % TK_PATS);
+                ui_message("PATTERN CLEARED");
             }
         } else if (oct & 1u) {
             ui.confirm = 0;
@@ -1449,12 +1371,12 @@ static void ui_input(void)
         case B_PLAY:
             if (layer_play())                           /* (GLO held: RESTART) */
                 break;
-            if (song.playing || chain_busy() || seq_counting())   /* (a count-in: PLAY stops it) */
+            if (song.playing || chain_busy())
                 transport_req = 2;
-            else if (!ui.home && cur_page()->graph == GR_SONG)
-                chain_play_ui();
-            else
+            else {
+                tk_play_mode();                         /* LOOP or SONG, by the page (ui_tracker.c) */
                 transport_req = 1;
+            }
             break;
         case B_SEQ:
         case B_REC:                                     /* tap: above; held, its layer (ui_layer.c) */
@@ -1501,9 +1423,9 @@ static void ui_input(void)
         slice_keys_pick(notes);
 #endif
     lock_keys();                                        /* (a grid key on a hit let go: the hit goes) */
-    if (song.grid == 3u) {
-        song_keys(notes);
-    } else if (song.grid) {
+    if (tk_page_keys(notes)) {
+        ;                                               /* PATTERN: step entry at the cursor (ui_tracker.c) */
+    } else if (song.grid == 1u) {
         grid_keys(notes);
     } else if (song.seq_mode && cur_page()->graph == GR_ROLL) {   /* STEP */
         if (live_rec_sel() || !((song.rec >> song.sel) & 1u))   /* armed and playing: the keys record live, not
@@ -1520,7 +1442,7 @@ static void ui_input(void)
      * pass runs, so one landing after the layer's read went to the page as well: KNOB 1..4 edited the layer's control
      * and the page under it (HOME's sound, motion recorded), PRESETS could load a sound. They stay for the next pass */
     kq |= lay;
-    if (!lay && (s = panel_enc(EN_PRESET)) != 0)
+    if (!lay && (s = panel_enc(EN_PRESET)) != 0 && !tk_presets(s))   /* (the tracker's pages: theirs) */
         presets_turn(s);
     if (!lay && (s = panel_enc(EN_ALGO)) != 0)     /* ALGORITHM: the selected track, on every page */
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NTRK - 1));
@@ -1566,6 +1488,10 @@ static void ui_input(void)
             const param_desc_t *d = home_param(k, &vp);
             *vp = (int16_t)param_turn(d, *vp, accel(EN_K1 + k, s, d->fmt == F_ENUM ? 0 : d->max - d->min));
             motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);
+        } else if (tk_page()) {                         /* the tracker's pages (ui_tracker.c) */
+            ui.hot_col = (uint8_t)k;
+            ui.hot_t = 40;
+            tk_knob(k, s);
         } else {
             edit_param(k, s);
         }

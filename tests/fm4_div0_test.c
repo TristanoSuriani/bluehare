@@ -10,14 +10,11 @@
  * 1. the same values: fm4_convert against the guarded form as it was (fm4_convert_ref below, as 1.0.3 had it):
  *    the patch, the returned FM6 preset and the values it leaves in p, over every INDEX x FLT ENV x a SUS / ATK
  *    grid (every ALG, op envelopes varied), then random values over every parameter's whole range.
- * 2. a 0.9 project (FUN3, as 0.9-beta stored it) with DIGITAL tracks (ORGAN, then each other DIGITAL preset)
- *    imports as FM6 with the patches the guarded form gives.
+ * (Up to 1.4 also a 0.9 project with DIGITAL tracks importing as FM6: 1.5 reads no project of before.)
  * Run by tests/run_tests.sh (needs build/gen from one firmware build). */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
-#define PROJ_HOST 1
-#include "../firmware/src/project.c"
 #if FELUCCA_FM4
 #error "fm4_div0_test converts DIGITAL sounds: build it without FELUCCA_FM4"
 #endif
@@ -246,45 +243,6 @@ int main(void)
     check("random values over every parameter's range: the same as before", !diff);
     printf("    %u inputs, %u with INDEX + FLT ENV == 0\n", n_cmp, n_zero);
 
-    /* 2. 0.9 projects with DIGITAL tracks (FUN3: P_E0 at 49, no OP ENV values or matrix yet) */
-    for (k = 0; k < FM4_NPRESETS; k += NTRK) {
-        static project_v3_t v3;
-        static project_t q;
-        int16_t full[NTRK][P_COUNT], ref[P_COUNT];
-        uint8_t v[FP_SIZE + 1u], pk[FM6_PACKED];
-        uint32_t t, pr, n;
-        int ok;
-        memset(&v3, 0, sizeof v3);
-        v3.magic = PROJ_MAGIC_V3;
-        v3.size = sizeof v3;
-        for (i = 0; i < G_COUNT; i++)
-            v3.g[i] = GP[i].def;
-        v3.parts = NPART;
-        for (t = 0; t < NTRK; t++) {                   /* ORGAN PAD MARIMBA FUNK KEY, then E.PIANO BELL BASS BRASS */
-            n = (k + t + 4u) % FM4_NPRESETS;
-            defaults(full[t]);
-            fm4_preset_values(full[t], n);
-            for (i = 0; i <= P_SLDEPTH; i++)
-                v3.t[t].p[i] = full[t][i];
-            for (i = 0; i < 8u; i++)
-                v3.t[t].p[49u + i] = full[t][P_E0 + i];
-            v3.t[t].engine = ENGI_DIGITAL;
-            v3.t[t].preset = (uint8_t)n;
-        }
-        v3.sum = proj_hash(&v3, sizeof v3 - 4u);
-        ok = sizeof v3 == 2584u && proj_import(&q, &v3, (int)sizeof v3) && proj_ok(&q);
-        for (t = 0; t < NTRK && ok; t++) {
-            memcpy(ref, full[t], sizeof ref);
-            pr = fm4_convert_ref(ref, v);
-            fm6_pack(v, pk);
-            ok = q.t[t].engine == ENGI_FM6 && q.t[t].preset == pr && pr == FM4_TO_FM6[(k + t + 4u) % FM4_NPRESETS] &&
-                 !memcmp(q.fm6[t], pk, FM6_PACKED) && !memcmp(q.t[t].p, ref, sizeof ref);
-        }
-        if (!k)
-            check("ORGAN: INDEX + FLT ENV is 0 (#61's divisor)", str_eq(DIGITAL_PRESETS[4].name, "ORGAN") &&
-                  full[0][P_E4] == 0 && full[0][P_ED_FLT] == 0);
-        check(k ? "a 0.9 project (FUN3), DIGITAL E.PIANO BELL BASS BRASS: FM6, the same patches as before"
-                : "a 0.9 project (FUN3), DIGITAL ORGAN PAD MARIMBA FUNK KEY: FM6, the same patches as before", ok);
-    }
+    check("ORGAN: INDEX + FLT ENV is 0 (#61's divisor)", str_eq(DIGITAL_PRESETS[4].name, "ORGAN"));
     return bad ? 1 : 0;
 }

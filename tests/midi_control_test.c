@@ -97,8 +97,8 @@ static int ownership_test(void)
 static void clock_setup(uint32_t mode)
 {
     midi_test_reset(); song.g[G_CLOCK] = (int16_t)mode;
-    trk[0].p[P_SLEN] = 16; trk[0].p[P_SDIV] = 2;
-    for (uint32_t i = 0; i < 16; i++) trk[0].step[i] = (step_t){{(uint8_t)(60 + i)}, 1, ST_NOTE, 0, 100};
+    tk_defaults(); tk.len[0] = 16;                       /* (1.5: the tracker's pattern 00, a note a row) */
+    for (uint32_t i = 0; i < 16; i++) *tk_at(0, i, 0) = tk_pack(60u + i, 0, 0, 0);
     events_block(CTL);
 }
 static void clock_packet(uint32_t source, uint32_t status, uint32_t ms)
@@ -117,24 +117,24 @@ static int clock_test(uint32_t source)
     clock_packet(source == 1u ? 2u : 1u, 0xFA, 1);
     bad += check(source == 1 ? "USB mode ignores TRS Start" : "TRS mode ignores USB Start", !song.playing);
     clock_packet(source, 0xFA, 2);
-    bad += check(source == 1 ? "USB Start begins at step zero" : "TRS Start begins at step zero", song.playing && trk[0].seq_idx == 0u);
+    bad += check(source == 1 ? "USB Start begins at row zero" : "TRS Start begins at row zero", song.playing && tk_pl.row == 0u);
     clock_to(source, 2, 7);
-    bad += check(source == 1 ? "USB six pulses advance exactly one 16th step" : "TRS six pulses advance exactly one 16th step", trk[0].seq_idx == 1u && song.g[G_BPM] == 120);
-    fm1_ms = 132; events_block(CTL); uint16_t idx = trk[0].seq_idx; uint32_t pos = trk[0].seq_pos;
+    bad += check(source == 1 ? "USB six pulses advance exactly one 16th row" : "TRS six pulses advance exactly one 16th row", tk_pl.row == 1u && song.g[G_BPM] == 120);
+    fm1_ms = 132; events_block(CTL); uint16_t idx = tk_pl.row; uint32_t pos = tk_pl.row_pos;
     clock_packet(source, 0xFC, 133);
-    bad += check("external Stop preserves step position and releases sequence notes", !song.playing && trk[0].seq_idx == idx && trk[0].seq_pos == pos && !trk[0].seq_n);
+    bad += check("external Stop preserves the row position and releases the tracker's notes", !song.playing && tk_pl.row == idx && tk_pl.row_pos == pos && !tk_pl.note[0]);
     clock_packet(source, 0xFB, 150);
-    bad += check("external Continue resumes the existing step position", song.playing && trk[0].seq_idx == idx && trk[0].seq_pos == pos);
+    bad += check("external Continue resumes the existing row position", song.playing && tk_pl.row == idx && tk_pl.row_pos == pos);
     clock_packet(source, 0xF8, 151); fm1_ms = 672; events_block(CTL);
-    bad += check("lost clock times out and releases transport notes", !song.playing && !trk[0].seq_n);
+    bad += check("lost clock times out and releases transport notes", !song.playing && !tk_pl.note[0]);
     clock_packet(source, 0xFA, 700); clock_to(source, 700, 7);
-    bad += check("Start after timeout restarts cleanly at the master's phase", song.playing && trk[0].seq_idx == 1u);
-    /* Original base values remain after MIDI Stop even while motion sounds. */
-    trk[0].p[P_REV] = 23; motion_clear(&trk[0]); motion_set_event(&trk[0], 0, P_REV, 100);
+    bad += check("Start after timeout restarts cleanly at the master's phase", song.playing && tk_pl.row == 1u);
+    /* a row's FX sounds under the external clock; Stop puts the track's own value back */
+    trk[0].p[P_REV] = 23; *tk_at(0, 0, 0) = tk_pack(60, 0, TKC_REV, 127);
     clock_packet(source, 0xFA, 1000); clock_packet(source, 0xF8, 1000);
-    bad += check("external-clock playback applies recorded motion", trk[0].p[P_REV] == 100);
+    bad += check("external-clock playback applies a row's FX", trk[0].p[P_REV] == TP[P_REV].max);
     clock_packet(source, 0xFC, 1010);
-    bad += check("external Stop restores the musical parameter base", trk[0].p[P_REV] == 23);
+    bad += check("external Stop puts the track's own value back", trk[0].p[P_REV] == 23);
     return bad;
 }
 static int clock_arp_and_boundaries(void)
@@ -332,7 +332,7 @@ static int route_block_test(void)
     /* the clock is not routed: an external clock runs with ROUT CH13-16 as with CH1-4 */
     clock_setup(1); song.g[G_ROUTE] = 4; events_block(CTL);
     clock_packet(1, 0xFA, 2); clock_to(1, 2, 7);
-    ok = song.playing && trk[0].seq_idx == 1u;
+    ok = song.playing && tk_pl.row == 1u;
     clock_packet(1, 0xFC, 133);
     ok &= !song.playing;
     song.g[G_CLOCK] = 0; events_block(CTL);
@@ -410,19 +410,16 @@ static int cc_map_test(void)
     bad += check("ROUT SEL: channel 10's CC7 sets the selected track's LEVEL", trk[2].p[P_LEVEL] == 5 && trk[0].p[P_LEVEL] != 5);
     song.g[G_ROUTE] = 0; song.sel = 0; events_block(CTL);
 
-    /* AUTOMATION: the selected track armed and playing records the CC as a knob move; else it is the new base */
+    /* 1.5: no automation (the tracker's FX instead): armed and playing or not, a CC is the new value, nothing recorded */
     midi_test_reset();
     song.rec = 1; seq_start(); events_block(CTL);
     queued(0xB0, 74, 20, 1);
-    bad += check("armed and playing: CC74 records a motion event of CUT on the selected track", motion.count == 1u &&
-                 motion.event[0].param == P_E4 && motion.event[0].value == 20 && (motion.event[0].place >> 6) == 0u);
-    queued(0xB1, 74, 20, 1);
-    bad += check("  another track (channel 2, not selected): not recorded", motion.count == 1u && trk[1].p[P_E2] != 0);
+    bad += check("armed and playing: CC74 sets CUT, records nothing", motion.count == 0u && trk[0].p[P_E4] != ANALOG_PRESETS[trk[0].preset].e[4]);
     seq_stop(); events_block(CTL);
-    bad += check("  stopped: the patch's own CUT comes back", trk[0].p[P_E4] == ANALOG_PRESETS[trk[0].preset].e[4]);
+    bad += check("  stopped: the CC's value stays (no automation to undo)", motion.count == 0u && trk[0].p[P_E4] != ANALOG_PRESETS[trk[0].preset].e[4]);
     song.rec = 0;
     queued(0xB0, 74, 77, 1);
-    bad += check("not armed: the CC is the new value, no event", trk[0].p[P_E4] == 77 && motion.count == 1u);
+    bad += check("not armed: the CC is the new value, no event", trk[0].p[P_E4] == 77 && motion.count == 0u);
     return bad;
 }
 int main(void)

@@ -2,11 +2,9 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Host test of SWING (issue #31), same sources as the firmware (through hostsim.c):
  *   build/host/swing_test
- * 1. the sum: a track's SWG plus the global SWG is at most 100 (core.h track_swing).
- * 2. the sequencer: with both at 100 the steps play 1.4 x / 0.6 x the straight length (not 1.8 x /
- *    0.2 x), measured from the transport; with the sum at 100 or below nothing changes.
- * 3. the SLICER: its step lengths are the sequencer's (one helper), and it stays on the sequencer's
- *    step at the extremes.
+ * 1. the swing: CLOCK's SWG, 0..100 (core.h track_swing; 1.5: a track's own SWG, the step sequencer's, unread).
+ * 2. the tracker: at 100 its rows play 1.4 x / 0.6 x the straight 1/16, measured from the transport.
+ * 3. the SLICER: its step lengths are the rows' (one helper), and it stays on the tracker's row at the extremes.
  * 4. the display: SWG (0..100) shows its value, 100 is "100" (not 79); 0..127 percents unchanged. */
 #define main hostsim_main
 #include "hostsim.c"
@@ -24,22 +22,22 @@ static void set_swing(track_t *t, int own, int global)
     song.g[G_SWING] = (int16_t)global;
 }
 
-/* ------------------------------------------------------------ 1. sum --- */
+/* ---------------------------------------------------------- 1. swing --- */
 static int test_sum(void)
 {
-    static const int C[][3] = {{0, 0, 0}, {30, 20, 50}, {60, 40, 100}, {100, 0, 100}, {0, 100, 100},
-                               {70, 50, 100}, {100, 100, 100}};
+    static const int C[][3] = {{0, 0, 0}, {30, 20, 20}, {60, 40, 40}, {100, 0, 0}, {0, 100, 100}, {70, 50, 50},
+                               {100, 120, 100}};
     uint32_t k, bad = 0;
     host_tracks_init();
     for (k = 0; k < sizeof C / sizeof C[0]; k++) {
         set_swing(&trk[0], C[k][0], C[k][1]);
         bad += track_swing(&trk[0]) != C[k][2];
     }
-    return check("track SWG + global SWG, at most 100 (0+0 30+20 60+40 100+0 0+100 70+50 100+100)", !bad);
+    return check("the swing: CLOCK's SWG at most 100, a track's own SWG unread (1.5)", !bad);
 }
 
-/* ----------------------------------------------------- 2. sequencer --- */
-/* the sample where each step of track 1 starts (block exact: CTL), n steps from the transport start */
+/* ------------------------------------------------------- 2. tracker --- */
+/* the sample where each row starts (block exact: CTL), n rows from the transport start */
 static uint32_t seq_starts(uint32_t *at, uint32_t n)
 {
     uint32_t f, got = 0, last = 0xFFFFFFFFu;
@@ -47,8 +45,8 @@ static uint32_t seq_starts(uint32_t *at, uint32_t n)
     for (f = 0; got < n && f < 20u * FS; f += CTL) {
         int32_t o[2 * CTL];
         mix_block(o, CTL);
-        if (trk[0].seq_idx != last) {
-            last = trk[0].seq_idx;
+        if (song.playing && tk_pl.row != last) {
+            last = tk_pl.row;
             at[got++] = f;
         }
     }
@@ -62,7 +60,7 @@ static uint32_t seq_starts(uint32_t *at, uint32_t n)
 
 static int test_seq(void)
 {
-    static const int C[][3] = {{100, 100, 100}, {100, 0, 100}, {0, 100, 100}, {30, 20, 50}, {0, 0, 0}};
+    static const int C[] = {100, 50, 20, 0};
     uint32_t c, k, at[17];
     int bad = 0;
     char what[160];
@@ -70,27 +68,26 @@ static int test_seq(void)
         uint32_t base, longs = 0, shorts = 0, err = 0, got;
         host_tracks_init();
         song.g[G_BPM] = 120;
-        trk[0].p[P_SLEN] = 16;
-        set_swing(&trk[0], C[c][0], C[c][1]);
-        base = div_samples((uint32_t)trk[0].p[P_SDIV]);
+        set_swing(&trk[0], 60, C[c]);
+        base = div_samples(2);
         got = seq_starts(at, 17);
         for (k = 1; k < got; k++) {
-            uint32_t len = at[k] - at[k - 1], idx = (k - 1u) & 1u;     /* step 0 is even (long) */
-            int32_t want = (int32_t)base + ((idx ? -1 : 1) * C[c][2] * (int32_t)base / 250);
+            uint32_t len = at[k] - at[k - 1], idx = (k - 1u) & 1u;     /* row 0 is even (long) */
+            int32_t want = (int32_t)base + ((idx ? -1 : 1) * C[c] * (int32_t)base / 250);
             err += abs((int32_t)len - want) > CTL;
             if (idx)
                 shorts += len;
             else
                 longs += len;
         }
-        snprintf(what, sizeof what, "sequencer: SWG %d + global %d -> %d: steps %.2f x / %.2f x, pairs = 2 steps",
-                 C[c][0], C[c][1], C[c][2], (double)longs / 8.0 / base, (double)shorts / 8.0 / base);
+        snprintf(what, sizeof what, "tracker rows: SWG %d: rows %.2f x / %.2f x, pairs = 2 rows", C[c],
+                 (double)longs / 8.0 / base, (double)shorts / 8.0 / base);
         bad += check(what, got == 17 && !err && abs((int32_t)(longs + shorts) - 16 * (int32_t)base) <= (int32_t)CTL);
     }
     /* the extremes: 1.4 x and 0.6 x, never past */
     host_tracks_init();
-    set_swing(&trk[0], 100, 100);
-    bad += check("step_samples at 100 + 100: 1.4 x and 0.6 x of the straight step (was 1.8 x / 0.2 x)",
+    set_swing(&trk[0], 100, 120);
+    bad += check("rows at SWG 100 (and past): 1.4 x and 0.6 x of the straight 1/16",
                  step_samples(&trk[0], 6000, 0) == 8400 && step_samples(&trk[0], 6000, 1) == 3600);
     return bad;
 }
@@ -114,7 +111,7 @@ static int test_slicer(void)
             lens += s.len != step_samples(&trk[0], s.base, s.idx);
         }
     }
-    bad += check("SLICER step lengths == the sequencer's (one helper) at 100+100, 100+0, 0+100, 80+70, 0+0", !lens);
+    bad += check("SLICER step lengths == the tracker's rows (one helper) at every swing", !lens);
 
     host_tracks_init();
     song.g[G_BPM] = 131;
@@ -135,11 +132,11 @@ static int test_slicer(void)
         blocks++;
         for (k = 0; k < NTRK; k++) {                 /* the SLICER step that holds the block's first sample */
             uint32_t idx = sl[k].pos >= CTL ? sl[k].idx : (sl[k].idx + 15u) & 15u;
-            miss += idx != trk[k].seq_idx % 16u;
+            miss += song.playing && idx != tk_pl.row % 16u;
         }
     }
     transport_req = 2;
-    bad += check("SLICER on the sequencer's step, SWG 40..100 + global 100, 131 BPM, 4 tracks", !miss && blocks > 1000u);
+    bad += check("SLICER on the tracker's row, SWG 100, 131 BPM, 4 tracks (their own SWG unread)", !miss && blocks > 1000u);
     return bad;
 }
 

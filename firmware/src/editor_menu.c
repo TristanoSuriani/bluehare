@@ -9,7 +9,8 @@
  * DISPLAY; STEP PREVIEW, CHORD ENTRY, CONTROL; MIDI IN, MIDI; TUNE, AUDIO; 1.3: HOME, DISPLAY): an index keeps its
  * setting too, so an older editor lists what it knew where it was (the
  * editor groups them by their tab). An id keeps its meaning for good: a new setting takes the next free id
- * (append-only), wherever its row goes; ids 0..126 (127: none).
+ * (append-only), wherever its row goes; ids 0..126 (127: none). 1.5: COUNT-IN (id 14) left with the count-in: the
+ * entries after it moved up one index (the one exception), their ids kept; id 14 is never given again.
  * 1.2: MIDI IN (21) and TUNE (22) are the project's G_ROUTE and G_TUNE (menu_items.c MI_PROJECT), the same values as a
  * SET of global 14 / 3: MENU_SET applies them to the music in RAM, kept with the project (the autosave, PROJECT SAVE),
  * not in the settings record: rc 0, nothing for settings_save to write. TUNE is a number (EDM_INT: the cents -50..50,
@@ -19,7 +20,7 @@ enum { EDM_ENUM, EDM_INT };                            /* kind: names follow; or
 static const uint8_t ED_MENU[][2] = {
     {MI_COLOR, 0}, {MI_STYLE, 1}, {MI_LARGE, 2}, {MI_ANIM, 3}, {MI_LEDS, 4}, {MI_HOLD, 5}, {MI_ACCEL, 6},
     {MI_LATCH, 7}, {MI_BPMLOCK, 8}, {MI_LOWCUT, 9}, {MI_USB, 10}, {MI_SERIAL, 11},
-    {MI_CLICK, 12}, {MI_CLKLVL, 13}, {MI_COUNTIN, 14},
+    {MI_CLICK, 12}, {MI_CLKLVL, 13},                   /* (14: COUNT-IN, 1.1 .. 1.4.1; retired with it in 1.5) */
     {MI_RESTORE, 15},                                  /* 1.2 (Discussion #130), a row of SYSTEM */
     {MI_SCLLED, 16},                                   /* 1.2 (Discussion #127), a row of CONTROL */
     {MI_SCROFF, 17},                                   /* 1.1.5, a row of DISPLAY */

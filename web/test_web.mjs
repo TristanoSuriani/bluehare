@@ -42,7 +42,8 @@ const E = vm.runInNewContext(proto + `
    MENU: typeof MENU === "undefined" ? null : MENU, MENU_TABS: typeof MENU_TABS === "undefined" ? null : MENU_TABS,
    readDeviceMenu: typeof readDeviceMenu === "undefined" ? null : readDeviceMenu,
    parseMotionAll: typeof parseMotionAll === "undefined" ? null : parseMotionAll,
-   fm6Bank: typeof fm6Bank === "undefined" ? null : fm6Bank, crc32: typeof crc32 === "undefined" ? null : crc32 })`,
+   fm6Bank: typeof fm6Bank === "undefined" ? null : fm6Bank, crc32: typeof crc32 === "undefined" ? null : crc32,
+   TK: typeof TK === "undefined" ? null : TK })`,
 { setTimeout, clearTimeout, setInterval, clearInterval, console });
 
 async function editorMock() {
@@ -1035,6 +1036,97 @@ async function editorMixer() {
   done();
 }
 
+/* 1.5: the tracker (TRACKER 78, TRACKER_CHANGED 79; firmware/src/editor_tracker.c) against the mock: INFO 58 01, a
+   pattern's cells and length, the order, the instruments, CUT / RES, the transport, the pushes; the cell text */
+async function editorTracker() {
+  const C = E.CMD, TK = E.TK, P = (a) => E.parse[C.TRACKER](a);
+  const old = attachMock({ noTracker: true });
+  const oi = E.parse[C.INFO](await old.rq(E.req.info()));
+  ok(oi.tracker === null && oi.ratchet === 4, "tracker: firmware before 1.5: no 58 02 tag (the rest as before)");
+  old.done();
+  const { m, rq, ev, done } = attachMock({ watchMs: 1000 });
+  const info = E.parse[C.INFO](await rq(E.req.info()));
+  const tk = info.tracker;
+  ok(tk && tk.pats === 24 && tk.rows === 64 && tk.insts === 63 && tk.ncmd === TK.FX.length && tk.order === 128 && info.ratchet === 4,
+    "tracker: INFO 58 02 24 64 63 15 (128), the last tag");
+  let s = P(await rq(E.req.tkStatus()));
+  ok(s.op === TK.STATUS && !s.rc && !s.playing && s.norder === 1, "tracker: STATUS stopped, one position");
+  let p = P(await rq(E.req.tkPattern(0, 0, 32)));
+  ok(p.len === 16 && p.rows.length === 16 && TK.text(p.rows[0][0]) === "A-2 01 ..." && TK.text(p.rows[2][0]) === "A-3 01 C50" &&
+     TK.text(p.rows[0][1]) === "C-4 MAJ 02 W60",
+    "tracker: PATTERN 00 (the mock's demo): 16 rows a request at most; A-2 01, A-3 01 C50, C-4 MAJ 02 W60");
+  const cells = ["C-4 01 C40", "OFF", "", "D#5 +2+9 3F W7F", "C#- .. ...", "01 V20"].map((x) => TK.parse(x));
+  let w = P(await rq(E.req.tkCells(5, 63, 2, cells.slice(0, 3))));
+  ok(w.rc === 1 && TK.empty(m.tracker.pats[5][63][2]), "tracker: CELLS past the pattern's end: rc 1, nothing written");
+  w = P(await rq(E.req.tkCells(5, 62, 2, cells)));
+  p = P(await rq(E.req.tkPattern(5, 62, 2)));
+  ok(!w.rc && p.count === 2 && p.rows.flat().slice(2).map(TK.text).join("|") ===
+    "C-4 01 C40|OFF .. ...|--- .. ...|D#5 +2+9 3F W7F|C#- .. ...|--- 01 V20" && m.tracker.pats[5][63][1].i2 === 9,
+    "tracker: CELLS row-major from row 3E column 3 (a chord +2 +9 with them); PATTERN reads them back (the count cut at the end)");
+  ok(P(await rq(E.req.tkLength(5, 24))).len === 24 && P(await rq(E.req.tkLength(5))).len === 24, "tracker: LENGTH 24");
+  let o = P(await rq(E.req.tkOrder([0, 5, 5, 1])));
+  ok(!o.rc && eq(o.order, [0, 5, 5, 1]) && P(await rq(E.req.tkOrder([0, 24]))).rc === 1 && eq(m.tracker.order, [0, 5, 5, 1]),
+    "tracker: ORDER 00 05 05 01; a pattern past the last: rc 1, the order stays");
+  const long = Array.from({ length: 128 }, (_, i) => i % 24);
+  o = P(await rq(E.req.tkOrder(long)));
+  ok(!o.rc && o.order.length === 128 && o.order[127] === 127 % 24, "tracker: ORDER of 128 positions (the count in two bytes)");
+  await rq(E.req.tkOrder([0, 5, 5, 1]));
+  const ins = P(await rq(E.req.tkInstr(4, 3, [{ kind: 1, a: 2, b: 3 }, { kind: 2, a: 7, b: 0 }, { kind: 0, a: 0, b: 0 }])));
+  const all = P(await rq(E.req.tkInstr(0, 63)));
+  ok(!ins.rc && all.instr.length === 63 && all.instr[0].kind === 1 && all.instr[0].b === 4 && all.instr[4].a === 2 &&
+     all.instr[4].b === 3 && all.instr[5].kind === 2 && all.instr[5].a === 7 && !all.instr[6].kind,
+    "tracker: INSTR 05 PHASE 4, 06 user 8, 07 none; 01 is ANALOG ACID (power-on)");
+  ok(P(await rq(E.req.tkInstr(0, 1, [{ kind: 1, a: 1, b: 0 }]))).rc === 1, "tracker: INSTR of the retired engine 1: rc 1");
+  const f = P(await rq(E.req.tkFilter(1, 90, -1)));
+  ok(!f.rc && f.filter[1].cut === 90 && f.filter[1].res === -1 && f.filter[0].cut === -1, "tracker: FILTER track 2 CUT 90, RES INST");
+  s = P(await rq(E.req.tkPlay(1, 5)));
+  ok(!s.rc && s.playing && s.mode === 0 && s.pat === 5, "tracker: PLAY LOOP 05");
+  m.sim.tkRows(25);
+  s = P(await rq(E.req.tkStatus()));
+  ok(s.pat === 5 && s.row === 1, "tracker: a loop of 24 rows: row 25 is its row 01 again");
+  s = P(await rq(E.req.tkPlay(1, 1)));
+  ok(!s.rc && s.pat === 5 && s.loopPat === 1, "tracker: LOOP 01 while playing: cued");
+  ok(P(await rq(E.req.tkPlay(2, 0))).rc === 2, "tracker: SONG while playing: rc 2 (from a stop)");
+  await rq(E.req.tkPlay(0));
+  s = P(await rq(E.req.tkPlay(2, 1)));
+  m.sim.tkRows(24);
+  const s2 = P(await rq(E.req.tkStatus()));
+  ok(!s.rc && s.mode === 1 && s.pat === 5 && s2.pos === 2 && s2.pat === 5 && s2.row === 0, "tracker: SONG from position 01: 05, then 05 again");
+  await rq(E.req.tkPlay(0));
+  ok(!P(await rq(E.req.tkClear(5))).rc && m.tracker.pats[5].every((r) => r.every(TK.empty)), "tracker: CLEAR 05");
+  /* the pushes: WATCH bit 2 */
+  ev.pushes.length = 0;
+  await rq(E.req.watch(3));
+  m.sim.tkCell(3);
+  await sleep(10);
+  ok(!ev.pushes.some((f) => f.cmd === C.TRACKER_CHANGED), "tracker: WATCH 3 (an editor of before): no TRACKER_CHANGED");
+  ok(E.parse[C.WATCH](await rq(E.req.watch(7))).on === 7, "tracker: WATCH 7 -> 7");
+  m.sim.tkCell(3); m.sim.tkOrder([0, 3]);
+  await sleep(10);
+  const tc = ev.pushes.filter((f) => f.cmd === C.TRACKER_CHANGED).map((f) => E.parse[C.TRACKER_CHANGED](f.a));
+  ok(tc.length === 2 && tc[0].kind === 0 && tc[0].index === 3 && tc[1].kind === 1, "tracker: TRACKER_CHANGED 0 03 (a cell), 1 (the order)");
+  done();
+  /* the cell text, as the device shows it (ui_tracker.c) */
+  let bad = 0;
+  for (let n = 1; n <= 127; n++)
+    for (const [i1, i2] of [[0, 0], [4, 7], [7, 4], [2, 9], [12, 0], [15, 15], [1, 0]]) {
+      const c = { note: n, inst: n % 64, cmd: n % TK.FX.length, val: n % 128, i1: n === 127 ? 0 : i1, i2: n === 127 ? 0 : i2 };
+      const back = TK.parse(TK.text(c));
+      const same = (a, b) => a.i1 === b.i1 && a.i2 === b.i2 || (a.i1 === b.i2 && a.i2 === b.i1 && a.i1 && a.i2);   /* (a shape: either order) */
+      if (!back || back.note !== c.note || back.inst !== c.inst || back.cmd !== c.cmd || (c.cmd && back.val !== c.val) || !same(back, c)) bad++;
+    }
+  ok(!bad && TK.text({ note: 60, inst: 1, cmd: 6, val: 64 }) === "C-4 01 C40" && TK.text({ note: 0, inst: 0, cmd: 0, val: 0 }) === "--- .. ..." &&
+     TK.text({ note: 127, inst: 0, cmd: 0, val: 0 }) === "OFF .. ..." && TK.text({ note: 5, inst: 0, cmd: 0, val: 0 }) === "F-- .. ...",
+    "tracker: a cell's text as the device shows it (C-4 01 C40, OFF, octave -1 F--), chords too, read back exactly");
+  ok(TK.text({ note: 60, inst: 1, cmd: 0, val: 0, i1: 4, i2: 7 }) === "C-4 MAJ 01 ..." && TK.text({ note: 60, inst: 0, cmd: 0, val: 0, i1: 2, i2: 9 }) === "C-4 +2+9 .. ..." &&
+     TK.text({ note: 127, inst: 0, cmd: 0, val: 0, i1: 4, i2: 7 }) === "OFF .. ..." && TK.parse("C-4 min7 02").i2 === 10 &&
+     TK.parse("c4 +5").i1 === 5 && ["C-4 +16", "C-4 +0", "MAJ 01", "C-4 MAJ MIN"].every((x) => TK.parse(x) === null),
+    "tracker: chords: MAJ, +2+9, none on OFF; typed as a shape or +i+i (1..15), only after a note");
+  ok(TK.parse("c4 1").note === 60 && TK.parse("bb2").note === 46 && TK.parse("01 C40").inst === 1 && TK.parse("").note === 0 &&
+     ["C-4 40", "Z", "C-4 01 C80", "G9 01", "C-4 01 Z10"].every((x) => TK.parse(x) === null),
+    "tracker: typing: c4, Bb2, the instrument and FX alone, empty; instrument 40, FX 80, G9 (127) refused");
+}
+
 /* ------------------------------------- editor v4: TRACK_PARAM and TRACK_CHANGED --- */
 async function editorTrackParam() {
   const C = E.CMD, PAN = 39, MUTE = 40;
@@ -1044,7 +1136,8 @@ async function editorTrackParam() {
   m.sim.param(2, PAN, 11);
   await sleep(10);
   ok(w1.on === 1 && !ev.pushes.some((f) => f.cmd === C.TRACK_CHANGED), "v4: WATCH 1 answers 1 as before (no TRACK_CHANGED pushes)");
-  ok(await E.startWatch(rq) === 3, "v4: WATCH 3 -> 3 (TRACK_PARAM / TRACK_CHANGED known)");
+  ok(E.parse[C.WATCH](await rq(E.req.watch(3))).on === 3, "v4: WATCH 3 -> 3 (TRACK_PARAM / TRACK_CHANGED known)");
+  ok(await E.startWatch(rq) === 7, "1.5: the editor's WATCH 7 -> 7 (also TRACKER_CHANGED)");
   const tracks0 = sent[C.TRACK] || 0, pushes = ev.pushes.length;
   const g = E.parse[C.TRACK_PARAM](await rq(E.req.trackParam(1, PAN)));
   const p2 = await E.mixer.setPan(rq, 2, 0, PAN, -40, true);
@@ -1381,6 +1474,7 @@ async function editorSessions() {
     buildUI: () => { shown++; }, renderPanels: noop, loadSteps: noop,
     startWatch: async () => false, renderLive: noop, renderLib: noop,
     renderBank: noop, renderSysinfo: noop, sayK: noop, report: noop, syncPreferences: noop,
+    tkHas: () => false, tkLoad: noop,
   });
   const oldRelease = S.beginBusy();
   S.resetBusy();
@@ -1652,6 +1746,7 @@ await preferenceReplies();
 await editorTracks();
 await editorMixer();
 await editorTrackParam();
+await editorTracker();
 await editorSong();
 await editorSessions();
 await editorFm6();

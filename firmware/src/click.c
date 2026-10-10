@@ -1,18 +1,17 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* The metronome's click (1.1, Ideas Discussion #131): MENU > AUDIO CLICK (OFF / REC / ON), CLICK LEVEL (LOW / MID / HIGH)
- * and COUNT-IN (OFF / 1 BAR / 2 BARS). seq.c decides when a beat clicks (click_beat: the song tempo's quarter notes, 4/4,
- * the bar's first beat accented; the count-in's beats whatever CLICK is); this file makes the sound. A short sine blip
+/* The metronome's click (1.1, Ideas Discussion #131): MENU > AUDIO CLICK (OFF / REC / ON) and CLICK LEVEL (LOW / MID /
+ * HIGH; 1.5: COUNT-IN is gone). seq.c decides when a beat clicks (click_beat: the song tempo's quarter notes, 4/4, the
+ * bar's first beat accented); this file makes the sound. A short sine blip
  * that decays away (no sample): 1760 Hz on the bar's first beat, 1320 Hz on the others, 6 dB quieter; ~6 ms
  * decay constant, silent after ~35 ms. It is added after the master (audio.c audio_block, after uac_tap and USB LEVEL):
  * never through the FX, the reverb or the limiter, never into a recording (the sequence or USB audio), only into the
  * DAC (headphones / line out, the speaker), scaled by MASTER as the rest of what the DAC gets.
- * The MENU's three settings are bits of a byte no engine uses (ui.c ui_rec_prefs), copied here every UI frame
- * (ui_input.c); 0 in every older setting = OFF / MID / OFF, today's behaviour. */
+ * The MENU's two settings are bits of a byte no engine uses (ui.c ui_rec_prefs), copied here every UI frame
+ * (ui_input.c); 0 in every older setting = OFF / MID. */
 enum { CLICK_OFF, CLICK_REC, CLICK_ON };
 static volatile uint8_t click_mode;         /* CLICK_*: when the beats click while the transport runs */
 static volatile uint8_t click_lvl = 1;      /* 0 LOW 1 MID 2 HIGH */
-static volatile uint8_t cin_bars;           /* COUNT-IN: 0 off, 1 or 2 bars */
 static volatile uint8_t click_req;          /* seq.c: 1 a beat, 2 the bar's first; the next block starts it */
 /* the magic circle (s, c: a sine and its quadrature) at k = 2 sin(pi f / FS), Q15; env Q15, decaying 1/256 a sample */
 #define CLICK_K_DOWN 8195                    /* 1760 Hz */

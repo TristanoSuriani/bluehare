@@ -45,19 +45,11 @@ static __attribute__((noinline)) void midi_clock_pulse(uint32_t ms)
         if (dt >= 62u && dt <= 375u) {
             uint32_t old_beat = beat_samples(), new_beat = (uint32_t)FS * dt / 250u;
             if (song.playing && new_beat != old_beat) {
-                uint32_t i, ratio = (new_beat << 12) / old_beat;
-                /* Preserve each track's fractional step phase when the master
+                uint32_t ratio = (new_beat << 12) / old_beat;
+                /* Preserve the tracker's fractional row phase when the master
                  * changes tempo. The next pulse then lands on its new boundary. */
-                for (i = 0; i < NTRK; i++) {
-                    if (trk[i].seq_pos < (uint32_t)FS * 2u)
-                        trk[i].seq_pos = (uint32_t)(((uint64_t)trk[i].seq_pos * ratio + 2048u) >> 12);
-                    if (trk[i].seq_off)
-                        trk[i].seq_off = (uint32_t)(((uint64_t)trk[i].seq_off * ratio + 2048u) >> 12);
-                    if (trk[i].nd_late)            /* (NUDGE: the latched plays, seq_pos + 1, with the step) */
-                        trk[i].nd_late = (uint32_t)(((uint64_t)(trk[i].nd_late - 1u) * ratio + 2048u) >> 12) + 1u;
-                    if (trk[i].nd_early)
-                        trk[i].nd_early = (uint32_t)(((uint64_t)(trk[i].nd_early - 1u) * ratio + 2048u) >> 12) + 1u;
-                }
+                if (tk_pl.row_pos < (uint32_t)FS * 2u)
+                    tk_pl.row_pos = (uint32_t)(((uint64_t)tk_pl.row_pos * ratio + 2048u) >> 12);
                 if (clk_pos < (uint32_t)FS * 2u)   /* (the metronome's beat as the steps) */
                     clk_pos = (uint32_t)(((uint64_t)clk_pos * ratio + 2048u) >> 12);
             }

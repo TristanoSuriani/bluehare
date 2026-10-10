@@ -487,6 +487,26 @@ static int up_load(uint32_t k)
     return 0;
 }
 
+/* a user preset as the tracker's instrument (tracker.c tk_user_sound, the audio ISR or the main loop with it held off):
+ * its engine, its EDIT values, its voice mode, its FM6 patch into track t; the track's settings stay (tracker.c). A
+ * slot emptied since, or a DIGITAL sound (retired: only a load converts it, fm4_apply), changes nothing */
+static void up_tk_sound(track_t *t, uint32_t k)
+{
+    const up_rec_t *r;
+    int16_t v[P_COUNT];
+    uint32_t i;
+    if (!up_used(k) || !eng_ok((r = up_rec(k))->engine))
+        return;
+    up_values(r, v);
+    t->eng_req = r->engine;
+    for (i = 0; i < 8u; i++)
+        t->p[P_E0 + i] = v[P_E0 + i];
+    t->p[P_VOICE] = v[P_VOICE];
+    t->preset = 0;
+    t->user = (uint8_t)(k + 1u);
+    upf_track_load(t, k);                               /* FM6: the preset's own patch (up_fm6.c) */
+}
+
 /* the patterns of the user presets (SAVE > PHRASES lists them after the factory ones, ui.c pat_count) */
 static int up_has_pat(uint32_t k) { return up_used(k) && !up_pat_empty(up_rec(k)); }
 

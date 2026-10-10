@@ -15,14 +15,19 @@ enum { TL_CLEAR, TL_REV, TL_LEFT, TL_RIGHT, TL_RANDOM, TL_COOK, TL_BEAT, TL_GAP,
        TL_N };
 
 /* the track as the layer opened (OCT-): in the pool (RAM's .bss is tight), taken by layer_opened */
-static struct { step_t step[NSTEP]; motion_store_t mo; } tl_open __attribute__((section(".pool")));
+static struct {
+    step_t step[NSTEP];
+    motion_store_t mo;
+    tk_cell_t cell[TK_ROWS][NTRK];                      /* 1.5: the tracker's pattern edited, as the layer opened */
+    uint8_t pat;                                        /* .. that pattern */
+} tl_open __attribute__((section(".pool")));
 
 static uint32_t tl_len(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }
 static uint32_t tl_rnd(uint32_t n) { return n ? rng() % n : 0u; }
 static int tl_gate(const step_t *s) { return s->time == ST_NOTE && s->n; }
 static uint32_t tl_lane(const step_t *s, uint32_t l) { return (step_lanes(s) >> l) & 1u; }
 /* place p's action is there for this track (the lane row and BEAT: DRUM only) */
-static int tl_cell(const track_t *t, uint32_t p) { return p < TL_N && p != TL_GAP && (p < TL_BEAT || drum_track(t)); }
+static int tl_cell(const track_t *t, uint32_t p) { (void)t; (void)p; return 0; }   /* (1.5: the tracker plays; off) */
 
 /* the undo copy of t as it is now (ui.c load_begin, but the automation is copied and stays): one action */
 static void tl_undo_take(track_t *t)

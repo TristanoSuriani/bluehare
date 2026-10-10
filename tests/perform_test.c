@@ -564,6 +564,10 @@ static int test_misc(void)
         song_setup();
         trk[1].p[P_SLEN] = 1; trk[3].p[P_SLEN] = 1;
         trk[1].step[0].n = 0; trk[3].step[0].n = 0;          /* only track 1 plays, dry */
+        {
+            uint32_t r;
+            for (r = 0; r < TK_ROWS; r++) *tk_at(0, r, 1) = *tk_at(0, r, 2) = *tk_at(0, r, 3) = tk_pack(0, 0, 0, 0);
+        }
         trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = 0;
         transport_req = 1;
         for (f = 0; f < 2u * FS; f += CTL) {

@@ -7,6 +7,10 @@
  * Id 8 (the FM6 patch bank of 1.0..1.0.2) is listed empty since 1.0.3; a PUT of it from an older archive moves its
  * patches into the user presets restored before it (ids 6, 7), as the first boot after the update does (up_fm6.c).
  * Id 9 is the user presets' FM6 patches (up_fm6.c), appended in 1.0.3.
+ * 1.5 (the tracker): id 0, the music in RAM, is listed empty (a song is up to four storage objects: project.c); ids
+ * 2..5 are the stored song's chunks as they are on the flash (project.c proj_good: the complete save's copies; a chunk
+ * past its count, none stored: empty). A PUT of them writes each with a new generation, the same for the chunks of one
+ * restore (ed_bk_rgen), so the restored song is the newest complete one; a project of 1.4 is refused.
  */
 static const uint8_t ED_BK_IDS[13] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34};
 #define ED_BK_N ((uint32_t)sizeof ED_BK_IDS)
@@ -14,6 +18,9 @@ static const uint8_t ED_BK_IDS[13] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34};
 #define ED_BK_RAW (proj_wire_u.raw)  /* reuse the existing serialized main-loop scratch */
 _Static_assert(sizeof proj_wire_u.raw >= sizeof(upf_t) && sizeof proj_wire_u.raw >= sizeof(fm6_bank_t), "backup staging");
 static persist_t ed_bk_settings;
+static uint32_t ed_bk_rgen;                     /* a restore's generation for the song's chunks (ids 2..5) */
+static uint8_t ed_bk_chunk = 0xFFu;             /* the stored chunk ED_BK_RAW holds (ed_bk_object), 0xFF none */
+static uint32_t ed_bk_clen;                     /* .. its length */
 static uint8_t ed_bk_valid, ed_bk_put, ed_bk_id, ed_bk_gen;
 static uint32_t ed_bk_len, ed_bk_crc, ed_bk_pos, ed_bk_ms, ed_bk_usb;
 static void ed_bk_u32(uint32_t n) { for (uint32_t i = 0; i < 5u; i++) ed_b((n >> (i * 7u)) & 127u); }
@@ -34,11 +41,25 @@ static void ed_bk_pack(const uint8_t *p, uint32_t n)
 static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
 {
     *len = 0;
-    if (id == 0u) { *len = sizeof(project_store_t); return ED_BK_RAW; }
+    if (id == 0u) return ED_BK_RAW;                 /* (the music in RAM: not one object any more) */
     if (id == 1u) { *len = sizeof ed_bk_settings; return (const uint8_t *)&ed_bk_settings; }
     if (id >= 2u && id <= 5u) {
-        if (project_used(id - 2u)) *len = sizeof proj_slot[0];
-        return (const uint8_t *)&proj_slot[id - 2u];
+#if FELUCCA_FLASH
+        uint32_t i = id - 2u;
+        st_hdr_t h;
+        if (ed_bk_chunk != i || ed_bk_gen != proj_wire_gen) {   /* the chunk into the staging RAM */
+            ed_bk_chunk = 0xFFu;
+            if (!proj_find() || i >= proj_good.count ||
+                st_head(OBJ_PROJECT0 + i, proj_good.copy[i], &h) || st_body(OBJ_PROJECT0 + i, proj_good.copy[i], &h))
+                return ED_BK_RAW;
+            memcpy(ED_BK_RAW, st_buf, h.len);
+            ed_bk_gen = ++proj_wire_gen;
+            ed_bk_chunk = (uint8_t)i;
+            ed_bk_clen = h.len;
+        }
+        *len = ed_bk_clen;
+#endif
+        return ED_BK_RAW;
     }
     if (id == 6u || id == 7u) {
         if (up_bank[id - 6u].magic == UP_BANK_MAGIC) *len = sizeof up_bank[0];
@@ -62,9 +83,8 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
 static uint32_t ed_bk_capture(void)
 {
     if (ed_flash_stop()) return 3;
-    project_capture(&proj_scratch);
-    if (!proj_pack((project_store_t *)ED_BK_RAW, &proj_scratch)) return 2;
     ed_bk_gen = ++proj_wire_gen;
+    ed_bk_chunk = 0xFFu;
 #if FELUCCA_FLASH
     ed_bk_settings = persist_saved;                 /* fields absent from this build survive */
 #else
@@ -93,18 +113,39 @@ static uint32_t ed_bk_commit(void)
     uint8_t *raw = ED_BK_RAW;
     uint32_t obj;
     if (ed_bk_pos != ed_bk_len || st_crc32(raw, ed_bk_len) != ed_bk_crc) return 2;
-    if (ed_bk_id == 0u || (ed_bk_id >= 2u && ed_bk_id <= 5u)) {
-        if (ed_bk_len && !proj_import(&proj_scratch, raw, (int)ed_bk_len)) return 2;
-        if (ed_bk_len) {                            /* an older format becomes FUN10 inside its ranges */
-            proj_bound(&proj_scratch);
-            if (!proj_pack((project_store_t *)raw, &proj_scratch)) return 2;
-            ed_bk_len = sizeof(project_store_t);
+    if (ed_bk_id == 0u) {
+        return ed_bk_len ? 2u : 0u;                 /* (an archive's music in RAM: a project of 1.4) */
+    } else if (ed_bk_id >= 2u && ed_bk_id <= 5u) {  /* a chunk of the song (project.c); none: nothing to write (an */
+        proj_hdr_t h;                                /* archive of no song at all, id 2 empty: none stored after it) */
+        if (!ed_bk_len) {
+            if (ed_bk_id == 2u && proj_store_clear()) return 4;
+            proj_cur = ed_bk_id == 2u ? PROJ_NO_SLOT : proj_cur;
+            return 0;
         }
-        if (ed_bk_id == 0u) {
-            if (!ed_bk_len) return 2;
-            return project_restore_runtime(&proj_scratch) ? 2u : 0u;
+        memcpy(&h, raw, sizeof h);
+        if (ed_bk_len < PROJ_HDR || h.magic != PROJ_MAGIC || h.index != ed_bk_id - 2u || !h.count ||
+            h.count > PROJ_CHUNKS || h.len != ed_bk_len - PROJ_HDR) return 2;
+#if FELUCCA_FLASH
+        if (!flash_ok) return 4;
+        if (ed_bk_id == 2u || !ed_bk_rgen) {        /* the first chunk of a restore: past every stored save */
+            proj_find();
+            ed_bk_rgen = proj_good.gen + 1u;
+            memset(proj_wr_copy, 0, sizeof proj_wr_copy);
+            for (obj = 0; obj < PROJ_CHUNKS; obj++)
+                proj_wr_copy[obj] = (uint8_t)(proj_good.have && obj < proj_good.count ? !proj_good.copy[obj] : 0u);
         }
-        obj = OBJ_PROJECT0 + ed_bk_id - 2u;
+        h.gen = ed_bk_rgen;
+        memcpy(raw, &h, sizeof h);
+        if (st_save_to(OBJ_PROJECT0 + ed_bk_id - 2u, raw, ed_bk_len, proj_wr_copy[ed_bk_id - 2u])) return 4;
+        if (h.index + 1u == h.count) {              /* the last chunk: the restored song is the stored one */
+            ed_bk_rgen = 0;
+            proj_find();
+            proj_cur = PROJ_NO_SLOT;
+        }
+#endif
+        ed_bk_chunk = 0xFFu;
+        sync_reload = 1; ui.force = 1;
+        return 0;
     } else if (ed_bk_id == 1u) {
         const persist_t *p = (const persist_t *)raw;
         if (ed_bk_len != sizeof *p || p->magic != PERSIST_MAGIC || !palette_stored_ok(p->palette) ||
@@ -134,12 +175,7 @@ static uint32_t ed_bk_commit(void)
 #else
     (void)obj;
 #endif
-    if (ed_bk_id >= 2u && ed_bk_id <= 5u) {
-        memset(&proj_slot[ed_bk_id - 2u], 0, sizeof proj_slot[0]);
-        if (proj_cur == ed_bk_id - 2u)
-            proj_cur = PROJ_NO_SLOT;                     /* (another project there now: the music keeps its name) */
-        if (ed_bk_len) memcpy(&proj_slot[ed_bk_id - 2u], raw, ed_bk_len);
-    } else if (ed_bk_id == 1u) {
+    if (ed_bk_id == 1u) {
         memcpy(&ed_bk_settings, raw, sizeof ed_bk_settings);
         settings_import(&ed_bk_settings, sizeof ed_bk_settings);
         panel_init(); settings_init(); palette_set(settings.palette);
@@ -155,11 +191,8 @@ static uint32_t ed_bk_commit(void)
     sync_reload = 1; ui.force = 1;
     return 0;
 }
-/* a project object's length: FUN10 (today's, 1.2), FUN9 (1.1), FUN8 (before the DRUM lane levels, 1.0.x), FUN7 */
-static int proj_store_len(uint32_t len)
-{
-    return len == sizeof(project_store_t) || len == PROJ_STORE_V9 || len == PROJ_STORE_V8 || len == PROJ_STORE_V7;
-}
+/* a stored song chunk's length (project.c: its header and up to PROJ_DATA bytes); 0: none */
+static int proj_store_len(uint32_t len) { return !len || (len >= PROJ_HDR && len <= ST_PAYLOAD_MAX); }
 static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
 {
     /* the arguments first: a malformed request never stops the transport */
@@ -167,7 +200,7 @@ static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
     if (a[0] == 0u) {
         if (n != 12u || a[6] > 15u || a[11] > 15u) return 1;
         uint32_t len = ed_bk_r32(a + 2);
-        if (len > ED_BK_MAX || (a[1] == 0u && !proj_store_len(len)) ||
+        if (len > ED_BK_MAX || (a[1] == 0u && len) ||
             (a[1] == 1u && len != sizeof(persist_t)) ||
             (a[1] >= 2u && a[1] <= 5u && len && !proj_store_len(len)) ||
             ((a[1] == 6u || a[1] == 7u) && len && len != sizeof(up_bank_t)) ||

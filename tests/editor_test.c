@@ -74,10 +74,10 @@ static void reset(void)
 {
     uint32_t t, i;
     memset(&song, 0, sizeof song); memset(trk, 0, sizeof trk);
-    memset(&chain, 0, sizeof chain); chain_defaults(&chain_config);
+    tk_defaults();
     memset(&ed_w, 0, sizeof ed_w); memset(&ui, 0, sizeof ui);
     memset(&favorites, 0, sizeof favorites); memset(&settings, 0, sizeof settings); settings_init();
-    memset(proj_slot, 0, sizeof proj_slot); memset(up_bank, 0, sizeof up_bank);
+    memset(&proj_good, 0, sizeof proj_good); memset(up_bank, 0, sizeof up_bank);
     memset(&um, 0, sizeof um); memset(usr_nz, 0, sizeof usr_nz);
     host_progress = 1; host_erases = host_writes = host_wire_n = 0;
     transport_req = panic_req = 0; sx_ready = sx_collect = sx_busy = 0;
@@ -169,25 +169,26 @@ static int preferences(void)
     int bad = 0;
     uint8_t a[4] = {0, 7, 0, 0};
     reset();
-    uint32_t n = request(ED_INFO, a, 0);
+    uint32_t n = request(ED_INFO, a, 0), m = n - 8u;   /* (m: before 1.5's tracker tag, 58 01 + 6) */
     bad += check("INFO explicitly tags display capabilities after SONG without changing command 33",
         ED_SONG == 33 && ED_UI_STATE == 34 && ED_FAV_SET == 38 &&
-        host_wire[n - 44] == CHAIN_ROWS && host_wire[n - 43] == 0x55 &&
-        host_wire[n - 42] == 1 && host_wire[n - 41] == 9 &&
-        host_wire[n - 40] == 0x4d && host_wire[n - 39] == 1 &&
-        host_wire[n - 38] == 64u && host_wire[n - 37] == 1 &&   /* (64 kept: 41 01 says 128) */
-        host_wire[n - 36] == 0x42 && host_wire[n - 35] == 1 && host_wire[n - 34] == 3 &&
-        host_wire[n - 33] == 0x46 && host_wire[n - 32] == 1 && host_wire[n - 31] == FM6_NFACTORY &&
-        host_wire[n - 30] == 0 &&                        /* (no bank since 1.0.3) */
-        host_wire[n - 29] == 0x53 && host_wire[n - 28] == 1 && host_wire[n - 27] == 3 &&
-        host_wire[n - 26] == 0x50 && host_wire[n - 25] == 1 && host_wire[n - 24] == 3 &&   /* FM6 v2: no bank, preset patches */
-        host_wire[n - 23] == 0x4E && host_wire[n - 22] == 1 && host_wire[n - 21] == 24 &&   /* MENU settings: 24 items (1.3) */
-        host_wire[n - 20] == 0x52 && host_wire[n - 19] == 1 && host_wire[n - 18] == 4 &&   /* RATCH */
-        host_wire[n - 17] == 0x4C && host_wire[n - 16] == 1 && host_wire[n - 15] == 1 &&   /* 1.1 parameter locks */
-        host_wire[n - 14] == 0x41 && host_wire[n - 13] == 1 && host_wire[n - 12] == 0 && host_wire[n - 11] == 1 &&   /* 1.2: 128 */
-        host_wire[n - 10] == 0x54 && host_wire[n - 9] == 1 && host_wire[n - 8] == NUDGE_DIV &&   /* 1.2: NUDGE */
-        host_wire[n - 7] == 0x57 && host_wire[n - 6] == 1 && host_wire[n - 5] == NTRK &&   /* 1.2: SONG lanes */
-        host_wire[n - 4] == 0x56 && host_wire[n - 3] == 1 && host_wire[n - 2] == 32);   /* 1.4.1: FM6 voice bank */
+        host_wire[m - 41] == CHAIN_ROWS && host_wire[m - 40] == 0x55 &&
+        host_wire[m - 39] == 1 && host_wire[m - 38] == 9 &&
+        host_wire[m - 37] == 0x4d && host_wire[m - 36] == 1 &&
+        host_wire[m - 35] == 64u && host_wire[m - 34] == 1 &&   /* (64 kept: 41 01 says 128) */
+        host_wire[m - 33] == 0x42 && host_wire[m - 32] == 1 && host_wire[m - 31] == 3 &&
+        host_wire[m - 30] == 0x46 && host_wire[m - 29] == 1 && host_wire[m - 28] == FM6_NFACTORY &&
+        host_wire[m - 27] == 0 &&                        /* (no bank since 1.0.3) */
+        host_wire[m - 26] == 0x53 && host_wire[m - 25] == 1 && host_wire[m - 24] == 3 &&
+        host_wire[m - 23] == 0x50 && host_wire[m - 22] == 1 && host_wire[m - 21] == 3 &&   /* FM6 v2: no bank, preset patches */
+        host_wire[m - 20] == 0x4E && host_wire[m - 19] == 1 && host_wire[m - 18] == 23 &&   /* MENU settings: 23 items (1.5) */
+        host_wire[m - 17] == 0x52 && host_wire[m - 16] == 1 && host_wire[m - 15] == 4 &&   /* RATCH */
+        host_wire[m - 14] == 0x4C && host_wire[m - 13] == 1 && host_wire[m - 12] == 1 &&   /* 1.1 parameter locks */
+        host_wire[m - 11] == 0x41 && host_wire[m - 10] == 1 && host_wire[m - 9] == 0 && host_wire[m - 8] == 1 &&   /* 1.2: 128 */
+        host_wire[m - 7] == 0x54 && host_wire[m - 6] == 1 && host_wire[m - 5] == NUDGE_DIV &&   /* 1.2: NUDGE */
+        host_wire[m - 4] == 0x56 && host_wire[m - 3] == 1 && host_wire[m - 2] == 32 &&   /* 1.4.1: FM6 voice bank */
+        host_wire[n - 9] == 0x58 && host_wire[n - 8] == 2 && host_wire[n - 7] == TK_PATS && host_wire[n - 6] == TK_ROWS &&
+        host_wire[n - 5] == TK_INSTS && host_wire[n - 4] == TKC_N && (host_wire[n - 3] | host_wire[n - 2] << 7) == TK_ORDER);
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 7 && T_BG == UI_PALETTES[7].bg);
@@ -409,58 +410,132 @@ static int samples(void)
     return bad;
 }
 
-static int song_protocol(void)
+static int song_protocol(void)                    /* 1.5: the A..D song is gone (the tracker's): SONG answers empty */
 {
-    uint8_t a[] = {1, 1, 0, 2};
-    chain_config_t before;
+    static const uint8_t set[] = {1, 1, 0, 2}, play[] = {2}, query[] = {0}, stop[] = {3}, lanes[] = {4};
+    static const uint8_t info[] = {0};
+    uint32_t n, i, tag = 0;
     int bad = 0;
     reset();
-    bad += check("SONG sets and queries the complete chain without changing selection",
-                 request(ED_SONG, a, sizeof a) == 14u && !host_wire[6] && chain_config.count == 1 && song.sel == 0);
-    before = chain_config; a[3] = 0;
-    bad += check("SONG invalid repeats leave the chain unchanged",
-                 request(ED_SONG, a, sizeof a) == 14u && host_wire[6] == 1 && !memcmp(&before, &chain_config, sizeof before));
-    a[3] = 2; chain.armed = 1;
-    bad += check("SONG cannot replace a chain while its start is pending",
-                 request(ED_SONG, a, sizeof a) == 14u && host_wire[6] == 2 && !memcmp(&before, &chain_config, sizeof before));
-    chain.armed = 0; a[0] = 2;
-    bad += check("SONG PLAY refuses extra argument bytes", !request(ED_SONG, a, 2) && !transport_req);
-    {   /* 1.2 (`57 01 04`): sections with a slot per track, ops 4..7; the v6 ops see each section's clock lane */
-        static const uint8_t set[] = {5, 2, 0, 1, CHAIN_SILENT, 0, 3, CHAIN_SILENT, CHAIN_SILENT, CHAIN_SILENT, CHAIN_SILENT, 1};
-        static const uint8_t q4[] = {4}, q0[] = {0}, bad5[] = {5, 1, 0, 0, 5, 0, 1}, old4[] = {1, 1, CHAIN_SILENT, 1};
-        static const uint8_t info[] = {0};
-        uint32_t n, i, tag = 0;
-        reset();
-        n = request(ED_SONG, set, sizeof set);
-        bad += check("SONG op 5 sets sections (T1 A, T2 B, T3 -, T4 A x3; all - x1), the reply in lanes",
-                     n == 5u + 6u + 2u * 5u + 1u && host_wire[5] == 5 && !host_wire[6] && host_wire[7] == 2 &&
-                     !memcmp(host_wire + 11, set + 2, 10) && chain_config.count == 2 &&
-                     !memcmp(&chain_config.row[0], &(chain_row_t){{0, 1, CHAIN_SILENT, 0}, 3}, sizeof(chain_row_t)) &&
-                     chain_config.row[1].slot[0] == CHAIN_SILENT && chain_config.row[1].repeat == 1);
-        n = request(ED_SONG, q4, 1);
-        bad += check("SONG op 4 queries them as set", n == 22u && host_wire[5] == 4 && !memcmp(host_wire + 11, set + 2, 10));
-        n = request(ED_SONG, q0, 1);
-        bad += check("SONG op 0 (v6 editors): a row per section, its clock lane's slot (T1 A; all - : A)",
-                     n == 16u && host_wire[11] == 0 && host_wire[12] == 3 && host_wire[13] == 0 && host_wire[14] == 1);
-        bad += check("SONG op 5: a slot past - (5) refused, the sections kept",
-                     request(ED_SONG, bad5, sizeof bad5) == 22u && host_wire[6] == 1 && chain_config.count == 2);
-        bad += check("SONG op 1 (v6): no - in a row of one slot", request(ED_SONG, old4, sizeof old4) == 16u &&
-                     host_wire[6] == 1 && chain_config.count == 2);
-        chain.armed = 1;
-        bad += check("SONG op 5 waits for a pending start (rc 2)", request(ED_SONG, set, sizeof set) == 22u && host_wire[6] == 2);
-        chain.armed = 0;
-        n = request(ED_INFO, info, 0);
-        for (i = 5; i + 2u < n; i++)
-            if (host_wire[i] == 0x57 && host_wire[i + 1u] == 1 && host_wire[i + 2u] == NTRK) tag = 1;
-        bad += check("INFO says the lanes: 57 01 04", tag);
-        {
-            uint8_t q[4] = {0, P_SQNT, 0, 0};
-            trk[0].p[P_SQNT] = 1; chain.running = 1;
-            request(ED_SET, q, 4);
-            chain.running = 0;
-            bad += check("SET of QUANTIZE waits while a song plays (its slots set it)", trk[0].p[P_SQNT] == 1);
-        }
+    n = request(ED_SONG, query, 1);
+    bad += check("SONG query: an empty song (no section), nothing playing", n == 12u && !host_wire[6] && !host_wire[7] &&
+                 !host_wire[8]);
+    bad += check("SONG set: refused (rc 1), nothing changed", request(ED_SONG, set, sizeof set) == 12u && host_wire[6] == 1 &&
+                 tk.norder == 1u && song.sel == 0);
+    bad += check("SONG play: refused (rc 1), no transport", request(ED_SONG, play, 1) == 12u && host_wire[6] == 1 &&
+                 !transport_req);
+    bad += check("SONG op 4 (lanes): an empty song", request(ED_SONG, lanes, 1) == 12u && !host_wire[6] && !host_wire[7]);
+    bad += check("SONG stop still stops the transport", request(ED_SONG, stop, 1) == 12u && transport_req == 2u);
+    transport_req = 0;
+    n = request(ED_INFO, info, 0);
+    for (i = 5; i + 2u < n; i++)
+        if (host_wire[i] == 0x57 && host_wire[i + 1u] == 1 && host_wire[i + 2u] == NTRK) tag = 1;
+    bad += check("INFO says no song lanes (57 01 04) any more", !tag);
+    return bad;
+}
+
+static uint32_t wire_frames(uint32_t cmd, const uint8_t **args);
+static uint32_t sync_pass(void);
+/* 1.5: TRACKER (78): the song's cells, lengths, order, instruments, CUT / RES, the transport; TRACKER_CHANGED (79) */
+static int tracker_protocol(void)
+{
+    static uint8_t a[4 + 6 * 64 + 8];
+    uint32_t n, i, ok;
+    const uint8_t *x = 0;
+    int bad = 0;
+    reset();
+    a[0] = 0;
+    n = request(ED_TRACKER, a, 1);
+    bad += check("TRACKER STATUS: stopped, LOOP, one position", n == 16u && host_wire[5] == 0 && host_wire[6] == 0 &&
+                 !host_wire[7] && host_wire[8] == 0 && host_wire[13] == 1 && host_wire[14] == 0);
+    a[0] = 2; a[1] = 3; a[2] = 62; a[3] = 2; a[4] = 6;           /* CELLS: pattern 3, row 62 col 2, 6 cells (into row 63) */
+    for (i = 0; i < 6u; i++) {
+        uint8_t *c = a + 5 + 6 * i;
+        c[0] = (uint8_t)(48 + i); c[1] = 2; c[2] = TKC_CUT; c[3] = 0x40; c[4] = i == 5u ? 4 : 0; c[5] = i == 5u ? 7 : 0;
     }
+    n = request(ED_TRACKER, a, 5 + 6 * 6);
+    ok = n == 12u && host_wire[6] == 0 && tk_note(tk_at(3, 62, 2)) == 48 && tk_note(tk_at(3, 62, 3)) == 49 &&
+         tk_note(tk_at(3, 63, 0)) == 50 && tk_note(tk_at(3, 63, 3)) == 53 && tk_inst(tk_at(3, 63, 3)) == 2 &&
+         tk_cmd(tk_at(3, 63, 3)) == TKC_CUT && tk_val(tk_at(3, 63, 3)) == 0x40 && tk_chord(tk_at(3, 63, 3)) == 0x74 &&
+         !tk_chord(tk_at(3, 63, 2));
+    bad += check("TRACKER CELLS: six cells row-major from row 62 / column 3, into row 63 (the last with a chord, +4 +7)", ok);
+    a[4] = 7; for (i = 0; i < 7u; i++) { a[5 + 6 * i] = 1; a[9 + 6 * i] = a[10 + 6 * i] = 0; }
+    n = request(ED_TRACKER, a, 5 + 6 * 7);
+    bad += check("  one past the pattern's end: rc 1, nothing written", n == 12u && host_wire[6] == 1 &&
+                 tk_note(tk_at(3, 62, 2)) == 48);
+    a[4] = 1; a[5] = 60; a[6] = TK_INSTS + 1u; a[7] = 0; a[8] = 0; a[9] = 0; a[10] = 0;
+    bad += check("  an instrument past the last: rc 1", request(ED_TRACKER, a, 11) == 12u && host_wire[6] == 1);
+    a[6] = 1; a[9] = 16;
+    bad += check("  an interval past 15: rc 1", request(ED_TRACKER, a, 11) == 12u && host_wire[6] == 1);
+    a[4] = 2;
+    bad += check("  a count and a payload that differ: no reply", !request(ED_TRACKER, a, 11));
+    a[0] = 1; a[1] = 3; a[2] = 60; a[3] = 16;
+    n = request(ED_TRACKER, a, 4);
+    bad += check("TRACKER PATTERN: rows 60..63 (the count cut at the end), 24 bytes a row, the chord's intervals last",
+                 n == 12u + 4u * 24u && host_wire[7] == 3 && host_wire[8] == TK_ROWS && host_wire[10] == 4 &&
+                 host_wire[11 + 2 * 24 + 2 * 6] == 48 && host_wire[11 + 3 * 24 + 3 * 6] == 53 &&
+                 host_wire[11 + 3 * 24 + 3 * 6 + 2] == TKC_CUT && host_wire[11 + 3 * 24 + 3 * 6 + 4] == 4 &&
+                 host_wire[11 + 3 * 24 + 3 * 6 + 5] == 7);
+    a[3] = 17;
+    bad += check("  17 rows: no reply (16 at most)", !request(ED_TRACKER, a, 4));
+    a[0] = 3; a[1] = 3; a[2] = 24;
+    bad += check("TRACKER LENGTH: pattern 3 to 24 rows", request(ED_TRACKER, a, 3) == 10u && host_wire[8] == 24 && tk.len[3] == 24);
+    a[2] = 65;
+    bad += check("  65 rows: rc 1, the length stays", request(ED_TRACKER, a, 3) == 10u && host_wire[6] == 1 && tk.len[3] == 24);
+    a[0] = 4; a[1] = 3; a[2] = 0; a[3] = 0; a[4] = 3; a[5] = 1;
+    n = request(ED_TRACKER, a, 6);
+    bad += check("TRACKER ORDER: 0 3 1", n == 13u && host_wire[7] == 3 && tk.norder == 3 && tk.order[1] == 3 &&
+                 host_wire[10] == 3);
+    a[5] = TK_PATS;
+    bad += check("  a pattern past the last: rc 1, the order stays", request(ED_TRACKER, a, 6) == 13u && host_wire[6] == 1 &&
+                 tk.order[2] == 1);
+    a[0] = 5; a[1] = 9; a[2] = 3; a[3] = 1; a[4] = 0; a[5] = 2; a[6] = 2; a[7] = 5; a[8] = 0; a[9] = 0; a[10] = 0;
+    a[11] = 0;
+    n = request(ED_TRACKER, a, 12);
+    bad += check("TRACKER INSTR: 0A ANALOG preset 3, 0B user 6, 0C none", n == 10u + 9u && host_wire[6] == 0 &&
+                 tk.instr[9].src == 0 && tk.instr[9].preset == 2 && tk.instr[10].src == TK_SRC_USER + 5u &&
+                 tk.instr[11].src == TK_SRC_NONE && host_wire[9] == 1 && host_wire[11] == 2 && host_wire[12] == 2 &&
+                 host_wire[13] == 5);
+    a[3] = 3;
+    bad += check("  an unknown kind: rc 1, nothing written", request(ED_TRACKER, a, 12) == 19u && host_wire[6] == 1 &&
+                 tk.instr[9].src == 0);
+    a[0] = 6; a[1] = 2; a[2] = (90 + 8192) & 127; a[3] = (90 + 8192) >> 7; a[4] = (-1 + 8192) & 127; a[5] = (-1 + 8192) >> 7;
+    n = request(ED_TRACKER, a, 6);
+    bad += check("TRACKER FILTER: track 3 CUT 90, RES INST", n == 8u + 16u && host_wire[6] == 0 && tk.cut[2] == 90 &&
+                 tk.res[2] == TK_INST_VAL && ed_rv(host_wire + 7 + 8) == 90 && ed_rv(host_wire + 9 + 8) == -1);
+    a[0] = 7; a[1] = 2; a[2] = 2;
+    n = request(ED_TRACKER, a, 3);
+    bad += check("TRACKER PLAY SONG from position 2: the transport asked for, SONG from there", n == 16u && host_wire[6] == 0 &&
+                 transport_req == 1u && tk_pl.mode == TK_SONG && tk_pl.start_pos == 2);
+    transport_req = 0; song.playing = 1;
+    bad += check("  while playing: rc 2", request(ED_TRACKER, a, 3) == 16u && host_wire[6] == 2 && !transport_req);
+    a[1] = 1; a[2] = 3;
+    bad += check("  LOOP pattern 3 while playing: cued, no transport change", request(ED_TRACKER, a, 3) == 16u &&
+                 !host_wire[6] && tk_pl.loop_pat == 3 && !transport_req);
+    a[1] = 0;
+    bad += check("  STOP", request(ED_TRACKER, a, 2) == 16u && transport_req == 2u);
+    song.playing = 0; transport_req = 0;
+    a[0] = 8; a[1] = 3;
+    bad += check("TRACKER CLEAR: pattern 3 empty", request(ED_TRACKER, a, 2) == 9u && tk_pat_empty(3));
+
+    /* TRACKER_CHANGED: WATCH bit 2; a device edit pushed, the editor's own not */
+    usb.resets = 0;
+    a[0] = 5; request(ED_WATCH, a, 1);
+    bad += check("WATCH 5: TRACKER_CHANGED asked for (the reply's bit 2)", host_wire[5] == 5 && ed_w.tk && !sync_pass());
+    *tk_at(7, 5, 1) = tk_pack(60, 1, 0, 0);              /* (the device's own edit) */
+    for (i = ok = 0; i < 20u; i++) { sync_pass(); if (wire_frames(ED_TRACKER_CHANGED, &x) && x[0] == 0 && x[1] == 7) ok++; }
+    bad += check("  a device edit of pattern 7: TRACKER_CHANGED 0 7, once", ok == 1u);
+    tk.norder = 2;
+    for (i = ok = 0; i < 4u; i++) { sync_pass(); if (wire_frames(ED_TRACKER_CHANGED, &x) && x[0] == 1) ok++; }
+    bad += check("  the order changed on the device: TRACKER_CHANGED 1, once", ok == 1u);
+    a[0] = 2; a[1] = 8; a[2] = 0; a[3] = 0; a[4] = 1; a[5] = 62; a[6] = 0; a[7] = 0; a[8] = 0; a[9] = 0; a[10] = 0;
+    request(ED_TRACKER, a, 11);
+    for (i = ok = 0; i < 20u; i++) { sync_pass(); ok += wire_frames(ED_TRACKER_CHANGED, 0); }
+    bad += check("  the editor's own CELLS: no push", !ok && tk_note(tk_at(8, 0, 0)) == 62);
+    a[0] = 1; request(ED_WATCH, a, 1);
+    *tk_at(9, 0, 0) = tk_pack(61, 0, 0, 0);
+    for (i = ok = 0; i < 20u; i++) { sync_pass(); ok += wire_frames(ED_TRACKER_CHANGED, 0); }
+    bad += check("  WATCH 1 (an editor of before 1.5): no TRACKER_CHANGED", !ok);
     return bad;
 }
 
@@ -468,7 +543,7 @@ static int malformed_saves(void)
 {
     static const uint8_t slot[] = {1, 4}, name[] = {0, 'X', 0, 'Y'};
     const uint8_t save[] = {1, 0};
-    project_store_t old;
+    uint32_t gen;
     int bad = 0;
     reset();
     bad += check("PROJECT refuses an invalid slot instead of wrapping to slot 0",
@@ -476,10 +551,10 @@ static int malformed_saves(void)
     bad += check("UP_STORE rejects bytes after its name terminator without saving",
                  request(ED_UP_STORE, name, sizeof name) == 8u && host_wire[6] == 1 && !up_used(0));
     bad += check("a successful PROJECT save confirms its slot", request(ED_PROJECT, save, sizeof save) == 9u && project_used(0));
-    old = proj_slot[0];
+    gen = proj_good.gen;
     TSEL->p[P_LEVEL] = 21; song.playing = 1; host_progress = 0;
     bad += check("PROJECT never confirms an old used slot when STOP timed out",
-                 !request(ED_PROJECT, save, sizeof save) && !memcmp(&old, &proj_slot[0], sizeof old));
+                 !request(ED_PROJECT, save, sizeof save) && proj_find() && proj_good.gen == gen);
     return bad;
 }
 
@@ -775,7 +850,7 @@ static uint32_t put_frame(uint8_t *f, uint32_t op, uint32_t off, uint32_t count)
     f[n++] = 0xF0; f[n++] = ED_HDR0; f[n++] = ED_HDR1; f[n++] = ED_HDR2; f[n++] = ED_BACKUP_PUT;
     f[n++] = (uint8_t)op; f[n++] = 2;
     if (op == 0u) {
-        for (i = 0; i < 5u; i++) f[n++] = (uint8_t)((sizeof(project_store_t) >> (7u * i)) & (i == 4u ? 15u : 127u));
+        for (i = 0; i < 5u; i++) f[n++] = (uint8_t)((ST_PAYLOAD_MAX >> (7u * i)) & (i == 4u ? 15u : 127u));
         for (i = 0; i < 5u; i++) f[n++] = 0;
     } else if (op == 1u) {
         for (i = 0; i < 5u; i++) f[n++] = (uint8_t)((off >> (7u * i)) & (i == 4u ? 15u : 127u));
@@ -795,8 +870,8 @@ static int usb_burst(void)
     n = put_frame(f, 0, 0, 0);
     usb_feed(u, usb_frame(f, n, u)); host_wire_n = 0; ed_service(); host_drain();
     bad += check("BACKUP_PUT begin through ep1_take", wire_frames(ED_BACKUP_PUT, &x) == 1u && !x[2]);
-    for (off = 0; off < sizeof(project_store_t); off += 256u) {
-        uint32_t c = sizeof(project_store_t) - off > 256u ? 256u : sizeof(project_store_t) - off;
+    for (off = 0; off < ST_PAYLOAD_MAX; off += 256u) {
+        uint32_t c = ST_PAYLOAD_MAX - off > 256u ? 256u : ST_PAYLOAD_MAX - off;
         n = put_frame(f, 1, off, c);
         if (n > max) max = n;
         k = usb_frame(f, n, u);
@@ -805,7 +880,7 @@ static int usb_burst(void)
         ok &= wire_frames(ED_BACKUP_PUT, &x) == 1u && !x[2] && sx_ready == 0;
     }
     bad += check("256-byte pieces in 64-byte USB packets at full speed: every piece taken (rc 0)",
-                 ok && ed_bk_pos == sizeof(project_store_t) && max == 4u + 1u + 7u + 293u + 1u && max <= sizeof sx_frame);
+                 ok && ed_bk_pos == ST_PAYLOAD_MAX && max == 4u + 1u + 7u + 293u + 1u && max <= sizeof sx_frame);
     n = put_frame(f, 3, 0, 0);
     usb_feed(u, usb_frame(f, n, u)); host_wire_n = 0; ed_service(); host_drain();
     bad += check("abort through ep1_take", wire_frames(ED_BACKUP_PUT, &x) == 1u && !x[2] && !ed_bk_put);
@@ -866,18 +941,18 @@ static uint32_t menu_set(uint32_t id, int32_t v)            /* -> rc; host_wire[
 }
 static int menu_protocol(void)
 {
-    static const char *const WANT[24][2] = {
+    static const char *const WANT[23][2] = {
         {"COLOR", 0}, {"STYLE", "FLAT,LINE"}, {"LARGE", "OFF,ON"}, {"ANIM", "ON,OFF,IDLE"}, {"LEDS", "OFF,DIM LO,DIM HI,INV"},
         {"HOLD", "0.3 s,0.4 s,0.5 s,0.6 s"}, {"KNOB ACCEL", "OFF,ON"}, {"FX LATCH", "OFF,ON"}, {"BPM LOCK", "OFF,ON"},
         {"SPEAKER EQ", "FLAT,LOWCUT,BASS+"}, {"USB LEVEL", "MASTER,FIXED"}, {"USB SERIAL", "ON,OFF"},
-        {"CLICK", "OFF,REC,ON"}, {"CLICK LEVEL", "LOW,MID,HIGH"}, {"COUNT-IN", "OFF,1 BAR,2 BARS"},   /* (1.1: appended) */
+        {"CLICK", "OFF,REC,ON"}, {"CLICK LEVEL", "LOW,MID,HIGH"},   /* (1.1: appended; COUNT-IN, id 14, gone in 1.5) */
         {"RESTORE LAST", "ON,OFF"}, {"SCALE LEDS", "OFF,ON"},                                        /* (1.2) */
         {"SCREEN OFF", "NEVER,5 MIN,15 MIN,30 MIN,60 MIN"},
         {"SCOPE", "OUT,MIX"}, {"STEP PREVIEW", "OFF,ON"}, {"CHORD ENTRY", "HOLD,ADD"},                  /* (1.2) */
         {"MIDI IN", "CH1-4,SEL,CH5-8,CH9-12,CH13-16"}, {"TUNE", 0},   /* (1.2: the project's ROUT and TUNE; TUNE a number) */
         {"HOME", "SCOPE,TRACKS"}};                                                                    /* (1.3) */
-    static const int32_t DEF[24] = {-1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};   /* (COLOR: the default palette) */
-    static const uint8_t TAB[24] = {0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 4, 2, 2, 2, 4, 1, 0, 0, 1, 1, 3, 2, 0};   /* DISPLAY CONTROL AUDIO
+    static const int32_t DEF[23] = {-1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};   /* (COLOR: the default palette) */
+    static const uint8_t TAB[23] = {0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 4, 2, 2, 4, 1, 0, 0, 1, 1, 3, 2, 0};   /* DISPLAY CONTROL AUDIO
                                                                                                          * MIDI SYSTEM (1.2) */
     static const char *const TABN[5] = {"DISPLAY", "CONTROL", "AUDIO", "MIDI", "SYSTEM"};
     int bad = 0, ok = 1;
@@ -888,13 +963,14 @@ static int menu_protocol(void)
     FILE *jf = json ? fopen(json, "w") : 0;
     reset();
     if (jf) fprintf(jf, "[");
-    for (i = 0; i < 24u; i++) {
+    for (i = 0; i < 23u; i++) {
+        uint32_t id = i < 14u ? i : i + 1u;            /* (1.5: id 14 COUNT-IN gone, the rest one index up) */
         n = menu_desc(i, &it);
         joined[0] = 0;
         for (k = 0; k < it.nnames; k++) { if (k) strcat(joined, ","); strcat(joined, it.names[k]); }
-        ok &= i == 22u ? n > 10u && it.index == i && it.id == i && it.kind == 1 && it.min == -50 && it.max == 50 &&
+        ok &= id == 22u ? n > 10u && it.index == i && it.id == id && it.kind == 1 && it.min == -50 && it.max == 50 &&
                          !it.nnames && !strcmp(it.unit, "ct") && !strcmp(it.name, "TUNE")     /* (a number: cents) */
-                       : n > 10u && it.index == i && it.id == i && it.kind == 0 && it.min == 0 && !it.unit[0] &&
+                       : n > 10u && it.index == i && it.id == id && it.kind == 0 && it.min == 0 && !it.unit[0] &&
                          it.max + 1 == (int32_t)it.nnames && !strcmp(it.name, WANT[i][0]) &&
                          (WANT[i][1] ? !strcmp(joined, WANT[i][1]) : it.nnames == NPALETTES);
         ok &= it.value == (DEF[i] < 0 ? (int32_t)settings.palette : DEF[i]) &&
@@ -910,7 +986,7 @@ static int menu_protocol(void)
         }
     }
     if (jf) { fprintf(jf, "]\n"); fclose(jf); }
-    bad += check("MENU_DESC: 24 items (1.0.4's 12 in the menu's order, then 1.1's CLICK, CLICK LEVEL, COUNT-IN, 1.2's RESTORE LAST, SCALE LEDS, SCREEN OFF, 1.2's SCOPE, STEP PREVIEW, CHORD ENTRY, MIDI IN, TUNE, 1.3's HOME), ids 0..23, names, defaults; TUNE a number -50..50 ct", ok);
+    bad += check("MENU_DESC: 23 items (1.0.4's 12 in the menu's order, then 1.1's CLICK, CLICK LEVEL, 1.2's RESTORE LAST, SCALE LEDS, SCREEN OFF, 1.2's SCOPE, STEP PREVIEW, CHORD ENTRY, MIDI IN, TUNE, 1.3's HOME), ids 0..23 without 14 (1.5: COUNT-IN gone), names, defaults; TUNE a number -50..50 ct", ok);
     bad += check("MENU_DESC (1.0.5): after the names (TUNE: the unit) each item's tab, index and name (DISPLAY CONTROL AUDIO MIDI SYSTEM)", ok);
     {   /* an older editor reads the names and stops: the tab is past them, nothing it reads moved */
         uint32_t m = menu_desc(4, &it), p = 14, q;
@@ -920,12 +996,12 @@ static int menu_protocol(void)
         bad += check("MENU_DESC: the tab comes after every byte of the 1.0.4 reply (older editors ignore it)", ok);
     }
     ok = 1;
-    for (i = 0; i < 24u; i++) {
+    for (i = 0; i < 23u; i++) {
         menu_desc(i, &it);
         ok &= strcmp(it.name, "CALIBRATION") && strcmp(it.name, "ABOUT") && strcmp(it.name, "INFO");
     }
-    n = menu_desc(24, &it);
-    ok &= n == 2u && it.index == 24 && it.id == 127;
+    n = menu_desc(23, &it);
+    ok &= n == 2u && it.index == 23 && it.id == 127;
     n = menu_desc(127, &it);
     bad += check("MENU_DESC: no CALIBRATION / INFO / ABOUT; an index past the list answers index, 127 (no item)",
                  ok && n == 2u && it.index == 127 && it.id == 127);
@@ -953,9 +1029,9 @@ static int menu_protocol(void)
     ok &= menu_set(10, 1) == 3 && (ui_prefs & PREF_USB_FIXED) && fx_usb_fixed;
     ok &= menu_set(12, 1) == 3 && click_mode == CLICK_REC && menu_set(12, 2) == 3 && click_mode == CLICK_ON;
     ok &= menu_set(13, 0) == 3 && click_lvl == 0u;
-    ok &= menu_set(14, 2) == 3 && cin_bars == 2u;
+    ok &= menu_set(14, 2) == 1 && click_mode == CLICK_ON && click_lvl == 0u;   /* (COUNT-IN's id: gone, unknown) */
     ok &= menu_set(15, 1) == 3 && (ui_prefs & PREF_RESTORE_OFF);
-    ok &= menu_set(16, 1) == 3 && (ui_rec_prefs & 0x40u) && click_mode == CLICK_ON && cin_bars == 2u;   /* (its own bit) */
+    ok &= menu_set(16, 1) == 3 && (ui_rec_prefs & 0x40u) && click_mode == CLICK_ON && click_lvl == 0u;   /* (its own bit) */
     ok &= menu_set(17, 0) == 3 && scr_get() == 0u && menu_set(17, 9) == 3 && scr_get() == 4u &&   /* (clamped) */
           menu_set(17, 2) == 3 && scr_get() == 2u && ui_scr == 1u;
     ok &= menu_set(18, 1) == 3 && ui_prefs2 == 1u && scope_mix;                                    /* (1.2: their own byte) */
@@ -963,12 +1039,12 @@ static int menu_protocol(void)
     ok &= menu_set(21, 2) == 0 && song.g[G_ROUTE] == 2 && menu_set(22, -13) == 0 && song.g[G_TUNE] == -13;   /* (1.2: the
                                                          * project's, rc 0: in the music, no settings record) */
     ok &= menu_set(23, 1) == 3 && ui_home_view == HV_TRACKS && ui_prefs2 == 7u && ui_scr == 1u;   /* (1.3: its own byte) */
-    for (i = 0; i < 24u; i++) {                         /* MENU_DESC reads them back */
-        static const int32_t SET[24] = {2, 1, 1, 1, 1, 3, 1, 1, 1, 2, 1, 0, 2, 0, 2, 1, 1, 2, 1, 1, 1, 2, -13, 1};
+    for (i = 0; i < 23u; i++) {                         /* MENU_DESC reads them back */
+        static const int32_t SET[23] = {2, 1, 1, 1, 1, 3, 1, 1, 1, 2, 1, 0, 2, 0, 1, 1, 2, 1, 1, 1, 2, -13, 1};
         menu_desc(i, &it);
         ok &= it.value == SET[i];
     }
-    bad += check("MENU_SET: every setting applied as the menu does (palette, EQ, USB LEVEL, CLICK, COUNT-IN at once, RESTORE LAST, SCALE LEDS, SCREEN OFF, SCOPE, STEP PREVIEW, CHORD ENTRY, HOME), read back", ok);
+    bad += check("MENU_SET: every setting applied as the menu does (palette, EQ, USB LEVEL, CLICK at once, COUNT-IN's id unknown, RESTORE LAST, SCALE LEDS, SCREEN OFF, SCOPE, STEP PREVIEW, CHORD ENTRY, HOME), read back", ok);
     ok = menu_set(3, 0) == 3 && !(ui_prefs & PREF_ANIM_OFF) && (ui_prefs & PREF_LARGE) && menu_set(10, 0) == 3 &&
          !fx_usb_fixed && menu_set(1, 0) == 3 && ui_style == ST_FLAT;
     bad += check("MENU_SET: a flag back to its default leaves the other flags", ok);
@@ -979,7 +1055,6 @@ static int menu_protocol(void)
     ok &= menu_set(4, 99) == 3 && ed_rv(host_wire + 7) == 3 && settings_leds == LEDS_INV;
     ok &= menu_set(5, 8191) == 3 && ed_rv(host_wire + 7) == 3 && settings_hold == 3u;
     ok &= menu_set(2, 7) == 3 && ed_rv(host_wire + 7) == 1 && (ui_prefs & PREF_LARGE);
-    ok &= menu_set(14, 9) == 3 && ed_rv(host_wire + 7) == 2 && cin_bars == 2u;
     ok &= menu_set(12, -1) == 3 && ed_rv(host_wire + 7) == 0 && click_mode == CLICK_OFF;
     ok &= menu_set(21, 9) == 0 && ed_rv(host_wire + 7) == 4 && song.g[G_ROUTE] == 4;
     ok &= menu_set(22, -99) == 0 && ed_rv(host_wire + 7) == -50 && song.g[G_TUNE] == -50;
@@ -1079,21 +1154,17 @@ static int drum_kit_retired(void)
     request(ED_UP_PUT, a, k);
     up_values(up_rec(5), got);
     bad += check("a user preset of DRUM KIT 3 (H+CYM) loads as 77", up_used(5) && got[P_E0] == 8);
-    {   /* a project whose DRUM tracks hold KIT 0..3: loaded (and bounded, as from flash) as STD 66 10 77 */
-        static project_t p;
+    {   /* a song whose DRUM tracks hold KIT 0..3: loaded (inside their ranges, as from flash) as STD 66 10 77 */
         for (r = 0; r < NTRK; r++) {
             set_engine_of(&trk[r], ENGI_DRUM); apply_preset_to(&trk[r], 0);
             trk[r].engine = trk[r].eng_req;
+            trk[r].p[P_E0] = (int16_t)r;
         }
-        project_capture(&p);
-        for (r = 0; r < NTRK; r++) p.t[r].p[P_E0] = (int16_t)r;
-        p.sum = proj_sum(&p);
-        ok = !project_restore_runtime(&p);
+        ok = !project_save(0);
+        for (r = 0; r < NTRK; r++) trk[r].p[P_E0] = 0;
+        project_load(0);
         for (r = 0; r < NTRK; r++) ok &= trk[r].p[P_E0] == MAP[r];
-        for (r = 0; r < NTRK; r++) p.t[r].p[P_E0] = (int16_t)r;
-        proj_bound(&p);
-        for (r = 0; r < NTRK; r++) ok &= p.t[r].p[P_E0] == MAP[r];
-        bad += check("a project of DRUM KIT 1..3 loads as 66 10 77 (STD stays)", ok);
+        bad += check("a song of DRUM KIT 1..3 loads as 66 10 77 (STD stays)", ok);
     }
     return bad;
 }
@@ -1102,6 +1173,7 @@ static int drum_kit_retired(void)
 int main(void)
 {
     int bad = preferences() + motion_locks() + framing() + uart_recovery() + steps() + samples() + song_protocol() + malformed_saves() +
+              tracker_protocol() +
               fm6_patches() + user_preset_roundtrip() + live_sync() + usb_burst() + menu_protocol() + drum_kit_retired();
     printf("%s\n", bad ? "EDITOR TEST FAILED" : "editor test passed");
     return bad != 0;

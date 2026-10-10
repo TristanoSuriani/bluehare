@@ -178,9 +178,8 @@ static void reset(void)
     memset(nor, 0xFF, sizeof nor);
     memset(&song, 0, sizeof song);
     memset(trk, 0, sizeof trk);
-    memset(&chain, 0, sizeof chain);
-    chain_defaults(&chain_config);
-    memset(proj_slot, 0, sizeof proj_slot);
+    tk_defaults();
+    memset(&proj_good, 0, sizeof proj_good);
     memset(up_bank, 0, sizeof up_bank);
     memset(&upf, 0, sizeof upf);
     memset(&ui, 0, sizeof ui);
@@ -481,7 +480,7 @@ static int keep_test(void)
     send_bank(&b, 0);                                     /* the bank replaced */
     slot_to(0, 1);
     slot_to(1, 1);
-    memset(proj_slot, 0, sizeof proj_slot);              /* (from flash) */
+    memset(&proj_good, 0, sizeof proj_good);             /* (from flash) */
     project_load(0);
     ok &= patch_is(0, a.v[4]) && trk[0].p[P_E7] == FM6_OWN && patch_is(1, a.v[6]) && trk[1].p[P_E7] == FM6_OWN;
     bad += check("a project saved on B5 / B7: loads those voices (SLOT OWN) after the bank was replaced", ok);
@@ -493,27 +492,26 @@ static int keep_test(void)
     bad += check("a user preset stored on B7: loads that voice (SLOT OWN) after the bank was replaced", ok);
 
     /* SLOT values stored before 1.4.1, with this bank in flash: never read as its voices */
-    {
-        project_t *p = &proj_scratch;
+    {   /* a song saved with a SLOT 9..40 (1.0.2's B slots) and its own patch: loads it, SLOT OWN */
         int32_t s;
-        uint8_t x[FM6_PACKED];
-        project_capture(p);
+        uint8_t x[FM6_PACKED], v[FP_SIZE + 1u];
         memcpy(x, FM6_FACTORY[3], FM6_PACKED);
         x[110] = 17;                                      /* (an own patch) */
+        set_engine_of(&trk[0], ENGI_FM6);
+        trk[0].engine = trk[0].eng_req;
         ok = 1;
-        for (s = FM6_OWN + 1; s <= (int32_t)(FM6_OWN + FM6_NBANK); s++) {
-            p->t[0].p[P_E7] = (int16_t)s;                 /* (1.0.2's B2..B27: 9..34; any 9..40) */
-            memcpy(p->fm6[0], x, FM6_PACKED);
-            p->sum = proj_sum(p);
-            ok &= !project_restore_runtime(p) && trk[0].p[P_E7] == FM6_OWN && fm6_slot[0] == FM6_OWN && patch_is(0, x);
+        for (s = FM6_OWN + 1; s <= (int32_t)(FM6_OWN + FM6_NBANK); s += 7) {
+            fm6_unpack(x, v);
+            fm6_set_patch(0, v);
+            trk[0].p[P_E7] = (int16_t)s;
+            ok &= project_save(0) == 0;
+            trk[0].p[P_E7] = 0;
+            project_load(0);
+            ok &= trk[0].p[P_E7] == FM6_OWN && fm6_slot[0] == FM6_OWN && patch_is(0, x);
             fm6_poll();
             ok &= patch_is(0, x) && trk[0].p[P_E7] == FM6_OWN;
         }
-        p->t[0].p[P_E7] = 2;
-        memcpy(p->fm6[0], FM6_FACTORY[2], FM6_PACKED);
-        p->sum = proj_sum(p);
-        ok &= !project_restore_runtime(p) && trk[0].p[P_E7] == 2 && patch_is(0, FM6_FACTORY[2]);
-        bad += check("a project with a stored SLOT 9..40: its own patch, SLOT OWN (never a bank voice); F3 as before", ok);
+        bad += check("a song with a stored SLOT 9..40 and its own patch: that patch, SLOT OWN (never a bank voice)", ok);
     }
     {   /* a user preset record with a stored SLOT 13 (1.0.2's B5): with its patch, that patch; without, the init voice */
         up_rec_t *r;

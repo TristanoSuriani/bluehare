@@ -270,29 +270,19 @@ static void head_msg(int32_t x, int32_t maxw)
  * (ui.c pat_from: the last PROJECT load or save), with a mark ("A*") once it was edited since (its steps, LEN DIV SWING
  * GATE, QUANTIZE or automation: ui.c pat_from_sig); none at power-on, after a PHRASES pattern or the editor's restore.
  * b: the letter (b[1] '*' or 0); 0 = none */
-static int head_slot(char *b)
+static int head_slot(char *b)                          /* (no slot letter: one song, tracker.c) */
 {
-    uint32_t k = song.sel % NTRK, s;
-    b[1] = b[2] = 0;
-    if (chain.running) {
-        s = chain.lane[k];
-        b[0] = s < 4u ? (char)('A' + s) : '-';
-        return 1;
-    }
-    if (!pat_from[k] || pat_from[k] > 4u)
-        return 0;
-    b[0] = (char)('A' + pat_from[k] - 1u);
-    if (pat_from_sig(TSEL) != pat_from_h[k])
-        b[1] = '*';
-    return 1;
+    b[0] = b[1] = b[2] = 0;
+    return 0;
 }
-/* the octave, or the song row while a song plays, its right end at HEAD_GRP_R */
+static int tk_song_playing(void) { return song.playing && tk_pl.mode == TK_SONG; }
+/* the octave, or the song position while the tracker's SONG plays (hex, as its page), its right end at HEAD_GRP_R */
 static void head_group(void)
 {
     char b[8];
     int32_t x;
-    if (chain.running) {
-        fmt_int(b, (int32_t)chain.row + 1);
+    if (tk_song_playing()) {
+        tk_hex2(b, tk_pl.pos);
         x = HEAD_GRP_R - (16 + 4 + text_w(&AF_M, b));
         x += cv_icon_mid(x, H_HEAD / 2, 16, ICON_X_SONG, T_MID, T_BG);   /* SONG: the disc */
     } else {
@@ -317,8 +307,8 @@ static void draw_head(void)
     int slot = head_slot(sl);
     uint32_t sig = (uint32_t)song.playing * 3u + rec * 5u + (uint32_t)(song.octave + 8) * 11u + song.sel * 13131u +
                    (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) + (uint32_t)song.g[G_BPM] * 101u + (ui.bpm_t != 0) * 31u +
-                   (uint32_t)seq_counting() * 7u + (ui_prefs & PREF_BPM_LOCK) * 4099u +
-                   (uint32_t)batt_shown() * 7777u + (chain.running ? (chain.row + 1u) * 104729u : 0u) +
+                   (ui_prefs & PREF_BPM_LOCK) * 4099u +
+                   (uint32_t)batt_shown() * 7777u + (tk_song_playing() ? (tk_pl.pos + 1u) * 104729u : 0u) +
                    (slot ? str_hash(11u, sl) : 0u);
     int msg = ui.msg_t || ui.layer;
     int centre = !msg || ui.bpm_t || ui.layer == LAYER_GLO;   /* the BPM being changed: it stays, the message right */
@@ -366,11 +356,10 @@ static void draw_head(void)
     draw_rec_mark(rx, T_BG);
     if (centre) {
         int32_t ib[4], lx = g.bx + g.b[2];             /* lx: the right end of the BPM (and its lock) */
-        uint32_t id = song.playing ? (chain.running ? ICON_X_SONG : ICON_X_PLAY) : seq_counting() ? ICON_X_PLAY : ICON_X_STOP;
-        icon_ink(16, id, ib);                          /* the play state: the song's disc, play (counting in: the
-                                                        * accent's, about to play), stop */
+        uint32_t id = song.playing ? (tk_song_playing() ? ICON_X_SONG : ICON_X_PLAY) : ICON_X_STOP;
+        icon_ink(16, id, ib);                          /* the play state: the song's disc, play, stop */
         cv_icon_mid(g.mx0 - HEAD_PLAY_GAP - ib[2], H_HEAD / 2, 16, id,
-                    song.playing ? T_THEME : seq_counting() ? T_ACCENT : T_MID, T_BG);
+                    song.playing ? T_THEME : T_MID, T_BG);
         head_metro(g.mx0, beat);
         metro_x = (int16_t)g.mx0;
         metro_beat = (int8_t)beat;
@@ -389,7 +378,7 @@ static void draw_head(void)
     } else {
         head_msg(-1, HEAD_MSG_W);
     }
-    if (!msg && (chain.running || song.octave))
+    if (!msg && (tk_song_playing() || song.octave))
         head_group();
     if (!(msg && centre))
         draw_battery(HEAD_BAT_X);
@@ -754,11 +743,20 @@ static void draw_foot(void)
     }
     if (grid_on())
         sig += 0x51EDu + (uint32_t)black_held(GK_ACC) * 977u;
+    if (tk_page()) {                                   /* the tracker: the cursor's cell spelled out (ui_tracker.c) */
+        char tf[48];
+        tk_foot(tf, sizeof tf);
+        sig = str_hash(sig ^ 0x7AC4u, tf);
+    }
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
     cv_begin(240, H_FOOT, T_BG);
-    if (act_cols()) {                                 /* row 1: the OCT+ / OCT- hint in place of the steps */
+    if (tk_page()) {                                  /* row 1: the tracker's cell, or what the knobs do */
+        char tf[48];
+        tk_foot(tf, sizeof tf);
+        cv_free_text(8, 1, &AF_S, tf, T_TEXT, T_BG, 224);
+    } else if (act_cols()) {                          /* row 1: the OCT+ / OCT- hint in place of the steps */
         char ha[16], hb[16];
         khint_t kh[3];
         uint32_t rn = foot_rename();
@@ -852,6 +850,10 @@ static void draw_columns(void)
     char val[12];
     const char *unit;
     (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
+    if (cur_page()->graph == GR_TKLAY) {               /* the SEQ layer's knobs: the tracker's pattern (ui_tracker.c) */
+        tk_layer_columns();
+        return;
+    }
     if (ui.home) {
         for (c = 0; c < 4u; c++) {
             int16_t *vp;
@@ -860,24 +862,6 @@ static void draw_columns(void)
             card_mot_of(vp);
             draw_column(c, d->label, val, unit, VAL(c), RATIO(d, enum_rank(d, *vp)), param_icon(d, *vp));
         }
-        return;
-    }
-    if (cur_page()->graph == GR_SONG) {             /* SECTION, TRACK, its PAT (A..D, -), REPS (the section's) */
-        uint32_t row = ui.song_row < CHAIN_ROWS ? ui.song_row : CHAIN_ROWS - 1u, k = ui.song_trk % NTRK, sl;
-        int used = row < chain_config.count;
-        fmt_int(val, (int32_t)row + 1);
-        draw_column(0, "SEC", val, "", VAL(0u), -1, ICON_X_SONG);
-        val[0] = 'T';
-        val[1] = (char)('1' + k);
-        val[2] = 0;
-        draw_column(1, "TRACK", val, "", VAL(1u), -1, trk_icon(k, 1));
-        sl = used ? chain_config.row[row].slot[k] : CHAIN_SILENT;
-        if (used) { val[0] = sl < 4u ? (char)('A' + sl) : '-'; val[1] = 0; }
-        else str_cpy(val, "--", sizeof val);
-        draw_column(2, "PAT", val, "", used ? VAL(2u) : T_DIM, -1, ICON_X_PATTERN);
-        if (used) fmt_int(val, chain_config.row[row].repeat);
-        else str_cpy(val, "--", sizeof val);
-        draw_column(3, "REPS", val, "", used ? VAL(3u) : T_DIM, -1, ICON_AUTO);
         return;
     }
     if (cur_page()->graph == GR_EVENTS) {              /* AUTOMATION (ui_events.c): ROW STEP PARAM VALUE */
@@ -1212,56 +1196,6 @@ static void draw_uboot(void)
     ui.force = 0;
 }
 
-/* the count-in (seq.c, MENU > COUNT-IN; 1.1, Discussion #131): over the page until the sequencer starts. Its bar's four
- * beats counted down, 4 3 2 1, in four cells (the beat now filled THEME, those gone dim), with 2 BARS which bar it is;
- * PLAY stops it. Drawn again on each beat (seq.c's state; the header stays live) */
-#define CI_Y 88                                       /* the cells: 4 x 48 px, 8 px apart, 72 tall */
-#define CI_H 72
-static void draw_countin(void)
-{
-    static uint32_t shown;
-    uint32_t total = cin_total, e = total - cin_left, j, sig = total * 64u + e + 1u;
-    char sub[16];
-    if (!ui.force && shown == sig)
-        return;
-    shown = sig;
-    lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
-    ui.head_sig = ~0u;
-    draw_text_box(0, 44, 240, &AF_M, "COUNT-IN", T_TEXT, 1);
-    if (total > 4u) {
-        str_cpy(sub, "BAR 1 OF 2", sizeof sub);
-        sub[4] = (char)('1' + e / 4u % 9u);
-        sub[9] = (char)('0' + total / 4u % 10u);
-    } else
-        str_cpy(sub, "1 BAR", sizeof sub);
-    draw_text_box(0, 66, 240, &AF_S, sub, T_MID, 1);
-    cv_begin(216, CI_H, T_BG);
-    for (j = 0; j < 4u; j++) {
-        int32_t x = (int32_t)j * 56;
-        char d[2] = {(char)('4' - j), 0};
-        int now = j == e % 4u, gone = j < e % 4u;
-        uint16_t fill = now ? T_THEME : T_SURF;
-        if (ux.style && !now) {                       /* LINE: no SURF card, a 1 px rule round it */
-            cv_rrect(x, 0, 48, CI_H, 8, T_RULE, T_BG);
-            cv_rrect(x + 1, 1, 46, CI_H - 2, 7, T_BG, T_RULE);
-        } else
-            cv_rrect(x, 0, 48, CI_H, 8, fill, T_BG);
-        GFX_HOOK_ALIGN(x, 0, x + 48, CI_H, AL_HV, "count-in beat centred in its cell");
-        cv_text_in(x, CAP_IN(L, CI_H), 48, &AF_L, d, now ? T_INK : gone ? T_DIM : T_TEXT, fill);
-    }
-    cv_blit(12, CI_Y);
-    draw_text_box(0, CI_Y + CI_H + 14, 240, &AF_S, "RECORDING STARTS AFTER 1", T_MID, 1);
-    {   /* PLAY stops it */
-        int32_t x = HALF_UP(240 - kh_ink(KC_PLAY, "STOP"));
-        cv_begin(240, KC_H + 2, T_BG);
-        GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_N(2), "count-in key centred");
-        cv_key_hint(x, 1, KC_PLAY, "STOP", 1, T_BG);
-        cv_blit(0, 206);
-        lcd_sync();
-    }
-    ui.force = 0;
-}
-
 /* the OCT- / OCT+ dialog: what it does (ui.confirm, ui.confirm_trk) on two lines, on a surface */
 #define DLG_X 16
 #define DLG_Y 62
@@ -1277,16 +1211,12 @@ static void confirm_text(char *a, char *b)
         a[12] = (char)('1' + k % NTRK);
         break;
     case CF_OVR_PROJ:
-        str_cpy(a, "OVERWRITE PROJECT A?", 24);
-        a[18] = (char)('A' + (k & 3u));
-        if (!project_name(k & 3u, b) || !b[0])          /* the project's name, else what SONG plays from it */
-            str_cpy(b, "SONG PATTERN CHANGES", 24);
-        break;
-    case CF_DEL_ROW:
-        str_cpy(a, "DELETE SECTION?", 24);
+        str_cpy(a, "OVERWRITE SONG?", 24);
+        (void)project_name(0, b);                    /* the stored song's name */
         break;
     case CF_CLEAR_SONG:
-        str_cpy(a, "CLEAR SONG ORDER?", 24);
+        str_cpy(a, "NEW EMPTY SONG?", 24);
+        str_cpy(b, "SAVE FIRST TO KEEP IT", 24);
         break;
     case CF_INIT_SOUND:
         str_cpy(a, "INITIALIZE SOUND?", 24);
@@ -1313,9 +1243,11 @@ static void confirm_text(char *a, char *b)
         pat_label(pat_pick(), tag, b);               /* with the pattern picked */
         break;
     }
-    default:
-        str_cpy(a, "CLEAR T1 SEQUENCE?", 24);     /* the header (T1..T4) is hidden */
-        a[7] = (char)('1' + k % NTRK);
+    default:                                         /* CF_CLEAR_SEQ: the tracker's pattern */
+        str_cpy(a, "CLEAR PATTERN 00?", 24);
+        tk_hex2(a + 14, k % TK_PATS);
+        a[16] = '?';
+        a[17] = 0;
         break;
     }
 }
@@ -1368,22 +1300,17 @@ static void style_apply(void)
     }
 }
 
-static void ui_draw_page(uint32_t counting);
+static void ui_draw_page(void);
 static void ui_draw(void)
 {
-    static uint8_t counting;
     style_apply();
     ui.frame++;
-    if (counting != (uint8_t)seq_counting()) {          /* a count-in began or ended: the page drawn again after it */
-        counting = (uint8_t)seq_counting();
-        ui.force = 1;
-    }
     if (!scr_frame())                                   /* MENU > SCREEN OFF: dark (or waking), nothing drawn */
         return;
-    ui_draw_page(counting);
+    ui_draw_page();
     scr_shown();
 }
-static void ui_draw_page(uint32_t counting)
+static void ui_draw_page(void)
 {
     if (ui.uboot) {
         draw_uboot();
@@ -1393,11 +1320,6 @@ static void ui_draw_page(uint32_t counting)
     if (ui.menu) {
         draw_menu();
         ui.force = 0;
-        return;
-    }
-    if (counting && !ui.confirm && !name_on()) {        /* the count-in: over the page (and a layer) */
-        draw_countin();
-        draw_head();
         return;
     }
     if (ui.confirm) {                                   /* the OCT- / OCT+ dialog */
@@ -1435,14 +1357,21 @@ static void ui_draw_page(uint32_t counting)
         page_entered();
     }
     cursor_fix();
-    if (ui.force)
-        draw_frame();
-    felucca_dbg.stage = 3;
-    draw_head();
-    felucca_dbg.stage = 4;
-    draw_columns();
-    felucca_dbg.stage = 5;
-    draw_graph();
+    if (tk_page()) {                                    /* the tracker's pages (ui_tracker.c): no cards, no panel */
+        felucca_dbg.stage = 3;
+        draw_head();
+        felucca_dbg.stage = 5;
+        tk_draw();
+    } else {
+        if (ui.force)
+            draw_frame();
+        felucca_dbg.stage = 3;
+        draw_head();
+        felucca_dbg.stage = 4;
+        draw_columns();
+        felucca_dbg.stage = 5;
+        draw_graph();
+    }
     if (ui.msg_t && !--ui.msg_t && ui.msg2[0]) {     /* the second message (ui_notices) */
         str_cpy(ui.msg, ui.msg2, sizeof ui.msg);
         ui.msg2[0] = 0;

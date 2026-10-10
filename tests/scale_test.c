@@ -82,6 +82,7 @@ static void key_events_test(void)
     memset(trk, 0, sizeof trk);
     memset(&song, 0, sizeof song);
     host_tracks_init();
+    tk_defaults();                          /* (1.5: recording goes into the tracker's pattern 00) */
     kb_prev = 0;
     usb.config = 1;
     mo_w = mo_r = 0;
@@ -91,7 +92,7 @@ static void key_events_test(void)
     song.playing = song.rec = 1;
     fm1_in.notes = 1u << 8;                /* C# is silent */
     keyboard_block();
-    assert(t->arp_phys == 0 && t->nheld == 0 && t->step[0].n == 0 && mo_w == 0);
+    assert(t->arp_phys == 0 && t->nheld == 0 && !tk_note(tk_at(0, 0, 0)) && mo_w == 0);
     t->p[P_QUANT] = 0;                    /* releasing a muted key stays silent */
     fm1_in.notes = 0;
     keyboard_block();
@@ -100,9 +101,9 @@ static void key_events_test(void)
     fm1_in.notes = (1u << 11) | (1u << 10); /* E and D#: only Eb sounds/records */
     keyboard_block();
     assert(t->arp_phys == 1 && t->nheld == 1 && t->held[0] == 63);
-    assert(t->step[0].n == 0);             /* ARP on: the arp's notes are recorded, not the keys */
+    assert(!tk_note(tk_at(0, 0, 0)));      /* ARP on: the arp's notes are recorded, not the keys */
     arp_tick(t, 1);
-    assert(t->step[0].n == 1 && t->step[0].note[0] == 63);
+    assert(tk_note(tk_at(0, 0, 0)) == 63);
     assert(mo_w == 1 && ((midi_out_q[0] >> 16) & 127u) == 63);
     t->p[P_SCALE] = 9;
     t->p[P_ROOT] = 6;
@@ -144,97 +145,73 @@ static int gated_note(const track_t *t, uint32_t note)
     return 0;
 }
 
-/* a voice of t held (gate on) by a note the sequencer does not hold: a note-off that will never come */
+/* a voice of t held (gate on) by a note the tracker does not hold: a note-off that will never come */
 static int stray(const track_t *t)
 {
-    uint32_t i, k;
-    for (i = 0; i < NVOICE; i++) {
-        if (!t->v[i].gate)
-            continue;
-        for (k = 0; k < t->seq_n && t->seq_notes[k] != t->v[i].note; k++)
-            ;
-        if (k == t->seq_n)
+    uint32_t i;
+    for (i = 0; i < NVOICE; i++)
+        if (t->v[i].gate && t->v[i].note != tk_pl.note[trk_index(t)])
             return 1;
-    }
     return 0;
 }
 
 /* QNT SEQ (#37): the sequencer's notes snap to the scale as they play, the steps stay as written; a scale
  * changed while notes ring ends exactly the notes that sounded (no stuck notes); drum kits never snap */
-static void seq_quant_test(void)
+static void seq_quant_test(void)                    /* 1.5: the tracker's rows (a note per cell) */
 {
+    static const uint8_t ROWS[7] = {61, 66, 61, 0, 0, 60, TK_OFF};   /* C#4 F#4 C#4 - - C4 OFF */
     track_t *t = &trk[0];
-    uint32_t period, i;
-    static const step_t STEPS[] = {
-        {.note = {61, 64}, .n = 2, .time = ST_NOTE},  /* C#4 E4: C major -> C4 E4 */
-        {.note = {66}, .n = 1, .time = ST_NOTE},      /* F#4 -> F4 */
-        {.note = {61}, .n = 1, .time = ST_NOTE},      /* held through two TIEs */
-        {.time = ST_TIE},
-        {.time = ST_TIE},
-        {.note = {61, 60}, .n = 2, .time = ST_NOTE},  /* both snap to C4: one note */
-        {.time = ST_REST},
-    };
+    uint32_t i, period;
     memset(trk, 0, sizeof trk);
     memset(&song, 0, sizeof song);
     host_tracks_init();
+    tk_defaults();
     song.g[G_BPM] = 120;
     host_preset(t, 0, 0);                          /* ANALOG, POLY */
     t->engine = t->eng_req = 0;
     t->p[P_VOICE] = V_POLY;
-    t->p[P_SLEN] = (int16_t)NELEM(STEPS);
-    for (i = 0; i < NELEM(STEPS); i++)
-        t->step[i] = STEPS[i];
-    t->seq_active = 1;
+    tk.len[0] = (uint8_t)NELEM(ROWS);
+    for (i = 0; i < NELEM(ROWS); i++)
+        *tk_at(0, i, 0) = tk_pack(ROWS[i], 0, 0, 0);
     t->p[P_SCALE] = 1;                             /* C major */
     t->p[P_ROOT] = 0;
-    period = div_samples((uint32_t)t->p[P_SDIV]);
+    period = div_samples(2);
 
-    t->p[P_QUANT] = 0;                             /* OFF and SNAP: the sequence plays as written */
+    t->p[P_QUANT] = 0;                             /* OFF and SNAP: the rows play as written */
     seq_start();
     events_block(CTL);
-    assert(t->seq_n == 2 && t->seq_notes[0] == 61 && t->seq_notes[1] == 64 && gated_note(t, 61));
+    assert(tk_pl.note[0] == 61 && gated_note(t, 61));
     seq_stop();
     t->p[P_QUANT] = 1;
     seq_start();
     events_block(CTL);
-    assert(t->seq_n == 2 && t->seq_notes[0] == 61 && gated_note(t, 61));
+    assert(tk_pl.note[0] == 61 && gated_note(t, 61));
     seq_stop();
     assert(gated(t) == 0);
 
     t->p[P_QUANT] = 3;                             /* SEQ */
     seq_start();
     events_block(CTL);
-    assert(t->seq_n == 2 && t->seq_notes[0] == 60 && t->seq_notes[1] == 64 && gated_note(t, 60) &&
-           gated_note(t, 64) && !gated_note(t, 61) && gated(t) == 2);
-    assert(t->step[0].note[0] == 61 && t->step[0].note[1] == 64);   /* stored as written */
-    t->p[P_SCALE] = 2;                             /* C minor while C4 E4 ring: E4 would be Eb4 now */
-    events_block(period);                          /* the gate ends them, step 2 plays F#4 -> F4 */
-    assert(!gated_note(t, 60) && !gated_note(t, 64) && !gated_note(t, 63));
-    assert(t->seq_idx == 1 && t->seq_n == 1 && t->seq_notes[0] == 65 && gated(t) == 1);
-    events_block(period);                          /* step 3: C#4 -> C4, held into the TIEs */
-    assert(t->seq_idx == 2 && t->seq_n == 1 && t->seq_notes[0] == 60 && gated_note(t, 60) && gated(t) == 1);
-    t->p[P_SCALE] = 0;                             /* CHR while it is held: C#4 itself now, but C4 sounds */
+    assert(tk_pl.note[0] == 60 && gated_note(t, 60) && !gated_note(t, 61) && gated(t) == 1);
+    assert(tk_note(tk_at(0, 0, 0)) == 61);         /* stored as written */
+    t->p[P_SCALE] = 2;                             /* C minor: F#4 -> F4 */
     events_block(period);
-    t->p[P_ROOT] = 1;                              /* and a new root */
+    assert(tk_pl.row == 1 && tk_pl.note[0] == 65 && gated_note(t, 65) && !gated_note(t, 60) && gated(t) == 1);
+    events_block(period);                          /* C#4 -> C4, ringing over the empty rows */
+    t->p[P_SCALE] = 0;                             /* CHR while it rings: C4 sounds on */
+    events_block(2u * period);
+    assert(tk_pl.row == 4 && gated_note(t, 60) && gated(t) == 1);
     t->p[P_SCALE] = 1;
-    events_block(period);
-    assert(t->seq_idx == 4 && gated_note(t, 60) && gated(t) == 1);
-    t->p[P_ROOT] = 0;
-    events_block(period);                          /* step 6: C#4 and C4 both C4 now: one note, C4 retriggered */
-    assert(t->seq_idx == 5 && t->seq_n == 1 && t->seq_notes[0] == 60 && gated(t) == 1);
-    t->p[P_SCALE] = 5;                             /* PEN while it rings */
-    events_block(period);                          /* REST: released */
-    assert(t->seq_idx == 6 && t->seq_n == 0 && gated(t) == 0);
-    events_block(period);                          /* round again, then stop with notes sounding */
-    assert(t->seq_idx == 0 && gated(t) == 2 && gated_note(t, 60) && gated_note(t, 64));
-    t->p[P_SCALE] = 2;
+    events_block(period);                          /* C4 again: retriggered, one note */
+    assert(tk_pl.row == 5 && tk_pl.note[0] == 60 && gated(t) == 1);
+    events_block(period);                          /* OFF: released */
+    assert(tk_pl.row == 6 && !tk_pl.note[0] && gated(t) == 0);
+    events_block(period);                          /* round again, then stop with a note sounding */
+    assert(tk_pl.row == 0 && gated_note(t, 60));
     seq_stop();
     assert(gated(t) == 0);
-    for (i = 0; i < NELEM(STEPS); i++)
-        assert(!memcmp(&t->step[i], &STEPS[i], sizeof STEPS[i]));
 
-    /* a scale change on every block for a while, slides and TIEs included: nothing left held */
-    t->step[1].flags = SF_SLIDE;
+    /* a scale change on every block for a while: nothing left held */
     seq_start();
     for (i = 0; i < 4000u; i++) {
         t->p[P_SCALE] = (int16_t)(i * 7u % 16u);
@@ -243,21 +220,20 @@ static void seq_quant_test(void)
         assert(!stray(t));
     }
     seq_stop();
-    assert(gated(t) == 0 && t->seq_n == 0);
-    t->step[1].flags = 0;
+    assert(gated(t) == 0);
 
-    /* drum kits and the DRUM engine never snap: their notes are GM drums */
+    /* the DRUM engine never snaps: its notes are GM drums */
     host_preset(t, ENGI_DRUM, 0);
     t->engine = t->eng_req = ENGI_DRUM;
     t->p[P_SCALE] = 1;
     t->p[P_ROOT] = 0;
-    t->step[0] = (step_t){.note = {37, 39}, .n = 2, .hit = 1u << 0, .time = ST_NOTE};
+    *tk_at(0, 0, 0) = tk_pack(37, 0, 0, 0);
     seq_start();
     events_block(CTL);
-    assert(t->seq_n == 3 && t->seq_notes[0] == 37 && t->seq_notes[1] == 39 && t->seq_notes[2] == DRUM_LANE_NOTE[0]);
+    assert(tk_pl.note[0] == 37);
     seq_stop();
     assert(gated(t) == 0);
-    puts("scales: QNT SEQ snaps the sequence as it plays (steps unchanged), no stuck notes over scale changes, kits never");
+    puts("scales: QNT SEQ snaps the tracker's notes as they play (cells unchanged), no stuck notes over scale changes, kits never");
 }
 
 int main(void)

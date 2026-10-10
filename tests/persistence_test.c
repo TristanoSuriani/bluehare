@@ -79,9 +79,10 @@ static void reset(void)
     memset(nor, 0xFF, sizeof nor);
     memset(&song, 0, sizeof song);
     memset(trk, 0, sizeof trk);
-    memset(&chain, 0, sizeof chain);
-    chain_defaults(&chain_config);
-    memset(proj_slot, 0, sizeof proj_slot);
+    tk_defaults();
+    memset(&proj_good, 0, sizeof proj_good);
+    proj_name[0] = 0;
+    proj_cur = PROJ_NO_SLOT;
     memset(up_bank, 0, sizeof up_bank);
     memset(&persist_saved, 0, sizeof persist_saved);
     memset(&settings, 0, sizeof settings);
@@ -242,27 +243,30 @@ static void as_power_on(void)                            /* RAM lost: the defaul
     memset(&as, 0, sizeof as);
     memset(&ui, 0, sizeof ui);
     proj_name[0] = 0;
-    chain_defaults(&chain_config);
+    tk_defaults();
     host_tracks_init();
     for (k = 0; k < NTRK; k++)
         trk[k].eng_req = trk[k].engine = (uint8_t)TRK_DEF[k][0];
 }
-static void as_edit(uint32_t i)                          /* a change a project holds: step i's note (always another) */
+static void as_edit(uint32_t i)                          /* a change the project holds: a cell's note (always another) */
 {
     static uint32_t n;
-    track_t *t = &trk[i % NTRK];
-    step_t *s = &t->step[i % 16u];
-    s->time = ST_NOTE;
-    s->n = 1;
-    s->note[0] = (uint8_t)(20u + (s->note[0] + 1u + n++ % 50u) % 100u);
-    s->vel = 100;
+    tk_cell_t *c = tk_at(0, i % 16u, i % NTRK);
+    *c = tk_pack(20u + (tk_note(c) + 1u + n++ % 50u) % 100u, 0, 0, 0);
+}
+static uint32_t as_cells(void)                           /* pattern 0's cells, hashed */
+{
+    uint32_t r, k, h = 2166136261u;
+    for (r = 0; r < TK_ROWS; r++)
+        for (k = 0; k < NTRK; k++)
+            h = (h ^ tk_bits(tk_at(0, r, k))) * 16777619u;
+    return h;
 }
 static int autosave_test(void)
 {
     int bad = 0, ok;
-    uint32_t w, k, b0, minute;
-    step_t st[NSTEP];
-    project_store_t raw;
+    uint32_t w, k, b0, minute, st;
+    static uint8_t raw[ST_PAYLOAD_MAX];
     reset();
     as_power_on();
     as_erases = 0;
@@ -274,7 +278,7 @@ static int autosave_test(void)
     ok = !as.writes;
     as_run(1500u);
     bad += check("autosave: a change: no write within 10 s, one once idle 10 s (one erase)",
-                 ok && as.writes == 1u && as_erases == 1u && st_load(OBJ_AUTOSAVE, &raw, sizeof raw) == (int)sizeof raw);
+                 ok && as.writes == 1u && as_erases == 1u && st_load(OBJ_AUTOSAVE, raw, sizeof raw) > (int)PROJ_HDR);
     as_run(600000u);
     bad += check("autosave: 10 min unchanged after it: no more writes", as.writes == 1u && as_erases == 1u);
     song.g[G_SLOT] = 3;                                  /* (the PROJECT page's pick, the selected track: not the music) */
@@ -331,14 +335,14 @@ static int autosave_test(void)
     song.g[G_BPM] = 97;
     str_cpy(proj_name, "MY TUNE", sizeof proj_name);
     as_run(70000u);
-    memcpy(st, trk[0].step, sizeof st);
+    st = as_cells();
     b0 = as_erases;
     as_power_on();
-    ok = memcmp(st, trk[0].step, sizeof st) != 0 && song.g[G_BPM] != 97;
-    ok &= autosave_boot(1) == 1 && !memcmp(st, trk[0].step, sizeof st) && song.g[G_BPM] == 97 && str_eq(proj_name, "MY TUNE") &&
+    ok = st != as_cells() && song.g[G_BPM] != 97;
+    ok &= autosave_boot(1) == 1 && st == as_cells() && song.g[G_BPM] == 97 && str_eq(proj_name, "MY TUNE") &&
           ui.msg_t && str_eq(ui.msg, "RESTORED");
     as_run(300000u);
-    bad += check("autosave: power-on restores it (steps, tempo, name; RESTORED); no write after (unchanged)",
+    bad += check("autosave: power-on restores it (the song, tempo, name; RESTORED); no write after (unchanged)",
                  ok && !as.writes && as_erases == b0);
     as_power_on();
     ok = autosave_boot(0) == 0 && song.g[G_BPM] != 97;
@@ -380,13 +384,29 @@ static int autosave_test(void)
     as_edit(8);
     as_run(11000u);                                      /* (written: copy A) */
     song.g[G_BPM] = 150;
-    fail_after = 3;                                      /* the next write stops after 3 programs */
+    fail_after = 1;                                      /* the next write stops after its first program (1.5: a
+                                                          * small song is a page or two, the commit record last) */
     as_run(70000u);
     fail_after = -1;
     ok = as.err;
     as_power_on();
-    ok &= autosave_boot(1) == 1 && song.g[G_BPM] != 150 && trk[0].step[8].n == 1u;
+    ok &= autosave_boot(1) == 1 && song.g[G_BPM] != 150 && tk_note(tk_at(0, 8, 0)) != 0u;
     bad += check("autosave: a write cut short (power off): the copy before is restored", ok);
+    {   /* a song too big for one chunk: a chunk of no length; power-on restores nothing and says so */
+        uint32_t p, r;
+        as_power_on();
+        autosave_boot(1);
+        for (p = 0; p < 8u; p++)
+            for (r = 0; r < TK_ROWS; r++)
+                for (k = 0; k < NTRK; k++)
+                    *tk_at(p, r, k) = tk_pack(30u + (r + k) % 60u, 1, 0, 0);
+        w = as.writes;
+        as_run(70000u);
+        ok = as.writes == w + 1u && st_load(OBJ_AUTOSAVE, raw, sizeof raw) == (int)PROJ_HDR;
+        as_power_on();
+        ok &= autosave_boot(1) == 0 && tk_pat_empty(0) && str_eq(ui.msg, "SONG NOT RESTORED");
+        bad += check("autosave: a song too big for it: its place says so; power-on: SONG NOT RESTORED, no older music", ok);
+    }
     /* wear: a 4-hour session: 3 h of editing (a change every 3 s), pauses and playing it back, then an hour away */
     as_power_on();
     autosave_boot(1);
@@ -422,13 +442,141 @@ static int autosave_test(void)
     return bad;
 }
 
+/* 1.5: the song store (project.c): the song in up to four chunks, each an A/B storage object, a save's generation in
+ * every header. A save cut short anywhere (any erase, any program) leaves the save before it whole, even two cut short in
+ * a row; a damaged chunk of the newest save: the one before; names through flash; a failed rename keeps everything */
+static uint32_t song_hash(void)
+{
+    uint32_t p, r, k, h = 2166136261u;
+    for (p = 0; p < TK_PATS; p++)
+        for (r = 0; r < TK_ROWS; r++)
+            for (k = 0; k < NTRK; k++)
+                h = (h ^ tk_bits(tk_at(p, r, k))) * 16777619u;
+    h = (h ^ tk.norder) * 16777619u;
+    return (h ^ (uint32_t)song.g[G_BPM]) * 16777619u;
+}
+static void song_fill(uint32_t seed, uint32_t pats)      /* a song over `pats` patterns (two or more chunks from 4) */
+{
+    uint32_t p, r, k;
+    tk_defaults();
+    for (p = 0; p < pats; p++)
+        for (r = 0; r < TK_ROWS; r += 1u + (p + seed) % 2u)
+            for (k = 0; k < NTRK; k++)
+                *tk_at(p, r, k) = tk_pack(24u + (r * 7u + k * 5u + seed) % 90u, (k + seed) % 4u, (r + seed) % 3u, r);
+    tk.order[1] = (uint8_t)(seed % TK_PATS);
+    tk.norder = 2;
+    song.g[G_BPM] = (int16_t)(60 + seed);
+}
+static void power_cycle(void)                            /* RAM lost: the store found again, the song from it */
+{
+    tk_defaults();
+    song.g[G_BPM] = 120;
+    proj_find();
+    project_load(0);
+}
+static int song_store_test(void)
+{
+    static uint8_t nor1[0x100000];
+    int bad = 0, ok;
+    uint32_t h1, h2, k, ops, cuts = 0, twice = 0, gen;
+    char n[16];
+    reset();
+    song_fill(1, 6);
+    h1 = song_hash();
+    ok = project_save(0) == 0 && !strcmp(ui.msg, "SAVED") && proj_good.have && proj_good.count >= 2u;
+    power_cycle();
+    bad += check("song store: a song of several chunks saved, found and loaded back whole", ok && song_hash() == h1 &&
+                  !strcmp(ui.msg, "LOADED"));
+    memcpy(nor1, nor, sizeof nor1);
+    song_fill(2, 7);
+    h2 = song_hash();
+    erases = 0;
+    project_save(0);
+    ops = erases;                                        /* (an erase each chunk; its programs after it) */
+    for (k = 0; k < 4000u; k++) {                        /* cut short after k programs (a power cut) */
+        uint32_t got;
+        memcpy(nor, nor1, sizeof nor);
+        song_fill(2, 7);
+        fail_after = (int)k;
+        project_save(0);
+        fail_after = -1;
+        power_cycle();
+        got = song_hash();
+        if (got != h1 && got != h2)
+            break;
+        cuts += got == h1;
+        if (got == h2)
+            break;                                       /* (the whole save went through: past the last program) */
+    }
+    bad += check("song store: a save cut short after any program: the song before (whole), never a mix",
+                  k < 4000u && song_hash() == h2 && cuts > 0u);
+    for (k = 0; k < 40u; k++) {                          /* two saves, either cut short: the newest complete one loads */
+        uint32_t h3, r2, r3, both = 0;
+        memcpy(nor, nor1, sizeof nor);
+        song_fill(2, 7);
+        fail_after = (int)(k * 9u + 5u);
+        r2 = (uint32_t)project_save(0);
+        song_fill(3, 5);
+        h3 = song_hash();
+        fail_after = (int)(k * 5u + 3u);
+        r3 = (uint32_t)project_save(0);
+        fail_after = -1;
+        power_cycle();
+        both += r2 && r3;
+        twice += song_hash() == (!r3 ? h3 : !r2 ? h2 : h1);
+        cuts += both;
+    }
+    bad += check("song store: two saves in a row, either cut short: the newest complete one loads (the first when both)",
+                 twice == 40u);
+    memcpy(nor, nor1, sizeof nor);
+    erase_error = 1;
+    song_fill(2, 7);
+    bad += check("song store: a failing erase: SAVE ERROR, the stored song as it was",
+                  project_save(0) == 2 && !strcmp(ui.msg, "SAVE ERROR") && (power_cycle(), song_hash() == h1));
+    erase_error = 0;
+    /* a damaged chunk of the newest save: the save before it */
+    memcpy(nor, nor1, sizeof nor);
+    song_fill(2, 7);
+    project_save(0);
+    gen = proj_good.gen;
+    nor[st_sector(OBJ_PROJECT0 + 1u, proj_good.copy[1]) + ST_PAYLOAD_OFF + 300u] ^= 0x40u;
+    power_cycle();
+    bad += check("song store: the newest save's chunk 2 damaged: the save before loads", song_hash() == h1 &&
+                  proj_good.gen == gen - 1u);
+    /* the PROJECT page: a pending PLAY, names, rename */
+    memcpy(nor, nor1, sizeof nor);
+    erases = 0;
+    transport_req = 1;
+    ok = project_save(0) != 0 && !strcmp(ui.msg, "STOP TO SAVE") && !erases;
+    transport_req = 0;
+    bad += check("song store: a pending PLAY: no save, no erase", ok);
+    song_fill(4, 2);
+    project_save_as(0, "LOFI JAM");
+    proj_name[0] = 0;
+    power_cycle();
+    bad += check("song store: a song's name goes to flash and comes back", project_name(0, n) && !strcmp(n, "LOFI JAM") &&
+                  !strcmp(proj_name, "LOFI JAM"));
+    h1 = song_hash();
+    memcpy(nor1, nor, sizeof nor1);
+    fail_after = 1;
+    ok = project_rename(0, "DUB") == 2 && !strcmp(ui.msg, "SAVE ERROR");
+    fail_after = -1;
+    power_cycle();
+    bad += check("song store: a failed rename: SAVE ERROR, the name and the song as they were", ok && project_name(0, n) &&
+                  !strcmp(n, "LOFI JAM") && song_hash() == h1);
+    song_fill(9, 3);                                     /* (the music now: another song) */
+    ok = project_rename(0, "DUB") == 0 && !strcmp(ui.msg, "RENAMED") && project_name(0, n) && !strcmp(n, "DUB");
+    power_cycle();
+    bad += check("song store: rename: the store has the new name, the song in it as it was", ok && song_hash() == h1 &&
+                  !strcmp(proj_name, "DUB"));
+    return bad;
+}
+
 int main(void)
 {
     int bad = 0, ok;
     uint32_t before;
     persist_t p;
-    project_store_t old, got;
-    project_v5_t v5;
     up_bank_t bank;
     up_rec_t r;
     reset();
@@ -514,10 +662,6 @@ int main(void)
     settings_poll();
     bad += check("pending PLAY: settings still queued, no erase", persist_pending && !erases);
     transport_req = 0;
-    chain.armed = 1;
-    settings_poll();
-    bad += check("pending SONG: settings still queued, no erase", persist_pending && !erases);
-    chain.armed = 0;
     settings.palette = 2;
     settings_poll();
     bad += check("STOP: latest settings saved and request cleared", !persist_pending && erases == 1u &&
@@ -543,104 +687,7 @@ int main(void)
     bad += check("settings retry succeeds after 1000 ms", !persist_pending && erases == before + 1u &&
                   st_load(OBJ_SETTINGS, &p, sizeof p) == (int)sizeof p && p.palette == palette_to_stored(1));
 
-    reset();
-    trk[0].step[0] = (step_t){{60}, 1, ST_NOTE, 0, 96, 0, 0};
-    project_save(0);
-    old = proj_slot[0];
-    trk[0].step[0].note[0] = 72;
-    fail_after = 1;
-    project_save(0);
-    fail_after = -1;
-    bad += check("failed project save keeps RAM and old flash", !strcmp(ui.msg, "SAVE ERROR") &&
-                  !memcmp(&proj_slot[0], &old, sizeof old) && st_load(OBJ_PROJECT0, &got, sizeof got) == (int)sizeof got &&
-                  !memcmp(&got, &old, sizeof got));
-    project_save(0);
-    bad += check("successful project save publishes new RAM", !strcmp(ui.msg, "SAVED") &&
-                  proj_import(&proj_scratch, &proj_slot[0], sizeof proj_slot[0]) &&
-                  proj_scratch.t[0].step[0].note[0] == 72u && proj_ok(&proj_scratch));
-    before = erases;
-    transport_req = 1;
-    project_save(1);
-    bad += check("pending PLAY: project save leaves slot and flash", !project_used(1) && erases == before &&
-                  !strcmp(ui.msg, "STOP TO SAVE"));
-    transport_req = 0;
-    erase_error = 1;
-    project_save(2);
-    bad += check("failed first project save leaves slot empty", !project_used(2));
-    erase_error = 0;
-    {   /* names: a project's through flash; a failed rename keeps the old one in RAM and flash */
-        char n[16];
-        project_store_t keep;
-        step_t st0 = trk[0].step[0];
-        project_save_as(0, "LOFI JAM");
-        memset(proj_slot[0].raw, 0, 8);                       /* (the RAM copy lost: read it back from flash) */
-        proj_fetch(0);
-        bad += check("a project's name goes to flash and comes back", project_name(0, n) && !strcmp(n, "LOFI JAM") &&
-                      !strcmp(proj_name, "LOFI JAM"));
-        keep = proj_slot[0];
-        fail_after = 1;
-        bad += check("failed project rename: SAVE ERROR, the slot and flash as they were",
-                      project_rename(0, "DUB") == 2 && !strcmp(ui.msg, "SAVE ERROR") && !memcmp(&proj_slot[0], &keep, sizeof keep) &&
-                      st_load(OBJ_PROJECT0, &got, sizeof got) == (int)sizeof got && !memcmp(&got, &keep, sizeof got));
-        fail_after = -1;
-        before = erases;
-        transport_req = 1;
-        bad += check("pending PLAY: no rename, no erase", project_rename(0, "DUB") == 1 && erases == before &&
-                      !strcmp(ui.msg, "STOP TO SAVE"));
-        transport_req = 0;
-        bad += check("project rename: flash has the new name, the music as it was", project_rename(0, "DUB") == 0 &&
-                      !strcmp(ui.msg, "RENAMED") && (memset(proj_slot[0].raw, 0, 8), proj_fetch(0), project_name(0, n)) &&
-                      !strcmp(n, "DUB") && proj_scratch.t[0].step[0].note[0] == st0.note[0]);
-    }
-    {   /* FUN7 itself refuses a step outside its fields: a damaged slot is empty, the tracks stay */
-        step_t keep = trk[0].step[0];
-        old = proj_slot[0];
-        proj_slot[0].raw[68 + P_COUNT + 2 + 4] = 7;               /* track 1 step 1: n = 7 */
-        bad += check("damaged FUN7 slot (hash ok, n > 4) is refused", (memcpy(proj_slot[0].raw + PROJ_STORE_SIZE - 4,
-                      &(uint32_t){proj_hash(proj_slot[0].raw, PROJ_STORE_SIZE - 4)}, 4), !project_used(0)));
-        st_save(OBJ_PROJECT0, &proj_slot[0], sizeof proj_slot[0]);
-        ui.msg[0] = 0;
-        project_load(0);
-        bad += check("loading it says EMPTY SLOT and keeps the steps", !strcmp(ui.msg, "EMPTY SLOT") &&
-                      !memcmp(&trk[0].step[0], &keep, sizeof keep));
-        proj_slot[0] = old;
-        st_save(OBJ_PROJECT0, &proj_slot[0], sizeof proj_slot[0]);
-    }
-    {   /* an older format (FUN5) with values FUN7 cannot pack still loads, bounded */
-        uint32_t i;
-        memset(&v5, 0, sizeof v5);
-        v5.magic = PROJ_MAGIC_V5;
-        v5.size = sizeof v5;
-        for (i = 0; i < G_COUNT; i++)
-            v5.g[i] = GP[i].def;
-        for (i = 0; i < NTRK; i++) {
-            v5.t[i].engine = trk[i].engine;
-            memcpy(v5.t[i].p, trk[i].p, sizeof v5.t[i].p);
-        }
-        v5.t[0].p[P_LEVEL] = 900;                                  /* out of range */
-        v5.t[0].step[0] = (step10_t){{255, 128, 160, 200}, 255, 255, 0, 96, 255, 5};
-        v5.sum = proj_hash(&v5, sizeof v5 - 4u);
-        st_save(OBJ_PROJECT0 + 3u, &v5, sizeof v5);
-        memset(proj_slot[3].raw, 0, 4);
-        project_load(3);
-        bad += check("FUN5 load bounds steps and masks lane accents", trk[0].step[0].n == 4u &&
-                      trk[0].step[0].time == ST_REST && trk[0].step[0].note[0] == 127u &&
-                      !trk[0].step[0].note[1] && trk[0].step[0].acc == 5u && project_used(3));
-        bad += check("FUN5 load clamps a parameter into its range", trk[0].p[P_LEVEL] == TP[P_LEVEL].max);
-        for (i = 0; i < P_COUNT; i++) {
-            uint32_t e;
-            for (e = 0; e < NENGINES; e++)
-                if (param_desc_of(e, i)->min < -64 || param_desc_of(e, i)->max > 127) {
-                    printf("param %u engine %u: range %d..%d does not fit FUN7's byte\n", i, e,
-                           param_desc_of(e, i)->min, param_desc_of(e, i)->max);
-                    bad++;
-                }
-        }
-    }
-    chain_config.count = 1;
-    chain_config.row[0] = chain_row_of(3, 1);
-    bad += check("SONG sources use the same step bounds", chain_prepare() == 0 &&
-                  !memcmp(&chain.source[3].step[0][0], &trk[0].step[0], sizeof(step_t)));
+    bad += song_store_test();
     seq_stop();
     transport_req = 0;
     memset(&r, 0, sizeof r);
@@ -682,9 +729,6 @@ int main(void)
     transport_req = 1;
     bad += check("pending PLAY: preset save blocked", up_put(3, &r) == 2 && erases == before && !up_used(3));
     transport_req = 0;
-    chain.armed = 1;
-    bad += check("pending SONG: preset save blocked", up_put(3, &r) == 2 && erases == before && !up_used(3));
-    chain.armed = 0;
     bad += check("preset invalid slot blocked before access", up_put(UP_SLOTS, &r) == 1 && erases == before);
     song.playing = 0; transport_req = 1; irq_start_race = 1;
     bad += check("PLAY consumed before the save snapshot still blocks a project write",
