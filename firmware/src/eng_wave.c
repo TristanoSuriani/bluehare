@@ -141,13 +141,22 @@ static const preset_t WAVE_PRESETS[] = {
     {"FM BELL", {5, 90, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45)},
     {"DIGI KEYS", {6, 50, 0, 4, 96, 15, 0, 18}, {0, 80, 40, 55}, 20, 0, FX(0, 20, 30, 35)},
     {"BIT LEAD", {7, 80, 0, 0, 110, 10, 20, 40}, {0, 70, 100, 30}, 0, 1, FX(0, 0, 40, 20)},
+    /* (Fel-Tracker, the IDM review) warm pads: slow, detuned, dark, plenty of chorus and reverb */
+    {"WARM PAD", {0, 20, 0, 24, 60, 10, 0, 0}, {90, 90, 115, 100}, 10, 0, FX(0, 70, 20, 75)},
+    {"STRING PAD", {1, 50, 0, 30, 72, 5, 0, 0}, {100, 90, 120, 105}, 8, 0, FX(0, 90, 20, 80)},
+    {"GLASS PAD", {5, 30, 0, 16, 100, 10, 0, 0}, {80, 100, 110, 110}, 0, 0, FX(0, 60, 35, 85)},
+    {"CHOIR PAD", {4, 90, 0, 20, 85, 10, 0, 0}, {90, 90, 120, 100}, 0, 0, FX(0, 80, 20, 80)},
+    /* basses, an arpeggio's pluck */
+    {"SUB BASS", {0, 0, 0, 0, 50, 10, 20, 0}, {0, 50, 100, 20}, 10, 1, FX(10, 0, 0, 5)},
+    {"SYNC BASS", {2, 50, 60, 0, 70, 30, 40, 0}, {0, 60, 70, 20}, 30, 1, FX(15, 0, 10, 5)},
+    {"BIT ARP", {7, 40, 0, 0, 110, 0, 0, 60}, {0, 40, 0, 30}, 0, 0, FX(0, 0, 50, 20)},
 };
 
 static const engine_t ENG_WAVE = {
     .name = "WAVE",
     .id = EID_WAVE,
     .cc = 0x56,
-    .cats = "KPLBPUKL",
+    .cats = "KPLBPUKLPPPPBBU",
     .page_title = {"WAVE", "TONE"},
     .edit = {
         {"TBL", F_ENUM, 0, WT_NBANK - 1, 0, N_WT_BANK, 0},

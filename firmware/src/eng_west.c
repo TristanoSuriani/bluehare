@@ -94,13 +94,21 @@ static const preset_t WEST_PRESETS[] = {
     {"FOLD LEAD", {1, 0, 70, 20, 30, 40, 110, 8}, {2, 70, 90, 40}, 0, 1, FX(0, 0, 40, 20)},
     {"DRONE", {3, 25, 40, 0, 0, 30, 90, 0}, {70, 90, 110, 90}, 0, 0, FX(0, 50, 25, 70)},
     {"RIM NOISE", {15, 60, 30, 0, 90, 120, 120, 100}, {0, 30, 0, 25}, 0, 0, FX(0, 0, 30, 20)},
+    /* (Fel-Tracker, the IDM review) warm: the gate hardly closing, slow envelopes */
+    {"FOLD PAD", {1, 15, 35, 10, 20, 20, 80, 0}, {80, 90, 110, 100}, 0, 0, FX(0, 70, 25, 80)},
+    {"WARM DRONE", {0, 10, 30, 5, 0, 10, 70, 0}, {100, 90, 120, 110}, 0, 0, FX(0, 70, 25, 80)},
+    /* struck and plucked */
+    {"WEST PLUCK", {3, 30, 30, 0, 70, 110, 110, 0}, {0, 55, 0, 50}, 0, 0, FX(0, 10, 40, 40)},
+    {"MARIMBA", {6, 25, 0, 0, 80, 120, 100, 0}, {0, 50, 0, 45}, 0, 0, FX(0, 0, 25, 35)},
+    {"GONG", {13, 60, 30, 10, 60, 60, 110, 20}, {0, 115, 0, 110}, 0, 0, FX(0, 20, 30, 70)},
+    {"WOOD BASS", {1, 20, 20, 0, 60, 100, 70, 0}, {0, 60, 40, 30}, 0, 1, FX(0, 0, 10, 10)},
 };
 
 static const engine_t ENG_WEST = {
     .name = "WEST",
     .id = EID_WEST,
     .cc = 0x73,
-    .cats = "DDUBKLPD",
+    .cats = "DDUBKLPDPPUKFB",
     .page_title = {"OSC", "GATE"},
     .edit = {
         {"RATIO", F_ENUM, 0, 15, 1, N_WEST_RATIO, 0},
@@ -120,4 +128,4 @@ static const engine_t ENG_WEST = {
     .keep = 0x07,                /* the filter, the vactrol */
 };
 /* favorites.c: WEST's stars are one byte, BYTE's presets must not reach it ([15][8]: presets 64..71) */
-_Static_assert(NELEM(WEST_PRESETS) <= 8u && NELEM(BYTE_PRESETS) <= 64u, "favorites.c FAV_E16");
+_Static_assert(NELEM(WEST_PRESETS) <= 64u && NELEM(BYTE_PRESETS) <= 64u, "favorites.c FAV_E16, FAV_ROW26");

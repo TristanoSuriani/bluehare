@@ -930,8 +930,8 @@ static int test_categories(void)
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
                  ok && preset_cat(0, 2) == CAT_BASS && preset_cat(ENGI_DRUM, 0) == CAT_DRUM && preset_cat(ENGI_FM6, 0) == CAT_KEYS &&
                  preset_cat(ENGI_DRUM, 9) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
-    {   /* engines 16, 17 (WEST, HOOVER) have no row in the stored favourites: their presets star [15][8], [15][9], no
-         * other engine's or setting */
+    {   /* engines 16, 17 (WEST, HOOVER) have no row in the stored favourites: their presets 0 .. 7 star [15][8], [15][9],
+         * 8 .. 63 the tails of rows 12, 14 (favorites.c FAV_ROW26), no other engine's or setting */
         favorites_t before;
         for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
             favorite_set(EID_BYTE, k, 1);
@@ -939,10 +939,14 @@ static int test_categories(void)
         for (k = 0, ok = 1; k < ENGINES[ENGI_WEST]->npresets; k++)
             ok &= favorite_set(EID_WEST, k, 1) && favorite_has(EID_WEST, k) && !favorite_has(EID_HOOVER, k);
         ok &= favorite_set(EID_HOOVER, 2, 1) && favorite_has(EID_HOOVER, 2) && !favorite_has(EID_HOOVER, 1);
-        ok &= !favorite_set(EID_WEST, 8, 1) && !favorite_has(EID_WEST, 8) && !favorite_set(EID_COUNT + 1u, 0, 1) &&
-              favorites.factory[15][8] == 0xFFu && favorites.factory[15][9] == 4u;
+        ok &= favorite_set(EID_HOOVER, 9, 1) && favorite_has(EID_HOOVER, 9) && !favorite_has(EID_HOOVER, 8);
+        ok &= !favorite_set(EID_WEST, 64, 1) && !favorite_set(EID_COUNT + 1u, 0, 1) && favorites.factory[15][8] == 0xFFu &&
+              favorites.factory[15][9] == 4u && favorites.factory[12][25] == (uint8_t)((1u << (ENGINES[ENGI_WEST]->npresets - 8u)) - 1u) &&
+              favorites.factory[14][25] == 2u;
         before.factory[15][8] = 0xFFu;
         before.factory[15][9] = 4u;
+        before.factory[12][25] = favorites.factory[12][25];
+        before.factory[14][25] = 2u;
         ok &= !memcmp(&before, &favorites, sizeof favorites);
         for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
             ok &= favorite_has(EID_BYTE, k);

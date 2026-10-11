@@ -99,13 +99,17 @@ static const preset_t VOSIM_PRESETS[] = {
     {"WHISTLE", {110, 120, 30, 8, 120, 80, 0, 20}, {10, 0, 127, 50}, 0, 0, FX(0, 20, 30, 40)},
     {"GROWL", {16, 34, 70, 2, 60, 40, 8, 30}, {0, 0, 127, 20}, 0, 1, FX(60, 0, 0, 5)},
     {"FORMANT PAD", {48, 84, 50, 6, 104, 0, 0, 16}, {70, 0, 127, 90}, 0, 0, FX(0, 80, 30, 70)},
+    /* (the IDM review) warm pads: long trains, low formants, breath */
+    {"WARM CHOIR", {40, 70, 30, 6, 110, 0, 0, 20}, {90, 0, 127, 100}, 0, 0, FX(0, 90, 25, 80)},
+    {"AIR PAD", {36, 96, 50, 7, 115, 0, 0, 60}, {100, 0, 127, 110}, 0, 0, FX(0, 80, 30, 90)},
+    {"SOFT VOICE", {52, 74, 30, 5, 100, 0, -6, 10}, {60, 0, 127, 80}, 0, 0, FX(0, 70, 20, 70)},
 };
 
 static const engine_t ENG_VOSIM = {
     .name = "VOSIM",
     .id = EID_VOSIM,
     .cc = 0x12,                  /* CC74 F1, CC71 F2 */
-    .cats = "LLLLLBBLLPLLBP",
+    .cats = "LLLLLBBLLPLLBPPPP",
     .page_title = {"FORMANT", "PULSE"},
     .edit = {
         {"F1", F_PCT, 0, 127, 61, 0, 0},

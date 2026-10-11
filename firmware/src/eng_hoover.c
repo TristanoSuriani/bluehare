@@ -77,13 +77,22 @@ static const preset_t HOOVER_PRESETS[] = {
     {"HOOV BASS", {20, 30, 30, 10, 100, -12, 15, 70}, {0, 70, 80, 25}, 10, 1, FX(10, 60, 10, 5)},
     {"HOOV PAD", {50, 60, 20, 20, 20, 0, 0, 90}, {60, 90, 110, 90}, 0, 0, FX(0, 110, 30, 70)},
     {"SIREN", {64, 100, 90, 50, 0, 12, 90, 120}, {0, 90, 120, 70}, 0, 1, FX(0, 80, 50, 40)},
+    /* (Fel-Tracker, the IDM review) warm pads, strings: slow PWM, a little detune, the chorus */
+    {"WARM PAD", {50, 40, 20, 15, 30, 0, 0, 70}, {90, 90, 115, 100}, 0, 0, FX(0, 100, 25, 80)},
+    {"STRINGS", {64, 50, 30, 25, 0, 0, 0, 85}, {70, 80, 120, 90}, 0, 0, FX(0, 120, 20, 70)},
+    /* more of the rave: the detuned bass, brass, a wilder lead, the dive, a soft one */
+    {"REESE BASS", {64, 0, 0, 20, 40, 0, 0, 60}, {0, 0, 127, 20}, 0, 1, FX(20, 60, 0, 5)},
+    {"PWM BRASS", {40, 50, 40, 10, 0, 0, 0, 90}, {20, 60, 100, 40}, 20, 0, FX(0, 50, 20, 30)},
+    {"MENTAL", {30, 110, 70, 50, 40, -24, 30, 120}, {0, 80, 120, 50}, 0, 1, FX(30, 110, 30, 30)},
+    {"DIVE BOMB", {50, 80, 60, 30, 60, 24, 100, 110}, {0, 60, 90, 50}, 0, 1, FX(20, 80, 40, 30)},
+    {"SOFT LEAD", {50, 30, 30, 8, 20, 0, 0, 80}, {10, 0, 127, 40}, 0, 1, FX(0, 60, 40, 40)},
 };
 
 static const engine_t ENG_HOOVER = {
     .name = "HOOVER",
     .id = EID_HOOVER,
     .cc = 0x81,
-    .cats = "LLKBPF",
+    .cats = "LLKBPFPPBLLFL",
     .page_title = {"OSC", "BEND"},
     .edit = {
         {"PW", F_PCT, 0, 127, 40, 0, 0},
@@ -102,5 +111,5 @@ static const engine_t ENG_HOOVER = {
     .knob = {P_E0, P_E1, P_E3, P_E7},
     .keep = 0x0B,                /* the filter, the LFO (a retrigger keeps the sweep going) */
 };
-/* favorites.c: HOOVER's stars are one byte ([15][9]) */
-_Static_assert(NELEM(HOOVER_PRESETS) <= 8u, "favorites.c FAV_E16");
+/* favorites.c: HOOVER's stars: presets 0 .. 7 one byte ([15][9]), 8 .. 63 a row's tail (FAV_ROW26) */
+_Static_assert(NELEM(HOOVER_PRESETS) <= 64u, "favorites.c FAV_E16, FAV_ROW26");
