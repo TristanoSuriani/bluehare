@@ -74,7 +74,8 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `c
 Since 1.5 the engines that play recorded material (SAMPLE, GRAIN, SLICE) are left out of the default build: it has no
 built-in samples and no user sample slots (the web editor shows none), and their engine numbers are reserved (a sound
 of one loads as FM6, WAVE or DRUM). `FELUCCA_SAMPLE=1`, `FELUCCA_GRAIN=1` or `FELUCCA_SLICE=1` builds one back (all
-three: the image is within about 11 KB of the app slot). The host tests build them in where they test them.
+three: the image is within about 9 KB of the app slot; with all three the EDIT layer has 16 engines for its 15 keys,
+so DRUM, the last, is on KNOB 1 only). The host tests build them in where they test them.
 
 The CC0 instrument samples that the SAMPLE engine uses are in `assets/samples-cc0/`
 (Versilian Studios, see `ATTRIBUTION.txt` there). `tools/fetch_cc0.py` downloads them

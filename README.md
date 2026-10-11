@@ -27,7 +27,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Twelve engines** (below; SAMPLE, GRAIN and SLICE are left out of this fork's build), each with its own factory presets; every factory sound has a category (BASS, LEAD,
+- **Thirteen engines** (below; SAMPLE, GRAIN and SLICE are left out of this fork's build), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
   8 voices shared between them. ALGORITHM selects the track on every page
@@ -345,6 +345,12 @@ In the order the device lists them:
   routings move POS (ENV DEST / LFO DEST SHP, the matrix's SHP), so an envelope or the LFO scans the table. SYNC reads
   the frame up to 8x faster (windowed sync), DTN adds a detuned second oscillator, then DRV, a resonant low-pass and
   CRSH (sample-rate and bit reduction). The tables are band-limited per octave: high notes do not alias
+- **WEST** (this fork): west coast. A complex oscillator, a wavefolder and a low-pass gate: a modulating sine at RATIO
+  times the note (whole and half ratios, and 1.41, 1.73, 2.76, 3.55, 4.61 for bells and metal) moves the carrier's
+  phase by FM (FDBK feeds the modulator back into itself, up to noise); FOLD folds the carrier over (the SHP routings
+  move it), SYM shifts the fold off centre; the low-pass gate's cutoff follows the envelope through a vactrol-like lag,
+  LPG of the way down from CUT, so a note darkens as it fades (the plucked, struck sound); TMBR opens FM and FOLD with
+  the same envelope. FM and FOLD ease off on high notes so they do not alias
 - **PHASE**: phase distortion (ported from CrispyZebra)
 - **LOFI**: chiptune; pulse, triangle, saw, noise and a 4-bit wave RAM, stepped envelope, sweep, arpeggio
 - **SAMPLE** (left out, `FELUCCA_SAMPLE=1`): multisampled instruments (PIANO, a light lo-fi piano; FLUTE; SAX) and

@@ -42,7 +42,7 @@ static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN",
                                      "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"};
 static const char *const N_ENGNAME[] = {"ANALOG", FELUCCA_FM4 ? "DIGITAL" : "-", "PHASE", "LOFI", FELUCCA_SAMPLE ? "SAMPLE" : "-",
                                         "VOICE", "TRIO", "WHEEL", FELUCCA_GRAIN ? "GRAIN" : "-", "PHYS", "DRUM", "NOISE", "FM6",
-                                        FELUCCA_SLICE ? "SLICE" : "-", "WAVE", "BYTE"};   /* (engines.c ENGINES[]; "-": not built) */
+                                        FELUCCA_SLICE ? "SLICE" : "-", "WAVE", "BYTE", "WEST"};   /* (engines.c ENGINES[]; "-": not built) */
 
 #define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}
 #define PE(l, n, df) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n, 0}

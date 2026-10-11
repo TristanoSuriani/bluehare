@@ -1030,6 +1030,22 @@ static int test_categories(void)
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
                  ok && preset_cat(0, 2) == CAT_BASS && preset_cat(ENGI_DRUM, 0) == CAT_DRUM && preset_cat(ENGI_FM6, 0) == CAT_KEYS &&
                  preset_cat(ENGI_DRUM, 9) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
+    {   /* engine 16 (WEST) has no row in the stored favourites: its 8 presets star [15][8], no other engine's or setting */
+        favorites_t before;
+        for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
+            favorite_set(ENGI_BYTE, k, 1);
+        before = favorites;
+        for (k = 0, ok = 1; k < ENGINES[ENGI_WEST]->npresets; k++)
+            ok &= favorite_set(ENGI_WEST, k, 1) && favorite_has(ENGI_WEST, k);
+        ok &= !favorite_set(ENGI_WEST, 8, 1) && !favorite_has(ENGI_WEST, 8) && !favorite_set(NENGINES + 1u, 0, 1) &&
+              favorites.factory[15][8] == 0xFFu;
+        before.factory[15][8] = 0xFFu;
+        ok &= !memcmp(&before, &favorites, sizeof favorites);
+        for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
+            ok &= favorite_has(ENGI_BYTE, k);
+        bad += check("  WEST's favourites: their own bits, BYTE's and the settings bytes untouched", ok);
+        memset(&favorites, 0, sizeof favorites);
+    }
     go_page(GR_BROWSE);
     select_engine(0);
     apply_preset(0);                                       /* ANALOG SAW LEAD */
@@ -3169,8 +3185,9 @@ static int test_quick_layers(void)
     key_up(white(eng_rank(2))); frame();
     key_down(white(1)); key_up(white(1)); frame();
     ok &= TSEL->eng_req == ENGI_FM6;                    /* (G3: FM6, second in ENGINE_ORDER) */
-    key_down(white(NENG_SHOWN - 1u)); key_up(white(NENG_SHOWN - 1u)); frame();
-    ok &= TSEL->eng_req == ENGI_DRUM;                   /* (the last key: DRUM) */
+    key_down(white(LY_INIT - 1u)); key_up(white(LY_INIT - 1u)); frame();
+    ok &= TSEL->eng_req == eng_vis(LY_INIT - 1u) && (LY_INIT < NENG_SHOWN || TSEL->eng_req == ENGI_DRUM);   /* (the last
+                                                         * key: DRUM; with more than 15 engines the 15th) */
     ok &= TSEL->p[P_SLEN] == before.p[P_SLEN] &&
           TSEL->p[P_SLCR] == SL_STUT;
     btn_up(B_EDIT); frame();
@@ -3187,8 +3204,8 @@ static int test_quick_layers(void)
         ok &= eng_ok(TSEL->eng_req);
     }
     btn_up(B_EDIT); frame();
-    bad += check("  every engine one can pick has its white key from F3 (NENG_SHOWN, not a fixed count; never DIGITAL)",
-                 ok && a == NENG_SHOWN);
+    bad += check("  every engine one can pick has its white key from F3 (NENG_SHOWN, 15 at most; never DIGITAL)",
+                 ok && a == LY_INIT && LY_INIT == (NENG_SHOWN < 15u ? NENG_SHOWN : 15u));
     set_engine_of(TSEL, 0);
     lay_combo(B_EDIT, white(eng_rank(3))); key_up(white(eng_rank(3))); frame();
     turn(EN_K2, 1);
@@ -3627,8 +3644,8 @@ static int test_bughunt_ui2(void)
         bad += check("NAME: PLAY stops a running transport (never starts), REC ignored, then OCT+ saves", ok);
     }
     {   /* 7. EDIT: INIT is drawn in the cell after the engines, and that cell's white key is the one that inits */
-        uint32_t p, ok = LY_INIT == NENG_SHOWN && LY_INIT < 16u;      /* (layer_edit: INIT in cell NENG_SHOWN) */
-        for (p = NENG_SHOWN; p < 16u; p++) {
+        uint32_t p, ok = LY_INIT < 16u;                 /* (layer_edit: INIT in the cell after the engines') */
+        for (p = LY_INIT; p < 16u; p++) {
             ui_power_on(); go_home(); frame();
             btn_down(B_EDIT); key_down(white(p)); frame(); frames(50);
             ok &= (ui.confirm == CF_INIT_SOUND) == (p == LY_INIT);
@@ -3764,9 +3781,10 @@ static int test_left_out_engines(void)
     for (i = 0; i < 3u; i++)
         ok &= str_eq(ENGINES[GONE[i]]->name, "-") && !eng_ok(GONE[i]) && !ENGINES[GONE[i]]->npresets &&
               eng_sub(GONE[i]) == SUB[i] && eng_ok(SUB[i]) && str_eq(N_ENGNAME[GONE[i]], "-");
-    ok &= eng_ok(ENGI_WAVE) && eng_ok(ENGI_BYTE) && str_eq(ENGINES[ENGI_WAVE]->name, "WAVE") &&
-          str_eq(ENGINES[ENGI_BYTE]->name, "BYTE") && NENG_SHOWN == 12u && eng_sub(ENGI_DIGITAL) == ENGI_DIGITAL;
-    bad += check("left out: SAMPLE GRAIN SLICE are \"-\", not offered; WAVE BYTE are 14 15; 12 engines shown", ok);
+    ok &= eng_ok(ENGI_WAVE) && eng_ok(ENGI_BYTE) && eng_ok(ENGI_WEST) && str_eq(ENGINES[ENGI_WAVE]->name, "WAVE") &&
+          str_eq(ENGINES[ENGI_BYTE]->name, "BYTE") && str_eq(ENGINES[ENGI_WEST]->name, "WEST") && NENG_SHOWN == 13u &&
+          eng_sub(ENGI_DIGITAL) == ENGI_DIGITAL;
+    bad += check("left out: SAMPLE GRAIN SLICE are \"-\", not offered; WAVE BYTE WEST are 14 15 16; 13 engines shown", ok);
     for (i = 0, ok = 1; i < 3u; i++) {
         set_engine_of(TSEL, GONE[i]);
         ok &= TSEL->eng_req == SUB[i] && TSEL->preset == 0u;
@@ -3852,8 +3870,8 @@ static int test_fm4_retired(void)
                  seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_FM6 && eng_step(ENGI_FM6, 1) == ENGI_WAVE &&
                  eng_step(ENGI_FM6, -1) == 0u && eng_step(0, -1) == ENGI_DRUM);
     {   /* the display order (engines.c ENGINE_ORDER): every engine one can pick once; the PRESETS list follows it */
-        static const char *const ORDER[] = {"ANALOG", "FM6", "WAVE", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL",
-                                            "GRAIN", "PHYS", "NOISE", "BYTE", "SLICE", "DRUM"};
+        static const char *const ORDER[] = {"ANALOG", "FM6", "WAVE", "WEST", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO",
+                                            "WHEEL", "GRAIN", "PHYS", "NOISE", "BYTE", "SLICE", "DRUM"};
         uint32_t last = 0xFFu, r = 0, n = 0, j = 0;
         for (i = 0; i < NELEM(ORDER); i++)             /* (those built) */
             n += (FELUCCA_SAMPLE || !str_eq(ORDER[i], "SAMPLE")) && (FELUCCA_GRAIN || !str_eq(ORDER[i], "GRAIN")) &&
@@ -3876,7 +3894,7 @@ static int test_fm4_retired(void)
             last = e;
             r++;
         }
-        bad += check("engines shown ANALOG FM6 WAVE PHASE ... NOISE BYTE (SLICE) DRUM (ENGINE_ORDER); PRESETS lists them so",
+        bad += check("engines shown ANALOG FM6 WAVE WEST PHASE ... NOISE BYTE (SLICE) DRUM (ENGINE_ORDER); PRESETS lists them so",
                      ok && r == NENG_SHOWN);
     }
     /* a user preset stored with engine 1: kept as it is, it loads as FM6 with the converted patch */

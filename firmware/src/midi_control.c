@@ -219,7 +219,8 @@ static const uint8_t MIDI_CC_ENG[NENGINES] = {
     0x56, 0x00, 0x30, 0x80, FELUCCA_SAMPLE ? 0x50 : 0, 0x07, 0x67, 0x00,   /* ANALOG CUT RES, -, PHASE DCW, LOFI TONE,
                                                        * SAMPLE CUT, VOICE Q, TRIO CUT RES, WHEEL - */
     FELUCCA_GRAIN ? 0x80 : 0, 0x30, 0x30, 0x34, 0x30, /* GRAIN TONE, PHYS BRIT, DRUM TONE, NOISE FREQ RES, FM6 MLVL */
-    FELUCCA_SLICE ? 0x80 : 0, 0x56, 0x60,             /* SLICE TONE, WAVE CUT RES, BYTE TONE (a left-out engine: none) */
+    FELUCCA_SLICE ? 0x80 : 0, 0x56, 0x60, 0x73,       /* SLICE TONE, WAVE CUT RES, BYTE TONE, WEST CUT FOLD (a left-out
+                                                       * engine: none) */
 };
 static void __attribute__((noinline)) midi_cc_map(track_t *t, uint32_t cc, uint32_t value)
 {

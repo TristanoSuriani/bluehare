@@ -31,7 +31,7 @@
 #define FELUCCA_FM4 0            /* the DIGITAL engine (eng_digital.c, four-operator FM): kept in the tree, not built
                                   * by default; replaced by FM6, its sounds convert (fm4_convert.c) */
 #endif
-#define NENGINES 16              /* engine numbers 0..15, every build (append-only; the reserved ones: eng_ok) */
+#define NENGINES 17              /* engine numbers 0..16, every build (append-only; the reserved ones: eng_ok) */
 #define ENGI_DIGITAL 1u          /* reserved without FELUCCA_FM4: never selectable (eng_ok), its sounds load as FM6 */
 #define NENG_SHOWN (NENGINES - !FELUCCA_FM4 - !FELUCCA_SAMPLE - !FELUCCA_GRAIN - !FELUCCA_SLICE)   /* the engines one
                                   * can pick: PRESETS, the EDIT layer, the editor, in the order of engines.c ENGINE_ORDER */
@@ -123,6 +123,7 @@ static void params_by_count(int16_t *out, const int16_t *in, uint32_t np, const 
 #define ENGI_SLICE 13u
 #define ENGI_WAVE 14u            /* 1.5 */
 #define ENGI_BYTE 15u            /* 1.5 */
+#define ENGI_WEST 16u            /* 1.5 */
 /* PHYS MODEL DRUM (MODEL 4, before 1.0) -> the DRUM engine, its E values in place: {MODEL, TUNE, TONE, DECY,
  * SNAP, ACC, KICK 0..127, PERC 0..127} -> {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK 0..1, DRV 0}. 1 = it was one
  * (its engine is ENGI_DRUM now); projects (project.c) and user presets (upreset.c) */
