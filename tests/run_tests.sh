@@ -331,6 +331,9 @@ else
     run "browser emulator: the same song from the native build" "$OUT/emu_native" "$OUT/emu_native.f32"
     run "browser emulator: boot, keys, MIDI, screen, LEDs, PLAY, a save kept across instances, = native, cost" \
         node web/emu/emu_test.mjs build/emu/felucca.wasm "$OUT/emu_native.f32"
+    run "browser emulator, the IDM distribution (web/emu/build.sh -> build/emu-idm)" env FELUCCA_DIST=idm sh web/emu/build.sh
+    run "browser emulator, IDM: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
+        node web/emu/emu_test.mjs build/emu-idm/felucca.wasm "$OUT/emu_native.f32"
 fi
 
 [ $fail -eq 0 ] && echo "ALL HOST TESTS PASSED" || { echo "HOST TESTS FAILED"; exit 1; }
