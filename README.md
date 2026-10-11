@@ -359,6 +359,10 @@ In the order the device lists them:
   of the kind NTYP sets (SNAP a short burst, CLAP four bursts and a tail, HISS as long as the note); TONE darkens below
   0, thins above. 23 presets: six kicks (deep, sub, hard, distorted, punchy), snare, two claps, rim, closed and open
   hats, crash, ride, toms, conga, clave, cowbell, metal, a zap, a bell, a glitch
+- **KARPLUS** (the IDM distribution): a plucked string, Karplus-Strong. EXCT fills the string at the pluck (NOIS,
+  PLUK filtered by BRIGHT, SAW, CLIK), POS plucks nearer the bridge or the middle, DAMP lets the highs die first, DECAY
+  rings 0.1 .. 10 s, STIFF sharpens the overtones towards a bell, MUTE damps it on release, DRIVE saturates. Presets:
+  nylon, steel, harp, koto, pizzicato, muted bass, dub and acid plucks, a bell string, a dulcimer
 - **SPEECH** (the IDM distribution): words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
   are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD

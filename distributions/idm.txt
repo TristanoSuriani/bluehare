@@ -1,12 +1,14 @@
 # IDM: the engines in display order, one a line (names: firmware/src/engine_ids.h; at most 16). Planned engines that
-# are not written yet stay commented out until they are
+# are not written yet stay commented out until they are (14 written: two of the three planned fit)
 ANALOG
 FM6
 PHASE
 WAVE
 BYTE
 WEST
+HOOVER
 PHYS
+KARPLUS
 NOISE
 DRUM
 FMPERC
@@ -14,5 +16,4 @@ FMPERC
 SPEECH
 # VOSIM
 # CHAOS
-# KARPLUS
 LOFI
