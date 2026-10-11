@@ -3,8 +3,9 @@
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
 # Felucca in the browser: the firmware's sources as the host tests build them (web/emu/felucca_web.c), compiled
 # to WebAssembly with Emscripten, plus the page. After X0X's web/emu/build.sh (charlesvestal/fm1-x0x, GPL-3.0).
-#   web/emu/build.sh                   ->  build/emu/{index.html, worklet.js, felucca.wasm, fonts/}
-#   FELUCCA_DIST=idm web/emu/build.sh  ->  build/emu-idm/ (a distribution, as ./build.sh: distributions/<name>.txt)
+#   web/emu/build.sh                       ->  build/emu/{index.html, worklet.js, felucca.wasm, fonts/}: the distribution
+#                                              distributions/BUILD names (as ./build.sh)
+#   FELUCCA_DIST=default web/emu/build.sh  ->  build/emu-default/ (another distribution: distributions/<name>.txt)
 # Run after one ./build.sh (build/gen: the tables, the fonts, the distributions' headers).
 # -ffp-contract=off: no fused multiply-adds, as the host build. EMU_OPT replaces -O2, EMU_CFLAGS adds flags
 # (EMU_CFLAGS=-msimd128: let the compiler vectorise; every browser with AudioWorklet has wasm SIMD).
@@ -14,9 +15,11 @@ cd "$(dirname "$0")/../.."
 [ -f build/gen/felucca_tables.h ] || { echo "emu: run ./build.sh once first (build/gen)"; exit 1; }
 command -v emcc >/dev/null 2>&1 || { echo "emu: no emcc (Emscripten)"; exit 1; }
 VERSION=$(sed -n 's/^#define FELUCCA_VERSION "\([^"]*\)".*/\1/p' firmware/src/felucca.c)
-DIST=$(printf '%s' "${FELUCCA_DIST:-default}" | tr 'A-Z' 'a-z')
+BUILD_DIST=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' distributions/BUILD | head -n 1 | tr -d ' ' | tr 'A-Z' 'a-z')
+DIST=$(printf '%s' "${FELUCCA_DIST:-$BUILD_DIST}" | tr 'A-Z' 'a-z')
 [ -f "build/gen/dist_$DIST.h" ] || { echo "emu: no distribution $DIST (distributions/$DIST.txt; run ./build.sh once after adding it)"; exit 1; }
-if [ "$DIST" = default ]; then OUTD=build/emu; TAG=''; else OUTD="build/emu-$DIST"; TAG=" $(printf '%s' "$DIST" | tr 'a-z' 'A-Z')"; fi
+if [ "$DIST" = "$BUILD_DIST" ]; then OUTD=build/emu; else OUTD="build/emu-$DIST"; fi
+if [ "$DIST" = default ]; then TAG=''; else TAG=" $(printf '%s' "$DIST" | tr 'a-z' 'A-Z')"; fi
 mkdir -p "$OUTD/fonts"
 # shellcheck disable=SC2086
 emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \

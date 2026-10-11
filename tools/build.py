@@ -178,9 +178,15 @@ def build_loader():
 
 # ---- app
 
+def build_default():
+    """the distribution built when FELUCCA_DIST is not given (distributions/BUILD)"""
+    lines = [ln.split("#", 1)[0].strip() for ln in (SRC / "distributions" / "BUILD").read_text().splitlines()]
+    return next(ln for ln in lines if ln).lower()
+
+
 def distribution():
-    """the distribution built: FELUCCA_DIST=<name> (distributions/<name>.txt; default "default")"""
-    name = (os.environ.get("FELUCCA_DIST") or "default").strip().lower()
+    """the distribution built: FELUCCA_DIST=<name> (distributions/<name>.txt; not given: distributions/BUILD's)"""
+    name = (os.environ.get("FELUCCA_DIST") or build_default()).strip().lower()
     if not (SRC / "distributions" / f"{name}.txt").exists():
         have = " ".join(sorted(p.stem for p in (SRC / "distributions").glob("*.txt")))
         raise SystemExit(f"build: FELUCCA_DIST={name}: no distributions/{name}.txt (have: {have})")
@@ -196,6 +202,8 @@ def build_app():
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
     flags.append(f"-DFELUCCA_DIST={distribution()}")   # (core.h includes build/gen/dist_<name>.h)
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "dist.txt").write_text(distribution() + "\n")   # (what build/felucca.* is: tests/target_budget.py)
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
@@ -336,14 +344,15 @@ def main():
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")
     a = ap.parse_args()
     dist = distribution()
-    name = "felucca.fwsc" if dist == "default" else f"felucca-{dist}.fwsc"
+    plain = dist == build_default()                 # (the build's own distribution: the plain names)
+    name = "felucca.fwsc" if plain else f"felucca-{dist}.fwsc"
     if a.release:                   # one digit each: the identity has room for two (X.Y.Z and X.Y.Z.W keep X.Y's)
         m = re.fullmatch(r"(\d)\.(\d)(?:\.\d){0,2}(-[A-Za-z0-9]+)?", a.release)
         if not m:
             raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z, X.Y.Z.W or X.Y-suffix, one digit each")
         PRODUCT = "FM-1_9" + m[1] + m[2]
         VERSION = "v" + a.release.lower()      # e.g. v1.0, v1.1-rc1
-        name = f"felucca-{a.release}.fwsc" if dist == "default" else f"felucca-{a.release}-{dist}.fwsc"
+        name = f"felucca-{a.release}.fwsc" if plain else f"felucca-{a.release}-{dist}.fwsc"
     fm1pkg_make.SDK = a.sdk
     for rel, sha in SDK_SHA256.items():          # fail early without the SDK
         if hashlib.sha256(fm1pkg_make.sdk_file(rel)).hexdigest() != sha:

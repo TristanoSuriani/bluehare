@@ -71,8 +71,8 @@ The tree holds every engine (`firmware/src/engine_ids.h`); a **distribution** is
 in the order the device lists them: `distributions/<name>.txt`, one engine a line.
 
 ```
-./build.sh                     # the default distribution (build/felucca.fwsc)
-FELUCCA_DIST=idm ./build.sh    # IDM (build/felucca-idm.fwsc; the version shows as "v1.4.1 IDM")
+./build.sh                         # the distribution distributions/BUILD names: IDM (build/felucca.fwsc, "v1.4.1 IDM")
+FELUCCA_DIST=default ./build.sh    # another one (build/felucca-default.fwsc)
 ```
 
 | Distribution | Engines |
@@ -105,8 +105,9 @@ web/emu/build.sh
 python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 ```
 
-`FELUCCA_DIST=idm web/emu/build.sh` builds a distribution's emulator into `build/emu-idm/` (serve that folder
-instead); the page shows the distribution after the version.
+`web/emu/build.sh` builds the distribution `distributions/BUILD` names (IDM) into `build/emu/`;
+`FELUCCA_DIST=default web/emu/build.sh` another one into `build/emu-default/` (serve that folder instead). The page
+shows the distribution after the version.
 
 `web/emu/felucca_web.c` builds the firmware's sources as the host tests do, against a simulated FM-1, and
 Emscripten compiles it to WebAssembly (`build/emu/felucca.wasm`, with `index.html`, `worklet.js` and the font in `fonts/`). The page

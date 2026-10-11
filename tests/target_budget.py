@@ -32,8 +32,18 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "perf_flanger", "perf_phaser",                     # .. FLANGER, PHASER (1.2), while held or fading
          "rev_room", "rev_spring", "rev_hall", "rev_side_mix"]   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
 # absent from some builds: skipped then; present, checked against these
-OPTIONAL = {"uac_tap48": 504,           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
-            "speech_render": 217}       # the engines of distributions other than the default (FELUCCA_DIST=idm ..)
+OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
+# the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
+# the one build/felucca.dis is: tools/build.py), skipped then
+ENGINE_OF = {"analog_render": "ANALOG", "phase_render": "PHASE", "lofi_render": "LOFI", "formant_render": "VOICE",
+             "trio_render": "TRIO", "trio_pass": "TRIO", "wheel_render": "WHEEL", "wheel_block": "WHEEL",
+             "phys_render": "PHYS", "drum_render": "DRUM", "noise_render": "NOISE", "wave_render": "WAVE",
+             "byte_render": "BYTE", "west_render": "WEST", "hoover_render": "HOOVER", "speech_render": "SPEECH"}
+ENGINE_OF.update({n: "FM6" for n in ("fm6_render", "fm6_op_run", "fm6_op_fb")})
+ENGINE_OF.update({n: "PHYS" for n in ("px_modal_block", "px_modal_run", "px_memb_block", "px_string_excite",
+                                      "px_string_run", "px_symp_run")})
+ENGINE_OF.update({n: "DRUM" for n in ("dv_metal_run", "dv_kick_run", "dv_snare_run", "dv_clap_run", "dv_hat_run",
+                                      "dv_tom_run", "dv_rim_run", "dv_bell_run", "dv_cym_run", "dv_out", "dv_metal_mix")})
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...
@@ -90,13 +100,25 @@ def cost(insns):
     return {"insns": len(insns), "loop": n, "div": divs, "call": calls, "cost": w}
 
 
+def built_engines():
+    """the engines of the distribution build/felucca.dis holds (build/dist.txt; none written: the default)"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    d = os.path.join(os.path.dirname(dis) or ".", "dist.txt")
+    name = open(d).read().strip() if os.path.exists(d) else "default"
+    path = os.path.join(here, "..", "distributions", f"{name}.txt")
+    return name, {ln.split("#", 1)[0].strip().upper() for ln in open(path)} - {""}
+
+
 def main():
     if not os.path.exists(dis):
         print(f"target: skip ({dis} missing: run ./build.sh)")
         return 0
+    dist, engines = built_engines()
     fns = functions(dis)
     res = {n: cost(fns[n]) for n in FUNCS if fns.get(n)}
-    missing = [n for n in FUNCS if n not in res and n not in OPTIONAL]
+    elsewhere = [n for n in FUNCS if n not in res and ENGINE_OF.get(n, next(iter(engines))) not in engines]
+    missing = [n for n in FUNCS if n not in res and n not in OPTIONAL and n not in elsewhere]
+    print(f"target: the {dist} distribution; not in it: {' '.join(elsewhere) or 'none'}")
     base = {}
     if os.path.exists(budget):
         for line in open(budget):
@@ -108,9 +130,11 @@ def main():
             f.write("# FELUCCA target cost budget (tests/target_budget.py): instructions in the loops of each\n"
                     f"# function in build/felucca.dis, x{NEST} per nesting level, divides x{1 + DIV_W}. The check allows "
                     f"+{TOL * 100:.0f} %.\n# Rewritten by BUDGET_UPDATE=1.\n")
-            for n, r in res.items():
-                if n not in OPTIONAL:
-                    f.write(f"{n} {r['cost']}\n")
+            for n in FUNCS:                         # (the other distributions' engines: kept as they were)
+                if n in res and n not in OPTIONAL:
+                    f.write(f"{n} {res[n]['cost']}\n")
+                elif n in elsewhere and n in base:
+                    f.write(f"{n} {base[n]}\n")
         print(f"target: budget {budget} rewritten ({len(res)} functions)")
     fail = 0
     for n in missing:
