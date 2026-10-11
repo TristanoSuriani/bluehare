@@ -1030,20 +1030,23 @@ static int test_categories(void)
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
                  ok && preset_cat(0, 2) == CAT_BASS && preset_cat(ENGI_DRUM, 0) == CAT_DRUM && preset_cat(ENGI_FM6, 0) == CAT_KEYS &&
                  preset_cat(ENGI_DRUM, 9) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
-    {   /* engine 16 (WEST) has no row in the stored favourites: its 8 presets star [15][8], no other engine's or setting */
+    {   /* engines 16, 17 (WEST, HOOVER) have no row in the stored favourites: their presets star [15][8], [15][9], no
+         * other engine's or setting */
         favorites_t before;
         for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
             favorite_set(ENGI_BYTE, k, 1);
         before = favorites;
         for (k = 0, ok = 1; k < ENGINES[ENGI_WEST]->npresets; k++)
-            ok &= favorite_set(ENGI_WEST, k, 1) && favorite_has(ENGI_WEST, k);
+            ok &= favorite_set(ENGI_WEST, k, 1) && favorite_has(ENGI_WEST, k) && !favorite_has(ENGI_HOOVER, k);
+        ok &= favorite_set(ENGI_HOOVER, 2, 1) && favorite_has(ENGI_HOOVER, 2) && !favorite_has(ENGI_HOOVER, 1);
         ok &= !favorite_set(ENGI_WEST, 8, 1) && !favorite_has(ENGI_WEST, 8) && !favorite_set(NENGINES + 1u, 0, 1) &&
-              favorites.factory[15][8] == 0xFFu;
+              favorites.factory[15][8] == 0xFFu && favorites.factory[15][9] == 4u;
         before.factory[15][8] = 0xFFu;
+        before.factory[15][9] = 4u;
         ok &= !memcmp(&before, &favorites, sizeof favorites);
         for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
             ok &= favorite_has(ENGI_BYTE, k);
-        bad += check("  WEST's favourites: their own bits, BYTE's and the settings bytes untouched", ok);
+        bad += check("  WEST's and HOOVER's favourites: their own bits, BYTE's and the settings bytes untouched", ok);
         memset(&favorites, 0, sizeof favorites);
     }
     go_page(GR_BROWSE);
@@ -3781,10 +3784,12 @@ static int test_left_out_engines(void)
     for (i = 0; i < 3u; i++)
         ok &= str_eq(ENGINES[GONE[i]]->name, "-") && !eng_ok(GONE[i]) && !ENGINES[GONE[i]]->npresets &&
               eng_sub(GONE[i]) == SUB[i] && eng_ok(SUB[i]) && str_eq(N_ENGNAME[GONE[i]], "-");
-    ok &= eng_ok(ENGI_WAVE) && eng_ok(ENGI_BYTE) && eng_ok(ENGI_WEST) && str_eq(ENGINES[ENGI_WAVE]->name, "WAVE") &&
-          str_eq(ENGINES[ENGI_BYTE]->name, "BYTE") && str_eq(ENGINES[ENGI_WEST]->name, "WEST") && NENG_SHOWN == 13u &&
+    ok &= eng_ok(ENGI_WAVE) && eng_ok(ENGI_BYTE) && eng_ok(ENGI_WEST) && eng_ok(ENGI_HOOVER) &&
+          str_eq(ENGINES[ENGI_WAVE]->name, "WAVE") && str_eq(ENGINES[ENGI_BYTE]->name, "BYTE") &&
+          str_eq(ENGINES[ENGI_WEST]->name, "WEST") && str_eq(ENGINES[ENGI_HOOVER]->name, "HOOVER") && NENG_SHOWN == 14u &&
           eng_sub(ENGI_DIGITAL) == ENGI_DIGITAL;
-    bad += check("left out: SAMPLE GRAIN SLICE are \"-\", not offered; WAVE BYTE WEST are 14 15 16; 13 engines shown", ok);
+    bad += check("left out: SAMPLE GRAIN SLICE are \"-\", not offered; WAVE BYTE WEST HOOVER are 14..17; 14 engines shown",
+                 ok);
     for (i = 0, ok = 1; i < 3u; i++) {
         set_engine_of(TSEL, GONE[i]);
         ok &= TSEL->eng_req == SUB[i] && TSEL->preset == 0u;
@@ -3870,8 +3875,8 @@ static int test_fm4_retired(void)
                  seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_FM6 && eng_step(ENGI_FM6, 1) == ENGI_WAVE &&
                  eng_step(ENGI_FM6, -1) == 0u && eng_step(0, -1) == ENGI_DRUM);
     {   /* the display order (engines.c ENGINE_ORDER): every engine one can pick once; the PRESETS list follows it */
-        static const char *const ORDER[] = {"ANALOG", "FM6", "WAVE", "WEST", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO",
-                                            "WHEEL", "GRAIN", "PHYS", "NOISE", "BYTE", "SLICE", "DRUM"};
+        static const char *const ORDER[] = {"ANALOG", "FM6", "WAVE", "WEST", "HOOVER", "PHASE", "LOFI", "SAMPLE", "VOICE",
+                                            "TRIO", "WHEEL", "GRAIN", "PHYS", "NOISE", "BYTE", "SLICE", "DRUM"};
         uint32_t last = 0xFFu, r = 0, n = 0, j = 0;
         for (i = 0; i < NELEM(ORDER); i++)             /* (those built) */
             n += (FELUCCA_SAMPLE || !str_eq(ORDER[i], "SAMPLE")) && (FELUCCA_GRAIN || !str_eq(ORDER[i], "GRAIN")) &&
@@ -3894,7 +3899,7 @@ static int test_fm4_retired(void)
             last = e;
             r++;
         }
-        bad += check("engines shown ANALOG FM6 WAVE WEST PHASE ... NOISE BYTE (SLICE) DRUM (ENGINE_ORDER); PRESETS lists them so",
+        bad += check("engines shown ANALOG FM6 WAVE WEST HOOVER PHASE ... NOISE BYTE (SLICE) DRUM (ENGINE_ORDER); PRESETS lists them so",
                      ok && r == NENG_SHOWN);
     }
     /* a user preset stored with engine 1: kept as it is, it loads as FM6 with the converted patch */

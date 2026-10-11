@@ -27,7 +27,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Thirteen engines** (below; SAMPLE, GRAIN and SLICE are left out of this fork's build), each with its own factory presets; every factory sound has a category (BASS, LEAD,
+- **Fourteen engines** (below; SAMPLE, GRAIN and SLICE are left out of this fork's build), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
   8 voices shared between them. ALGORITHM selects the track on every page
@@ -351,6 +351,11 @@ In the order the device lists them:
   move it), SYM shifts the fold off centre; the low-pass gate's cutoff follows the envelope through a vactrol-like lag,
   LPG of the way down from CUT, so a note darkens as it fades (the plucked, struck sound); TMBR opens FM and FOLD with
   the same envelope. FM and FOLD ease off on high notes so they do not alias
+- **HOOVER** (this fork): the early-90s rave lead, after the Alpha Juno's patch. Two oscillators, each a saw plus the
+  same saw PW of a cycle on (a pulse-width-modulated saw: sweeping PW moves notches through the spectrum), PWM sweeping
+  PW with the voice's own LFO at RATE (the SHP routings move PW too), DTN detuning the second, SUB a square an octave
+  down; BEND starts each note up to two octaves away and slides it in over BTIM (the swoop); CUT, a low-pass. Its
+  presets send plenty to the chorus, which makes the rest of the sound
 - **PHASE**: phase distortion (ported from CrispyZebra)
 - **LOFI**: chiptune; pulse, triangle, saw, noise and a 4-bit wave RAM, stepped envelope, sweep, arpeggio
 - **SAMPLE** (left out, `FELUCCA_SAMPLE=1`): multisampled instruments (PIANO, a light lo-fi piano; FLUTE; SAX) and

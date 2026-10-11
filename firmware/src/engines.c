@@ -22,6 +22,7 @@
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_byte.c"           /* BYTE: bytebeat formulas (1.5) */
 #include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
+#include "eng_hoover.c"         /* HOOVER: PWM saws, sub, bend: the rave lead (1.5) */
 #include "fm4_convert.c"        /* DIGITAL's tables, and its sounds -> FM6 */
 #if FELUCCA_FM4
 #include "eng_digital.c"        /* DIGITAL: four-operator FM (retired; FELUCCA_FM4=1 builds it) */
@@ -83,6 +84,7 @@ static const engine_t *const ENGINES[NENGINES] = {
     &ENG_WAVE,                   /* 14 (ENGI_WAVE, 1.5) */
     &ENG_BYTE,                   /* 15 (ENGI_BYTE, 1.5) */
     &ENG_WEST,                   /* 16 (ENGI_WEST, 1.5) */
+    &ENG_HOOVER,                 /* 17 (ENGI_HOOVER, 1.5) */
 };
 
 /* a track's engine number as an index (the audio paths: a compare, cheaper than % NENGINES; a bad number: 0) */
@@ -132,6 +134,7 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
 #endif
     14,                          /* WAVE */
     16,                          /* WEST */
+    17,                          /* HOOVER */
     2, 3,                        /* PHASE LOFI */
 #if FELUCCA_SAMPLE
     4,                           /* SAMPLE */

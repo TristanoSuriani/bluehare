@@ -7,8 +7,9 @@ typedef struct {
     uint32_t user, filter;
 } favorites_t;
 static favorites_t favorites;
-/* engine 16 on (1.5: WEST) has no row of its own in the stored layout: its presets 0..7 star bits of a byte BYTE's
- * presets never reach (BYTE has 6; [15][10..31] are settings, settings_persist.c) */
+/* engines 16 on (1.5: WEST, HOOVER) have no row of their own in the stored layout: their presets 0..7 star bits of a
+ * byte BYTE's presets never reach (BYTE has 6; [15][8] engine 16, [15][9] 17; [15][10..31] are settings,
+ * settings_persist.c) */
 #define FAV_E16 (&favorites.factory[15][8])
 static uint8_t *favorite_byte(uint32_t engine, uint32_t preset)
 {
@@ -16,7 +17,7 @@ static uint8_t *favorite_byte(uint32_t engine, uint32_t preset)
         return 0;
     if (engine < 16u)
         return &favorites.factory[engine][preset / 8u];
-    return engine == 16u && preset < 8u ? FAV_E16 : 0;
+    return engine <= 17u && preset < 8u ? FAV_E16 + (engine - 16u) : 0;
 }
 static int favorite_has(uint32_t engine, uint32_t preset)
 {

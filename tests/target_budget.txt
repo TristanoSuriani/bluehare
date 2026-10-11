@@ -36,6 +36,7 @@ slicer_track 632
 wave_render 290
 byte_render 135
 west_render 135
+hoover_render 380
 fm1_alnk0_irq 37502
 fm1_timer5_irq 33387
 click_render 30

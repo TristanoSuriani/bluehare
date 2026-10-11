@@ -73,8 +73,9 @@ a user preset's stored pattern is still read and written (and kept in flash), bu
 `UP_STORE` stores an empty one. `PROJECT` saves and loads the one song whatever the slot. See "1.5: the tracker (78,
 79)" below.
 
-**1.5 (engines):** NENGINES is 17 in every build. Three engines are appended: 14 WAVE (wavetables), 15 BYTE (bytebeat)
-and 16 WEST (complex oscillator, wavefolder, low-pass gate); the user-slot engine of `FAV_GET` / `FAV_SET` is 17;
+**1.5 (engines):** NENGINES is 18 in every build. Four engines are appended: 14 WAVE (wavetables), 15 BYTE (bytebeat),
+16 WEST (complex oscillator, wavefolder, low-pass gate) and 17 HOOVER (PWM saws, sub, bend); the user-slot engine of
+`FAV_GET` / `FAV_SET` is 18;
 `NAMES`, `DESC` and the rest treat them as any engine. SAMPLE (4), GRAIN (8) and SLICE (13) are left out of the default
 build (firmware `FELUCCA_SAMPLE` / `FELUCCA_GRAIN` / `FELUCCA_SLICE`): such an engine is reserved as DIGITAL is, `INFO`
 names it "-", `NAMES` lists no presets, its EDIT descriptors are "-" (range 0..0), and no track keeps it: a `SET` of
@@ -108,7 +109,7 @@ watches (v2, `WATCH`), the device also sends push frames (cmds 23, 24, 26) at an
 | string | ASCII bytes, ended by a 0 byte |
 | scope | 0 = parameter of the selected track (`P_*`, 0..P_COUNT−1); 1 = global parameter (`G_*`, 0..G_COUNT−1) |
 | track | 0..3: tracks 1..4 (synth parts) |
-| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 reserved (DIGITAL before 1.0: see below), 2 PHASE, 3 LOFI, 4 SAMPLE, 5 VOICE, 6 TRIO, 7 WHEEL, 8 GRAIN, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 SLICE, 14 WAVE, 15 BYTE, 16 WEST (1.5: NENGINES 17 in every build; 1.0.4 .. 1.4.1: 14, a build with `FELUCCA_SLICE=0` 13; 1.5 leaves 4, 8 and 13 out by default: named "-", see 1.5 above). The device and the editor list them in another order (ANALOG FM6 WAVE WEST PHASE LOFI SAMPLE VOICE TRIO WHEEL GRAIN PHYS NOISE BYTE SLICE DRUM: `ENGINE_ORDER`, those built); the numbers stay |
+| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 reserved (DIGITAL before 1.0: see below), 2 PHASE, 3 LOFI, 4 SAMPLE, 5 VOICE, 6 TRIO, 7 WHEEL, 8 GRAIN, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 SLICE, 14 WAVE, 15 BYTE, 16 WEST, 17 HOOVER (1.5: NENGINES 18 in every build; 1.0.4 .. 1.4.1: 14, a build with `FELUCCA_SLICE=0` 13; 1.5 leaves 4, 8 and 13 out by default: named "-", see 1.5 above). The device and the editor list them in another order (ANALOG FM6 WAVE WEST HOOVER PHASE LOFI SAMPLE VOICE TRIO WHEEL GRAIN PHYS NOISE BYTE SLICE DRUM: `ENGINE_ORDER`, those built); the numbers stay |
 
 The engine parameters are `P_E0..P_E7`: P_COUNT−8 .. P_COUNT−1 (96..103 since 1.2; 91..98 in 1.1), and `INFO` gives `P_E0`.
 Their meaning, range and names depend on the current engine, so re-read `DESC` for them

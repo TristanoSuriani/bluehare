@@ -39,6 +39,7 @@ static const char *const PRESET_CAT[NENGINES] = {
                                   * BIT LEAD */
     "LFBLFF",                    /* 15 BYTE: BYTE ARP, SIERPINSKI, XOR BASS, 42 MELODY, GLITCH, BIT NOISE */
     "DDUBKLPD",                  /* 16 WEST: BONGO, LOG DRUM, METAL, FOLD BASS, TIN BELL, FOLD LEAD, DRONE, RIM NOISE */
+    "LLKBPF",                    /* 17 HOOVER: HOOVER, DOMINATOR, RAVE STAB, HOOV BASS, HOOV PAD, SIREN */
 };
 static uint32_t preset_cat(uint32_t e, uint32_t k)    /* factory preset k of engine e */
 {

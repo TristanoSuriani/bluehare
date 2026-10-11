@@ -672,7 +672,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_MENU_AUDIO, S_HEAD_PLAY_REC, S_HEAD_REC_OTHER, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK, S_HEAD_BPM_LOCKED,
        S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_TK_PATTERN,
        S_TK_PATTERN_FX, S_TK_PATTERN_PLAY, S_TK_PATTERN_CUED, S_TK_SONG, S_TK_SONG_PLAY, S_TK_SETTINGS, S_TK_INSTR,
-       S_TK_SEQ_LAYER, S_CONFIRM_SONG, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_COUNT };
+       S_TK_SEQ_LAYER, S_CONFIRM_SONG, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_EDIT_HOOVER, S_EDIT_HOOVER_2, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
        "mod", "fx", "slicer", "dly", "scl", "chord", "chord_wide", "chord_off", "chord_kit", "arp", "voice", "clock",
@@ -692,7 +692,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
        "head_rec_other", "head_bpm_turn", "head_bpm_lock", "head_bpm_locked", "head_glo_turn", "head_downbeat",
        "head_beat_2", "menu_tune", "menu_info", "menu_home", "tk_pattern", "tk_pattern_fx", "tk_pattern_play",
        "tk_pattern_cued", "tk_song", "tk_song_play", "tk_settings", "tk_instr", "layer_seq", "confirm_new_song",
-       "edit_wave", "edit_byte", "edit_west", "edit_west_2"};
+       "edit_wave", "edit_byte", "edit_west", "edit_west_2", "edit_hoover", "edit_hoover_2"};
 
 
 
@@ -847,6 +847,8 @@ static void setup(int s)
     case S_EDIT_BYTE: eng(ENGI_BYTE); TSEL->p[P_E6] = 9; go_title("EDIT 1"); break;
     case S_EDIT_WEST: eng(ENGI_WEST); TSEL->p[P_E0] = 13; TSEL->p[P_E3] = -20; go_title("EDIT 1"); break;
     case S_EDIT_WEST_2: eng(ENGI_WEST); go_title("EDIT 2"); break;
+    case S_EDIT_HOOVER: eng(ENGI_HOOVER); go_title("EDIT 1"); break;
+    case S_EDIT_HOOVER_2: eng(ENGI_HOOVER); TSEL->p[P_E5] = -12; go_title("EDIT 2"); break;
     case S_EDIT_PHYS: eng(9); go_title("EDIT 1"); break;
     case S_ALG1: case S_ALG2: case S_ALG3: case S_ALG4: case S_ALG5: case S_ALG6: case S_ALG7: case S_ALG8:
         eng(1); TSEL->p[P_E0] = (int16_t)(s - S_ALG1);      /* the 8 DIGITAL charts; FB on the odd ones, IDX high .. 0 */
