@@ -931,6 +931,13 @@ static int other_dist(const char *name)
             return 0;
     return 1;
 }
+/* an entry of this build's engines: "preset/<E>/.." or "cpu/<E>/.." of an engine it holds (a distribution other than
+ * the default renders only those: one of them not rendered is gone) */
+static int own_engine(const char *name)
+{
+    return (!strncmp(name, "preset/", 7) || (!strncmp(name, "cpu/", 4) && strncmp(name, "cpu/mix/", 8))) &&
+           !other_dist(name);
+}
 static uint32_t load_kv(const char *path, kv_t *kv, uint32_t max)
 {
     FILE *f = fopen(path, "r");
@@ -1177,7 +1184,7 @@ mixes_done:
         uint32_t k, found = 0;
         for (k = g0; k < g1 && !found; k++)
             found = !strcmp(J[k].name, gold[i].name);
-        if (!found && !dist && !other_dist(gold[i].name)) {
+        if (!found && (dist ? own_engine(gold[i].name) : !other_dist(gold[i].name))) {
             if (!gupd)
                 printf("regress: GOLDEN GONE  %s (no such render now)\n", gold[i].name);
             g_gone++;
@@ -1202,7 +1209,7 @@ mixes_done:
                 ;
             if (k < g1)
                 fprintf(f, "%s %016llx\n", J[k].name, (unsigned long long)J[k].r.hash);
-            else if (dist || other_dist(gold[i].name))
+            else if (dist ? !own_engine(gold[i].name) : other_dist(gold[i].name))
                 fprintf(f, "%s %s\n", gold[i].name, gold[i].val);
         }
         for (i = g0; i < g1; i++)                   /* then the new renders */

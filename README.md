@@ -353,6 +353,12 @@ In the order the device lists them:
   PW with the voice's own LFO at RATE (the SHP routings move PW too), DTN detuning the second, SUB a square an octave
   down; BEND starts each note up to two octaves away and slides it in over BTIM (the swoop); CUT, a low-pass. Its
   presets send plenty to the chorus, which makes the rest of the sound
+- **FMPERC** (the IDM distribution): FM percussion. A modulating sine at RATIO (whole, half and inharmonic ratios)
+  moves a carrier's phase by INDEX, and every hit sweeps both down over FDEC: the pitch from SWEEP semitones above the
+  note, the index to a tenth, so a hit starts bright and high and settles. FDBK (towards noise); NOISE mixes in noise
+  of the kind NTYP sets (SNAP a short burst, CLAP four bursts and a tail, HISS as long as the note); TONE darkens below
+  0, thins above. 23 presets: six kicks (deep, sub, hard, distorted, punchy), snare, two claps, rim, closed and open
+  hats, crash, ride, toms, conga, clave, cowbell, metal, a zap, a bell, a glitch
 - **SPEECH** (the IDM distribution): words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
   are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD

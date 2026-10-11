@@ -18,6 +18,7 @@
 #include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
 #include "eng_hoover.c"         /* HOOVER: PWM saws, sub, bend: the rave lead (1.5) */
 #include "eng_speech.c"         /* SPEECH: LPC words (1.5; tools/gen_speech.py) */
+#include "eng_fmperc.c"         /* FMPERC: two-operator FM percussion (1.5) */
 
 /* the engine of an id this build has none for (a retired id, or an engine left out): what the editor protocol
  * describes for it (NAMES, DESC: no presets, nothing to edit, named "-"). No track ever plays it */
