@@ -2271,6 +2271,22 @@ static int test_layer(void)
     project_load(2);
     bad += check("REVERB page: TYPE HALL (power-on) / ROOM / SPRING on KNOB 1 (SIZE, DAMP beside it); a project keeps SPRING",
                  ok && song.g[G_RTYPE] == 1);
+    /* DLY 2 > TYPE (Fel-Tracker): CLEAN (power-on) / TAPE / WORN on KNOB 1, kept by a project */
+    ui_power_on();
+    go_title("DLY 2");
+    ok = cur_page()->fam == FAM_FX && cur_page()->id[0] == G_DTYPE && cur_page()->id[1] == 0xFFu && song.g[G_DTYPE] == 0 &&
+         str_eq(GP[G_DTYPE].names[0], "CLEAN");
+    turn(EN_K1, 1);
+    ok &= song.g[G_DTYPE] == 1 && str_eq(GP[G_DTYPE].names[song.g[G_DTYPE]], "TAPE");
+    turn(EN_K1, 5);
+    ok &= song.g[G_DTYPE] == 2 && str_eq(GP[G_DTYPE].names[2], "WORN");
+    turn(EN_K1, -1);
+    song.playing = 0;
+    project_save(2);
+    turn(EN_K1, -1);
+    ok &= song.g[G_DTYPE] == 0;
+    project_load(2);
+    bad += check("  DLY 2 page: TYPE CLEAN (power-on) / TAPE / WORN on KNOB 1; a project keeps TAPE", ok && song.g[G_DTYPE] == 1);
     go_title("CHORUS");
     bad += check("  CHORUS page: CRT CDP", cur_page()->fam == FAM_FX && cur_page()->id[0] == G_CRATE &&
                  cur_page()->id[1] == G_CDEPTH && cur_page()->id[2] == 0xFFu);

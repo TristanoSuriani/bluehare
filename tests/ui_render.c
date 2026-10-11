@@ -653,7 +653,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_FM6_OP_FIXED, S_FM6_OP2, S_FM6_OP_ENV, S_FM6_OP_ENV_REL, S_CONFIRM_SEQ, S_CONFIRM_PROJ, S_CONFIRM_USER,
        S_CONFIRM_ERASE, S_MENU, S_MENU_SPEAKER, S_ABOUT, S_ABOUT_REC, S_ABOUT_CREDITS, S_ABOUT_END, S_UBOOT,
        S_CALIBRATION, S_SPLASH, S_BATT0, S_BATT1, S_BATT2, S_BATT3, S_BATT_USB, S_FX_PEEK, S_FX_HELD, S_FX_WAIT,
-       S_FX_HARM, S_FX_ASSIGN, S_MENU_HOLD, S_MENU_LEDS, S_MENU_END, S_MENU_SYSTEM, S_MENU_SLIDE, S_REVERB,
+       S_FX_HARM, S_FX_ASSIGN, S_MENU_HOLD, S_MENU_LEDS, S_MENU_END, S_MENU_SYSTEM, S_MENU_SLIDE, S_REVERB, S_DLY2,
        S_GLO_PEEK, S_GLO_ACTIVE, S_GLO_EXT, S_SCL_PEEK, S_SCL_ACTIVE, S_EDIT_PEEK, S_EDIT_ACTIVE, S_EDIT_USER,
        S_LAYER_HINT, S_LAYER_LOCK, S_LAYER_LOCK_FX, S_EDIT_DRUM, S_EDIT_DRUM_KIT, S_DRUM_MUTED, S_NAME_USER,
        S_NAME_TYPING, S_NAME_123, S_NAME_EMPTY, S_NAME_FULL, S_NAME_PLAYING, S_PROJECT_NAMED, S_PRESETS_CAT,
@@ -671,7 +671,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
        "fm6_op_env_rel", "confirm_seq", "confirm_project", "confirm_user", "confirm_erase", "menu", "menu_speaker",
        "about", "about_rec", "about_credits", "about_end", "uboot", "calibration", "splash", "batt_0", "batt_1",
        "batt_2", "batt_3", "batt_usb", "perform_peek", "perform_held", "perform_wait", "perform_harm",
-       "perform_assign", "menu_hold", "menu_leds", "menu_end", "menu_system", "menu_slide", "reverb_spring",
+       "perform_assign", "menu_hold", "menu_leds", "menu_end", "menu_system", "menu_slide", "reverb_spring", "dly_2_tape",
        "layer_glo_peek", "layer_glo_active", "layer_glo_ext", "layer_scl_peek", "layer_scl_active", "layer_edit_peek",
        "layer_edit_active", "layer_edit_user", "layer_hint", "layer_lock", "layer_lock_fx", "layer_edit_drum",
        "layer_edit_drum_kit", "drum_muted", "name_user", "name_typing", "name_123", "name_empty", "name_full",
@@ -889,6 +889,7 @@ static void setup(int s)
         fx_say(key_at(0, 1), PF_TAPE, "");
         break;
     case S_REVERB: go_title("REVERB"); song.g[G_RTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: SPRING */
+    case S_DLY2: go_title("DLY 2"); song.g[G_DTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: TAPE (Fel-Tracker) */
     case S_MENU_HOLD: ui.menu = 1; ui.menu_sel = MI_HOLD; settings_hold = 2; break;
     case S_MENU_LEDS: ui.menu = 1; ui.menu_sel = MI_LEDS; settings_leds = LEDS_INV; break;
     case S_MENU_ANIM_IDLE: ui.menu = 1; ui.menu_sel = MI_ANIM; menu_put(MI_ANIM, 2); break;   /* (1.2: ANIM IDLE, #135) */

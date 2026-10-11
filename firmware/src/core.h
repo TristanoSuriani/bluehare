@@ -110,9 +110,10 @@ enum {                          /* global parameters */
     G_RTYPE,                    /* REVERB TYPE: 0 ROOM, 1 SPRING, 2 HALL (1.2, the power-on default) (fx.c). Was
                                  * G_DRCH, the GM drum part's MIDI channel (inert since 1.0, never read); projects
                                  * of formats before FUN7 load it as ROOM (project.c proj_rtype_room) */
-    G_DRLVL, G_DRREV,           /* inert (label "-", on no page): the GM drum part they set is gone; kept
-                                 * because the ids and G_COUNT are fixed by the formats and the protocol (only
-                                 * the import of an old project reads them: proj_drums_to_part) */
+    G_DTYPE,                    /* DELAY TYPE (Fel-Tracker 1.5): 0 CLEAN, 1 TAPE, 2 WORN (fx.c). Was G_DRLVL, the GM
+                                 * drum part's level (inert since 1.0: range 0..0, so every song stored 0, CLEAN) */
+    G_DRREV,                    /* inert (label "-", on no page): the GM drum part it set is gone; kept because the
+                                 * ids and G_COUNT are fixed by the formats and the protocol */
     G_COUNT
 };
 

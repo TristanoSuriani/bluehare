@@ -33,6 +33,7 @@ static const char *const N_ROUTE[] = {"CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-1
 static const char *const N_NOTE[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const N_DASH[] = {"--"};
 static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL"};   /* G_RTYPE: the reverb bus's model (fx.c) */
+static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN"};    /* G_DTYPE: the delay bus's (fx.c dly_tape) */
 static const char *const N_GO[] = {"--", "GO"};
 static const char *const N_SLCR[] = {"OFF", "GATE", "STUT"};             /* SL_OFF .. SL_STUT (slicer.c) */
 static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"};   /* SL_DEN */
@@ -162,10 +163,11 @@ static const param_desc_t GP[G_COUNT] = {
     [G_INITSND] = PE("INIT", N_GO, 0),
     /* the reverb's model on the REVERB page: the id of the old GM drum channel (G_DRCH, inert since 1.0) */
     [G_RTYPE] = PE("TYPE", N_RTYPE, 2),         /* HALL at power-on since 1.2 (ROOM before; projects keep theirs) */
-    /* inert: they set the GM drum part (level, reverb send), which is gone (drums are the DRUM engine
-     * on any part). On no page; kept so the ids and G_COUNT, which the project format and the
-     * editor protocol depend on, do not move */
-    [G_DRLVL] = PD("-", F_INT, 0, 0, 0),
+    /* the delay's type on DLY 2: the id of the old GM drum part's level (G_DRLVL, inert since 1.0: every song holds
+     * 0, CLEAN) */
+    [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
+    /* inert: it set the GM drum part's reverb send, which is gone (drums are the DRUM engine on any part). On no
+     * page; kept so the ids and G_COUNT, which the project format and the editor protocol depend on, do not move */
     [G_DRREV] = PD("-", F_INT, 0, 0, 0),
 };
 
@@ -388,6 +390,7 @@ static const page_t PAGES[] = {
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},
     {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
+    {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN (Fel-Tracker) */
     {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL */
     {"CHORUS", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
     {"SCL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_TRANS}},

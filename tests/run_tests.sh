@@ -69,6 +69,8 @@
 #                   settings and levels), no offset, level, stereo, echo density / ringing / flutter against ROOM, SPRING
 #                   and COMB8 (8 combs + 4 allpasses, host only, for comparison), model changes both ways, cost; the
 #                   listening set in build/reverb_demo/ (drums, pluck, piano: dry and each model at SIZE 40 / 90 / 127).
+#                   DELAY TYPE (Fel-Tracker): CLEAN as before, TAPE / WORN wobble, the runaway bounded and settling,
+#                   TIME and type changes without a click, cost; build/fx_demo/delay_{clean,tape,worn}_pluck.wav.
 # INPUT (tests/input_test.c): the key / button debounce of hal/fm1_input.h against the TIMER5 scan and bouncing
 #                   contacts: a press within 2 scans (<= 2.3 ms), one note per bouncy press, no early or hanging
 #                   release, stray samples ignored, fast repeats, the encoders' detents; the LED scan: lit LEDs every
@@ -239,7 +241,7 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "FX layer effects: on the 1/16, stereo, too-long REPEAT, SLICER, silent keys, idle bit-identical, clicks, OCT UP / DN, the key map, cost, demos" "$OUT/perform_test" build/perform_demo build/fx_demo
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_test" tests/reverb_test.c -lm
     mkdir -p build/reverb_demo
-    run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
+    run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, DELAY TYPE, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
     run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
     $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm" tests/regress.c -lm

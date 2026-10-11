@@ -83,7 +83,7 @@ static int mom_turn(uint32_t k, int32_t s)
     }
     g = vp && vp >= song.g && vp < song.g + G_COUNT ? (uint32_t)(vp - song.g) : G_COUNT;
     if (!d || !vp || d->max == d->min ||
-        !((vp >= TSEL->p && vp < TSEL->p + P_COUNT) || (g <= G_CDEPTH && g != G_CLOCK) || g == G_RTYPE))
+        !((vp >= TSEL->p && vp < TSEL->p + P_COUNT) || (g <= G_CDEPTH && g != G_CLOCK) || g == G_RTYPE || g == G_DTYPE))
         return 0;                                      /* (only the values a sound and the FX are: no CLK, no actions) */
     for (i = 0; i < mom.n && mom.vp[i] != vp; i++)
         ;

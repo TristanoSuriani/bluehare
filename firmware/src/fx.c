@@ -1,7 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Effects: per-track DIST insert, then sends into three
- * shared buses (chorus, tempo delay, reverb). Mono buses, stereo dry mix. */
+ * shared buses (chorus, tempo delay, reverb). Mono buses, stereo dry mix.
+ * DELAY TYPE (G_DTYPE, Fel-Tracker 1.5): CLEAN the delay as it always was; TAPE and WORN a tape echo in the same line
+ * (dly_tape): the read wobbles (wow ~0.5 Hz, flutter ~6 Hz, read between samples), the time glides (TIME turned, the
+ * tempo changed: the echoes bend in pitch), the loop low-passed (COLR) and high-passed (thinner each pass) and
+ * saturated, so FDBK past ~95 runs away into a bounded howl and settles when turned back. WORN: more wow and flutter,
+ * darker, thinner, driven harder. */
 #define DLY_LEN 65536u           /* 1.49 s: 1/4 at 40 BPM fits */
 #define CHO_LEN 2048u
 static int16_t dly_buf[DLY_LEN] __attribute__((section(".pool")));
@@ -24,6 +30,11 @@ static struct {
     int32_t sp_lp, sp_hp, sp_he, sp_size;   /* .. its loop low-pass, low cut (and its remainder), the loop
                                              * length (Q8, glides) */
     uint32_t sp_ph;                      /* .. the output tap's wobble */
+    uint8_t dtype, tp_out;               /* DELAY TYPE running (G_DTYPE: 0 CLEAN, 1 TAPE, 2 WORN); TAPE going to CLEAN */
+    int32_t tp_d8, tp_hp8;               /* TAPE: the delay read (Q8 samples, glides), the loop's high-pass (Q8) */
+    int32_t tp_wd, tp_fd;                /* .. the wow's and the flutter's depth now (Q8 samples, glide) */
+    int32_t tp_drv, tp_fbk, tp_hpm;      /* .. the drive (Q8), the feedback (Q15), the low cut's share (Q15): glide */
+    uint32_t tp_wow, tp_flt;             /* .. their phases */
 } fx;
 
 /* SPRING (G_RTYPE 1): one spring of a spring tank, mono like the other buses, in the ROOM's own buffers (no
@@ -524,15 +535,83 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
     fx.rtype = (uint8_t)rt;
 }
 
+/* TAPE / WORN (DELAY TYPE 1, 2): the delay bus as a tape echo, its output added to wet (see the top). dl the delay
+ * (samples), fb col dmix the DLY page's as the clean delay takes them. Everything that differs from CLEAN glides,
+ * so a type changed while it rings does not click, and going to CLEAN the tape ends exactly as CLEAN reads and
+ * writes (fx_buses then runs CLEAN's own loop) */
+static __attribute__((noinline)) void dly_tape(const int32_t *dly_in, int32_t *wet, uint32_t n, uint32_t dl, int32_t fb,
+                                               int32_t col, int32_t dmix)
+{
+    static const struct { int16_t wow, flt, hp, drive, dark; } TP[2] = {
+        {6000, 600, 7, 256, 4},                       /* TAPE: +-23 / 2.3 samples (~0.3 % pitch), ~55 Hz, x1 */
+        {18000, 1500, 5, 384, 3},                     /* WORN: three and two and a half times that, ~220 Hz, x1.5, COLR 3/4 */
+    };
+    const uint32_t w = fx.dtype == 2u ? 1u : 0u, hs = (uint32_t)TP[w].hp, out = fx.tp_out;
+    const int32_t c = out ? col : col * TP[w].dark >> 2;
+    int32_t dd, d0 = fx.tp_d8, step;
+    uint32_t i, lim = (DLY_LEN - 4u) << 8;
+    /* a block at a time, to the type's (to CLEAN's going there): the wobble's depths (~20 .. 50 ms), the drive, the
+     * feedback (FDBK 120: ~1.06 a pass, the saturation bounds it), the low cut's share */
+    fx.tp_wd += clamp((out ? 0 : TP[w].wow) - fx.tp_wd, -256, 256);
+    fx.tp_fd += clamp((out ? 0 : TP[w].flt) - fx.tp_fd, -32, 32);
+    fx.tp_drv += clamp((out ? 256 : TP[w].drive) - fx.tp_drv, -4, 4);
+    fx.tp_fbk += clamp((out ? fb : fb * 290 / 230) - fx.tp_fbk, -256, 256);
+    fx.tp_hpm += clamp((out ? 0 : 32768) - fx.tp_hpm, -1024, 1024);
+    /* TIME glides, sample by sample (the echoes bend; at most +-25 % in pitch, the last of it at once) */
+    dd = (int32_t)(dl << 8) - d0;
+    dd = dd > -256 && dd < 256 ? dd : clamp(dd >> 7, -(8 << 8), 8 << 8);
+    fx.tp_d8 = d0 + dd;
+    step = dd / (int32_t)n;
+    for (i = 0; i < n; i++) {
+        int32_t r, f, a, b, x, lo;
+        uint32_t ri;
+        fx.tp_wow += 48700u;                          /* ~0.5 Hz */
+        fx.tp_flt += 584000u;                         /* ~6 Hz */
+        r = (i + 1u == n ? fx.tp_d8 : d0 + step * (int32_t)(i + 1u)) +
+            ((osc_sine(fx.tp_wow) * fx.tp_wd) >> 15) + ((osc_sine(fx.tp_flt) * fx.tp_fd) >> 15);
+        r = clamp(r, 16 << 8, (int32_t)lim);
+        ri = (uint32_t)r >> 8;
+        f = r & 255;
+        a = dly_buf[(fx.dly_w - ri) & (DLY_LEN - 1u)];
+        b = dly_buf[(fx.dly_w - ri - 1u) & (DLY_LEN - 1u)];
+        x = a + (((b - a) * f) >> 8);                 /* (the read between samples) */
+        fx.dly_lp += mulq15(x - fx.dly_lp, c);        /* COLR: the loop darkens */
+        fx.tp_hp8 += ((fx.dly_lp << 8) - fx.tp_hp8) >> hs;   /* .. and thins (Q8: no offset left by its rounding) */
+        lo = mulq15(fx.tp_hp8 >> 8, fx.tp_hpm);
+        lo = (dly_in[i] >> 1) + mulq15(fx.dly_lp - lo, fx.tp_fbk);
+        dly_buf[fx.dly_w & (DLY_LEN - 1u)] = (int16_t)(out && fx.tp_drv == 256 && !fx.tp_hpm
+            ? clamp(lo, -32768, 32767) : softclip((lo * fx.tp_drv) >> 8));   /* (CLEAN's write once all of it is) */
+        fx.dly_w++;
+        wet[i] += mulq15(x << 1, dmix);
+    }
+}
+
 /* process the three buses for one block; sends in, wet stereo-equal out */
 static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet,
                      uint32_t n)
 {
-    uint32_t i, dl = delay_samples();
+    uint32_t i, dl = delay_samples(), dt = (uint32_t)song.g[G_DTYPE];
     int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
     int32_t dmix = song.g[G_DMIX] * 258;
     int32_t cdepth = song.g[G_CDEPTH] * 6, rt;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL;
+    dt = dt <= 2u ? dt : 0u;
+    if (dt && !fx.dtype) {                            /* CLEAN -> TAPE / WORN: the read starts where CLEAN's is */
+        fx.tp_d8 = (int32_t)(dl << 8);
+        fx.tp_hp8 = fx.dly_lp << 8;
+        fx.tp_wd = fx.tp_fd = fx.tp_hpm = 0;
+        fx.tp_drv = 256;
+        fx.tp_fbk = fb;
+        fx.tp_wow = fx.tp_flt = 0;
+    }
+    if (dt) {
+        fx.dtype = (uint8_t)dt;
+        fx.tp_out = 0;
+    } else if (fx.dtype) {                            /* .. -> CLEAN: the tape until its read is CLEAN's, then CLEAN */
+        fx.tp_out = 1;
+        if (!fx.tp_wd && !fx.tp_fd && fx.tp_d8 == (int32_t)(dl << 8) && fx.tp_drv == 256 && fx.tp_fbk == fb && !fx.tp_hpm)
+            fx.dtype = fx.tp_out = 0;
+    }
     for (i = 0; i < n; i++) {
         int32_t y = 0, x, r;
         /* chorus: modulated short delay, 5..15 ms */
@@ -546,6 +625,10 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             y += (c0 + (((c1 - c0) * f) >> 8)) << 1;
         }
         fx.cho_w++;
+        if (fx.dtype) {                               /* TAPE, WORN: dly_tape after the loop (the same line) */
+            wet[i] = y;
+            continue;
+        }
         /* delay with a low-passed feedback */
         x = dly_buf[(fx.dly_w - dl) & (DLY_LEN - 1u)];
         fx.dly_lp += mulq15(x - fx.dly_lp, col);
@@ -555,6 +638,8 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         y += mulq15(x << 1, dmix);
         wet[i] = y;
     }
+    if (fx.dtype)
+        dly_tape(dly_in, wet, n, dl, fb, col, dmix);
     rt = song.g[G_RTYPE];
     rt = rt == 1 || rt == 2 ? rt : 0;
     hl.side = 0;

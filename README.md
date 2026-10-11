@@ -76,7 +76,9 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   LFO cycle, held or gliding), and **DEPTH** as a destination, so the matrix can modulate the LFO itself
 - **SPREAD** (EDIT > VOICE 3): the voices of a POLY or UNISON track alternate left and right of its PAN
 - **Effects:** distortion and the SLICER per track; chorus, delay and reverb sends (the reverb as
-  **HALL**, ROOM or SPRING; HALL is a smooth stereo reverb, the default on a fresh start); master limiter
+  **HALL**, ROOM or SPRING; HALL is a smooth stereo reverb, the default on a fresh start; the delay **CLEAN**,
+  **TAPE** or **WORN** on DLY 2: a tape echo with wow and flutter, repeats that darken and saturate and run away
+  into a howl past FDBK ~95); master limiter
 - **FX layer:** hold FX for repeat, reverse, filter sweeps, tape stop, freeze, a harmonizer
   (OCT UP / OCT DN with shimmer), and mutes on the black keys;
   any white key can hold any effect (hold the key in the layer and turn PRESETS); MENU > FX LATCH makes them toggle,

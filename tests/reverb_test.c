@@ -28,7 +28,14 @@
  *    of the averaged spectrum: the metallic tone) and flutter (echoes at a fixed period) against ROOM, SPRING
  *    and COMB8 (8 combs + 4 allpasses, of which ROOM is the first half: a host-only reference, over twice ROOM's
  *    memory); model changes ROOM / SPRING / HALL both ways.
- * Demos (WAV) into DEMODIR: a drum pattern and a pluck through SPRING, the drums through ROOM to compare; into
+ * DELAY TYPE (Fel-Tracker 1.5, fx.c dly_tape): CLEAN is the delay as before (1. above, its buses compared with the
+ *    delay settings moving); TAPE and WORN: the echo of a steady 1 kHz sine wobbles in pitch (TAPE 0.05 .. 0.6 %,
+ *    WORN more, under 1.5 %; CLEAN under 0.02 %); FDBK 120 on full-scale noise stays bounded and keeps howling
+ *    after the input stops (the tape's runaway), FDBK turned back to 60 it dies into silence; TIME changed under a
+ *    sine: no click (the read glides: no step larger than the sine's own); a type changed while it rings: no click;
+ *    the cost of the bus stage, TAPE and WORN over CLEAN.
+ * Demos (WAV) into DEMODIR: a drum pattern and a pluck through SPRING, the drums through ROOM to compare; the drums
+ * through the delay CLEAN, TAPE and WORN; into
  * DEMODIR2 the listening set: drums, pluck, piano, dry and through ROOM, SPRING, HALL and COMB8 at SIZE 40,
  * 90, 127. */
 #define main hostsim_main
@@ -785,7 +792,9 @@ static double cost_of(int m, int bus)        /* model m alone (rev_room, rev_spr
     static int32_t c[CTL], d[CTL], r[CTL], w[CTL];
     uint32_t b, i, nb = 4u * FS / CTL;
     uint64_t i0;
+    int16_t dt = song.g[G_DTYPE];                   /* (the delay's type kept: test_tape measures each) */
     host_tracks_init();
+    song.g[G_DTYPE] = dt;
     rev_clear();
     song.g[G_RTYPE] = (int16_t)m;
     fx.rtype = (uint8_t)m;
@@ -831,7 +840,161 @@ static void test_cost(void)
     check(what, (bhall - broom) * 0.017 <= 2.0);
 }
 
+/* --------------------------------------------------------- DELAY TYPE --- */
+static int32_t tp_w[12u * FS + CTL];
+/* the delay bus alone: sends in the delay only (1 kHz sine, noise or silence), n samples of the wet bus into tp_w */
+static uint32_t tp_inc = 97391548u;                       /* the sine: 1 kHz */
+static void tape_run(uint32_t n, int src, int32_t amp)
+{
+    static int32_t z[CTL], d[CTL];
+    uint32_t b, i;
+    static uint32_t ph;
+    for (b = 0; b * CTL < n; b++) {                           /* (n rounded up to whole blocks) */
+        for (i = 0; i < CTL; i++) {
+            ph += tp_inc;
+            d[i] = src == 1 ? mulq15(osc_sine(ph), amp) : src == 2 ? noise(amp) : 0;
+        }
+        fx_buses(z, d, z, &tp_w[b * CTL], CTL);
+    }
+}
+static void tape_reset(int type, int fdbk)
+{
+    host_tracks_init();
+    rev_clear();
+    memset(dly_buf, 0, sizeof dly_buf);
+    memset(cho_buf, 0, sizeof cho_buf);
+    fx.dly_lp = 0;
+    fx.dtype = fx.tp_out = 0;
+    fx.rtype = 0;
+    tp_inc = 97391548u;
+    song.g[G_RTYPE] = 0;
+    song.g[G_BPM] = 120;
+    song.g[G_DTIME] = 1;
+    song.g[G_DFDBK] = (int16_t)fdbk;
+    song.g[G_DCOLOR] = 100;
+    song.g[G_DMIX] = 127;
+    song.g[G_DTYPE] = (int16_t)type;
+}
+/* the echo's pitch: its periods (rising zero crossings, between samples) over [a, b): the largest deviation
+ * from their mean, relative (50 ms windows: the flutter's cycles stay in) */
+static double tape_wobble(uint32_t a, uint32_t b)
+{
+    double fs[256], m = 0, dev = 0;
+    uint32_t nw = 0, t;
+    for (uint32_t w = a; w + 2205u <= b && nw < 256u; w += 2205u) {
+        double first = -1, last = 0;
+        uint32_t nc = 0;
+        for (t = w; t < w + 2205u; t++)
+            if (tp_w[t - 1] < 0 && tp_w[t] >= 0) {
+                double x = t - 1 + (double)-tp_w[t - 1] / (tp_w[t] - tp_w[t - 1]);
+                if (first < 0)
+                    first = x;
+                last = x;
+                nc++;
+            }
+        fs[nw++] = nc > 1 ? (nc - 1) / (last - first) : 0;
+    }
+    for (t = 0; t < nw; t++)
+        m += fs[t] / nw;
+    for (t = 0; t < nw; t++)
+        dev = fabs(fs[t] / m - 1) > dev ? fabs(fs[t] / m - 1) : dev;
+    return dev;
+}
+static int32_t tape_peak(uint32_t a, uint32_t b)
+{
+    int32_t p = 0;
+    for (uint32_t t = a; t < b; t++)
+        p = abs(tp_w[t]) > p ? abs(tp_w[t]) : p;
+    return p;
+}
+static int32_t tape_step(uint32_t a, uint32_t b)          /* the largest step sample to sample */
+{
+    int32_t p = 0;
+    for (uint32_t t = a + 1u; t < b; t++)
+        p = abs(tp_w[t] - tp_w[t - 1]) > p ? abs(tp_w[t] - tp_w[t - 1]) : p;
+    return p;
+}
+static void test_tape(void)
+{
+    static const char *const T[3] = {"CLEAN", "TAPE", "WORN"};
+    double wob[3];
+    char what[200];
+    int ty;
+    for (ty = 0; ty < 3; ty++) {                              /* the echo of a steady sine, FDBK 0 */
+        tape_reset(ty, 0);
+        tape_run(5u * FS, 1, 16000);
+        wob[ty] = tape_wobble(FS, 5u * FS);
+    }
+    snprintf(what, sizeof what, "DELAY TYPE: a 1 kHz echo's pitch wobble CLEAN %.3f %%, TAPE %.3f %%, WORN %.3f %%",
+             wob[0] * 100, wob[1] * 100, wob[2] * 100);
+    check(what, wob[0] < 0.0002 && wob[1] > 0.0005 && wob[1] < 0.006 && wob[2] > wob[1] && wob[2] < 0.015);
+    for (ty = 1; ty < 3; ty++) {                              /* the runaway: bounded, howling, then it dies */
+        int32_t pk, howl, tail;
+        tape_reset(ty, 120);
+        tape_run(2u * FS, 2, 1 << 30);
+        pk = tape_peak(0, 2u * FS);
+        tape_run(4u * FS, 0, 0);
+        howl = tape_peak(3u * FS, 4u * FS);
+        pk = tape_peak(0, 4u * FS) > pk ? tape_peak(0, 4u * FS) : pk;
+        song.g[G_DFDBK] = 60;
+        tape_run(12u * FS, 0, 0);
+        tail = tape_peak(11u * FS, 12u * FS);
+        snprintf(what, sizeof what, "  %s FDBK 120 on full-scale noise: peak %d, %d still howling 2 s after; FDBK 60: %d after 12 s",
+                 T[ty], pk, howl, tail);
+        check(what, pk <= 65534 && howl > 3000 && tail <= 2);
+    }
+    for (ty = 0; ty < 3; ty++) {                              /* TIME changed under a 100 Hz sine's echo */
+        int32_t steady, moved;
+        tape_reset(ty, 0);
+        tp_inc = 9739155u;
+        song.g[G_DTIME] = 3;
+        tape_run(3u * FS, 1, 16000);
+        steady = tape_step(2u * FS, 3u * FS);
+        song.g[G_DTIME] = 1;
+        tape_run(FS, 1, 16000);
+        moved = tape_step(0, FS);
+        snprintf(what, sizeof what, "  %s: TIME changed under the echo: the largest step %d (steady %d%s)", T[ty], moved, steady,
+                 ty ? "; the bend up: at most 2.5 x" : ": a jump, as always");
+        check(what, ty == 0 ? 1 : moved <= steady * 5 / 2);
+    }
+    {   /* the type changed while the echoes ring: no click (each switch's first 0.1 s against the steady echoes
+         * before and after it: TAPE's and WORN's feedback rings louder) */
+        static const int16_t TO[4] = {0, 1, 2, 0};
+        int32_t prev, sw = 0, worst = 0, k, st;
+        tape_reset(0, 70);
+        tp_inc = 9739155u;
+        tape_run(2u * FS, 1, 16000);
+        prev = tape_step(FS, 2u * FS);
+        for (k = 1; k < 4; k++) {
+            song.g[G_DTYPE] = TO[k];
+            tape_run(2u * FS, 1, 16000);
+            st = tape_step(FS, 2u * FS);
+            sw = tape_step(0, FS / 10u);
+            worst = sw * 100 / (prev > st ? prev : st) > worst ? sw * 100 / (prev > st ? prev : st) : worst;
+            prev = st;
+        }
+        snprintf(what, sizeof what, "  CLEAN -> TAPE -> WORN -> CLEAN while it rings: the switches' largest step %d %% of the steady, CLEAN's own after",
+                 worst);
+        check(what, worst <= 150 && !fx.dtype);
+    }
+    {   /* the cost: the bus stage with each */
+        double c[3];
+        for (ty = 0; ty < 3; ty++) {
+            song.g[G_DTYPE] = (int16_t)ty;
+            c[ty] = cost_of(M_ROOM, 1);
+        }
+        song.g[G_DTYPE] = 0;
+        if (c[0]) {
+            snprintf(what, sizeof what, "  cost: the bus stage CLEAN %.0f, TAPE +%.0f (~%.2f %% CPU), WORN +%.0f (~%.2f %%), at most 1.5 %%",
+                     c[0], c[1] - c[0], (c[1] - c[0]) * 0.017, c[2] - c[0], (c[2] - c[0]) * 0.017);
+            check(what, (c[1] - c[0]) * 0.017 <= 1.5 && (c[2] - c[0]) * 0.017 <= 1.5);
+        }
+    }
+    tape_reset(0, 60);
+}
+
 /* ------------------------------------------------------------- demos --- */
+static int demo_dtype = -1;                       /* >= 0: through the delay (DELAY TYPE), no reverb */
 static void demo(const char *dir, const char *name, int rtype, int pluck)
 {
     static const uint8_t PL[16] = {64, 0, 67, 0, 71, 0, 0, 74, 72, 0, 67, 0, 64, 0, 62, 0};
@@ -862,6 +1025,14 @@ static void demo(const char *dir, const char *name, int rtype, int pluck)
     }
     tr->p[P_REV] = 90;
     tr->p[P_DLY] = tr->p[P_CHOR] = 0;
+    if (demo_dtype >= 0) {                                         /* the delay, FDBK 85: the echoes ring on */
+        tr->p[P_REV] = 0;
+        tr->p[P_DLY] = 100;
+        song.g[G_DTYPE] = (int16_t)demo_dtype;
+        song.g[G_DFDBK] = 85;
+        fx.dtype = fx.tp_out = 0;
+        memset(dly_buf, 0, sizeof dly_buf);
+    }
     snprintf(path, sizeof path, "%s/%s.wav", dir, name);
     if (!(f = fopen(path, "wb")))
         return;
@@ -978,10 +1149,16 @@ int main(int argc, char **argv)
     test_clear();
     test_switch();
     test_cost();
+    test_tape();
     if (argc > 1) {
         demo(argv[1], "spring_drums", 1, 0);
         demo(argv[1], "spring_pluck", 1, 1);
         demo(argv[1], "room_drums", 0, 0);
+        for (demo_dtype = 0; demo_dtype < 3; demo_dtype++) {
+            static const char *const DN[3] = {"delay_clean_pluck", "delay_tape_pluck", "delay_worn_pluck"};
+            demo(argv[1], DN[demo_dtype], 0, 1);
+        }
+        demo_dtype = -1;
     }
     if (argc > 2) {
         static const int SZ[3] = {40, 90, 127};
