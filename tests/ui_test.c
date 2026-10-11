@@ -2244,11 +2244,11 @@ static int test_layer(void)
     key_up(white(8)); key_down(white(9)); frame();
     ok &= perf_held == PF_BIT(PF_ODN) && !gates() && mo_w == mo;
     key_up(white(9)); key_down(white(10)); frame();
-    ok &= perf_held == PF_BIT(PF_FLG) && (kb_layer >> white(10)) & 1u && !gates();   /* (1.2: B4 FLANGER, C5 PHASER) */
+    ok &= !perf_held && (kb_layer >> white(10)) & 1u && !gates();   /* (B4: nothing, FLANGER's key until Fel-Tracker) */
     key_up(white(10)); key_down(white(12)); frame();
     ok &= !perf_held && (kb_layer >> white(12)) & 1u && !gates();
     key_up(white(12)); btn_up(B_FX); frame();
-    bad += check("FX + G4 / A4: OCT UP / OCT DN held, silent, no MIDI; KNOB 4 turns; B4 FLANGER, D5 nothing; FX let go: K4 0",
+    bad += check("FX + G4 / A4: OCT UP / OCT DN held, silent, no MIDI; KNOB 4 turns; B4, D5 nothing; FX let go: K4 0",
                  ok && !perf_held && !ui.layer && !perf_k[3] && mo_w == mo);
     /* REVERB > TYPE (FX family, global): ROOM / SPRING / HALL on KNOB 1 (HALL at power-on since 1.2), kept by a
      * project */
@@ -2372,9 +2372,9 @@ static int test_layer(void)
         a = leds_at(0); b2 = leds_at(250);
         k = white(1);
         ok = ((a >> k) & 1u) && ((b2 >> k) & 1u);                    /* held: lit */
-        for (i = 0; i < 12u; i++)                                     /* the other effects (F3 .. C5): breathe */
+        for (i = 0; i < 10u; i++)                                     /* the other effects (F3 .. A4): breathe */
             ok &= i == 1u || ((a ^ b2) >> white(i)) & 1u;
-        for (i = 12; i < 16u; i++)                                    /* D5 .. G5: no effect, dark */
+        for (i = 10; i < 16u; i++)                                    /* B4 .. G5: no effect, dark */
             ok &= !((a | b2) >> white(i) & 1u);
         ok &= ((a ^ b2) >> key_at(1, 0)) & 1u && !((a | b2) >> key_at(1, 4) & 1u);   /* a mute breathes, a spare black dark */
         song.g[G_BPM] = 72;
@@ -2384,7 +2384,7 @@ static int test_layer(void)
         song.g[G_BPM] = 120;
     }
     key_up(white(1)); btn_up(B_FX); frame();
-    bad += check("map LEDs: held lit, the 12 effects breathe, D5 .. G5 and a too-long REPEAT dark", ok);
+    bad += check("map LEDs: held lit, the 10 effects breathe, B4 .. G5 and a too-long REPEAT dark", ok);
     usb.config = 0;
     return bad;
 }
@@ -4923,34 +4923,32 @@ static int test_rec_layer(void)
 static int test_fx_map(void)
 {
     int bad = 0, ok;
-    uint32_t b4 = white(10), p, snd;
+    uint32_t a4 = white(9), p, snd;
     ui_power_on();
     memset(fx_keys, 0, 10);
     frame();
     for (ok = 1, p = 0; p < PF_KEYS; p++)
         ok &= perf_map[p] == PF_DEF[p];
-    bad += check("FX map: settings of 0 (before 1.2) are the default: 1.1.5's ten keys, B4 FLANGER, C5 PHASER", ok);
+    bad += check("FX map: settings of 0 (before 1.2) are the default: 1.1.5's ten keys, B4 .. G5 none", ok);
     snd = TSEL->preset | (uint32_t)TSEL->eng_req << 8;
-    btn_down(B_FX); key_down(b4); frame();
-    ok = perf_held == PF_BIT(PF_FLG) && ui.layer == LAYER_FX;
-    turn(EN_PRESET, 1); keyboard_block();               /* (keyboard_block: the ISR's next block) */
-    ok &= perf_map[10] == PF_PHS && perf_held == PF_BIT(PF_PHS) && msg_is("B4 PHASER");
-    turn(EN_PRESET, 1); keyboard_block();               /* past the last: NONE */
-    ok &= perf_map[10] == PF_N && !perf_held && msg_is("B4 NONE") && (kb_layer >> b4) & 1u;
+    btn_down(B_FX); key_down(a4); frame();
+    ok = perf_held == PF_BIT(PF_ODN) && ui.layer == LAYER_FX;
+    turn(EN_PRESET, 1); keyboard_block();               /* (keyboard_block: the ISR's next block) past the last: NONE */
+    ok &= perf_map[9] == PF_N && !perf_held && msg_is("A4 NONE") && (kb_layer >> a4) & 1u;
     turn(EN_PRESET, 1); keyboard_block();               /* round: the first */
-    ok &= perf_map[10] == PF_R8 && perf_held == PF_BIT(PF_R8);
-    turn(EN_PRESET, -1); turn(EN_PRESET, -1); keyboard_block();
-    ok &= perf_map[10] == PF_PHS && perf_held == PF_BIT(PF_PHS) && lys.rp_dirty;
+    ok &= perf_map[9] == PF_R8 && perf_held == PF_BIT(PF_R8);
+    turn(EN_PRESET, -1); turn(EN_PRESET, -1); turn(EN_PRESET, -1); keyboard_block();
+    ok &= perf_map[9] == PF_OUP && perf_held == PF_BIT(PF_OUP) && lys.rp_dirty;
     ok &= (TSEL->preset | (uint32_t)TSEL->eng_req << 8) == snd && !gates();
-    bad += check("  FX + B4 held + PRESETS: PHASER, NONE, round to REPEAT 1/8 and back, each held at once; no sound load", ok);
+    bad += check("  FX + A4 held + PRESETS: NONE, round to REPEAT 1/8 and back to OCT UP, each held at once; no sound load", ok);
     btn_down(B_EDIT); frame(); btn_up(B_EDIT); frame(); keyboard_block();
-    ok = perf_map[10] == PF_FLG && perf_held == PF_BIT(PF_FLG) && msg_is("B4 FLANGER (DEF)") && ui.layer == LAYER_FX;
-    bad += check("  EDIT with the key held: its default (FLANGER) back, the layer open", ok);
-    turn(EN_PRESET, -1); keyboard_block();              /* B4: OCT DN */
-    key_up(b4); frame();
-    ok = !perf_held && perf_map[10] == PF_ODN;
+    ok = perf_map[9] == PF_ODN && perf_held == PF_BIT(PF_ODN) && msg_is("A4 OCT DN (DEF)") && ui.layer == LAYER_FX;
+    bad += check("  EDIT with the key held: its default (OCT DN) back, the layer open", ok);
+    turn(EN_PRESET, -1); keyboard_block();              /* A4: OCT UP */
+    key_up(a4); frame();
+    ok = !perf_held && perf_map[9] == PF_OUP;
     turn(EN_PRESET, 1);                                 /* no key held: nothing; how */
-    ok &= perf_map[10] == PF_ODN && msg_is("HOLD A KEY: ASSIGN");
+    ok &= perf_map[9] == PF_OUP && msg_is("HOLD A KEY: ASSIGN");
     key_down(white(1)); frame();                        /* G3 */
     ok &= perf_held == PF_BIT(PF_R16);
     key_up(white(1)); btn_up(B_FX); frame();
@@ -4961,19 +4959,19 @@ static int test_fx_map(void)
         settings_export(&pp);
         memset(fx_keys, 0, 10);
         frame();
-        ok = perf_map[10] == PF_FLG;
+        ok = perf_map[9] == PF_ODN;
         ok &= settings_import(&pp, (int)sizeof pp) == 1;
         frame();
-        ok &= perf_map[10] == PF_ODN;
+        ok &= perf_map[9] == PF_OUP;
         for (p = 0; p < PF_KEYS; p++)
-            ok &= p == 10u || perf_map[p] == PF_DEF[p];
+            ok &= p == 9u || perf_map[p] == PF_DEF[p];
         memset(&pp.favorites, 0, sizeof pp.favorites);
         pp.magic = 0x50455233u;                         /* PER3: no favorites */
         ok &= settings_import(&pp, (int)(sizeof pp - sizeof pp.favorites)) == 2;
         frame();
         for (p = 0; p < PF_KEYS; p++)
             ok &= perf_map[p] == PF_DEF[p];
-        bad += check("  the map with the settings (exported, imported: B4 OCT DN, the rest default); older settings: default", ok);
+        bad += check("  the map with the settings (exported, imported: A4 OCT UP, the rest default); older settings: default", ok);
     }
     /* the lock (a double tap of FX): one hand holds a key, the other turns PRESETS; EDIT keeps the lock */
     ui_power_on();
@@ -4993,9 +4991,9 @@ static int test_fx_map(void)
     press(B_EDIT);                                      /* no key held: EDIT closes the lock as before */
     ok &= !ui.lock && !perf_held;
     bad += check("  locked (FX double tap): G3 held + PRESETS: REPEAT 1/32; EDIT: 1/16, the lock stays; no key: EDIT closes it", ok);
-    {   /* the cells name what the keys hold: G3 "1/8" now, B4 FLNG */
-        ok = str_eq(PF_CELL[perf_map[1]], "1/8") && str_eq(PF_CELL[perf_map[10]], "FLNG") && perf_map[12] == PF_N;
-        bad += check("  the map's cells: G3 1/8 (remapped), B4 FLNG, D5 empty", ok);
+    {   /* the cells name what the keys hold: G3 "1/8" now, A4 OCT- */
+        ok = str_eq(PF_CELL[perf_map[1]], "1/8") && str_eq(PF_CELL[perf_map[9]], "OCT-") && perf_map[12] == PF_N;
+        bad += check("  the map's cells: G3 1/8 (remapped), A4 OCT-, D5 empty", ok);
     }
     memset(fx_keys, 0, 10);
     frame();

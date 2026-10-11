@@ -38,7 +38,6 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "click_render",                                    # the metronome's click (click.c), while it sounds
          "mod_begin", "mod_voice", "mod_end",                 # the modulation matrix (mod.c), called when active
          "perf_begin", "perf_mute", "perf_pre", "perf_block", "perf_master",   # the FX layer (perform.c), when busy
-         "perf_flanger", "perf_phaser",                     # .. FLANGER, PHASER (1.2), while held or fading
          "rev_room", "rev_spring", "rev_hall", "rev_side_mix"]   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
