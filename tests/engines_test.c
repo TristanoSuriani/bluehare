@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as FELUCCA_DIST=idm, which has
- * no VOICE, TRIO, WHEEL, FM6, ANALOG, PHYS. The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
+ * no VOICE, TRIO, WHEEL, FM6, ANALOG, PHYS, PHASE, NOISE. The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
  * stored sound of an engine left out loads as its substitute (engines.c eng_load_id):
  *   the table      the indices in order, the ids both ways, the left-out ids map to none, the substitutes
  *   power-on       the parts whose engine is left out: the build's first engine
@@ -32,20 +32,20 @@ static void stream_rehash(void)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"SID", "PHASE", "WAVE", "BYTE", "WEST", "HOOVER", "DUBSIREN", "KARPLUS", "VOSIM",
-                                        "PARTICLE", "CHAOS", "NOISE", "DRUM", "FMPERC", "SPEECH", "LOFI"};
+    static const char *const ORDER[] = {"SID", "ACID", "WAVE", "BYTE", "WEST", "HOOVER", "DUBSIREN", "KARPLUS", "VOSIM",
+                                        "PARTICLE", "CHAOS", "FMKEYS", "DRUM", "FMPERC", "SPEECH", "LOFI"};
     uint8_t a[16] = {0};
     int bad = 0, ok = 1, sub;
     uint32_t i, e, off;
 
     /* the table */
     ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_VOICE && !FELUCCA_ENG_TRIO && !FELUCCA_ENG_WHEEL && !FELUCCA_ENG_FM6 && !FELUCCA_ENG_ANALOG &&
-         !FELUCCA_ENG_PHYS && FELUCCA_ENG_HOOVER;
+         !FELUCCA_ENG_PHYS && !FELUCCA_ENG_PHASE && !FELUCCA_ENG_NOISE && FELUCCA_ENG_HOOVER;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
     ok &= eng_of_id(EID_TRIO) == ENG_NO && eng_of_id(EID_WHEEL) == ENG_NO && eng_of_id(EID_VOICE) == ENG_NO &&
           ENGI_TRIO == ENG_ABSENT && str_eq(N_ENGNAME[EID_TRIO], "-") && eng_by_id(EID_WHEEL) == &ENG_NONE;
-    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 ANALOG PHYS none", ok);
+    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 ANALOG PHYS PHASE NOISE none", ok);
     ok = eng_load_id(EID_HOOVER, &sub) == ENGI_HOOVER && !sub && eng_load_id(EID_WHEEL, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_FM6, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_VOICE, &sub) == ENGI_SPEECH && sub && eng_load_id(EID_TRIO, &sub) == ENGI_SID && sub &&

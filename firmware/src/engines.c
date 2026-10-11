@@ -25,6 +25,8 @@
 #include "eng_chaos.c"          /* CHAOS: chaotic systems as oscillators (1.5) */
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_dubsiren.c"       /* DUBSIREN: the sound-system siren, its own tape echo (1.5) */
+#include "eng_fmkeys.c"         /* FMKEYS: FM electric pianos, bells, mallets (1.5) */
+#include "eng_acid.c"           /* ACID: the acid bass line (1.5) */
 
 /* the engine of an id this build has none for (a retired id, or an engine left out): what the editor protocol
  * describes for it (NAMES, DESC: no presets, nothing to edit, named "-"). No track ever plays it */

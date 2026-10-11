@@ -383,6 +383,13 @@ In the order the device lists them:
   (RATE, DEPTH, SHAPE: two-tone, whoop up or down, wail), SWEEP (the dive or the rise), TIME (turned while it sounds,
   the echoes bend), FDBK (runs away while held, settles when let go), MIX. ATK and REL are its envelope; the voice
   lasts until the echoes die away
+- **FMKEYS** (the IDM distribution): FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
+  index falls over DECAY, harder notes brighter by VEL) and the tine (the metallic strike of the attack, TINE; DTUNE
+  its beating against the body); KSCL softens the top of the keyboard. Electric pianos, bells, tubular bells, marimba,
+  vibes, clav, organ, harpsichord, kalimba, celesta, music box
+- **ACID** (the IDM distribution): the acid bass line. SAW or SQR (SUB an octave down) into a four-pole low-pass (CUT,
+  RES up to its squeal, DRIV into its saturation), opened by ENV at each note and closed over DEC; notes played hard
+  are accents (ACC: louder, opened more, closed faster, building up over accents in a row). Slides: LEGATO with GLIDE
 - **SPEECH** (the IDM distribution): words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
   are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD
