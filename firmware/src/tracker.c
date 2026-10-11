@@ -460,6 +460,10 @@ static void tk_bound(void)
             tk.len[i] = TK_ROWS;
     for (i = 0; i < TK_INSTS; i++) {
         uint8_t s = tk.instr[i].src;
+        if (s < NENGINES && !eng_ok(s) && eng_ok(eng_sub(s))) {   /* an engine this build leaves out: the one its */
+            tk.instr[i].src = s = (uint8_t)eng_sub(s);           /* sounds load as, its first preset */
+            tk.instr[i].preset = 0;
+        }
         if (s != TK_SRC_NONE && (s >= TK_SRC_USER ? s - TK_SRC_USER >= UP_SLOTS : !eng_ok(s)))
             tk.instr[i].src = TK_SRC_NONE;
     }

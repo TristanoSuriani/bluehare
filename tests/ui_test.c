@@ -449,9 +449,12 @@ static int test_sound_loads(void)
     project_load(1);
     bad += check("a project load drops the copy and takes none", undo.trk == 0 && undo_depth == 0);
     ui_power_on();
+#if FELUCCA_SAMPLE
     bad += check("SAMPLE factory browsing has four melodic presets and no PERC",
                  ENGINES[4]->npresets == 4u && str_eq(ENGINES[4]->presets[0].name, "PIANO") &&
                  str_eq(ENGINES[4]->presets[3].name, "SAX"));
+#endif
+#if FELUCCA_SAMPLE && FELUCCA_GRAIN
     {   /* TRANH (SET 1, preset 1) is gone: both are PIANO aliases, kept for old data, never offered */
         const param_desc_t *sd = &ENGINES[4]->edit[0];
         uint32_t all, pos, k, e, pos0, shown = 0;
@@ -477,6 +480,8 @@ static int test_sound_loads(void)
                      str_eq(sd->names[7], "USR3") && sd->max == 7 &&
                      enum_orig(&ENGINES[8]->edit[0], SMP_SET_PERC) == 0 && SMP_SETS[SMP_SET_PERC].z0 == SMP_SETS[0].z0);
     }
+#endif
+
     {   /* a user preset of SAMPLE PERC (UP_PUT from an older editor, or a bank read): DRUM, its kit */
         up_rec_t r;
         int16_t keep[P_COUNT];
@@ -501,10 +506,13 @@ static int test_sound_loads(void)
     set_engine_of(t, 0);
     apply_preset_to(t, SMP_SET_PERC);             /* (engine 0: an ANALOG preset 4, not PERC) */
     bad += check("factory preset 4 of another engine stays that engine's", t->eng_req == 0u && t->preset == 4u);
+#if FELUCCA_SAMPLE
     set_engine_of(t, ENGI_SAMPLE);
     apply_preset_to(t, SMP_SET_PERC);             /* SAMPLE preset 4 (once PERC): the editor's PRESET, a favourite */
     bad += check("SAMPLE preset 4 (once PERC): DRUM's kit", t->eng_req == ENGI_DRUM && t->preset == 0u && perc_kit(t) &&
                  gm_hits_play(t));
+#endif
+
     printf("ui: undo copy %u bytes\n", (unsigned)sizeof undo);
     return bad;
 }
@@ -2153,6 +2161,7 @@ static int test_product_ux(void)
         ok &= changed;
     }
     bad += check("all palettes: active column is subtle, stable-size, no zoom over graph", ok);
+#if FELUCCA_SAMPLE
     ui_power_on(); set_engine_of(TSEL, 4); open_family(FAM_EDIT);
     memset(&sample_wave, 0, sizeof sample_wave); last_note = 60;
     voice_t voices[NVOICE]; memcpy(voices, TSEL->v, sizeof voices);
@@ -2171,6 +2180,8 @@ static int test_product_ux(void)
     }
     ok &= !memcmp(lo, sample_wave.lo, sizeof lo) && !memcmp(hi, sample_wave.hi, sizeof hi);
     bad += check("sample waveform is bounded, matches audio IMA decode and leaves voices intact", ok);
+#endif
+
     ui_power_on(); return bad;
 }
 
@@ -2765,6 +2776,7 @@ static int test_edit_cycle(void)
     return bad;
 }
 
+#if FELUCCA_SAMPLE && FELUCCA_GRAIN
 /* a missing sample (an empty user slot; a set this build lacks): it plays a sine (eng_sample.c smp_sine) and the UI
  * says NO SAMPLE, led by the no-file icon (ui.c MSG_NO_SAMPLE), once per track and source (ui_input.c
  * sample_notice): when it is chosen, not on its notes; again for another source; after a project load (behind
@@ -2838,6 +2850,7 @@ static int test_sample_alert(void)
     ui_power_on();
     return bad;
 }
+#endif
 
 #if FELUCCA_SLICE
 /* SLICES (EDIT family, a SLICE track: ui_slice.c; the MAN slices of eng_slice.c, ported from hugelton/Felucca#27 by
@@ -3190,6 +3203,7 @@ static int test_quick_layers(void)
     ok = TSEL->eng_req == eng_step(0, 1);
     btn_up(B_EDIT); frame();
     bad += check("  KNOB 1: the next engine", ok);
+#if FELUCCA_SAMPLE
     {                                                   /* #124: SAMPLE's alias (1 = PIANO) is not a stop on KNOB 2 */
         uint32_t tot, n, c0, c1, c2, seen = 0, alias = 0;
         set_engine_of(TSEL, ENGI_SAMPLE); go_home(); frame();
@@ -3220,6 +3234,8 @@ static int test_quick_layers(void)
         btn_up(B_EDIT); frame();
         bad += check("  #124 SAMPLE: KNOB 2 right PIANO, FLUTE, SAX (No. 1 2 3), both ways round the list, never the alias", ok);
     }
+#endif
+
     song.playing = 0;
     lay_combo(B_EDIT, white(LY_INIT));
     ok = ui.confirm == CF_INIT_SOUND;
@@ -3734,6 +3750,75 @@ static int test_fm6_charts(void)
            check("FM6 charts: carriers on the bottom row, modulators a row up, one per cell, at most 4 rows", layout);
 }
 
+#if !FELUCCA_SAMPLE && !FELUCCA_GRAIN && !FELUCCA_SLICE
+/* 1.5: SAMPLE, GRAIN and SLICE left out (core.h, the default build): engines 4, 8, 13 are reserved ("-", never offered,
+ * silent), and whatever brings a sound of one loads the engine its sounds load as (engines.c eng_sub: SAMPLE -> FM6,
+ * GRAIN -> WAVE, SLICE -> DRUM, the first preset): an engine change, a project, a user preset, a song's instrument, a
+ * track that got one any other way (the main loop's net); the SLICES page never shows */
+static int test_left_out_engines(void)
+{
+    static const uint8_t GONE[3] = {4, 8, 13}, SUB[3] = {ENGI_FM6, ENGI_WAVE, ENGI_DRUM};
+    int bad = 0, ok = 1;
+    uint32_t i, k;
+    ui_power_on();
+    for (i = 0; i < 3u; i++)
+        ok &= str_eq(ENGINES[GONE[i]]->name, "-") && !eng_ok(GONE[i]) && !ENGINES[GONE[i]]->npresets &&
+              eng_sub(GONE[i]) == SUB[i] && eng_ok(SUB[i]) && str_eq(N_ENGNAME[GONE[i]], "-");
+    ok &= eng_ok(ENGI_WAVE) && eng_ok(ENGI_BYTE) && str_eq(ENGINES[ENGI_WAVE]->name, "WAVE") &&
+          str_eq(ENGINES[ENGI_BYTE]->name, "BYTE") && NENG_SHOWN == 12u && eng_sub(ENGI_DIGITAL) == ENGI_DIGITAL;
+    bad += check("left out: SAMPLE GRAIN SLICE are \"-\", not offered; WAVE BYTE are 14 15; 12 engines shown", ok);
+    for (i = 0, ok = 1; i < 3u; i++) {
+        set_engine_of(TSEL, GONE[i]);
+        ok &= TSEL->eng_req == SUB[i] && TSEL->preset == 0u;
+    }
+    bad += check("  an engine change to one (the editor's ENG, a stored number): the substitute's first preset", ok);
+    for (i = 0, ok = 1; i < 3u; i++) {
+        TSEL->eng_req = GONE[i];                         /* (any other path: the main loop's net) */
+        frame();
+        ok &= TSEL->eng_req == SUB[i] && TSEL->preset == 0u;
+    }
+    bad += check("  a track that got one any other way: the substitute, at the next frame", ok);
+    for (i = 0, ok = 1; i < 3u; i++) {                   /* a project with one: loads, then the substitute */
+        song.playing = 0;
+        trk[1].eng_req = GONE[i];
+        ok &= !project_save(2);
+        set_engine_of(&trk[1], 0);
+        project_load(2);
+        ok &= trk[1].eng_req == GONE[i] && msg_is("LOADED");
+        frame();
+        ok &= trk[1].eng_req == SUB[i];
+    }
+    bad += check("  a project with one loads (not refused); the track gets the substitute", ok);
+    {   /* a user preset stored with GRAIN (an older firmware, the editor's UP_PUT): loads as WAVE, its list name WAVE */
+        up_rec_t r;
+        char nm[16];
+        memset(&r, 0, sizeof r);
+        r.used = UP_USED; r.ver = UP_VER; r.engine = 8; r.np = P_COUNT;
+        memcpy(r.name, "OLD GRAIN", 9);
+        for (k = 0; k < P_COUNT; k++)
+            up_set_value(&r, k, TSEL->p[k]);
+        *up_rec(9) = r;
+        up_auto_name(nm, 8, 9);
+        up_load(9);
+        frame();
+        bad += check("  a GRAIN user preset: WAVE (named so in the lists)", TSEL->eng_req == ENGI_WAVE &&
+                     up_engine(9) == ENGI_WAVE && !memcmp(nm, "WAVE", 4));
+        memset(up_rec(9), 0, sizeof r);
+    }
+    tk.instr[5].src = 13; tk.instr[5].preset = 1;        /* a song's instrument of SLICE (a stored song) */
+    tk.instr[6].src = 1; tk.instr[6].preset = 0;         /* .. and of DIGITAL: dropped, as before */
+    tk_bound();
+    bad += check("  a song's SLICE instrument: DRUM's first preset; DIGITAL's: none", tk.instr[5].src == ENGI_DRUM &&
+                 tk.instr[5].preset == 0u && tk.instr[6].src == TK_SRC_NONE);
+    set_engine_of(TSEL, ENGI_WAVE);
+    for (i = 0, ok = 1; i < NPAGES; i++)
+        ok &= PAGES[i].graph != GR_SLICES || !page_visible(i);
+    bad += check("  the SLICES page never shows", ok);
+    ui_power_on();
+    return bad;
+}
+#endif
+
 #if !FELUCCA_FM4
 /* DIGITAL retired (src/fm4_convert.c): engine 1 is on no track and in no list; its sounds arrive as FM6 with a patch
  * of their own: a user preset of it, its preset numbers (set_engine_of / apply_preset_to), a track that got engine 1
@@ -3741,9 +3826,11 @@ static int test_fm6_charts(void)
 static int test_fm4_retired(void)
 {
     int bad = 0, ok = 1;
-    uint32_t i, k, e, total, seen = 0, all = ((1u << NENGINES) - 1u) & ~(1u << ENGI_DIGITAL);
+    uint32_t i, k, e, total, seen = 0, all = 0;
     int16_t p[P_COUNT];
     uint8_t v[FP_SIZE + 1u];
+    for (i = 0; i < NENGINES; i++)                     /* the engines one can pick: all but DIGITAL and the left-out */
+        all |= (uint32_t)eng_ok(i) << i;
     ui_power_on();
     bad += check("power-on: track 2 is FM6 PAD (TRK_DEF, was DIGITAL PAD)", trk[1].eng_req == ENGI_FM6 &&
                  str_eq(ENGINES[ENGI_FM6]->presets[trk[1].preset].name, "PAD"));
@@ -3753,7 +3840,8 @@ static int test_fm4_retired(void)
         if (e < NENGINES)
             seen |= 1u << e;
     }
-    bad += check("PRESETS: the list holds every engine's presets but DIGITAL's", seen == all && NENG_SHOWN == NENGINES - 1u);
+    bad += check("PRESETS: the list holds every engine's presets but DIGITAL's", seen == all &&
+                 NENG_SHOWN == NENGINES - 1u - !FELUCCA_SAMPLE - !FELUCCA_GRAIN - !FELUCCA_SLICE && !(all & 2u));
     go_page(GR_BROWSE);
     set_engine_of(TSEL, 0);
     for (i = 0, seen = 0; i < NENG_SHOWN; i++) {
@@ -3761,15 +3849,23 @@ static int test_fm4_retired(void)
         seen |= 1u << TSEL->eng_req;
     }
     bad += check("PRESETS KNOB 2: the engines in order, DIGITAL skipped, back to the first",
-                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_FM6 && eng_step(ENGI_FM6, 1) == 2u &&
+                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_FM6 && eng_step(ENGI_FM6, 1) == ENGI_WAVE &&
                  eng_step(ENGI_FM6, -1) == 0u && eng_step(0, -1) == ENGI_DRUM);
     {   /* the display order (engines.c ENGINE_ORDER): every engine one can pick once; the PRESETS list follows it */
-        static const char *const ORDER[] = {"ANALOG", "FM6", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL", "GRAIN",
-                                            "PHYS", "NOISE", "SLICE", "DRUM"};
-        uint32_t last = 0xFFu, r = 0, n = 0;
-        ok = NENG_SHOWN == NELEM(ORDER);
-        for (i = 0; ok && i < NENG_SHOWN; i++)
-            ok &= str_eq(ENGINES[eng_vis(i)]->name, ORDER[i]) && eng_rank(eng_vis(i)) == i && eng_ok(eng_vis(i));
+        static const char *const ORDER[] = {"ANALOG", "FM6", "WAVE", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL",
+                                            "GRAIN", "PHYS", "NOISE", "BYTE", "SLICE", "DRUM"};
+        uint32_t last = 0xFFu, r = 0, n = 0, j = 0;
+        for (i = 0; i < NELEM(ORDER); i++)             /* (those built) */
+            n += (FELUCCA_SAMPLE || !str_eq(ORDER[i], "SAMPLE")) && (FELUCCA_GRAIN || !str_eq(ORDER[i], "GRAIN")) &&
+                 (FELUCCA_SLICE || !str_eq(ORDER[i], "SLICE"));
+        ok = NENG_SHOWN == n;
+        n = 0;
+        for (i = 0; ok && i < NENG_SHOWN; i++, j++) {
+            while (!FELUCCA_SAMPLE && str_eq(ORDER[j], "SAMPLE") || !FELUCCA_GRAIN && str_eq(ORDER[j], "GRAIN") ||
+                   !FELUCCA_SLICE && str_eq(ORDER[j], "SLICE"))
+                j++;
+            ok &= str_eq(ENGINES[eng_vis(i)]->name, ORDER[j]) && eng_rank(eng_vis(i)) == i && eng_ok(eng_vis(i));
+        }
         preset_all_pos(&total);
         for (i = 0; i < total; i++) {                  /* the list's engines, each once, in that order */
             e = preset_all_at(i, &k);
@@ -3780,7 +3876,7 @@ static int test_fm4_retired(void)
             last = e;
             r++;
         }
-        bad += check("engines shown ANALOG FM6 PHASE ... NOISE SLICE DRUM (ENGINE_ORDER); PRESETS lists them so",
+        bad += check("engines shown ANALOG FM6 WAVE PHASE ... NOISE BYTE (SLICE) DRUM (ENGINE_ORDER); PRESETS lists them so",
                      ok && r == NENG_SHOWN);
     }
     /* a user preset stored with engine 1: kept as it is, it loads as FM6 with the converted patch */
@@ -7640,7 +7736,9 @@ int main(void)
 #if FELUCCA_SLICE
     bad += test_slices();
 #endif
+#if FELUCCA_SAMPLE && FELUCCA_GRAIN
     bad += test_sample_alert();
+#endif
     bad += test_quick_layers();
     bad += test_chord_page();
     bad += test_bughunt_ui();
@@ -7666,6 +7764,9 @@ int main(void)
     bad += test_fm_charts();                        /* (DIGITAL's charts: built with FELUCCA_FM4=1 only) */
 #else
     bad += test_fm4_retired();
+#if !FELUCCA_SAMPLE && !FELUCCA_GRAIN && !FELUCCA_SLICE
+    bad += test_left_out_engines();
+#endif
 #endif
 
     printf(bad ? "ui: %d FAILED\n" : "ui: all passed\n", bad);

@@ -261,8 +261,8 @@ static int proj_read(pr_t *r, int apply)
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         uint32_t e = pr_u8(r), pre = pr_u8(r);
-        if (!eng_ok(e))
-            return 1;
+        if (!eng_ok(e) && !eng_ok(eng_sub(e)))      /* (an engine this build leaves out loads: the track gets the */
+            return 1;                               /* engine its sounds load as, ui_input.c) */
         if (apply) {
             t->eng_req = (uint8_t)e;
             t->user = 0;
@@ -700,11 +700,13 @@ static void persist_boot(void)                    /* before settings_init / pane
 #if FELUCCA_SLICE
     slc_store_boot();                              /* (the scans read each slot's stored slices) */
 #endif
+#if FELUCCA_SAMPLES
     {
         uint32_t k;
         for (k = 0; k < SMP_USER_SLOTS; k++)
             smp_user_scan(k);
     }
+#endif
     {
         int n = st_load(OBJ_SETTINGS, &p, sizeof p);
         if (settings_import(&p, n))

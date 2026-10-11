@@ -35,6 +35,9 @@ static const char *const PRESET_CAT[16] = {
     "FFFF",                      /* 11 NOISE: WIND, RAIN, ARCADE, METAL */
     "KUBLPUKU",                  /* 12 FM6: TINE EP, BELL, FM BASS, BRASS, PAD, MARIMBA, ORGAN, PLUCK */
     "DD",                        /* 13 SLICE: CHOP, STUTTER */
+    "KPLBPUKL",                  /* 14 WAVE: DUB CHORD, SCAN PAD, SYNC LEAD, RESO BASS, VOX PAD, FM BELL, DIGI KEYS,
+                                  * BIT LEAD */
+    "LFBLFF",                    /* 15 BYTE: BYTE ARP, SIERPINSKI, XOR BASS, 42 MELODY, GLITCH, BIT NOISE */
 };
 static uint32_t preset_cat(uint32_t e, uint32_t k)    /* factory preset k of engine e */
 {

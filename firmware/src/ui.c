@@ -654,23 +654,37 @@ static int param_kept(uint32_t i)
 /* a retired preset kept as an alias, so stored preset numbers stay valid: SAMPLE 1, once TRANH, is PIANO
  * (tools/gen_samples.py SMP_SET_ORIG). It loads as the original; browsing skips it. -> the preset k stands for.
  * (SAMPLE 4, once PERC, is past SMP_NPRESETS: apply_preset_to loads it as DRUM) */
+#if FELUCCA_SAMPLE
+#define SMP_ALIASED(e) ((e)->presets == SMP_PRESET_TABLE)
+#else
+#define SMP_ALIASED(e) 0
+#endif
 static uint32_t preset_orig(const engine_t *e, uint32_t k)
 {
-    return e->presets == SMP_PRESET_TABLE && k < SMP_NSETS ? SMP_SET_ORIG[k] : k;
+#if FELUCCA_SAMPLE
+    return SMP_ALIASED(e) && k < SMP_NSETS ? SMP_SET_ORIG[k] : k;
+#else
+    (void)e;
+    return k;
+#endif
 }
 
 /* the presets of engine e that browsing shows before preset k (k = npresets: all of them) */
 static uint32_t preset_rank(const engine_t *e, uint32_t k)
 {
     uint32_t i, n = 0;
-    if (e->presets != SMP_PRESET_TABLE)
+    if (!SMP_ALIASED(e))
         return k;
     for (i = 0; i < k; i++)
         n += preset_orig(e, i) == i;
     return n;
 }
 
-#define preset_shown(e) (ENGINES[e]->npresets - (ENGINES[e]->presets == SMP_PRESET_TABLE ? SMP_NALIAS : 0u))
+#if FELUCCA_SAMPLE
+#define preset_shown(e) (ENGINES[e]->npresets - (SMP_ALIASED(ENGINES[e]) ? SMP_NALIAS : 0u))
+#else
+#define preset_shown(e) (ENGINES[e]->npresets)
+#endif
 
 #if !FELUCCA_FM4
 /* DIGITAL (engine 1, retired): t's sound = p, values as DIGITAL has them, converted to FM6 with a patch of its own
@@ -730,6 +744,10 @@ static void apply_preset_to(track_t *t, uint32_t pi)
         set_engine_of(t, ENGI_DRUM);                  /* number: the editor's PRESET, a favourite): DRUM's kit */
         return;                                       /* (core.h drum_from_perc) */
     }
+    if (!eng_ok(t->eng_req % NENGINES)) {             /* an engine this build leaves out: the one its sounds load as */
+        set_engine_of(t, eng_sub(t->eng_req % NENGINES));
+        return;
+    }
     load_begin(t);
     panic_req |= (uint8_t)(1u << trk_index(t));       /* MONO/POLY may change: release what sounds */
     t->user = 0;
@@ -766,8 +784,10 @@ static void apply_preset_to(track_t *t, uint32_t pi)
  * its values or the new one with its own (voice.c engine_block), never one with the other's */
 static void set_engine_of(track_t *t, uint32_t ei)
 {
-    const engine_t *e = ENGINES[ei % NENGINES];
+    const engine_t *e;
     uint32_t i;
+    ei = eng_sub(ei % NENGINES);                      /* (an engine this build leaves out: the one its sounds load as) */
+    e = ENGINES[ei];
 #if !FELUCCA_FM4
     if (ei % NENGINES == ENGI_DIGITAL) {             /* DIGITAL (retired): its first preset, as FM6 */
         fm4_load_preset(t, 0);

@@ -209,6 +209,7 @@ static uint32_t str_hash(uint32_t h, const char *s)
     return h;
 }
 
+#if FELUCCA_SAMPLE
 /* One shared, reduced sample display. Decode only in the UI/main loop with a
  * private IMA state, 512 samples per frame; no audio voice state is touched.
  * Cache follows the sample zone, selected note and user-slot generation. */
@@ -282,6 +283,24 @@ static void graph_sample(uint16_t c)
     if (z->looped && TSEL->p[P_E3]) {
         int32_t left = 12 + (int32_t)(z->ls * 216u / z->n), right = 12 + (int32_t)(z->le * 216u / z->n);
         cv_line(left, 4, left, 90, T_MID); cv_line(right, 4, right, 90, T_MID);
+    }
+}
+#endif
+
+/* WAVE (eng_wave.c): the frame POS plays (its two neighbours crossfaded, the fullest copy), one cycle across */
+static void graph_wave(const track_t *t, uint16_t c)
+{
+    int32_t pos = clamp(t->p[P_E1], 0, 127) << 8, fq = pos * 7 / 127, xf = (fq & 255) << 7, x, py = 48;
+    uint32_t fi = (uint32_t)fq >> 8;
+    const int16_t *fa = WT_DATA + ((uint32_t)t->p[P_E0] % WT_NBANK * WT_NFRAME + fi) * WT_FRAME_LEN;
+    const int16_t *fb = fi + 1u < WT_NFRAME ? fa + WT_FRAME_LEN : fa;
+    cv_rect(PANEL_X0, 48, PANEL_W, 1, T_RAISE);
+    for (x = 0; x <= 216; x += 2) {
+        uint32_t k = (uint32_t)x * 511u / 216u;
+        int32_t v = fa[k] + (((fb[k] - fa[k]) * xf) >> 15), y = 48 - v * 38 / 32767;
+        if (x)
+            cv_line(12 + x - 2, py, 12 + x, y, c);
+        py = y;
     }
 }
 
@@ -726,7 +745,9 @@ static uint32_t graph_signature(void)
     if ((pg->scope == SC_ENGINE || fop_page(pg->graph)) && t->eng_req % NENGINES == ENGI_FM6)   /* the patch (PAT's algorithm,
                                                      * levels, FB; the operator pages: the operator, the stage) */
         h ^= (fm6_pgen[(t - trk) % NTRK] + 1u) * 2246822519u + (fop_op + 1u) * 40503u + (fop_stg + 1u) * 7919u;
+#if FELUCCA_SAMPLE
     if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE) h ^= sample_wave.pos * 13u + sample_wave.key;
+#endif
     return h;
 }
 /* 4-letter engine tags of the preset list */
@@ -1233,7 +1254,9 @@ static void draw_graph(void)
         draw_home_tracks();
         return;
     }
+#if FELUCCA_SAMPLE
     if (!ui.home && pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE) sample_wave_tick(t);
+#endif
     sig = graph_signature();
     if (!ui.force && sig == ui.graph_sig)
         return;
@@ -1310,7 +1333,10 @@ static void draw_graph(void)
             break;
         default:
             if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) graph_wheel(t, c);
+#if FELUCCA_SAMPLE
             else if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE && sample_wave.ready) graph_sample(c);
+#endif
+            else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WAVE) graph_wave(t, c);
             else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_FM6) graph_fm6(t, c, 6u);   /* EDIT 1 and 2 */
 #if FELUCCA_FM4
             else if ((pg->scope == SC_ENGINE || pg->id[0] == P_FM1_LEVEL) && t->eng_req % NENGINES == ENGI_DIGITAL)

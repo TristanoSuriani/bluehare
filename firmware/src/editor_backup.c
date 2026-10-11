@@ -71,6 +71,7 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         if (upf_valid(&upf)) *len = sizeof upf;
         return (const uint8_t *)&upf;
     }
+#if FELUCCA_SAMPLES
     if (id >= 32u && id < 32u + SMP_USER_SLOTS) {
         uint32_t k = id - 32u;
         const smp_user_hdr_t *h = (const smp_user_hdr_t *)smp_user_xip(k);
@@ -78,6 +79,10 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
             *len = SMP_USER_DATA + h->data_len;
         return smp_user_xip(k);
     }
+#else
+    if (id >= 32u && id < 35u)                      /* the user sample slots: none in this build, always empty */
+        return ED_BK_RAW;
+#endif
     return 0;
 }
 static uint32_t ed_bk_capture(void)

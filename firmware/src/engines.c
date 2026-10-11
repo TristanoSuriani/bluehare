@@ -6,15 +6,21 @@
 #include "eng_analog.c"
 #include "eng_phase.c"
 #include "eng_lofi.c"
-#include "eng_sample.c"
+#if FELUCCA_SAMPLES
+#include "eng_sample.c"         /* SAMPLE, and the sample material GRAIN and SLICE play */
+#endif
 #include "eng_formant.c"
 #include "eng_trio.c"
 #include "eng_wheel.c"
+#if FELUCCA_GRAIN
 #include "eng_grain.c"
+#endif
 #include "eng_phys.c"           /* PHYS: DaisySP physical models (phys_dsp.c, MIT) */
 #include "eng_drum.c"           /* DRUM: the 8-lane kit (drum_voice.c) */
 #include "eng_noise.c"
 #include "eng_fm6.c"            /* FM6: 6-operator FM, msfa ported (fm6_core.c, Apache-2.0) */
+#include "eng_wave.c"           /* WAVE: wavetables (1.5) */
+#include "eng_byte.c"           /* BYTE: bytebeat formulas (1.5) */
 #include "fm4_convert.c"        /* DIGITAL's tables, and its sounds -> FM6 */
 #if FELUCCA_FM4
 #include "eng_digital.c"        /* DIGITAL: four-operator FM (retired; FELUCCA_FM4=1 builds it) */
@@ -22,6 +28,24 @@
 #if FELUCCA_SLICE
 #include "eng_slice.c"
 #endif
+
+/* an engine number this build leaves out (core.h: FELUCCA_SAMPLE, FELUCCA_GRAIN, FELUCCA_SLICE): never selectable
+ * (eng_ok), no presets, silent; named "-" as DIGITAL's (the editor leaves such names out). A track never keeps one:
+ * whatever brings its sound loads another engine's instead (eng_sub, ui.c eng_fix) */
+static void eng_none_note_on(struct track *t, voice_t *v) { (void)t; (void)v; }
+static void eng_none_render(struct track *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+{
+    (void)t; (void)v; (void)out; (void)n; (void)m;
+}
+#define ED_NONE {"-", F_INT, 0, 0, 0, 0, 0}
+static const engine_t ENG_NONE = {
+    .name = "-",
+    .page_title = {"-", "-"},
+    .edit = {ED_NONE, ED_NONE, ED_NONE, ED_NONE, ED_NONE, ED_NONE, ED_NONE, ED_NONE},
+    .note_on = eng_none_note_on,
+    .render = eng_none_render,
+    .knob = {P_ATK, P_DEC, P_SUS, P_REL},
+};
 
 /* the editor protocol, user presets and projects store these indices: append, never reorder */
 static const engine_t *const ENGINES[NENGINES] = {
@@ -33,18 +57,30 @@ static const engine_t *const ENGINES[NENGINES] = {
 #endif
     &ENG_PHASE,                  /* 2 */
     &ENG_LOFI,                   /* 3 */
-    &ENG_SAMPLE,                 /* 4 */
+#if FELUCCA_SAMPLE
+    &ENG_SAMPLE,                 /* 4 (ENGI_SAMPLE) */
+#else
+    &ENG_NONE,                   /* 4: SAMPLE, not built (FELUCCA_SAMPLE=1 builds it) */
+#endif
     &ENG_FORMANT,                /* 5 VOICE (eng_formant.c: "voice" is a sounding note in voice.c) */
     &ENG_TRIO,                   /* 6 */
     &ENG_WHEEL,                  /* 7 */
-    &ENG_GRAIN,                  /* 8 */
+#if FELUCCA_GRAIN
+    &ENG_GRAIN,                  /* 8 (ENGI_GRAIN) */
+#else
+    &ENG_NONE,                   /* 8: GRAIN, not built (FELUCCA_GRAIN=1) */
+#endif
     &ENG_PHYS,                   /* 9 (ENGI_PHYS) */
     &ENG_DRUM,                   /* 10 (ENGI_DRUM) */
     &ENG_NOISE,                  /* 11 */
     &ENG_FM6,                    /* 12 (ENGI_FM6) */
 #if FELUCCA_SLICE
-    &ENG_SLICE,                  /* 13 (FELUCCA_SLICE=0 builds without it) */
+    &ENG_SLICE,                  /* 13 (ENGI_SLICE) */
+#else
+    &ENG_NONE,                   /* 13: SLICE, not built (FELUCCA_SLICE=1) */
 #endif
+    &ENG_WAVE,                   /* 14 (ENGI_WAVE, 1.5) */
+    &ENG_BYTE,                   /* 15 (ENGI_BYTE, 1.5) */
 };
 
 /* a track's engine number as an index (the audio paths: a compare, cheaper than % NENGINES; a bad number: 0) */
@@ -56,6 +92,7 @@ static inline uint32_t eng_idx(uint32_t e) { return e < NENGINES ? e : 0u; }
 static uint8_t snd_said[NTRK];   /* per track: the code last said, 0 = none (a project load clears them: said again) */
 static const char *snd_missing(const track_t *t, uint32_t *code)
 {
+#if FELUCCA_SAMPLES
     const engine_t *e = ENGINES[eng_idx(t->eng_req)];
     uint32_t si = (uint32_t)t->p[P_E0] % SMP_NALL;
 #if FELUCCA_SLICE
@@ -65,10 +102,21 @@ static const char *snd_missing(const track_t *t, uint32_t *code)
         return slc_get(si) ? 0 : N_SLC_SRC[si];
     }
 #endif
-    if (e != &ENG_SAMPLE && e != &ENG_GRAIN)
-        return 0;
-    *code = (e == &ENG_GRAIN ? 32u : 1u) + si % 32u;
-    return smp_set_missing(si) ? SMP_ALL_NAMES[si] : 0;
+#if FELUCCA_SAMPLE
+    if (e == &ENG_SAMPLE) {
+        *code = 1u + si % 32u;
+        return smp_set_missing(si) ? SMP_ALL_NAMES[si] : 0;
+    }
+#endif
+#if FELUCCA_GRAIN
+    if (e == &ENG_GRAIN) {
+        *code = 32u + si % 32u;
+        return smp_set_missing(si) ? SMP_ALL_NAMES[si] : 0;
+    }
+#endif
+#endif
+    (void)t; (void)code;
+    return 0;
 }
 
 /* the order the engines are shown in (PRESETS browsing and its ENG knob, the EDIT layer's keys, the editor's list):
@@ -80,17 +128,36 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
 #if FELUCCA_FM4
     1,                           /* DIGITAL */
 #endif
-    2, 3, 4, 5, 6, 7, 8, 9,      /* PHASE LOFI SAMPLE VOICE TRIO WHEEL GRAIN PHYS */
+    14,                          /* WAVE */
+    2, 3,                        /* PHASE LOFI */
+#if FELUCCA_SAMPLE
+    4,                           /* SAMPLE */
+#endif
+    5, 6, 7,                     /* VOICE TRIO WHEEL */
+#if FELUCCA_GRAIN
+    8,                           /* GRAIN */
+#endif
+    9,                           /* PHYS */
     11,                          /* NOISE */
+    15,                          /* BYTE */
 #if FELUCCA_SLICE
     13,                          /* SLICE */
 #endif
     10,                          /* DRUM */
 };
 
-/* the engines one can pick (engine 1 only with FELUCCA_FM4), in ENGINE_ORDER: eng_ok(e), the n-th of them
- * eng_vis(n), e's place among them eng_rank(e), the next / previous one eng_step(e, dir) (wraps) */
-static int eng_ok(uint32_t e) { return e < NENGINES && (FELUCCA_FM4 || e != ENGI_DIGITAL); }
+/* the engines one can pick (engine 1 only with FELUCCA_FM4; 4, 8, 13 only when built), in ENGINE_ORDER: eng_ok(e),
+ * the n-th of them eng_vis(n), e's place among them eng_rank(e), the next / previous one eng_step(e, dir) (wraps) */
+static int eng_ok(uint32_t e) { return e < NENGINES && ENGINES[e] != &ENG_NONE && (FELUCCA_FM4 || e != ENGI_DIGITAL); }
+/* the engine a sound of engine e loads as: e itself when it can be picked; a left-out engine's sounds load as the
+ * nearest one built (SAMPLE: FM6's first preset, the electric piano; GRAIN: WAVE, pads; SLICE: DRUM, a kit); DIGITAL
+ * stays (its sounds convert to FM6 with a patch of their own: fm4_convert.c) */
+static uint32_t eng_sub(uint32_t e)
+{
+    if (e >= NENGINES || eng_ok(e) || e == ENGI_DIGITAL)
+        return e;
+    return e == ENGI_SLICE ? ENGI_DRUM : e == ENGI_GRAIN ? ENGI_WAVE : e == ENGI_SAMPLE ? ENGI_FM6 : ENGI_ANALOG;
+}
 static uint32_t eng_vis(uint32_t n) { return ENGINE_ORDER[n % NENG_SHOWN]; }
 static uint32_t eng_rank(uint32_t e)
 {

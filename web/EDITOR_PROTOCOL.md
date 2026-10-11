@@ -73,6 +73,17 @@ a user preset's stored pattern is still read and written (and kept in flash), bu
 `UP_STORE` stores an empty one. `PROJECT` saves and loads the one song whatever the slot. See "1.5: the tracker (78,
 79)" below.
 
+**1.5 (engines):** NENGINES is 16 in every build. Two engines are appended: 14 WAVE (wavetables) and 15 BYTE (bytebeat);
+`NAMES`, `DESC` and the rest treat them as any engine. SAMPLE (4), GRAIN (8) and SLICE (13) are left out of the default
+build (firmware `FELUCCA_SAMPLE` / `FELUCCA_GRAIN` / `FELUCCA_SLICE`): such an engine is reserved as DIGITAL is, `INFO`
+names it "-", `NAMES` lists no presets, its EDIT descriptors are "-" (range 0..0), and no track keeps it: a `SET` of
+`G_ENGSEL` to it, a `PRESET` of it, `UP_LOAD` of a slot stored with it, a project or a song instrument with it all load
+the engine its sounds load as, with its first preset: SAMPLE → 12 FM6, GRAIN → 14 WAVE, SLICE → 10 DRUM (`UP_PUT` still
+takes it; `UP_LIST` / `UP_GET` report the record as stored). Without any of the three there are no user sample slots:
+`SMP_INFO` answers 0 slots of 0 KiB, `SMP_BEGIN` / `SMP_WRITE` / `SMP_END` get no reply, `SMP_ERASE` of slot 0..2
+answers rc 0 (an empty slot: a complete backup's empty sample objects restore), and `BACKUP_LIST` reports objects
+32..34 empty; an editor skips the sample objects of a backup when it restores to such a device.
+
 ## Framing
 
 A request is `F0 7D 46 4C <cmd> <args...> F7`:
@@ -96,7 +107,7 @@ watches (v2, `WATCH`), the device also sends push frames (cmds 23, 24, 26) at an
 | string | ASCII bytes, ended by a 0 byte |
 | scope | 0 = parameter of the selected track (`P_*`, 0..P_COUNT−1); 1 = global parameter (`G_*`, 0..G_COUNT−1) |
 | track | 0..3: tracks 1..4 (synth parts) |
-| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 reserved (DIGITAL before 1.0: see below), 2 PHASE, 3 LOFI, 4 SAMPLE, 5 VOICE, 6 TRIO, 7 WHEEL, 8 GRAIN, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 SLICE (NENGINES 14; a build with `FELUCCA_SLICE=0` has 13). The device and the editor list them in another order (ANALOG FM6 PHASE LOFI SAMPLE VOICE TRIO WHEEL GRAIN PHYS NOISE SLICE DRUM: `ENGINE_ORDER`); the numbers stay |
+| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 reserved (DIGITAL before 1.0: see below), 2 PHASE, 3 LOFI, 4 SAMPLE, 5 VOICE, 6 TRIO, 7 WHEEL, 8 GRAIN, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 SLICE, 14 WAVE, 15 BYTE (1.5: NENGINES 16 in every build; 1.0.4 .. 1.4.1: 14, a build with `FELUCCA_SLICE=0` 13; 1.5 leaves 4, 8 and 13 out by default: named "-", see 1.5 above). The device and the editor list them in another order (ANALOG FM6 WAVE PHASE LOFI SAMPLE VOICE TRIO WHEEL GRAIN PHYS NOISE BYTE SLICE DRUM: `ENGINE_ORDER`, those built); the numbers stay |
 
 The engine parameters are `P_E0..P_E7`: P_COUNT−8 .. P_COUNT−1 (96..103 since 1.2; 91..98 in 1.1), and `INFO` gives `P_E0`.
 Their meaning, range and names depend on the current engine, so re-read `DESC` for them
@@ -193,8 +204,8 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 | 11 SMP_BEGIN | slot 0..2 | slot, rc (0 ok). Erases the slot's header sector: the slot is empty from now on |
 | 12 SMP_WRITE | slot, offset (3 × 7 bit, LSB first), pack7 data (≤ 256 bytes) | slot, offset, rc: 0 ok, 1 arguments, 2 erase, 3 write, 4 slot in use (send SMP_BEGIN first). Offset ≥ 512 and a multiple of 256; writes go in increasing order (a write at a 4 KiB boundary erases that sector) |
 | 13 SMP_END | slot, pack7 header (480 bytes) | slot, rc: 0 ok, 1 size, 2 header, 3 data CRC, 4 flash, 5 zones |
-| 14 SMP_ERASE | slot | slot, rc (erases the whole slot, ~1 s) |
-| 15 SMP_INFO | — | slots, slot KiB, then per slot: zone count (0 = empty), name string, data KiB |
+| 14 SMP_ERASE | slot | slot, rc (erases the whole slot, ~1 s; 1.5 without sample slots: rc 0 at once for slot 0..2) |
+| 15 SMP_INFO | — | slots, slot KiB, then per slot: zone count (0 = empty), name string, data KiB (1.5 without SAMPLE, GRAIN and SLICE: 0 slots, 0 KiB; cmds 11..13 then get no reply) |
 | 16 UP_LIST | start, count (1..16) | start, count, total slots, then per slot: used (0/1), engine, name string ("" if unused); 1.2: then one category byte per slot listed (below; 0 if unused) |
 | 17 UP_GET | slot | slot, used, engine, name, P_COUNT × v14, 16 × (note, flags), then (v5) kind (0 a note pattern, 1 a drum grid) and for kind 1 16 × hi; 1.2: then the category |
 | 18 UP_PUT | slot, engine, name, P_COUNT × v14, 16 × (note, flags) [, kind 0 or 1, 16 × hi (v5) [, category (1.2)]] | slot, rc (0 ok, 1 args, 2 flash). Writes flash: allow 1 s |

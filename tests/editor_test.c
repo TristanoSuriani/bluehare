@@ -50,7 +50,7 @@ static void panel_setup(void) {}
 static uint32_t flash_ok = 1;
 static void audio_silence(void) {}
 static void fl_inval(uint32_t off, uint32_t n) { (void)off; (void)n; }
-static uint8_t *host_flash_ptr(uint32_t off) { return &host_samples[0][0] + off - SMP_USER_BASE; }
+static uint8_t *host_flash_ptr(uint32_t off) { return &host_samples[0][0] + off - 0xA0000u; }   /* (SMP_USER_BASE) */
 static int fl_erase4k(uint32_t off, uint32_t *took)
 {
     memset(host_flash_ptr(off), 0xFF, 4096); *took = 0; host_erases++; return 0;
@@ -78,7 +78,10 @@ static void reset(void)
     memset(&ed_w, 0, sizeof ed_w); memset(&ui, 0, sizeof ui);
     memset(&favorites, 0, sizeof favorites); memset(&settings, 0, sizeof settings); settings_init();
     memset(&proj_good, 0, sizeof proj_good); memset(up_bank, 0, sizeof up_bank);
-    memset(&um, 0, sizeof um); memset(usr_nz, 0, sizeof usr_nz);
+    memset(&um, 0, sizeof um);
+#if FELUCCA_SAMPLES
+    memset(usr_nz, 0, sizeof usr_nz);
+#endif
     host_progress = 1; host_erases = host_writes = host_wire_n = 0;
     transport_req = panic_req = 0; sx_ready = sx_collect = sx_busy = 0;
     so_r = so_w = mi_r = mi_w = 0; midi_in_overflow = 0; usb.config = 1;
@@ -249,9 +252,11 @@ static int steps(void)
 
 static int samples(void)
 {
-    uint8_t a[640] = {0}, data[257], short_group[] = {0, 0, 4, 0, 1};
-    uint32_t n, i;
+    uint8_t a[640] = {0};
     int bad = 0;
+#if FELUCCA_SAMPLES
+    uint8_t data[257], short_group[] = {0, 0, 4, 0, 1};
+    uint32_t n, i;
     smp_user_hdr_t h;
     reset(); memset(host_samples, 0, sizeof host_samples);
     for (i = 0; i < sizeof data; i++) data[i] = (uint8_t)(i * 37u);
@@ -287,6 +292,15 @@ static int samples(void)
     bad += check("END cannot change published sample zones without BEGIN",
                  request(ED_SMP_END, a, n) == 8u && host_wire[6] == 2 && host_writes == 2 &&
                  usr_zone[0][0].rate == 65536u);
+#else
+    reset();
+    bad += check("no sample slots (SAMPLE GRAIN SLICE left out): SMP_INFO says 0 slots of 0 KiB",
+                 request(ED_SMP_INFO, a, 0) == 8u && host_wire[5] == 0 && host_wire[6] == 0);
+    bad += check("  SMP_BEGIN / WRITE / END: no reply; ERASE of USR1..3: done (rc 0, they are empty); no flash touched",
+                 !request(ED_SMP_BEGIN, a, 1) && !request(ED_SMP_WRITE, a, 8) && !request(ED_SMP_END, a, 8) &&
+                 request(ED_SMP_ERASE, a, 1) == 8u && host_wire[5] == 0 && host_wire[6] == 0 && (a[0] = 3, 1) &&
+                 !request(ED_SMP_ERASE, a, 1) && !host_erases && !host_writes);
+#endif
     song.playing = 1; host_progress = 0; a[0] = 0; a[1] = 0;
     bad += check("user-preset STORE does not mutate RAM when audio cannot stop",
                  request(ED_UP_STORE, a, 2) == 8u && host_wire[6] == 2 && !up_used(0));

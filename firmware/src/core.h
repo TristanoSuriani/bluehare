@@ -12,17 +12,29 @@
 #define NPART 4                  /* synth parts: tracks 1..4 */
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
-#ifndef FELUCCA_SLICE
-#define FELUCCA_SLICE 1          /* the SLICE engine (eng_slice.c), engine 13; FELUCCA_SLICE=0 builds without it */
+/* The engines that play recorded material (SAMPLE, GRAIN, SLICE) are left out by default (1.5): set FELUCCA_<NAME>=1 to
+ * build one. A left-out engine keeps its number (the stores and the protocol name engines by number): it is
+ * reserved, named "-", never offered, and a sound of it that arrives loads as another engine (engines.c eng_sub).
+ * GRAIN and SLICE play SAMPLE's material: building either one brings that in (FELUCCA_SAMPLES), not SAMPLE itself */
+#ifndef FELUCCA_SAMPLE
+#define FELUCCA_SAMPLE 0         /* the SAMPLE engine (eng_sample.c), engine 4 */
 #endif
+#ifndef FELUCCA_GRAIN
+#define FELUCCA_GRAIN 0          /* the GRAIN engine (eng_grain.c), engine 8 */
+#endif
+#ifndef FELUCCA_SLICE
+#define FELUCCA_SLICE 0          /* the SLICE engine (eng_slice.c), engine 13, and its SLICES page */
+#endif
+#define FELUCCA_SAMPLES (FELUCCA_SAMPLE || FELUCCA_GRAIN || FELUCCA_SLICE)   /* the sample material: the built-in sets,
+                                  * the user sample slots and their upload (eng_sample.c, editor.c ED_SMP_*) */
 #ifndef FELUCCA_FM4
 #define FELUCCA_FM4 0            /* the DIGITAL engine (eng_digital.c, four-operator FM): kept in the tree, not built
                                   * by default; replaced by FM6, its sounds convert (fm4_convert.c) */
 #endif
-#define NENGINES (13 + FELUCCA_SLICE)   /* SLICE (13) comes last: the other engines keep their numbers */
+#define NENGINES 16              /* engine numbers 0..15, every build (append-only; the reserved ones: eng_ok) */
 #define ENGI_DIGITAL 1u          /* reserved without FELUCCA_FM4: never selectable (eng_ok), its sounds load as FM6 */
-#define NENG_SHOWN (NENGINES - !FELUCCA_FM4)   /* the engines one can pick: PRESETS, the EDIT layer, the editor,
-                                                * in the display order of engines.c ENGINE_ORDER */
+#define NENG_SHOWN (NENGINES - !FELUCCA_FM4 - !FELUCCA_SAMPLE - !FELUCCA_GRAIN - !FELUCCA_SLICE)   /* the engines one
+                                  * can pick: PRESETS, the EDIT layer, the editor, in the order of engines.c ENGINE_ORDER */
 #define UP_SLOTS 32u             /* user presets (upreset.c) */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -104,8 +116,13 @@ static void params_by_count(int16_t *out, const int16_t *in, uint32_t np, const 
 }
 
 /* engine indices the stores name (engines.c ENGINES[]: append-only) */
+#define ENGI_ANALOG 0u
+#define ENGI_GRAIN 8u
 #define ENGI_PHYS 9u
 #define ENGI_DRUM 10u
+#define ENGI_SLICE 13u
+#define ENGI_WAVE 14u            /* 1.5 */
+#define ENGI_BYTE 15u            /* 1.5 */
 /* PHYS MODEL DRUM (MODEL 4, before 1.0) -> the DRUM engine, its E values in place: {MODEL, TUNE, TONE, DECY,
  * SNAP, ACC, KICK 0..127, PERC 0..127} -> {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK 0..1, DRV 0}. 1 = it was one
  * (its engine is ENGI_DRUM now); projects (project.c) and user presets (upreset.c) */

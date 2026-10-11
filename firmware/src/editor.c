@@ -80,6 +80,7 @@ static uint32_t ed_unpack7(const uint8_t *a, uint32_t na, uint8_t *out, uint32_t
     return na ? 0u : n;
 }
 static uint8_t ed_smp_buf[512] __attribute__((aligned(4)));
+#if FELUCCA_SAMPLES
 static uint32_t ed_smp_slot(uint32_t k) { return SMP_USER_BASE + k * SMP_USER_SIZE; }
 static void ed_smp_inval(uint32_t k)
 {
@@ -124,6 +125,7 @@ static int ed_smp_end(uint32_t k, const uint8_t *a, uint32_t na)
     smp_user_scan(k);
     return usr_nz[k] ? 0 : 5;
 }
+#endif
 
 /* the engine byte of DUMP / RELOAD / TRACK */
 static uint32_t ed_eng(const track_t *t) { return t->eng_req % NENGINES; }
@@ -497,6 +499,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         for (i = 0; i < 2u; i++)                           /* then the two edit-page titles */
             ed_str(ENGINES[a[0]]->page_title[i], 8);
         break;
+#if FELUCCA_SAMPLES
     case ED_SMP_BEGIN:                                     /* slot -> slot, rc */
     case ED_SMP_ERASE:
         if (na < 1u || a[0] >= SMP_USER_SLOTS || !flash_ok)
@@ -551,6 +554,20 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             ed_b(usr_nz[i] ? (h->data_len + 1023u) / 1024u : 0u);
         }
         break;
+#else
+    case ED_SMP_ERASE:                                     /* no sample slots in this build: USR1..3 are empty, */
+        if (na < 1u || a[0] >= 3u)                         /* so erasing one is done (a backup's restore of an */
+            return;                                        /* empty slot goes through) */
+        ed_b(a[0]);
+        ed_b(0);
+        break;
+    case ED_SMP_BEGIN: case ED_SMP_WRITE: case ED_SMP_END: /* .. and nothing can be written: as for a slot past the last */
+        return;
+    case ED_SMP_INFO:                                      /* none: 0 slots of 0 KiB */
+        ed_b(0);
+        ed_b(0);
+        break;
+#endif
     case ED_UP_LIST: {                                     /* start, count -> start, count, total, per slot: used, engine, name;
                                                             * (1.2) then per slot its category (category.c CAT_*, 0 unused):
                                                             * after the entries, so an older editor stops before them */

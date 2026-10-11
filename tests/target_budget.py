@@ -21,6 +21,7 @@ FUNCS = ["analog_render", "digital_render", "digital_render_legacy", "digital_re
          "dv_metal_run", "dv_kick_run", "dv_snare_run", "dv_clap_run", "dv_hat_run", "dv_tom_run",   # drum_voice.c
          "dv_rim_run", "dv_bell_run", "dv_cym_run", "dv_out", "dv_metal_mix",
          "slicer_track",
+         "wave_render", "byte_render",                      # WAVE, BYTE (1.5: eng_wave.c, eng_byte.c)
          "slice_render", "slc_rev",                          # SLICE (eng_slice.c): the render, the reverse windows
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
          "uac_tap48",                                       # the USB audio input at 48 kHz: the 44.1 -> 48 resampler (usb.c)
@@ -32,7 +33,10 @@ FUNCS = ["analog_render", "digital_render", "digital_render_legacy", "digital_re
 # built only with FELUCCA_FM4=1 (DIGITAL, src/eng_digital.c; not in the default build, so not in BUDGET): absent,
 # they are skipped; present, checked against these (their budget lines until the engine was retired in 1.0)
 OPTIONAL = {"digital_render": 12, "digital_render_legacy": 333, "digital_render_custom": 558,
-            "uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
+            "uac_tap48": 504,           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
+            # SAMPLE, GRAIN, SLICE: left out by default since 1.5 (FELUCCA_SAMPLE / GRAIN / SLICE=1 build them; their
+            # budget lines until then)
+            "sample_render": 126, "grain_render": 1731, "grain_block": 139, "slice_render": 453, "slc_rev": 120}
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...

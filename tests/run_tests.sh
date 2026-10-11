@@ -139,6 +139,10 @@ cd "$(dirname "$0")/.."
 OUT=build/host
 mkdir -p "$OUT"
 CC="${CC:-cc} -O1 -Wall -Wno-unused-function"
+# 1.5: SAMPLE, GRAIN and SLICE are left out of the firmware by default (firmware/src/core.h). Most tests build that
+# default; the ones about those engines (and the regression renders, the editor's tables, a second UI / editor run)
+# build them in (SMPF)
+SMPF="-DFELUCCA_SAMPLE=1 -DFELUCCA_GRAIN=1 -DFELUCCA_SLICE=1"
 fail=0
 run() { echo "== $1"; shift; "$@" || fail=1; }
 
@@ -217,7 +221,9 @@ if [ -f build/gen/felucca_tables.h ]; then
     $CC -O1 -w -Ibuild/gen -o "$OUT/settings_test" tests/settings_test.c
     run "settings: PER1..PER4 migration, palette ids and preference preservation" "$OUT/settings_test"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test" tests/ui_test.c -lm
-    run "UI: sounds, undo, recording, MIDI overflow, pending saves, panel recovery, the tracker (play, pages, song store), GREY gray, MONO neutral" "$OUT/ui_test"
+    run "UI: sounds, undo, recording, MIDI overflow, pending saves, panel recovery, the tracker (play, pages, song store), GREY gray, MONO neutral, SAMPLE GRAIN SLICE left out" "$OUT/ui_test"
+    $CC -w $SMPF -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test_smp" tests/ui_test.c -lm
+    run "UI built with SAMPLE GRAIN SLICE (FELUCCA_SAMPLE / GRAIN / SLICE=1): their aliases, NO SAMPLE, SLICES" "$OUT/ui_test_smp"
     FV=$(sed -n 's/^#define FELUCCA_VERSION "\([^"]*\)".*/\1/p' firmware/src/felucca.c)   # (the splash, ABOUT: the real version)
     $CC -O1 -w "-DFELUCCA_VERSION=\"$FV\"" -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/ui_render" tests/ui_render.c -lm
     mkdir -p build/ui_new/ppm build/ui_slot
@@ -243,7 +249,9 @@ if [ -f build/gen/felucca_tables.h ]; then
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/editor_test" tests/editor_test.c -lm
     run "editor: real C protocol, malformed transfers, queue recovery, MENU settings (writes build/host/menu.json)" \
         env MENU_JSON="$OUT/menu.json" "$OUT/editor_test"
-    $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/robust_test" tests/robust_test.c -lm
+    $CC -w $SMPF -Ibuild/gen -Ifirmware/src -o "$OUT/editor_test_smp" tests/editor_test.c -lm
+    run "editor built with the user sample slots (SAMPLE GRAIN SLICE): SMP_BEGIN / WRITE / END" "$OUT/editor_test_smp"
+    $CC -w $SMPF -Ibuild/gen -Ifirmware/src -o "$OUT/robust_test" tests/robust_test.c -lm
     run "robustness: crafted sample slots, engine numbers, retained old projects, preset patterns, malformed requests" \
         "$OUT/robust_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/mod_test" tests/mod_test.c -lm
@@ -264,9 +272,9 @@ if [ -f build/gen/felucca_tables.h ]; then
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_test" tests/reverb_test.c -lm
     mkdir -p build/reverb_demo
     run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
-    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
+    $CC -O2 -w $SMPF -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
     run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
-    $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/descdump" tests/descdump.c -lm
+    $CC -w $SMPF -Ibuild/gen -Ifirmware/src -o "$OUT/descdump" tests/descdump.c -lm
     echo "== parameter and engine tables as JSON (for the editor mock test)"
     "$OUT/descdump" > "$OUT/desc.json" || fail=1
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/phys_test" tests/phys_test.c -lm
@@ -292,23 +300,23 @@ if [ -f build/gen/felucca_tables.h ]; then
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/fm6_test" tests/fm6_test.c -lm
     mkdir -p build/fm6_demo
     run "FM6: algorithms, envelopes, retrigger, DC, clipping, macros, patch formats, voices, cost, demos" "$OUT/fm6_test" build/fm6_demo
-    # SLICE is in the standard build (firmware/src/core.h): its test always runs (after #22 by andreahaku)
+    # SLICE (left out of the firmware by default since 1.5): built in here, its test always runs (after #22 by andreahaku)
     if grep -q '^#define SLC_BREAK_BPM ' build/gen/felucca_samples.h; then
         mkdir -p build/slice_demo
         python3 tests/slice_loop.py build/slice_demo/loop
         python3 tools/fm1_sample_upload.py build LOOP build/slice_demo/loop build/slice_demo/loop.wav:60 >/dev/null
-        $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/slice_test" tests/slice_test.c -lm
+        $CC -O2 -w $SMPF -Ibuild/gen -Ifirmware/src -o "$OUT/slice_test" tests/slice_test.c -lm
         run "SLICE: tables, onsets, reverse, keys, modes, MAN slices and their store, demos" "$OUT/slice_test" \
             build/slice_demo/loop build/slice_demo
     else
-        echo "== SLICE: build/ was made with FELUCCA_SLICE=0 (no BREAK); run ./build.sh without it first"
+        echo "== SLICE: build/gen/felucca_samples.h has no BREAK (an older build/); run ./build.sh first"
         fail=1
     fi
     # SAMPLE's PIANO (1.2): the lo-fi material, SLICE's own middle C, the 1.0 .. 1.1.5 PIANO as a user slot (PIANO HD)
     if grep -q '^    {"PIANO", 0, 2},' build/gen/felucca_samples.h; then
         mkdir -p build/sample_demo build/piano_hd
         python3 tools/gen_samples.py --user-slot PIANO "PIANO HD" build/piano_hd/PIANO_HD >/dev/null
-        $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/sample_test" tests/sample_test.c -lm
+        $CC -O2 -w $SMPF -Ibuild/gen -Ifirmware/src -o "$OUT/sample_test" tests/sample_test.c -lm
         run "SAMPLE: PIANO (2 zones at 11,025 Hz: split, pitch, length, GRAIN), SLICE's PIANO, the PIANO HD slot" "$OUT/sample_test" \
             build/piano_hd/PIANO_HD build/sample_demo
     else
@@ -340,15 +348,19 @@ else
     run "ASan/UBSan: update loader (other app -> this build)" "$A/ldr_test" "$OUT/old.fwsc" build/felucca.fwsc
     $SCC -DOWN_PKG=1 -o "$A/ota_test" tests/ota_test.c
     run "ASan/UBSan: M-UPGRADE entry (own loader)" "$A/ota_test" build/felucca.fwsc
-    for t in editor_test backup_test robust_test fm6bank_test persistence_test; do
+    for t in editor_test backup_test fm6bank_test persistence_test; do
         $SCC -o "$A/$t" tests/$t.c -lm
         run "ASan/UBSan: $t" "$A/$t"
+    done
+    for t in editor_test robust_test; do
+        $SCC $SMPF -o "$A/${t}_smp" tests/$t.c -lm
+        run "ASan/UBSan: $t (SAMPLE GRAIN SLICE built in)" "$A/${t}_smp"
     done
     $SCC -o "$A/fuzz_ed" tests/fuzz_ed.c -lm
     run "ASan/UBSan fuzz: editor SysEx and raw USB-MIDI packets (20000, seed 7)" "$A/fuzz_ed" 20000 7
     $SCC -o "$A/fuzz_proj" tests/fuzz_proj.c -lm
     run "ASan/UBSan fuzz: song stores mutated -> find -> load -> play -> render (2000, seed 13)" "$A/fuzz_proj" 2000 13
-    $SCC -o "$A/fuzz_smp" tests/fuzz_smp.c -lm
+    $SCC $SMPF -o "$A/fuzz_smp" tests/fuzz_smp.c -lm
     run "ASan/UBSan fuzz: user sample slot headers -> scan -> SAMPLE / GRAIN / SLICE (1000, seed 17)" "$A/fuzz_smp" 1000 17
 fi
 

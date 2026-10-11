@@ -27,7 +27,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Thirteen engines** (below), each with its own factory presets; every factory sound has a category (BASS, LEAD,
+- **Twelve engines** (below; SAMPLE, GRAIN and SLICE are left out of this fork's build), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
   8 voices shared between them. ALGORITHM selects the track on every page
@@ -339,18 +339,28 @@ In the order the device lists them:
   web editor (which imports .syx files) or on the device: EDIT > OPERATOR (ratio or fixed frequency, fine, level),
   OP ENV (each stage's rate and level, drawn as the envelope) and OPERATOR 2 (mode, detune, velocity), one
   operator at a time on the algorithm chart; macros on top; SLOT picks a factory patch (F1–F8), the track's own (OWN) or a voice of the bank the web editor sent (B1–B32)
+- **WAVE** (this fork): wavetables. TBL picks one of 8 tables of 8 frames each (BASIC: sine to narrow pulses;
+  ADDTV: one partial to many; SYNC: a hard-sync sweep; RESO: a resonant peak climbing; VOX: vowels; FM: two-operator
+  FM; DIGI: sparse, metallic spectra; BITS: stepped and 1-bit shapes), POS the place between its frames; the SHP
+  routings move POS (ENV DEST / LFO DEST SHP, the matrix's SHP), so an envelope or the LFO scans the table. SYNC reads
+  the frame up to 8x faster (windowed sync), DTN adds a detuned second oscillator, then DRV, a resonant low-pass and
+  CRSH (sample-rate and bit reduction). The tables are band-limited per octave: high notes do not alias
 - **PHASE**: phase distortion (ported from CrispyZebra)
 - **LOFI**: chiptune; pulse, triangle, saw, noise and a 4-bit wave RAM, stepped envelope, sweep, arpeggio
-- **SAMPLE**: multisampled instruments (PIANO, a light lo-fi piano; FLUTE; SAX) and 3 user sample slots. PIANO HD,
-  the fuller piano of 1.0 to 1.1.5, installs into a user slot from the web editor
+- **SAMPLE** (left out, `FELUCCA_SAMPLE=1`): multisampled instruments (PIANO, a light lo-fi piano; FLUTE; SAX) and
+  3 user sample slots. PIANO HD, the fuller piano of 1.0 to 1.1.5, installs into a user slot from the web editor
 - **VOICE**: formant oscillator, sung vowels
 - **TRIO**: 3 oscillators with ring modulation and sync, multimode filter
 - **WHEEL**: tonewheel-style organ; drawbar registrations, percussion, key click, drive, rotary speaker
-- **GRAIN**: granular textures from the built-in samples or a user slot
+- **GRAIN** (left out, `FELUCCA_GRAIN=1`): granular textures from the built-in samples or a user slot
 - **PHYS**: physical models: modal resonators, strings, struck membranes, sympathetic strings
 - **NOISE**: noise from analog to digital: colours, crackle, shift-register and metallic tones
-- **SLICE**: a drum break, a piano note (both built in) or your own sample cut into slices, one per key;
-  set the slices by hand on the SLICES page
+- **BYTE** (this fork): bytebeat. A counter restarts at every note and runs at 8 kHz on C4 (following the key; RATE
+  shifts it); FORM picks a formula of it (SAW, PWM, SIERP, XOR, OR, CHIRP, 42, MELO, OCTS, GLTCH, NOISE, MASK), A B C
+  are its constants (A mostly the pitch, B how fast the pattern moves, C a mask or a melody); LOOP restarts the counter
+  (1K .. 256K steps) so a pattern repeats while held; BITS and TONE shape the 8-bit output
+- **SLICE** (left out, `FELUCCA_SLICE=1`): a drum break, a piano note (both built in) or your own sample cut into
+  slices, one per key; set the slices by hand on the SLICES page
 - **DRUM**: an 8-lane kit of Felucca's own drum voices on the General MIDI key map. KIT picks the
   standard kit or one of five virtual-analog (VA) kits in the manner of
   classic analog drum machines (the numbers are a hint), every lane its own voice: **80** (deep sine kick with a long decay, noisy snare,
@@ -369,6 +379,14 @@ engine's middle C as it was then), next to BREAK. Since 1.0.4 a missing sample (
 from the build) plays a plain sine at the note's pitch on SAMPLE, GRAIN and SLICE, and the screen says
 NO SAMPLE once. DRUM's KIT variants HAND, CYM and H+CYM were retired in 1.0.5: sounds and projects that
 used them play the 66, 10 and 77 kits. SAMPLE's PIANO became a lo-fi piano in 1.4 (PIANO HD above).
+
+**This fork leaves out the engines that play recorded material** (SAMPLE, GRAIN, SLICE): the firmware has no built-in
+samples and no user sample slots, which frees about 11 KB of RAM and 28 KB of the buffer pool (and the flash the
+wavetables now use). Their engine numbers stay reserved, so nothing saved breaks: a sound of one (a project, a user
+preset, a song's instrument, the web editor) loads as the nearest engine built, with its first preset: SAMPLE as FM6
+(TINE EP), GRAIN as WAVE (DUB CHORD), SLICE as DRUM. A complete backup restores without its samples. Build them back
+with `FELUCCA_SAMPLE=1`, `FELUCCA_GRAIN=1`, `FELUCCA_SLICE=1` (BUILDING.md); the paragraphs above about them apply
+to such builds.
 
 **SLICER** (FX page, every track): a tempo-synced 16-step gate or stutter, with 16 patterns.
 

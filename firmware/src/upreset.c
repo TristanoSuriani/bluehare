@@ -346,7 +346,8 @@ static void up_auto_name(char *b, uint32_t e, uint32_t k)
 {
     char l[4];
     e %= NENGINES;
-    str_cpy(b, ENGINES[eng_ok(e) ? e : ENGI_FM6]->name, 9);   /* (a DIGITAL record plays as FM6) */
+    str_cpy(b, ENGINES[eng_ok(e) ? e : eng_ok(eng_sub(e)) ? eng_sub(e) : ENGI_FM6]->name, 9);   /* (a DIGITAL record plays
+                                                                * as FM6, a left-out engine's as engines.c eng_sub) */
     up_slot_label(l, k);
     str_cpy(b + str_len(b), " ", 2);
     str_cpy(b + str_len(b), l + 1, 3);
@@ -471,7 +472,11 @@ static void up_tk_sound(track_t *t, uint32_t k)
 }
 
 /* the engine a used slot's sound plays on (a DIGITAL record: FM6, without FELUCCA_FM4) */
-static uint32_t up_engine(uint32_t k) { return eng_ok(up_rec(k)->engine) ? up_rec(k)->engine : ENGI_FM6; }
+static uint32_t up_engine(uint32_t k)
+{
+    uint32_t e = up_rec(k)->engine;
+    return eng_ok(e) ? e : eng_ok(eng_sub(e)) ? eng_sub(e) : ENGI_FM6;   /* (a left-out engine: engines.c eng_sub) */
+}
 
 static uint32_t up_count(void)                 /* used slots */
 {

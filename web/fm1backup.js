@@ -108,14 +108,20 @@ export async function captureBackup(request, firmware, onProgress = () => {}) {
   const file = { format: "felucca-backup", version: 1, firmware, created: new Date().toISOString(), objects };
   readBackup(file); return file;
 }
-export async function restoreBackup(request, file, onProgress = () => {}) {
+// smpSlots: the device's user sample slots (SMP_INFO; 1.5 builds without SAMPLE / GRAIN / SLICE have none): a sample
+// object for a slot it lacks is skipped (archive.skipped lists those that held a sample)
+export async function restoreBackup(request, file, onProgress = () => {}, smpSlots = 3) {
   const archive = readBackup(file); // Validate every byte before the first destructive request.
+  archive.skipped = [];
   const total = archive.objects.reduce((n, o) => n + o.size, 0); let done = 0;
   const ask = async (r, o = {}) => request(r, { timeout: 4000, retries: 0, ...o });
   const put = async (args) => { const a = await ask([BACKUP_CMD.PUT, args]); bkCheck(a[2]); return a; };
   // Restore live music last. Other objects commit individually; a disconnect can leave a partial restore.
   for (const o of [...archive.objects.slice(2), archive.objects[1], archive.objects[0]]) {
-    if (o.id >= 32) {
+    if (o.id >= 32 && o.id - 32 >= smpSlots) {
+      if (o.size) archive.skipped.push(o.id);
+      done += o.size; onProgress(done, total);
+    } else if (o.id >= 32) {
       const slot = o.id - 32;
       const check = (a) => { if (a[0] !== slot) throw new Error("Unexpected sample reply"); bkCheck(a.at(-1)); };
       if (!o.size) check(await ask([14, [slot]]));

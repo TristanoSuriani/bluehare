@@ -41,6 +41,7 @@ function device(objs, opt = {}) {
       if (op === 2) { const s = Uint8Array.from(d.staged.bytes); const rc = bkCrc(s) === d.staged.crc ? 0 : 2; if (!rc) { d.objs.set(id, s); d.log.push(id); } return [op, id, rc]; }
       if (op === 3) { d.log.push(`abort ${id}`); return [op, id, 0]; }
     }
+    if ((cmd === 11 || cmd === 12 || cmd === 13 || cmd === 14) && opt.noSmp) throw new Error("timeout");   // (no slots)
     if (cmd === 11 || cmd === 12 || cmd === 13 || cmd === 14) { if (cmd === 13 || cmd === 14) d.log.push(32 + a[0]); return [a[0], 0]; }
     throw new Error(`unexpected ${cmd}`);
   };
@@ -99,6 +100,12 @@ ok([0, 1, 2, 6].every((id) => target.objs.get(id).every((v, i) => v === objs.fin
   const to103b = device([]);
   await restoreBackup(to103b.request, newFile);
   ok(to103b.objs.get(9).every((v, i) => v === patches[i]), "backup: a 1.0.3 archive restores id 9");
+}
+{   /* 1.5 builds without SAMPLE / GRAIN / SLICE: no sample slots (SMP_INFO 0): the sample objects are skipped */
+  const lean = device([], { noSmp: true });
+  const res = await restoreBackup(lean.request, file, () => {}, 0);
+  ok(!lean.log.some((x) => x >= 32) && lean.log.at(-1) === 0 && res.skipped.length === 0,
+     "backup: a device without sample slots: the (empty) sample objects skipped, the rest restored");
 }
 const failing = device([], { failChunk: 2 });
 ok(await athrows(() => restoreBackup(failing.request, file)) && failing.log.includes("abort 2") && !failing.log.includes(0), "backup: a refused chunk aborts that object and stops before the live music");

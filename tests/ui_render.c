@@ -672,12 +672,12 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_MENU_AUDIO, S_HEAD_PLAY_REC, S_HEAD_REC_OTHER, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK, S_HEAD_BPM_LOCKED,
        S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_TK_PATTERN,
        S_TK_PATTERN_FX, S_TK_PATTERN_PLAY, S_TK_PATTERN_CUED, S_TK_SONG, S_TK_SONG_PLAY, S_TK_SETTINGS, S_TK_INSTR,
-       S_TK_SEQ_LAYER, S_CONFIRM_SONG, S_COUNT };
+       S_TK_SEQ_LAYER, S_CONFIRM_SONG, S_EDIT_WAVE, S_EDIT_BYTE, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
        "mod", "fx", "slicer", "dly", "scl", "chord", "chord_wide", "chord_off", "chord_kit", "arp", "voice", "clock",
-       "menu_midi", "edit_analog", FELUCCA_FM4 ? "edit_digital" : "edit_fm6", "op_env", "edit_wheel", "edit_sample",
-       "edit_grain", "edit_phys", "alg_1", "alg_2", "alg_3", "alg_4", "alg_5", "alg_6", "alg_7", "alg_8", "op_level",
+       "menu_midi", "edit_analog", FELUCCA_FM4 ? "edit_digital" : "edit_fm6", "op_env", "edit_wheel",
+       FELUCCA_SAMPLE ? "edit_sample" : "edit_wave_2", FELUCCA_GRAIN ? "edit_grain" : "edit_byte_2", "edit_phys", "alg_1", "alg_2", "alg_3", "alg_4", "alg_5", "alg_6", "alg_7", "alg_8", "op_level",
        "fm6_alg_01", "fm6_alg_05", "fm6_alg_22", "fm6_alg_32", "fm6_op", "fm6_op_fixed", "fm6_op2", "fm6_op_env",
        "fm6_op_env_rel", "confirm_seq", "confirm_project", "confirm_user", "confirm_erase", "menu", "menu_speaker",
        "about", "about_rec", "about_credits", "about_end", "uboot", "calibration", "splash", "batt_0", "batt_1",
@@ -691,7 +691,8 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
        "lfo2", "layer_rec", "layer_rec_set", "menu_audio", "head_play_rec",
        "head_rec_other", "head_bpm_turn", "head_bpm_lock", "head_bpm_locked", "head_glo_turn", "head_downbeat",
        "head_beat_2", "menu_tune", "menu_info", "menu_home", "tk_pattern", "tk_pattern_fx", "tk_pattern_play",
-       "tk_pattern_cued", "tk_song", "tk_song_play", "tk_settings", "tk_instr", "layer_seq", "confirm_new_song"};
+       "tk_pattern_cued", "tk_song", "tk_song_play", "tk_settings", "tk_instr", "layer_seq", "confirm_new_song",
+       "edit_wave", "edit_byte"};
 
 
 
@@ -746,7 +747,11 @@ static void setup(int s)
     case S_MESSAGE: ui_say("LOADED ", "07 A VERY LONG PATTERN NAME"); break;
     case S_MESSAGE_KEY: ui_message("[SAVE] HOLD TO UNDO"); break;            /* a message with a keycap */
     case S_MESSAGE_NOFILE:                          /* a missing sample (ui_input.c sample_notice): USR2 */
+#if FELUCCA_SAMPLE
         eng(ENGI_SAMPLE); TSEL->p[P_E0] = (int16_t)(SMP_NSETS + 1); memset(snd_said, 0, sizeof snd_said); sample_notice(); break;
+#else
+        ui_message(MSG_NO_SAMPLE); break;          /* (no SAMPLE in this build: the message itself) */
+#endif
     case S_PRESETS: favorite_set(0, 4, 1); favorite_set(0, 5, 1); go_page(GR_BROWSE); break;
     case S_PRESETS_NOFAV: favorites.filter = 1; go_page(GR_BROWSE); break;
     case S_USER: song.playing = 0; up_store(3, "MY LONG BASS NAME"); up_store(4, "PAD"); ui.uslot = 3; go_page(GR_USER); break;
@@ -823,13 +828,23 @@ static void setup(int s)
     case S_EDIT_DIGITAL: eng(E_FM); go_title("EDIT 1"); break;
     case S_OP_ENV: eng(1); go_title("OP1 ENV"); break;
     case S_EDIT_WHEEL: eng(7); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
+#if FELUCCA_SAMPLE
     case S_EDIT_SAMPLE: {
         uint32_t i;
         eng(4); go_title("EDIT 1"); last_note = 60;
         for (i = 0; i < 4000u && !sample_wave.ready; i++) sample_wave_tick(TSEL);
         break;
     }
+#else
+    case S_EDIT_SAMPLE: eng(ENGI_WAVE); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;   /* (no SAMPLE: WAVE's EDIT 2) */
+#endif
+#if FELUCCA_GRAIN
     case S_EDIT_GRAIN: eng(8); go_title("EDIT 2"); break;
+#else
+    case S_EDIT_GRAIN: eng(ENGI_BYTE); go_title("EDIT 2"); break;                     /* (no GRAIN: BYTE's EDIT 2) */
+#endif
+    case S_EDIT_WAVE: eng(ENGI_WAVE); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
+    case S_EDIT_BYTE: eng(ENGI_BYTE); TSEL->p[P_E6] = 9; go_title("EDIT 1"); break;
     case S_EDIT_PHYS: eng(9); go_title("EDIT 1"); break;
     case S_ALG1: case S_ALG2: case S_ALG3: case S_ALG4: case S_ALG5: case S_ALG6: case S_ALG7: case S_ALG8:
         eng(1); TSEL->p[P_E0] = (int16_t)(s - S_ALG1);      /* the 8 DIGITAL charts; FB on the odd ones, IDX high .. 0 */

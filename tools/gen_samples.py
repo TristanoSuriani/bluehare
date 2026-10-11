@@ -461,8 +461,9 @@ class Builder:
 
 
 def slice_on():
-    """the SLICE engine is built (src/core.h: on unless FELUCCA_SLICE=0)"""
-    return os.environ.get("FELUCCA_SLICE", "1") != "0"
+    """SLICE's material (BREAK) is always written: the header serves every build (src/core.h FELUCCA_SLICE, off by
+    default since 1.5, decides whether the firmware includes it) and the host tests, which build SLICE"""
+    return True
 
 
 def input_key(have_cc0):
@@ -504,7 +505,7 @@ def main(out):
                 b.lo_set(name, kind, CC0_LO[name])
             else:
                 b.cc0_set(name, kind)
-    if slice_on():                                  # SLICE's BREAK: only when that engine is built
+    if slice_on():                                  # SLICE's BREAK (always: see slice_on)
         b.slice_break()                             # last: the sets' offsets stay as they were
         b.slice_piano()                             # (the PIANO set's zone, or with PIANO_LO a copy after BREAK)
     text = b.header()

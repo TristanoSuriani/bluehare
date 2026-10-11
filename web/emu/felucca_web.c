@@ -444,11 +444,12 @@ EXPORT uint8_t *web_anim_levels(void)
 }
 
 /* for the test and the bench (web/emu/emu_test.mjs), a heavy song straight into the tracks (as hostsim's
- * renders set them): T1 FM6 PAD, T2 PHYS DRONE STRING (SYMP), T3 GRAIN CLOUD PAD, 4-note chords on all 16
+ * renders set them): T1 FM6 PAD, T2 PHYS DRONE STRING (SYMP), T3 WAVE SCAN PAD (1.5; GRAIN CLOUD PAD in a build with
+ * GRAIN), 4-note chords on all 16
  * steps, held; T4 DRUM, kick snare and hats. PLAY is the page's (or the test's) to press */
 EXPORT void web_test_heavy(void)
 {
-    static const uint8_t ENG[3][2] = {{12, 4}, {ENGI_PHYS, 7}, {8, 0}};
+    static const uint8_t ENG[3][2] = {{12, 4}, {ENGI_PHYS, 7}, {FELUCCA_GRAIN ? 8 : ENGI_WAVE, FELUCCA_GRAIN ? 0 : 1}};
     static const uint8_t CH[4][4] = {{48, 55, 60, 64}, {45, 52, 57, 60}, {41, 48, 53, 57}, {43, 50, 55, 59}};
     uint32_t p, i;
     for (p = 0; p < 3u; p++) {

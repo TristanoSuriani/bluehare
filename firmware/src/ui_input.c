@@ -703,6 +703,9 @@ static void ui_input(void)
         if (trk[k].eng_req == ENGI_DIGITAL)             /* already): FM6 (fm4_convert.c) */
             fm4_track(&trk[k]);
 #endif
+    for (k = 0; k < NTRK; k++)                          /* an engine this build leaves out (a project, a user preset, */
+        if (!eng_ok(trk[k].eng_req % NENGINES) && trk[k].eng_req % NENGINES != ENGI_DIGITAL)   /* the editor): the */
+            set_engine_of(&trk[k], trk[k].eng_req);     /* engine its sounds load as (engines.c eng_sub) */
     perf_latch_on = fx_latch & 1u;                      /* (MENU > FX LATCH; a settings load sets it too) */
     fx_map_sync();                                      /* (the FX layer's key map: ui_layer.c, a settings load too) */
     fx_usb_fixed = (ui_prefs & PREF_USB_FIXED) != 0u;   /* (MENU > USB LEVEL: fx.c, audio.c) */

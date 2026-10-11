@@ -1856,7 +1856,7 @@ function makeMockDevice(opt = {}) {
     E("MIDI", ["USB", "TRS"], 0), E("SYNC", NDASH, 0), E("ROUT", ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"], 0), D("CPU", F.INT, 0, 0, 0),
     D("SLOT", F.INT, 1, 1, 1), E("NAME", NDASH, 0), E("LOAD", NGO, 0), E("SAVE", NGO, 0),   /* (1.5: one song) */
     E("ENG", ["ANALOG", "-", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL",
-      "GRAIN", "PHYS", "DRUM", "NOISE", "FM6", "SLICE"], 0), E("SET", NGO, 0),
+      "GRAIN", "PHYS", "DRUM", "NOISE", "FM6", "SLICE", "WAVE", "BYTE"], 0), E("SET", NGO, 0),   /* (1.5: WAVE BYTE) */
     E("CLRSQ", NGO, 0), E("INIT", NGO, 0),
     E("TYPE", ["ROOM", "SPRING", "HALL"], 2),       /* G_RTYPE (id 24, was G_DRCH): the reverb's model (HALL: 1.2) */
     D("-", F.INT, 0, 0, 0), D("-", F.INT, 0, 0, 0),   /* G_DRLVL, G_DRREV: inert since 1.0 */
@@ -1941,6 +1941,21 @@ function makeMockDevice(opt = {}) {
         E("DIV", ["4", "8", "16", "32", "AUTO", "MAN"], 2), D("START", F.INT, 0, 31, 0), D("PTCH", F.SEMI, -24, 24, 0),
         E("MODE", ["ONE", "GATE", "LOOP"], 0), E("REV", ["OFF", "ON"], 0), D("DCAY", F.TIME, 0, 127, 127), D("TONE", F.INT, 0, 127, 127)],
       presets: [P("CHOP", [0, 2, 0, 0, 0, 0, 127, 127], [0, 127, 127, 30], 0, 9), P("STUTTER", [0, 1, 0, 0, 1, 0, 90, 110], [0, 127, 127, 12], 0, 10)] },
+    /* 1.5: WAVE (src/eng_wave.c, the wavetables of tools/gen_wavetables.py) and BYTE (src/eng_byte.c, bytebeat) */
+    { name: "WAVE", titles: ["WAVE", "TONE"], edit: [E("TBL", ["BASIC", "ADDTV", "SYNC", "RESO", "VOX", "FM", "DIGI", "BITS"], 0),
+        D("POS", F.PCT, 0, 127, 0), D("SYNC", F.PCT, 0, 127, 0), D("DTN", F.INT, 0, 127, 0, null, "ct"),
+        D("CUT", F.CUTOFF, 0, 127, 100), D("RES", F.PCT, 0, 127, 20), D("DRV", F.PCT, 0, 127, 0), D("CRSH", F.PCT, 0, 127, 0)],
+      presets: [P("DUB CHORD", [0, 60, 0, 12, 52, 30, 0, 0], [0, 62, 0, 55]), P("SCAN PAD", [1, 40, 0, 18, 80, 10, 0, 0], [80, 90, 115, 95]),
+        P("SYNC LEAD", [2, 70, 40, 0, 100, 20, 30, 0], [2, 70, 100, 40], 1), P("RESO BASS", [3, 48, 0, 0, 62, 45, 40, 0], [0, 60, 60, 25], 1),
+        P("VOX PAD", [4, 64, 0, 10, 90, 10, 0, 0], [70, 90, 115, 90]), P("FM BELL", [5, 90, 0, 6, 110, 0, 0, 0], [0, 95, 0, 85]),
+        P("DIGI KEYS", [6, 50, 0, 4, 96, 15, 0, 18], [0, 80, 40, 55]), P("BIT LEAD", [7, 80, 0, 0, 110, 10, 20, 40], [0, 70, 100, 30], 1)] },
+    { name: "BYTE", titles: ["FORM", "TONE"], edit: [E("FORM", ["SAW", "PWM", "SIERP", "XOR", "OR", "CHIRP", "42", "MELO", "OCTS", "GLTCH",
+        "NOISE", "MASK"], 0), D("A", F.INT, 0, 127, 0), D("B", F.INT, 0, 127, 0), D("C", F.INT, 0, 127, 64),
+        D("RATE", F.SEMI, -36, 24, 0), D("TONE", F.PCT, 0, 127, 127),
+        E("LOOP", ["OFF", "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K", "256K"], 0), D("BITS", F.INT, 1, 8, 8)],
+      presets: [P("BYTE ARP", [7, 0, 0, 16, 0, 90, 0, 8], [0, 70, 100, 30]), P("SIERPINSKI", [2, 0, 32, 64, 0, 100, 0, 8], [0, 90, 110, 40]),
+        P("XOR BASS", [3, 8, 64, 64, -24, 70, 0, 8], [0, 60, 90, 20], 1), P("42 MELODY", [6, 0, 0, 42, 0, 110, 0, 8], [0, 80, 110, 40]),
+        P("GLITCH", [9, 16, 16, 64, 0, 127, 3, 6], [0, 70, 80, 25]), P("BIT NOISE", [10, 24, 48, 64, 0, 80, 0, 5], [0, 50, 0, 30])] },
   ];
   const FM6_E = ENG.findIndex((e) => e.name === "FM6"), FM6_OWN = FM6.FACTORY_PK.length, DRUM_E = ENG.findIndex((e) => e.name === "DRUM");
   /* factory PATTERNS[] (engines.c; the device loads them from SAVE > PHRASES, presets only suggest one): absolute
@@ -2695,8 +2710,8 @@ function enumShown(d) {
 /* the order the device shows its engines in (src/engines.c ENGINE_ORDER): the lists here follow it, the protocol keeps
    the engine numbers. engineOrder(names): the indices of names in that order, "-" (a reserved number) left out; a name
    the list does not know (another firmware) follows in index order */
-const ENGINE_ORDER = ["ANALOG", "FM6", "DIGITAL", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL", "GRAIN", "PHYS", "NOISE",
-  "SLICE", "DRUM"];
+const ENGINE_ORDER = ["ANALOG", "FM6", "DIGITAL", "WAVE", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL", "GRAIN", "PHYS",
+  "NOISE", "BYTE", "SLICE", "DRUM"];
 function engineOrder(names) {
   const rank = (n) => { const k = ENGINE_ORDER.indexOf(n); return k < 0 ? ENGINE_ORDER.length : k; };
   return (names || []).map((n, i) => i).filter((i) => names[i] !== "-")
@@ -2801,7 +2816,7 @@ const TEXT = {
     fm6NeedDevice: "FM-1 を接続すると 6-OP FM の音色を編集してトラックへ送れます。",
     fm6NoFw: "このファームウェアには 6-OP FM（FM6）がありません。Felucca 1.0 以降に更新すると使えます。",
     motion: "オートメーション", motionOn: "再生", motionClear: "オートメーションを消去", motionConfirm: "選択トラックのオートメーションを消しますか？", chance: "確率 %", ratchet: "ラチェット", motionStep: "ステップ", motionParam: "パラメーター", motionValue: "値",
-    backupTitle: "全体バックアップ", backupExport: "バックアップ保存", backupImport: "バックアップ復元", backupHelp: "現在の曲・A〜D・音色バンク・ユーザーサンプル・設定を、このパソコンへ保存。", backupOld: "全体バックアップには対応版への更新が必要です。", backupConfirm: "全体バックアップを復元しますか？ 現在の曲、保存データとサンプルを置き換えます。USBを抜かないでください。", backupWorking: "バックアップ処理中 ", backupDone: "バックアップを保存しました", backupRestored: "全体バックアップを復元しました",
+    backupTitle: "全体バックアップ", backupExport: "バックアップ保存", backupImport: "バックアップ復元", backupHelp: "現在の曲・A〜D・音色バンク・ユーザーサンプル・設定を、このパソコンへ保存。", backupOld: "全体バックアップには対応版への更新が必要です。", backupConfirm: "全体バックアップを復元しますか？ 現在の曲、保存データとサンプルを置き換えます。USBを抜かないでください。", backupWorking: "バックアップ処理中 ", backupDone: "バックアップを保存しました", backupRestored: "全体バックアップを復元しました", backupNoSmp: "全体バックアップを復元しました（このファームウェアにはサンプルのスロットがないため、サンプルは復元していません）",
     deviceDisplay: "本体の画面",
     deviceDisplayHelp: "FM-1 の画面に反映し、保存します。再生中の変更は停止後に保存されます。",
     devicePresets: "本体のプリセット",
@@ -2915,7 +2930,7 @@ const TEXT = {
     fm6NeedDevice: "Connect the FM-1 to edit 6-OP FM voices and send them to a track.",
     fm6NoFw: "This firmware has no 6-OP FM (FM6). Update to Felucca 1.0 or later to use it.",
     motion: "Automation", motionOn: "Play automation", motionClear: "Clear automation", motionConfirm: "Clear this track's automation?", chance: "Chance %", ratchet: "Ratchet", motionStep: "Step", motionParam: "Parameter", motionValue: "Value",
-    backupTitle: "Complete backup", backupExport: "Save backup", backupImport: "Restore backup", backupHelp: "Save the current music, A–D, sound banks, user samples and settings to this computer.", backupOld: "Complete backups need firmware with archive support.", backupConfirm: "Restore this complete backup? Current music, saved data and samples will be replaced. Keep USB connected.", backupWorking: "Backing up / restoring ", backupDone: "Backup saved", backupRestored: "Complete backup restored",
+    backupTitle: "Complete backup", backupExport: "Save backup", backupImport: "Restore backup", backupHelp: "Save the current music, A–D, sound banks, user samples and settings to this computer.", backupOld: "Complete backups need firmware with archive support.", backupConfirm: "Restore this complete backup? Current music, saved data and samples will be replaced. Keep USB connected.", backupWorking: "Backing up / restoring ", backupDone: "Backup saved", backupRestored: "Complete backup restored", backupNoSmp: "Complete backup restored (without its samples: this firmware has no sample slots)",
     deviceDisplay: "Device display",
     deviceDisplayHelp: "Changes apply to the FM-1 screen and save. Changes made while playing save after STOP.",
     devicePresets: "Device presets",
@@ -3062,7 +3077,7 @@ function renderPanels() {
     let show = mine && (!("dev" in p.dataset) || ready);
     if (mine && "dev" in p.dataset && !dev) hint = want === "fm6" ? "fm6NeedDevice" : "needDevice";   /* (while connecting the status line says it) */
     if (show && want === "fm6" && fm6Off) { show = false; hint = "fm6NoFw"; }
-    if (show && want === "samples" && !dev.smp) { show = false; hint = "smpNone"; }
+    if (show && want === "samples" && !dev.smp?.nslots) { show = false; hint = "smpNone"; }   /* (1.5 builds without samples: 0 slots) */
     p.hidden = !show;
   }
   $("hint").hidden = !hint;
@@ -3687,8 +3702,8 @@ $("backup-file").addEventListener("change", () => {
     const { readBackup, restoreBackup } = await backupModule();
     const archive = readBackup(await file.text()); assertSession(d);
     if (!confirm(t("backupConfirm"))) return;
-    await restoreBackup((r, o) => sessionRequest(d, r, o), archive, backupProgress);
-    await load(d); sayK("backupRestored");
+    const res = await restoreBackup((r, o) => sessionRequest(d, r, o), archive, backupProgress, d.smp ? d.smp.nslots : 3);
+    await load(d); sayK(res.skipped.length ? "backupNoSmp" : "backupRestored");
   });
 });
 
@@ -4507,7 +4522,7 @@ function recRow(k) {
 
 function renderSamples() {
   const box = $("smpslots");                        /* the tab says when there are no slots (renderPanels) */
-  if (!dev || !dev.smp) { box.replaceChildren(); return; }
+  if (!dev || !dev.smp?.nslots) { box.replaceChildren(); return; }
   const max = SMP.MAX_DATA;
   box.replaceChildren(...dev.smp.slots.map((u, k) => {
     const d = smpDraft[k];
