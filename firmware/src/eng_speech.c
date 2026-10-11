@@ -213,13 +213,25 @@ static const preset_t SPEECH_PRESETS[] = {
     {"STEM", {30, 3, 0, 70, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 20)},
     {"MONOTONE", {1, 1, 0, 52, 0, 127, -8, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 35, 20)},
     {"VOWEL PAD", {0, 4, 0, 64, 0, 127, 0, 1}, {60, 90, 120, 90}, 0, 0, FX(0, 60, 30, 60)},
+    /* ELECTRO into the delay; ERROR slowed down an octave of formants (a giant); HELLO sped up and squeezed */
+    {"ELECTRO", {7, 1, 0, 64, 80, 127, 0, 0}, {0, 0, 127, 25}, 0, 1, FX(10, 0, 60, 25)},
+    {"GIANT", {3, 1, 0, 40, 30, 127, -60, 0}, {0, 0, 127, 50}, 0, 1, FX(20, 0, 30, 50)},
+    {"CHIPMUNK", {17, 1, 0, 96, 110, 127, 50, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 25)},
+    /* GO, looped while held, fast: a rhythm of syllables */
+    {"STUTTER", {14, 1, 0, 110, 64, 127, 0, 2}, {0, 0, 127, 10}, 0, 1, FX(0, 0, 40, 15)},
+    /* the keys count: in German from NULL, in Dutch from NUL */
+    {"ZAHLEN", {0, 2, 1, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 25, 15)},
+    {"TELLEN", {0, 3, 1, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 25, 15)},
+    /* OO held, low and steady under the chorus; SH, short: a hi-hat */
+    {"VOX DRONE", {13, 4, 0, 64, 0, 100, -20, 1}, {80, 90, 127, 100}, 0, 0, FX(0, 80, 20, 70)},
+    {"SH HAT", {24, 4, 0, 127, 0, 127, 0, 0}, {0, 60, 0, 30}, 0, 0, FX(0, 0, 20, 10)},
 };
 
 static const engine_t ENG_SPEECH = {
     .name = "SPEECH",
     .id = EID_SPEECH,
     .cc = 0x75,                  /* CC74 FORM, CC71 INTN */
-    .cats = "FFFFFFFP",
+    .cats = "FFFFFFFPFFFFFFPD",
     .page_title = {"WORD", "VOICE"},
     .edit = {
         {"WORD", F_ENUM, 0, SP_WORDS - 1, 0, SP_NAMES_1, 0},

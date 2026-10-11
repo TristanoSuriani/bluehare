@@ -231,15 +231,21 @@ int main(int argc, char **argv)
         W = fopen(path, "wb");
         if (W)
             wav_begin(W);
+        uint32_t silent = 0;
         for (p = 0; p < ENGINES[ENGI_SPEECH]->npresets; p++) {
             host_tracks_init();
             host_preset(T, ENGI_SPEECH, p);
             speak(48, &pk);
+            if (pk < 1000) {
+                printf("speech:   preset %s: peak %d\n", ENGINES[ENGI_SPEECH]->presets[p].name, pk);
+                silent++;
+            }
             render(FS / 4u);
         }
         if (W)
             wav_end(W);
         W = 0;
+        check("every preset speaks at C3 (peak over -30 dBFS)", !silent);
     }
     printf("%s\n", fails ? "SPEECH TEST FAILED" : "speech test passed");
     return fails != 0;
