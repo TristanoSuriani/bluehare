@@ -33,7 +33,7 @@ static void stream_rehash(void)
 int main(void)
 {
     static const char *const ORDER[] = {"ANALOG", "PHASE", "WAVE", "BYTE", "WEST", "HOOVER", "PHYS", "KARPLUS", "VOSIM",
-                                        "NOISE", "DRUM", "FMPERC", "SPEECH", "LOFI"};
+                                        "PARTICLE", "CHAOS", "NOISE", "DRUM", "FMPERC", "SPEECH", "LOFI"};
     uint8_t a[16] = {0};
     int bad = 0, ok = 1, sub;
     uint32_t i, e, off;
@@ -44,7 +44,7 @@ int main(void)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
     ok &= eng_of_id(EID_TRIO) == ENG_NO && eng_of_id(EID_WHEEL) == ENG_NO && eng_of_id(EID_VOICE) == ENG_NO &&
           ENGI_TRIO == ENG_ABSENT && str_eq(N_ENGNAME[EID_TRIO], "-") && eng_by_id(EID_WHEEL) == &ENG_NONE;
-    bad += check("engines: IDM, 14 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 none", ok);
+    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 none", ok);
     ok = eng_load_id(EID_HOOVER, &sub) == ENGI_HOOVER && !sub && eng_load_id(EID_WHEEL, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_FM6, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_VOICE, &sub) == ENGI_SPEECH && sub && eng_load_id(EID_TRIO, &sub) == ENGI_ANALOG && sub &&

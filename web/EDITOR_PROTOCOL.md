@@ -75,10 +75,10 @@ a user preset's stored pattern is still read and written (and kept in flash), bu
 
 **1.5 (engines):** the engine byte everywhere (`INFO`'s names, `DUMP` / `RELOAD` / `TRACK`, `PRESET`, `NAMES`,
 `G_ENGSEL`, `UP_*`, `FAV_*`, the tracker's instruments, projects) is the engine's **id**, fixed for good: NENGINES (in
-`INFO`) is the number of ids, 22, the same in every build. Eight engines are appended: 14 WAVE (wavetables), 15 BYTE
+`INFO`) is the number of ids, 24, the same in every build. Ten engines are appended: 14 WAVE (wavetables), 15 BYTE
 (bytebeat), 16 WEST (complex oscillator, wavefolder, low-pass gate), 17 HOOVER (PWM saws, sub, bend), 18 SPEECH
-(LPC words), 19 FMPERC (FM percussion), 20 KARPLUS (a plucked string) and 21 VOSIM (formant pulse trains); the
-user-slot engine of `FAV_GET` / `FAV_SET` is 22. `NAMES`, `DESC` and the rest treat them as any
+(LPC words), 19 FMPERC (FM percussion), 20 KARPLUS (a plucked string), 21 VOSIM (formant pulse trains), 22
+PARTICLE (grain clouds) and 23 CHAOS (chaotic oscillators); the user-slot engine of `FAV_GET` / `FAV_SET` is 24. `NAMES`, `DESC` and the rest treat them as any
 engine. `INFO`'s version string carries the distribution after the version ("FELUCCA v1.5 IDM"; the default: none).
 
 A build holds a set of the engines, its distribution (BUILDING.md "Distributions"); an id it has no engine for is named "-" in `INFO`, `NAMES`
@@ -121,7 +121,7 @@ watches (v2, `WATCH`), the device also sends push frames (cmds 23, 24, 26) at an
 | string | ASCII bytes, ended by a 0 byte |
 | scope | 0 = parameter of the selected track (`P_*`, 0..P_COUNT−1); 1 = global parameter (`G_*`, 0..G_COUNT−1) |
 | track | 0..3: tracks 1..4 (synth parts) |
-| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 retired (DIGITAL), 2 PHASE, 3 LOFI, 4 retired (SAMPLE), 5 VOICE, 6 TRIO, 7 WHEEL, 8 retired (GRAIN), 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 retired (SLICE), 14 WAVE, 15 BYTE, 16 WEST, 17 HOOVER, 18 SPEECH, 19 FMPERC, 20 KARPLUS, 21 VOSIM (1.5: NENGINES 22; 1.0.4 .. 1.4.1: 14, a build with `FELUCCA_SLICE=0` 13; a retired number is named "-", see 1.5 above). The device and the editor list them in another order (the distribution's order; the default: ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM); the numbers stay |
+| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 retired (DIGITAL), 2 PHASE, 3 LOFI, 4 retired (SAMPLE), 5 VOICE, 6 TRIO, 7 WHEEL, 8 retired (GRAIN), 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 retired (SLICE), 14 WAVE, 15 BYTE, 16 WEST, 17 HOOVER, 18 SPEECH, 19 FMPERC, 20 KARPLUS, 21 VOSIM, 22 PARTICLE, 23 CHAOS (1.5: NENGINES 24; 1.0.4 .. 1.4.1: 14, a build with `FELUCCA_SLICE=0` 13; a retired number is named "-", see 1.5 above). The device and the editor list them in another order (the distribution's order; the default: ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM); the numbers stay |
 
 The engine parameters are `P_E0..P_E7`: P_COUNT−8 .. P_COUNT−1 (96..103 since 1.2; 91..98 in 1.1), and `INFO` gives `P_E0`.
 Their meaning, range and names depend on the current engine, so re-read `DESC` for them

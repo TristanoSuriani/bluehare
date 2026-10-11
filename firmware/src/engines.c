@@ -21,6 +21,8 @@
 #include "eng_fmperc.c"         /* FMPERC: two-operator FM percussion (1.5) */
 #include "eng_karplus.c"        /* KARPLUS: a plucked string, Karplus-Strong (1.5) */
 #include "eng_vosim.c"          /* VOSIM: formant pulse trains (1.5) */
+#include "eng_particle.c"       /* PARTICLE: a cloud of synthesized grains (1.5) */
+#include "eng_chaos.c"          /* CHAOS: chaotic systems as oscillators (1.5) */
 
 /* the engine of an id this build has none for (a retired id, or an engine left out): what the editor protocol
  * describes for it (NAMES, DESC: no presets, nothing to edit, named "-"). No track ever plays it */

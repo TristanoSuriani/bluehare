@@ -367,6 +367,14 @@ In the order the device lists them:
   each DECAY times the last; their width sets the formants F1 and F2, which stay put whatever the note (KTRK makes them
   follow it). SWEEP moves them at each note and lets them glide back (wah, brass, "yow"); BAL mixes them; BRTH adds
   breath. Presets: four vowels, talk lead, basses, brass, yow, choir, reed, whistle, growl, formant pad
+- **PARTICLE** (the IDM distribution): a cloud of synthesized grains. DENS grains a second (1 .. 400), each SIZE long
+  (2 .. 200 ms), at the note give or take SCAT semitones (QNT: free, semitones, octaves, fifths), gliding CHIRP; WAVE
+  sine, triangle, FM or noise under SHAPE (a hit, a swell, backwards); TONE. Rain, bubbles, crackle, swarms, stardust,
+  grain pads, drips, insects
+- **CHAOS** (the IDM distribution): chaotic systems as oscillators. MODEL: the Lorenz and Rossler attractors (flows
+  run at the note's speed: tones that wander) or the logistic and Henon maps (a new value each period: buzz that
+  changes every cycle). CHAOS is the system's parameter, from order to wild; OUT the variable heard; SMTH; FOLD; SINE
+  mixes in the note's sine; SEED: the same attack every note or a new one; TONE
 - **SPEECH** (the IDM distribution): words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
   are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD

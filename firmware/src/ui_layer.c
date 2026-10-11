@@ -13,7 +13,8 @@
  *   SCL  SET   any key: its note name is ROOT; KNOB 1..4 ROOT SCL CHRD VOIC (LY_SCL: the SCL page's first two,
  *              the CHORD page's two; QNT TRN stay on SCL); the LEDs show the root lit and the scale's notes breathing
  *   EDIT SET   the white keys from F3: the engines in PRESETS order (one key each, the NENG_SHOWN one can pick:
- *              engines.c eng_vis; 15 at most), the next white key INIT (LY_INIT: E5)
+ *              engines.c eng_vis), the next white key INIT (LY_INIT); a build of 16 engines fills all 16 white keys
+ *              and INIT is the last black key, F#5 (LY_INIT_BK)
  *              (the dialog); KNOB 1 ENG, 2 No. (the engine's sounds), 3 FAV. Sound loads as on PRESETS: the steps
  *              stay, SAVE held undoes, the editor gets RELOAD; they apply while playing too. 1.4.1: the black keys
  *              the selected track's engine's quick actions (EQA below: DRUM 1..8 its lanes' MUTE; other engines
@@ -78,8 +79,10 @@ static const page_t *ly_page(uint32_t l) { return l == LAYER_SCL ? &LY_SCL : l =
 #define LY_DEAD 8u                     /* .. pressed where there is no layer: does nothing */
 /* EDIT: the white key of INIT, the one after the engines (13: E5), its map cell. 15 engines at most have a key: a
  * build with more (every FELUCCA_ engine on: 16) leaves the last ones in PRESETS order to KNOB 1 */
-#define LY_INIT ((uint32_t)(NENG_SHOWN < 15 ? NENG_SHOWN : 15))
-typedef char ly_init_fits[LY_INIT < 16u ? 1 : -1];   /* (a white key: F3 .. G5) */
+#define LY_INIT ((uint32_t)(NENG_SHOWN < 16 ? NENG_SHOWN : 16))
+#define LY_INIT_BK (NENG_SHOWN >= 16)                   /* INIT on the last black key (F#5: place 10) */
+#define LY_INIT_P 10u
+typedef char ly_init_fits[LY_INIT <= 16u ? 1 : -1];   /* (the white keys F3 .. G5: 16) */
 #define layer_seen (favorites.factory[15][31])   /* bit l: layer l opened once (a byte no engine uses) */
 static const khint_t FX_LATCH_FOOT[3] = {{KC_KEYS, "ON / OFF"}, {KC_K14, "MACROS"}, {KC_OCTDN, "ALL OFF"}};
 static const khint_t FX_KEY_FOOT[3] = {{KC_PRESETS, "ASSIGN"}, {KC_EDIT, "DEFAULT"}, {KC_K14, "MACROS"}};   /* (a key held) */
@@ -604,6 +607,8 @@ static void layer_key(uint32_t l, uint32_t k)
             edit_load(eng_vis(p), 0);
         else if (p == LY_INIT)
             confirm_open(CF_INIT_SOUND, song.sel);      /* (the dialog closes the layer) */
+    } else if (l == LAYER_EDIT && LY_INIT_BK && p == LY_INIT_P) {
+        confirm_open(CF_INIT_SOUND, song.sel);          /* (16 engines: INIT on F#5) */
     } else if (l == LAYER_EDIT) {
         eqa_key(k, p);                                  /* (black keys: the engine's quick actions) */
     } else if (l == LAYER_REC) {
@@ -782,6 +787,8 @@ static uint32_t layer_leds(uint32_t *br)
         } else if (l == LAYER_EDIT && !b) {             /* the engine lit, the others and INIT breathe */
             on = p < NENG_SHOWN && p < LY_INIT && eng_vis(p) == TSEL->eng_req % NENGINES;
             can = p < NENG_SHOWN && p < LY_INIT ? 1u : p == LY_INIT;
+        } else if (l == LAYER_EDIT && LY_INIT_BK && p == LY_INIT_P) {   /* (16 engines: INIT breathes on F#5) */
+            can = 1;
         } else if (l == LAYER_EDIT && (a = eqa_of(TSEL, p)) != 0) {   /* the quick actions: on lit (DRUM: sounding), */
             on = a->on(TSEL, a->arg) != 0u;             /* a HOLD one off breathes, none dark */
             can = a->kind == LK_HOLD;
@@ -958,7 +965,7 @@ static void eqa_row(uint32_t n)
 }
 static void layer_edit(void)                            /* the engines from F3, INIT next (LY_INIT), the sound under them */
 {                                                        /* (cells show the engine's icon, not the key's note) */
-    uint32_t n = NENG_SHOWN < LY_INIT ? NENG_SHOWN : LY_INIT, cells = n + 1u, i, h = cells > 12u ? 20u : 28u;   /* 4 rows of 20: 8 px clear above the sound row */
+    uint32_t n = NENG_SHOWN < LY_INIT ? NENG_SHOWN : LY_INIT, cells = n + !LY_INIT_BK, i, h = cells > 12u ? 20u : 28u;   /* 4 rows of 20: 8 px clear above the sound row */
     uint32_t na = eqa_count(TSEL);
     for (i = 0; i < cells; i++) {
         int32_t x = LC_X(i % 4u), y = 4 + (int32_t)(h + 4u) * (int32_t)(i / 4u);
