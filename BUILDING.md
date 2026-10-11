@@ -60,28 +60,10 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `c
 | `FELUCCA_UAC` | 1 | USB audio input (the master output, stereo, 44.1 or 48 kHz) |
 | `FELUCCA_UAC_48K` | 1 | `0`: the USB audio input at 44.1 kHz only, as up to 1.0.5.2 (`firmware/src/usb.c`) |
 | `FELUCCA_UART` | 1 | TRS MIDI IN |
-| `FELUCCA_SAMPLE` | 0 | the SAMPLE engine (left out since 1.5; with GRAIN or SLICE: the built-in sets, the user sample slots and their upload) |
-| `FELUCCA_GRAIN` | 0 | the GRAIN engine (left out since 1.5) |
-| `FELUCCA_SLICE` | 0 | the SLICE engine and its SLICES page (left out since 1.5) |
 | `FELUCCA_ICONS` | 1 | parameter icons on the knob cards |
-| `FELUCCA_FM4` | 0 | the retired DIGITAL engine (4-operator FM) instead of its FM6 conversion |
 
 `FELUCCA_USB_LAYOUT` (`0` to `3`, default `0`) picks other USB descriptor layouts for testing; see
 `firmware/src/usb.c`.
-
-## Samples
-
-Since 1.5 the engines that play recorded material (SAMPLE, GRAIN, SLICE) are left out of the default build: it has no
-built-in samples and no user sample slots (the web editor shows none), and their engine numbers are reserved (a sound
-of one loads as FM6, WAVE or DRUM). `FELUCCA_SAMPLE=1`, `FELUCCA_GRAIN=1` or `FELUCCA_SLICE=1` builds one back (all
-three: the image is within about 7 KB of the app slot; with all three the EDIT layer has 17 engines for its 15 keys,
-so the last two, SLICE and DRUM, are on KNOB 1 only). The host tests build them in where they test them.
-
-The CC0 instrument samples that the SAMPLE engine uses are in `assets/samples-cc0/`
-(Versilian Studios, see `ATTRIBUTION.txt` there). `tools/fetch_cc0.py` downloads them
-again from the source repositories. Without that folder the build still works, with no
-instrument sets in the SAMPLE engine and no PIANO in SLICE (the PIANO set's middle C): they play a plain sine
-at the note's pitch instead, and the screen says NO SAMPLE.
 
 ## Browser emulator
 
@@ -94,7 +76,7 @@ python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 `web/emu/felucca_web.c` builds the firmware's sources as the host tests do, against a simulated FM-1, and
 Emscripten compiles it to WebAssembly (`build/emu/felucca.wasm`, with `index.html`, `worklet.js` and the font in `fonts/`). The page
 keeps the flash's storage sectors (projects, user presets, settings) in the browser. Not emulated: USB (audio,
-MIDI out, the editor, updates), TRS MIDI and the user sample slots. A build of it is on the site:
+MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 <https://hugelton.github.io/Felucca/webapp/try/>.
 
 ## Tests
@@ -108,8 +90,7 @@ Runs the host tests and, with Node.js, the web page tests (and, with Emscripten 
 user presets, projects of every format, backup, the keys and knobs, MIDI (USB, TRS, clock,
 control), USB audio, the update entry and loader, the command-line installer, the UI (the real
 drawing code against stubs: every screen in every palette is rendered and checked for clipped or
-overlapping text; PNGs land in `build/ui_new/`), every engine (DRUM, NOISE, PHYS, FM6, SLICE, the
-DIGITAL conversion), the chord keys, the modulation matrix, the FX layer, the reverbs, the SLICER
+overlapping text; PNGs land in `build/ui_new/`), every engine (DRUM, NOISE, PHYS, FM6, ...), the chord keys, the modulation matrix, the FX layer, the reverbs, the SLICER
 and swing. With `DAISYSP` pointing at a DaisySP checkout, the PHYS models are also compared with
 their floating-point originals; without it that test is skipped.
 

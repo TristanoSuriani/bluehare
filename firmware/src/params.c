@@ -40,9 +40,9 @@ static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"}
 static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"};
 static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE",
                                      "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"};
-static const char *const N_ENGNAME[] = {"ANALOG", FELUCCA_FM4 ? "DIGITAL" : "-", "PHASE", "LOFI", FELUCCA_SAMPLE ? "SAMPLE" : "-",
-                                        "VOICE", "TRIO", "WHEEL", FELUCCA_GRAIN ? "GRAIN" : "-", "PHYS", "DRUM", "NOISE", "FM6",
-                                        FELUCCA_SLICE ? "SLICE" : "-", "WAVE", "BYTE", "WEST", "HOOVER"};   /* (engines.c ENGINES[]; "-": not built) */
+static const char *const N_ENGNAME[] = {"ANALOG", "-", "PHASE", "LOFI", "-", "VOICE", "TRIO", "WHEEL", "-", "PHYS",
+                                        "DRUM", "NOISE", "FM6", "-", "WAVE", "BYTE", "WEST", "HOOVER"};   /* (engines.c
+                                        * ENGINES[]; "-": a retired number) */   /* (engines.c ENGINES[]; "-": not built) */
 
 #define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}
 #define PE(l, n, df) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n, 0}
@@ -102,8 +102,8 @@ static const param_desc_t TP[P_COUNT] = {
                  [P_M##k##AMT] = PD("AMT" #k, F_BIPCT, -64, 63, 0)
     MSLOT(1), MSLOT(2), MSLOT(3), MSLOT(4),
 #undef MSLOT
-/* the OP ENV / OP LEVEL values of DIGITAL (ids 61..80): with FELUCCA_FM4 its operator envelopes; without it
- * inert, on no page and in no editor layout, read only when a DIGITAL sound converts (fm4_convert.c). Their labels
+/* ids 61..80: the operator envelopes and levels of DIGITAL (removed in 1.5): inert, on no page, in no editor layout,
+ * read by nothing; kept so the stored layouts (projects, user presets, the editor's) stay as they are. Their labels
  * stay: the editor's library files key parameters by label ("ATK#2" ..), so an old file's values still find them */
 #define FMOP(k) [P_FM##k##_ATK] = PD("ATK", F_TIME, 0, 127, 0), \
                 [P_FM##k##_DEC] = PD("DEC", F_TIME, 0, 127, 0), \
@@ -182,25 +182,19 @@ static const param_desc_t *param_desc_of(uint32_t e, uint32_t id)
     return id >= P_E0 ? &ENGINES[e]->edit[id - P_E0] : &TP[id];
 }
 
-/* a retired F_ENUM value kept as an alias, so stored values stay valid: SAMPLE SET and GRAIN SRC 1, once
- * TRANH, and 4, once PERC (a SAMPLE sound of it loads as DRUM: core.h drum_from_perc), play PIANO
- * (tools/gen_samples.py SMP_SET_ORIG); DRUM KIT 1..3, once HAND CYM H+CYM, play 66 10 77 (eng_drum.c DK_PLAYS).
+/* a retired F_ENUM value kept as an alias, so stored values stay valid: DRUM KIT 1..3, once HAND CYM H+CYM, play
+ * 66 10 77 (eng_drum.c DK_PLAYS).
  * It shows the original's name; knobs step over it and the editor's SET lands on the original. -> the value v
  * stands for */
 static int32_t enum_orig(const param_desc_t *d, int32_t v)
 {
     if (d->names == N_DRUM_KIT)
         return v >= 0 && v < DK_COUNT ? (int32_t)DK_PLAYS[v] : v;
-#if FELUCCA_SAMPLES
-    return d->names == SMP_ALL_NAMES && v >= 0 && v < SMP_NSETS ? SMP_SET_ORIG[v] : v;
-#else
     return v;
-#endif
 }
 
 /* a stored value as the parameter takes it (projects, user presets, motion): inside d's range, and a retired
- * DRUM KIT (1..3) as the kit it plays, so KIT never holds one again. (SAMPLE / GRAIN's aliases keep their
- * number: they are what the sound was saved with, and play the original anyway.) FM6's SLOT is never stored as a
+ * DRUM KIT (1..3) as the kit it plays, so KIT never holds one again. FM6's SLOT is never stored as a
  * bank slot: 9..40 (1.4.1's B1..B32; 1.0.2's B1..B27 were 8..34) is 8, OWN, and the patch comes with what is loaded */
 static int32_t param_fit(const param_desc_t *d, int32_t v)
 {
@@ -369,7 +363,7 @@ enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE,
        FAM_COUNT };
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_TRK };   /* SC_TRK: the TRACKS page (ui_input.c tracks_edit) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_ARP, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
-       GR_SLCR, GR_MOD, GR_TOOLS, GR_CHORD, GR_SLICES,
+       GR_SLCR, GR_MOD, GR_TOOLS, GR_CHORD,
        GR_FMOP, GR_FMOP2, GR_FMENV,
        GR_TKPAT, GR_TKSONG, GR_TKSET, GR_TKINST, GR_TKLAY };   /* (GR_FMOP..: FM6's operator pages, ui_fm6op.c; GR_TK*:
                                                                 * the tracker's, ui_tracker.c) */
@@ -398,15 +392,9 @@ static const page_t PAGES[] = {
     {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E4, P_E5, P_E6, P_E7}},
     {"LANES", FAM_EDIT, SC_TRACK, GR_NONE, {P_LN0, P_LN1, P_LN2, P_LN3}},   /* DRUM only: the lane levels */
     {"LANES 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_LN4, P_LN5, P_LN6, P_LN7}},
-    {"SLICES", FAM_EDIT, SC_TRACK, GR_SLICES, {0xFF, 0xFF, 0xFF, 0xFF}},   /* SLICE only: the slices by hand (ui_slice.c) */
     {"OPERATOR", FAM_EDIT, SC_TRACK, GR_FMOP, {0xFF, 0xFF, 0xFF, 0xFF}},    /* FM6 only: KNOB 1 the operator, then its */
     {"OP ENV", FAM_EDIT, SC_TRACK, GR_FMENV, {0xFF, 0xFF, 0xFF, 0xFF}},     /* bytes of the track's patch (ui_fm6op.c): */
     {"OPERATOR 2", FAM_EDIT, SC_TRACK, GR_FMOP2, {0xFF, 0xFF, 0xFF, 0xFF}}, /* CRS FINE LEVEL / STG RATE LEVEL / MODE DTUN VEL */
-    {"OP1 ENV", FAM_EDIT, SC_TRACK, GR_ADSR, {P_FM1_ATK, P_FM1_DEC, P_FM1_SUS, P_FM1_REL}},
-    {"OP2 ENV", FAM_EDIT, SC_TRACK, GR_ADSR, {P_FM2_ATK, P_FM2_DEC, P_FM2_SUS, P_FM2_REL}},
-    {"OP3 ENV", FAM_EDIT, SC_TRACK, GR_ADSR, {P_FM3_ATK, P_FM3_DEC, P_FM3_SUS, P_FM3_REL}},
-    {"OP4 ENV", FAM_EDIT, SC_TRACK, GR_ADSR, {P_FM4_ATK, P_FM4_DEC, P_FM4_SUS, P_FM4_REL}},
-    {"OP LEVEL", FAM_EDIT, SC_TRACK, GR_NONE, {P_FM1_LEVEL, P_FM2_LEVEL, P_FM3_LEVEL, P_FM4_LEVEL}},
     {"VOICE", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_GLIDE, P_GLMODE, P_PRIO}},
     {"VOICE 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_ALLOC, P_DETUNE, P_PAN, P_MUTE}},
     {"VOICE 3", FAM_EDIT, SC_TRACK, GR_NONE, {P_SPRD, 0xFF, 0xFF, 0xFF}},   /* #148: SPREAD */

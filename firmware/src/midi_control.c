@@ -216,11 +216,11 @@ static const uint8_t MIDI_CC_MAP[][2] = {
 };
 /* per engine (ENGINES[] order): CC74's E index + 1 in the high nibble, CC71's in the low one, 0 = none */
 static const uint8_t MIDI_CC_ENG[NENGINES] = {
-    0x56, 0x00, 0x30, 0x80, FELUCCA_SAMPLE ? 0x50 : 0, 0x07, 0x67, 0x00,   /* ANALOG CUT RES, -, PHASE DCW, LOFI TONE,
-                                                       * SAMPLE CUT, VOICE Q, TRIO CUT RES, WHEEL - */
-    FELUCCA_GRAIN ? 0x80 : 0, 0x30, 0x30, 0x34, 0x30, /* GRAIN TONE, PHYS BRIT, DRUM TONE, NOISE FREQ RES, FM6 MLVL */
-    FELUCCA_SLICE ? 0x80 : 0, 0x56, 0x60, 0x73, 0x81, /* SLICE TONE, WAVE CUT RES, BYTE TONE, WEST CUT FOLD, HOOVER CUT PW
-                                                       * (a left-out engine: none) */
+    0x56, 0x00, 0x30, 0x80, 0x00, 0x07, 0x67, 0x00,   /* ANALOG CUT RES, -, PHASE DCW, LOFI TONE, -, VOICE Q, TRIO CUT
+                                                       * RES, WHEEL - */
+    0x00, 0x30, 0x30, 0x34, 0x30,                     /* -, PHYS BRIT, DRUM TONE, NOISE FREQ RES, FM6 MLVL */
+    0x00, 0x56, 0x60, 0x73, 0x81,                     /* -, WAVE CUT RES, BYTE TONE, WEST CUT FOLD, HOOVER CUT PW (-: a
+                                                       * retired number) */
 };
 static void __attribute__((noinline)) midi_cc_map(track_t *t, uint32_t cc, uint32_t value)
 {

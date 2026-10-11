@@ -634,13 +634,6 @@ static void state(void)                          /* a playing song */
     song.playing = 1;
     song.g[G_BPM] = 124;
     clk_pos = 0; clk_step = 8;                           /* the bar's 3rd beat: the header's metronome at rest */
-#if FELUCCA_SLICE
-    if (usr_nz[0]) {                              /* (slices_usr filled USR1: empty again) */
-        memset(host_slots, 0, sizeof host_slots);
-        smp_user_scan(0);
-        slc_man_save = 0;
-    }
-#endif
     for (i = 0; i < SCOPE_N; i++)                 /* a stand-in signal for the scope */
         scope_buf[i] = (int16_t)((int32_t)((i * 37u) % 128u) * 200 - 12800 + (int32_t)((i % 32u) < 16u ? 3000 : -3000));
     scope_w = 0;
@@ -651,15 +644,11 @@ static void drum(uint32_t kit)                    /* track 4 (DRUM) selected, it
     trk[3].p[P_E0] = (int16_t)kit;
 }
 static void eng(uint32_t e) { set_engine_of(TSEL, e); }
-/* the FM engine of the FM screens: DIGITAL with FELUCCA_FM4, else FM6 (DIGITAL retired: its own screens, the OP ENV /
- * OP LEVEL pages and the algorithm charts, exist only there: fm4_screen) */
-#define E_FM (FELUCCA_FM4 ? ENGI_DIGITAL : ENGI_FM6)
 
 enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESETS, S_PRESETS_NOFAV, S_USER, S_PROJECT,
        S_TOOLS, S_MIXER, S_MIXER_HOME, S_MIXER_PAN, S_ENV, S_ENVDEST, S_LFO, S_MOD, S_FX, S_SLICER, S_DLY, S_SCL,
        S_CHORD, S_CHORD_WIDE, S_CHORD_OFF, S_CHORD_KIT, S_ARP, S_VOICE, S_CLOCK, S_MENU_MIDI, S_EDIT_ANALOG,
-       S_EDIT_DIGITAL, S_OP_ENV, S_EDIT_WHEEL, S_EDIT_SAMPLE, S_EDIT_GRAIN, S_EDIT_PHYS, S_ALG1, S_ALG2, S_ALG3,
-       S_ALG4, S_ALG5, S_ALG6, S_ALG7, S_ALG8, S_OP_LEVEL, S_FM6_ALG1, S_FM6_ALG5, S_FM6_ALG22, S_FM6_ALG32, S_FM6_OP,
+       S_EDIT_FM6, S_EDIT_WHEEL, S_EDIT_WAVE_2, S_EDIT_BYTE_2, S_EDIT_PHYS, S_FM6_ALG1, S_FM6_ALG5, S_FM6_ALG22, S_FM6_ALG32, S_FM6_OP,
        S_FM6_OP_FIXED, S_FM6_OP2, S_FM6_OP_ENV, S_FM6_OP_ENV_REL, S_CONFIRM_SEQ, S_CONFIRM_PROJ, S_CONFIRM_USER,
        S_CONFIRM_ERASE, S_MENU, S_MENU_SPEAKER, S_ABOUT, S_ABOUT_REC, S_ABOUT_CREDITS, S_ABOUT_END, S_UBOOT,
        S_CALIBRATION, S_SPLASH, S_BATT0, S_BATT1, S_BATT2, S_BATT3, S_BATT_USB, S_FX_PEEK, S_FX_HELD, S_FX_WAIT,
@@ -668,7 +657,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_LAYER_HINT, S_LAYER_LOCK, S_LAYER_LOCK_FX, S_EDIT_DRUM, S_EDIT_DRUM_KIT, S_DRUM_MUTED, S_NAME_USER,
        S_NAME_TYPING, S_NAME_123, S_NAME_EMPTY, S_NAME_FULL, S_NAME_PLAYING, S_PROJECT_NAMED, S_PRESETS_CAT,
        S_PRESETS_CAT_EMPTY, S_NAME_CAT, S_NAME_RANDOM, S_MENU_ANIM_IDLE, S_MOMENTARY, S_MOMENTARY_EDIT, S_USER_FOOT,
-       S_SLICES_BREAK, S_SLICES_USR, S_SLICES_NOFILE, S_LFO2, S_REC_LAYER, S_REC_LAYER_SET,
+       S_LFO2, S_REC_LAYER, S_REC_LAYER_SET,
        S_MENU_AUDIO, S_HEAD_PLAY_REC, S_HEAD_REC_OTHER, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK, S_HEAD_BPM_LOCKED,
        S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_TK_PATTERN,
        S_TK_PATTERN_FX, S_TK_PATTERN_PLAY, S_TK_PATTERN_CUED, S_TK_SONG, S_TK_SONG_PLAY, S_TK_SETTINGS, S_TK_INSTR,
@@ -676,8 +665,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
        "mod", "fx", "slicer", "dly", "scl", "chord", "chord_wide", "chord_off", "chord_kit", "arp", "voice", "clock",
-       "menu_midi", "edit_analog", FELUCCA_FM4 ? "edit_digital" : "edit_fm6", "op_env", "edit_wheel",
-       FELUCCA_SAMPLE ? "edit_sample" : "edit_wave_2", FELUCCA_GRAIN ? "edit_grain" : "edit_byte_2", "edit_phys", "alg_1", "alg_2", "alg_3", "alg_4", "alg_5", "alg_6", "alg_7", "alg_8", "op_level",
+       "menu_midi", "edit_analog", "edit_fm6", "edit_wheel", "edit_wave_2", "edit_byte_2", "edit_phys",
        "fm6_alg_01", "fm6_alg_05", "fm6_alg_22", "fm6_alg_32", "fm6_op", "fm6_op_fixed", "fm6_op2", "fm6_op_env",
        "fm6_op_env_rel", "confirm_seq", "confirm_project", "confirm_user", "confirm_erase", "menu", "menu_speaker",
        "about", "about_rec", "about_credits", "about_end", "uboot", "calibration", "splash", "batt_0", "batt_1",
@@ -687,7 +675,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
        "layer_edit_active", "layer_edit_user", "layer_hint", "layer_lock", "layer_lock_fx", "layer_edit_drum",
        "layer_edit_drum_kit", "drum_muted", "name_user", "name_typing", "name_123", "name_empty", "name_full",
        "name_playing", "project_named", "presets_bass", "presets_other_empty", "name_category", "name_random",
-       "menu_anim_idle", "momentary", "momentary_edit", "user_foot", "slices_break", "slices_usr", "slices_nofile",
+       "menu_anim_idle", "momentary", "momentary_edit", "user_foot",
        "lfo2", "layer_rec", "layer_rec_set", "menu_audio", "head_play_rec",
        "head_rec_other", "head_bpm_turn", "head_bpm_lock", "head_bpm_locked", "head_glo_turn", "head_downbeat",
        "head_beat_2", "menu_tune", "menu_info", "menu_home", "tk_pattern", "tk_pattern_fx", "tk_pattern_play",
@@ -746,12 +734,7 @@ static void setup(int s)
     case S_HOME_IDLE: song.playing = 0; song.batt_raw = 570; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MESSAGE: ui_say("LOADED ", "07 A VERY LONG PATTERN NAME"); break;
     case S_MESSAGE_KEY: ui_message("[SAVE] HOLD TO UNDO"); break;            /* a message with a keycap */
-    case S_MESSAGE_NOFILE:                          /* a missing sample (ui_input.c sample_notice): USR2 */
-#if FELUCCA_SAMPLE
-        eng(ENGI_SAMPLE); TSEL->p[P_E0] = (int16_t)(SMP_NSETS + 1); memset(snd_said, 0, sizeof snd_said); sample_notice(); break;
-#else
-        ui_message(MSG_NO_SAMPLE); break;          /* (no SAMPLE in this build: the message itself) */
-#endif
+    case S_MESSAGE_NOFILE: ui_message(MSG_NOFILE "NO FILE"); break;   /* a message led by the no-file icon */
     case S_PRESETS: favorite_set(0, 4, 1); favorite_set(0, 5, 1); go_page(GR_BROWSE); break;
     case S_PRESETS_NOFAV: favorites.filter = 1; go_page(GR_BROWSE); break;
     case S_USER: song.playing = 0; up_store(3, "MY LONG BASS NAME"); up_store(4, "PAD"); ui.uslot = 3; go_page(GR_USER); break;
@@ -825,24 +808,10 @@ static void setup(int s)
         info.t = fm1_ms - INFO_CPU_MS;
         break;
     case S_EDIT_ANALOG: go_title("EDIT 1"); break;
-    case S_EDIT_DIGITAL: eng(E_FM); go_title("EDIT 1"); break;
-    case S_OP_ENV: eng(1); go_title("OP1 ENV"); break;
+    case S_EDIT_FM6: eng(ENGI_FM6); go_title("EDIT 1"); break;
     case S_EDIT_WHEEL: eng(7); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
-#if FELUCCA_SAMPLE
-    case S_EDIT_SAMPLE: {
-        uint32_t i;
-        eng(4); go_title("EDIT 1"); last_note = 60;
-        for (i = 0; i < 4000u && !sample_wave.ready; i++) sample_wave_tick(TSEL);
-        break;
-    }
-#else
-    case S_EDIT_SAMPLE: eng(ENGI_WAVE); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;   /* (no SAMPLE: WAVE's EDIT 2) */
-#endif
-#if FELUCCA_GRAIN
-    case S_EDIT_GRAIN: eng(8); go_title("EDIT 2"); break;
-#else
-    case S_EDIT_GRAIN: eng(ENGI_BYTE); go_title("EDIT 2"); break;                     /* (no GRAIN: BYTE's EDIT 2) */
-#endif
+    case S_EDIT_WAVE_2: eng(ENGI_WAVE); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;
+    case S_EDIT_BYTE_2: eng(ENGI_BYTE); go_title("EDIT 2"); break;
     case S_EDIT_WAVE: eng(ENGI_WAVE); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_BYTE: eng(ENGI_BYTE); TSEL->p[P_E6] = 9; go_title("EDIT 1"); break;
     case S_EDIT_WEST: eng(ENGI_WEST); TSEL->p[P_E0] = 13; TSEL->p[P_E3] = -20; go_title("EDIT 1"); break;
@@ -850,12 +819,6 @@ static void setup(int s)
     case S_EDIT_HOOVER: eng(ENGI_HOOVER); go_title("EDIT 1"); break;
     case S_EDIT_HOOVER_2: eng(ENGI_HOOVER); TSEL->p[P_E5] = -12; go_title("EDIT 2"); break;
     case S_EDIT_PHYS: eng(9); go_title("EDIT 1"); break;
-    case S_ALG1: case S_ALG2: case S_ALG3: case S_ALG4: case S_ALG5: case S_ALG6: case S_ALG7: case S_ALG8:
-        eng(1); TSEL->p[P_E0] = (int16_t)(s - S_ALG1);      /* the 8 DIGITAL charts; FB on the odd ones, IDX high .. 0 */
-        TSEL->p[P_E6] = (s - S_ALG1) & 1 ? 40 : 0; TSEL->p[P_E4] = (int16_t)((S_ALG8 - s) * 18);
-        go_title("EDIT 2"); break;
-    case S_OP_LEVEL: eng(1); TSEL->p[P_E0] = 1; TSEL->p[P_FM4_LEVEL] = 0; go_title("OP LEVEL");   /* op 4 silent, op 3 hot */
-        ui.hot_col = 2; ui.hot_t = 30; break;
     /* FM6's algorithm charts: 1 as it is; 5 with FB +3 just turned; 22 on EDIT 2, DTUN just turned (the carriers);
      * 32 with operator 6 at output level 0, MLVL just turned (no routes: nothing in ACCENT but nothing either) */
     case S_FM6_ALG1: eng(ENGI_FM6); TSEL->p[P_E0] = 1; go_title("EDIT 1"); break;
@@ -955,7 +918,7 @@ static void setup(int s)
     case S_MENU_SYSTEM: ui.menu = 1; ui.menu_sel = MI_SERIAL; break;
     case S_MENU_SLIDE: ui.menu = 1; ui.menu_sel = MI_ACCEL; ui_prefs |= PREF_LATCH; break;
     /* the GLO SCL EDIT layers (ui_layer.c): just opened (a peek), and in use: GLO with T2 muted, T3 soloed (its key
-     * held) and KNOB 1 turned; with CLK EXT (TAP dimmed); SCL at D# minor, KNOB 2 turned; EDIT on DIGITAL preset 3,
+     * held) and KNOB 1 turned; with CLK EXT (TAP dimmed); SCL at D# minor, KNOB 2 turned; EDIT on FM6 preset 3,
      * a favourite; a user preset; the hint after a tap */
     case S_GLO_PEEK: go_title("ENV"); ui.layer = LAYER_GLO; break;
     case S_GLO_ACTIVE:
@@ -966,7 +929,7 @@ static void setup(int s)
     case S_SCL_PEEK: go_title("ENV"); ui.layer = LAYER_SCL; break;
     case S_SCL_ACTIVE: go_home(); ui.layer = LAYER_SCL; TSEL->p[P_ROOT] = 3; TSEL->p[P_SCALE] = 2; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_PEEK: go_title("EDIT 1"); ui.layer = LAYER_EDIT; break;
-    case S_EDIT_ACTIVE: eng(E_FM); apply_preset_to(TSEL, 2); favorite_set(E_FM, 2, 1); go_home(); ui.layer = LAYER_EDIT;
+    case S_EDIT_ACTIVE: eng(ENGI_FM6); apply_preset_to(TSEL, 2); favorite_set(ENGI_FM6, 2, 1); go_home(); ui.layer = LAYER_EDIT;
         ui.hot_col = 0; ui.hot_t = 30; break;
     case S_EDIT_USER: song.playing = 0; eng(6); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(NENGINES, 6, 1);
         go_home(); ui.layer = LAYER_EDIT; break;
@@ -1012,18 +975,6 @@ static void setup(int s)
     case S_NAME_RANDOM: song.playing = 0; go_page(GR_SLOTS); name_open(NK_PROJ_SAVE, 1); nm.rnd = 12345u; nm_random(); break;
     case S_LFO2: TSEL->p[P_LSYNC] = 6; TSEL->p[P_LTRIG] = 1; TSEL->p[P_LPOL] = 1; go_title("LFO 2"); break;
     case S_USER_FOOT: song.playing = 0; up_store(3, "MY BASS"); ui.uslot = 3; go_page(GR_USER); break;   /* EDIT NAME lit */
-#if FELUCCA_SLICE
-    /* EDIT > SLICES: BREAK's 16 slices (slice 6 selected); a user sample's slices set by hand: DIV 8 taken as MAN,
-     * slice 3's start moved (KNOB 2 hot), SPLIT picked (OCT+ lit) */
-    case S_SLICES_BREAK: eng(13u); go_page(GR_SLICES); sp.sel = 5; break;
-    case S_SLICES_USR:
-        eng(13u); host_slot_make(0); smp_user_scan(0);
-        TSEL->p[P_E0] = 1; TSEL->p[P_E1] = 1;
-        go_page(GR_SLICES); sp.sel = 0; slice_knob(0, 2); slice_knob(1, 6); ui.act = 3; ui.msg_t = 0;
-        ui.hot_col = 1; ui.hot_t = 30;
-        break;
-    case S_SLICES_NOFILE: eng(13u); TSEL->p[P_E0] = 2; go_page(GR_SLICES); ui.msg_t = 0; break;   /* USR2 empty: SAMPLE NOT FOUND */
-#endif
     /* 1.5: the tracker's pages (ui_tracker.c) */
     case S_TK_PATTERN: case S_TK_PATTERN_FX: case S_TK_PATTERN_PLAY: case S_TK_PATTERN_CUED:
     case S_TK_SONG: case S_TK_SONG_PLAY: case S_TK_SETTINGS: case S_TK_INSTR: case S_TK_SEQ_LAYER: case S_CONFIRM_SONG:
@@ -1098,7 +1049,7 @@ static void sweep_columns(void)
     char name[64];
     for (e = 0; e < NENGINES; e++) {
         if (!eng_ok(e))
-            continue;                                    /* (DIGITAL without FELUCCA_FM4: no track has it) */
+            continue;                                    /* (a retired number: no track has it) */
         for (i = 0; i < NPAGES; i++) {
             state();
             pal(UI_GREY_INDEX);
@@ -1556,8 +1507,6 @@ int main(int argc, char **argv)
         for (s = 0; s < S_COUNT; s++) {
             char name[64];
             uint32_t k;
-            if (!FELUCCA_FM4 && (s == S_OP_ENV || (s >= S_ALG1 && s <= S_OP_LEVEL)))
-                continue;                           /* (DIGITAL's own screens: FELUCCA_FM4=1 only) */
             snprintf(name, sizeof name, "%s/%s", UI_PALETTES[p].name, S_NAME[s]);
             cur_name = name;
             setup((int)s);
@@ -1579,8 +1528,6 @@ int main(int argc, char **argv)
                 for (k = 0; k < sizeof ST_PAL / sizeof ST_PAL[0] && strcmp(UI_PALETTES[p].name, ST_PAL[k]); k++) ;
                 for (s = 0; s < S_COUNT; s++) {
                     char name[64], tag[24];
-                    if (!FELUCCA_FM4 && (s == S_OP_ENV || (s >= S_ALG1 && s <= S_OP_LEVEL)))
-                        continue;
                     snprintf(tag, sizeof tag, "%s_%s", ST_N[st], UI_PALETTES[p].name);
                     snprintf(name, sizeof name, "%s/%s", tag, S_NAME[s]);
                     cur_name = name;
@@ -1609,8 +1556,6 @@ int main(int argc, char **argv)
             for (p = 0; p < NPALETTES; p++)
                 for (s = 0; s < S_COUNT; s++) {
                     char name[64], tag[24];
-                    if (!FELUCCA_FM4 && (s == S_OP_ENV || (s >= S_ALG1 && s <= S_OP_LEVEL)))
-                        continue;
                     snprintf(tag, sizeof tag, "%s_%s", ST_N[st], UI_PALETTES[p].name);
                     snprintf(name, sizeof name, "%s/%s", tag, S_NAME[s]);
                     cur_name = name;
@@ -1798,7 +1743,7 @@ int main(int argc, char **argv)
     fclose(rep);
     printf("ui_render: %u screens x %u palettes + the page/value sweep; %u lint findings, %u ellipsised free texts (%u distinct), "
            "%u inks on their own colour, %u GREY / MONO pixels off gray / neutral; report %s\n",
-           (unsigned)(S_COUNT - (FELUCCA_FM4 ? 0 : 1 + S_OP_LEVEL - S_ALG1 + 1)), (unsigned)NPALETTES, nfind, nfree, nfree_seen, nink,
+           (unsigned)S_COUNT, (unsigned)NPALETTES, nfind, nfree, nfree_seen, nink,
            mono_bad, path);
     printf("ui_render: alignment: %u measurements of %u places, %u off by 1 px or more%s\n", al_count, al_nst - 1u, al_fail,
            al_fail ? " (see align.txt)" : "");

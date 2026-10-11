@@ -3,8 +3,6 @@
 /* The editor's full backup (editor_backup.c: LIST / GET / PUT) against simulated NOR flash:
  * CRC before any write, stale runtime copies, USB resets and timeouts, malformed objects, the song's chunks (1.5)
  * backed up and restored whole, settings values and user preset banks kept byte for byte. */
-static unsigned char host_samples[3][0x14000];
-#define SMP_USER_XIP(k) host_samples[k]
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -56,7 +54,7 @@ static uint32_t ed_unpack7(const uint8_t *a, uint32_t na, uint8_t *out, uint32_t
     }
     return na ? 0u : n;
 }
-static uint8_t ed_smp_buf[512] __attribute__((aligned(4)));
+static uint8_t ed_buf[512] __attribute__((aligned(4)));
 static void fm1_wdt_feed(void) {}
 static int ed_flash_stop(void) { return transport_busy(); }
 #include "../firmware/src/editor_backup.c"

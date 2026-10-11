@@ -15,7 +15,7 @@ const b = rnd(1000, 1);
 ok(bkUnpack(bkPack(b), b.length).every((v, i) => v === b[i]), "backup: 7-bit pack / unpack round trip");
 ok(throws(() => bkUnpack([...bkPack(b.subarray(0, 14)), 0], 14)), "backup: trailing bytes refused");
 
-/* a device: objects by id, sample slots, the order of writes */
+/* a device: objects by id, the order of writes */
 function device(objs, opt = {}) {
   const d = { objs: new Map(objs), log: [], staged: null };
   d.request = async ([cmd, a]) => {
@@ -41,8 +41,6 @@ function device(objs, opt = {}) {
       if (op === 2) { const s = Uint8Array.from(d.staged.bytes); const rc = bkCrc(s) === d.staged.crc ? 0 : 2; if (!rc) { d.objs.set(id, s); d.log.push(id); } return [op, id, rc]; }
       if (op === 3) { d.log.push(`abort ${id}`); return [op, id, 0]; }
     }
-    if ((cmd === 11 || cmd === 12 || cmd === 13 || cmd === 14) && opt.noSmp) throw new Error("timeout");   // (no slots)
-    if (cmd === 11 || cmd === 12 || cmd === 13 || cmd === 14) { if (cmd === 13 || cmd === 14) d.log.push(32 + a[0]); return [a[0], 0]; }
     throw new Error(`unexpected ${cmd}`);
   };
   return d;
@@ -65,7 +63,7 @@ const damaged = JSON.parse(JSON.stringify(file)); damaged.objects[6].crc ^= 1;
 ok(await athrows(() => restoreBackup(target.request, damaged)) && target.log.length === 0, "backup: restore validates every byte before the first write");
 await restoreBackup(target.request, file);
 const order = target.log.filter((x) => typeof x === "number");
-ok(order.at(-1) === 0 && order.at(-2) === 1 && order.indexOf(2) < order.indexOf(1), "backup: restore order: projects, banks, samples, settings, live music last");
+ok(order.at(-1) === 0 && order.at(-2) === 1 && order.indexOf(2) < order.indexOf(1), "backup: restore order: projects, banks, settings, live music last");
 ok([0, 1, 2, 6].every((id) => target.objs.get(id).every((v, i) => v === objs.find((o) => o[0] === id)[1][i])), "backup: restored objects equal the source");
 {   /* the FM6 patch bank (id 8) and the archives of firmware before it (11 objects, no id 8) */
   ok(BACKUP_IDS.length === 13 && file.objects.some((o) => o.id === 8) && file.objects.some((o) => o.id === 9),
@@ -101,11 +99,11 @@ ok([0, 1, 2, 6].every((id) => target.objs.get(id).every((v, i) => v === objs.fin
   await restoreBackup(to103b.request, newFile);
   ok(to103b.objs.get(9).every((v, i) => v === patches[i]), "backup: a 1.0.3 archive restores id 9");
 }
-{   /* 1.5 builds without SAMPLE / GRAIN / SLICE: no sample slots (SMP_INFO 0): the sample objects are skipped */
-  const lean = device([], { noSmp: true });
-  const res = await restoreBackup(lean.request, file, () => {}, 0);
+{   /* 1.5: no user sample slots: an archive's sample objects are never sent (a sample command is an error here) */
+  const lean = device([]);
+  const res = await restoreBackup(lean.request, file);
   ok(!lean.log.some((x) => x >= 32) && lean.log.at(-1) === 0 && res.skipped.length === 0,
-     "backup: a device without sample slots: the (empty) sample objects skipped, the rest restored");
+     "backup: the (empty) sample objects skipped, the rest restored");
 }
 const failing = device([], { failChunk: 2 });
 ok(await athrows(() => restoreBackup(failing.request, file)) && failing.log.includes("abort 2") && !failing.log.includes(0), "backup: a refused chunk aborts that object and stops before the live music");

@@ -6,9 +6,6 @@
 #define __attribute__(x)
 #define NENGINES 9u
 #define UP_SLOTS 32u
-#define ENGI_SAMPLE 4u                           /* (core.h: SAMPLE, DRUM, the retired PERC set) */
-#define ENGI_DRUM 10u
-#define SMP_SET_PERC 4u
 static uint8_t fx_lowcut;
 static void fm1_led_key(unsigned k, int on) { (void)k; (void)on; }
 static int fm1_enc_take(unsigned k) { (void)k; return 0; }
@@ -55,16 +52,6 @@ int main(void)
     }
 #ifdef FELUCCA_FAVORITES
     assert(favorite_has(8, 0) && favorite_has(NENGINES, 31) && favorites.filter);
-    {   /* SAMPLE's PERC starred (preset 4, retired): DRUM's kit (preset 0) instead; SAMPLE's others kept; twice the same */
-        persist_t q = original;
-        q.favorites.factory[ENGI_SAMPLE][0] = 1u << SMP_SET_PERC | 1u << 2;
-        assert(settings_import(&q, sizeof q) == 1 && favorites.factory[ENGI_SAMPLE][0] == 1u << 2 &&
-               favorites.factory[ENGI_DRUM][0] == 1u);
-        settings_export(&q);
-        assert(settings_import(&q, sizeof q) == 1 && favorites.factory[ENGI_SAMPLE][0] == 1u << 2 &&
-               favorites.factory[ENGI_DRUM][0] == 1u);
-        p = original; assert(settings_import(&p, sizeof p) == 1);
-    }
 #endif
     settings.lowcut = 0;
     settings_export(&p);

@@ -7,8 +7,7 @@
  * Keys and notes: the keys play the General MIDI drum map with the kick on the first C (C KICK, C# RIM,
  * D SNARE, D# CLAP, F# HAT CL, A# HAT OP, F G A B C D TOMS, C# CYM, G# BELL; OCT -/+ move it), and a note
  * plays its GM drum (35..81: kicks, snares, toms, hats, cymbals, bells, congas, claves; other notes as
- * their octave of 36..47), so GM patterns and MIDI parts play as they did on SAMPLE PERC (retired: its sounds
- * load as this engine, core.h drum_from_perc).
+ * their octave of 36..47), so GM patterns and MIDI parts play as drums.
  *
  * Parameters: KIT the kit: STD (Felucca's own: TOM RIM BELL on lanes 6..8, other GM notes their congas, claves,
  * cymbals) or a model kit (80 10 66 55 77: every lane that kit's own piece, drum_voice.c DV_KIT; KICK does not
@@ -270,7 +269,8 @@ static int32_t drum_keys(const track_t *t, uint32_t k)
 
 /* {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK, DRV}; every kit suggests the BEAT pattern (GM notes) */
 static const preset_t DRUM_PRESETS[] = {
-    {"DRUM KIT", DRUM_KIT_E, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20)},   /* (core.h: SAMPLE PERC's too) */
+    {"DRUM KIT", {0, 64, 70, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20)},   /* KIT STD, TUNE, TONE, DECY,
+                                                     * SNAP, ACC, KICK PUNCH, DRV */
 };
 
 static const engine_t ENG_DRUM = {

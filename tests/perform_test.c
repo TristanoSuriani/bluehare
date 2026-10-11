@@ -294,8 +294,8 @@ static void song_setup(void)
     perf_reset();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, 1, 5);
-    host_drums(td);                                /* DRUM KIT (SAMPLE PERC until 1.0.2) */
+    host_preset(t2, ENGI_FM6, 4);                  /* FM6 PAD */
+    host_drums(td);                                /* DRUM KIT */
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i], d[4], k = 0;
         put_step(t1, i, n ? 1u : 0u, &n, n ? ST_NOTE : ST_REST, 0);

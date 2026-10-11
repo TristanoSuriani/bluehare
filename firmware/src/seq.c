@@ -446,7 +446,7 @@ static void key_on(uint32_t k, track_t *t)
         midi_out_event(0x09u | (0x90u | mc) << 8 | x << 16 | 100u << 24);
     }
     kb_chn[k] = (uint8_t)n;
-    last_note = kb_note[k];                         /* (step entry, the SAMPLE zone: the key's note) */
+    last_note = kb_note[k];                         /* (step entry: the key's note) */
 }
 
 /* key k is up: the notes it started end, but those another key still holds */

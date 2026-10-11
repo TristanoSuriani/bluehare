@@ -4,8 +4,8 @@
  * and voice code: the diatonic triads and sevenths of several scales and roots as music theory has them, the
  * fixed shapes, the voicings, at most 4 notes, the names, MONO plays the root, a key's or a MIDI note's release
  * ends exactly the notes it started (CHRD / VOIC changed while held too), shared notes, live recording writes the
- * chord into one step, the ARP gets the chord as held notes, QNT WHITE maps the key first, a kit (the DRUM engine,
- * SAMPLE PERC) ignores CHRD, MIDI OUT of the keys, and OFF plays exactly as before.
+ * chord into one step, the ARP gets the chord as held notes, QNT WHITE maps the key first, a kit (the DRUM engine)
+ * ignores CHRD, MIDI OUT of the keys, and OFF plays exactly as before.
  * Run by tests/run_tests.sh (needs build/gen from one firmware build). */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
@@ -307,12 +307,6 @@ static int kits(void)
     bad += check("  MIDI IN on the DRUM track: one hit, no chord kept", !mchord[0].id);
     midi(0x83, 38, 0);
     song.sel = 0;
-    trk[0].eng_req = trk[0].engine = ENGI_SAMPLE;                   /* SAMPLE: no set is a kit (PERC, retired, */
-    trk[0].p[P_CHRD] = CH_DIA3;                                     /* loads as DRUM; its SET 4 is a PIANO alias) */
-    trk[0].p[P_E0] = SMP_SET_PERC;
-    bad += check("SAMPLE SET 4 (once PERC): chords, no kit", !chord_kit(&trk[0]) && chord_build(&trk[0], 60, out) == 3u);
-    trk[0].p[P_E0] = 0;
-    bad += check("SAMPLE with a melodic set: chords", !chord_kit(&trk[0]) && chord_build(&trk[0], 60, out) == 3u);
     return bad;
 }
 

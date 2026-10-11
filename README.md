@@ -27,7 +27,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Fourteen engines** (below; SAMPLE, GRAIN and SLICE are left out of this fork's build), each with its own factory presets; every factory sound has a category (BASS, LEAD,
+- **Fourteen engines** (below), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
   8 voices shared between them. ALGORITHM selects the track on every page
@@ -121,10 +121,6 @@ where marked here:
   new values (LFO 2's SYNC, TRIG and POL, QUANTIZE, SPREAD).
 - **ARP ORD now plays the held notes in the order you pressed them** (up to 1.1.5 it played them as UP): a sound
   or project using ORD sounds different when its notes were pressed in another order than low to high.
-- **SAMPLE's PIANO is a lighter lo-fi piano** (two notes at 11,025 Hz, 1.6 s each; up to 1.1.5 five notes at
-  22,050 Hz, 0.75 s), and so are the sounds that use it (GRAIN's FROZEN and SHIMMER too). For the old piano, install
-  **PIANO HD** into a user slot from the web editor and set those sounds' SET (GRAIN: SRC) to that slot. SLICE's
-  PIANO is unchanged.
 - **The pages moved** (Discussion #153): see Controls below. In short: SEQ is STEP and AUTOMATION; **SEQ held is SEQ
   TOOLS on every page** (it no longer opens SONG); **GLO opens SONG**; PHRASES is on SAVE; HOME goes round HOME,
   MIXER and CLOCK (BPM, swing, clock source); TUNE is MENU > AUDIO, MIDI IN (ROUT) is MENU > MIDI, and the USB state
@@ -156,7 +152,7 @@ The pages by button:
 | GLO | the tracker's SONG | the GLO layer (mutes, solos, levels, TAP tempo) |
 | SAVE | USER, PROJECT (the song), TOOLS, PRESETS | UNDO |
 | LFO | LFO, LFO 2, LFO DEST, MOD | MOMENTARY (with a knob) |
-| EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES; SLICE SLICES) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
+| EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
 | FX, SCL, ENV, ARP | their pages, as before | FX and SCL: their layers |
 | REC | arms / disarms the selected track (never starts PLAY: PLAY then records) | the REC layer (CLEAR, CLICK, CLICK LEVEL) |
 
@@ -308,7 +304,7 @@ way as from the menu, in the same tabs.
 - **BPM LOCK:** ON, SELECT no longer changes the tempo; hold GLO and turn SELECT, tap F4 in the GLO
   layer or use HOME > CLOCK instead
 - **SCALE LEDS:** OFF or ON: the keys show the selected track's scale all the time (the root a little
-  brighter); not on DRUM or SLICE tracks
+  brighter); not on DRUM tracks
 - **STEP PREVIEW:** OFF (default) or ON: on SEQ > PATTERN with the transport stopped, moving the cursor plays the
   cell it lands on once (its note, through its instrument)
 - **SPEAKER EQ:** FLAT, LOWCUT or BASS+, a tone setting for the built-in speaker (not a switch). It also
@@ -358,20 +354,15 @@ In the order the device lists them:
   presets send plenty to the chorus, which makes the rest of the sound
 - **PHASE**: phase distortion (ported from CrispyZebra)
 - **LOFI**: chiptune; pulse, triangle, saw, noise and a 4-bit wave RAM, stepped envelope, sweep, arpeggio
-- **SAMPLE** (left out, `FELUCCA_SAMPLE=1`): multisampled instruments (PIANO, a light lo-fi piano; FLUTE; SAX) and
-  3 user sample slots. PIANO HD, the fuller piano of 1.0 to 1.1.5, installs into a user slot from the web editor
 - **VOICE**: formant oscillator, sung vowels
 - **TRIO**: 3 oscillators with ring modulation and sync, multimode filter
 - **WHEEL**: tonewheel-style organ; drawbar registrations, percussion, key click, drive, rotary speaker
-- **GRAIN** (left out, `FELUCCA_GRAIN=1`): granular textures from the built-in samples or a user slot
 - **PHYS**: physical models: modal resonators, strings, struck membranes, sympathetic strings
 - **NOISE**: noise from analog to digital: colours, crackle, shift-register and metallic tones
 - **BYTE** (this fork): bytebeat. A counter restarts at every note and runs at 8 kHz on C4 (following the key; RATE
   shifts it); FORM picks a formula of it (SAW, PWM, SIERP, XOR, OR, CHIRP, 42, MELO, OCTS, GLTCH, NOISE, MASK), A B C
   are its constants (A mostly the pitch, B how fast the pattern moves, C a mask or a melody); LOOP restarts the counter
   (1K .. 256K steps) so a pattern repeats while held; BITS and TONE shape the 8-bit output
-- **SLICE** (left out, `FELUCCA_SLICE=1`): a drum break, a piano note (both built in) or your own sample cut into
-  slices, one per key; set the slices by hand on the SLICES page
 - **DRUM**: an 8-lane kit of Felucca's own drum voices on the General MIDI key map. KIT picks the
   standard kit or one of five virtual-analog (VA) kits in the manner of
   classic analog drum machines (the numbers are a hint), every lane its own voice: **80** (deep sine kick with a long decay, noisy snare,
@@ -380,24 +371,17 @@ In the order the device lists them:
   and **77** (swelling kick, multi-burst claps, claves, a cymbal). All of them are synthesized by
   Felucca, no samples. EDIT > LANES and LANES 2 set each lane's level
 
-The DIGITAL engine of 0.9 has been replaced by FM6: projects and presets with DIGITAL sounds load
-as FM6 sounds converted from them. The SAMPLE engine's PERC kit was removed in 1.0.2: sounds and
-projects that used it load as the DRUM engine's kit, on the same key map. FM6's patch bank (the B
-slots) was removed in 1.0.3: user presets keep their own FM6 patch, and presets that used a B slot get
-that patch on the first start of 1.0.3. 1.4.1 brings B slots back as a voice bank sent from the web editor
-(B1–B32): a voice picked from it becomes the track's own patch, so nothing saved depends on the bank. SLICE gained a second built-in sound in 1.0.4, PIANO (the SAMPLE
-engine's middle C as it was then), next to BREAK. Since 1.0.4 a missing sample (an empty user slot, or a set missing
-from the build) plays a plain sine at the note's pitch on SAMPLE, GRAIN and SLICE, and the screen says
-NO SAMPLE once. DRUM's KIT variants HAND, CYM and H+CYM were retired in 1.0.5: sounds and projects that
-used them play the 66, 10 and 77 kits. SAMPLE's PIANO became a lo-fi piano in 1.4 (PIANO HD above).
+**This fork removed DIGITAL, SAMPLE, GRAIN and SLICE** (1.5): DIGITAL (four-operator FM) had already been replaced by
+FM6, and the other three played recorded material. The firmware has no built-in samples and no user sample slots, which
+frees about 11 KB of RAM and 28 KB of the buffer pool. It is a clean break for what was saved with them: their engine
+numbers (1, 4, 8, 13) are retired, so a project with a track on one of them is refused, a user preset of one shows as
+an empty slot, a song's instrument of one is dropped, and a library file's patch of one is skipped. A complete backup
+restores without its samples.
 
-**This fork leaves out the engines that play recorded material** (SAMPLE, GRAIN, SLICE): the firmware has no built-in
-samples and no user sample slots, which frees about 11 KB of RAM and 28 KB of the buffer pool (and the flash the
-wavetables now use). Their engine numbers stay reserved, so nothing saved breaks: a sound of one (a project, a user
-preset, a song's instrument, the web editor) loads as the nearest engine built, with its first preset: SAMPLE as FM6
-(TINE EP), GRAIN as WAVE (DUB CHORD), SLICE as DRUM. A complete backup restores without its samples. Build them back
-with `FELUCCA_SAMPLE=1`, `FELUCCA_GRAIN=1`, `FELUCCA_SLICE=1` (BUILDING.md); the paragraphs above about them apply
-to such builds.
+FM6's patch bank (the B slots) was removed in 1.0.3: user presets keep their own FM6 patch, and presets that used a B
+slot get that patch on the first start of 1.0.3. 1.4.1 brings B slots back as a voice bank sent from the web editor
+(B1–B32): a voice picked from it becomes the track's own patch, so nothing saved depends on the bank. DRUM's KIT
+variants HAND, CYM and H+CYM were retired in 1.0.5: sounds and projects that used them play the 66, 10 and 77 kits.
 
 **SLICER** (FX page, every track): a tempo-synced 16-step gate or stutter, with 16 patterns.
 
@@ -431,8 +415,8 @@ sevenths, or a fixed shape) and VOIC the voicing.
 | Path | What |
 | --- | --- |
 | `firmware/` | firmware sources: `src/` app, `hal/` hardware layer, `loader/` update loader |
-| `tools/` | build script, generators, package maker, installer and sample uploader |
-| `assets/` | UI font, icon names, CC0 instrument samples |
+| `tools/` | build script, generators, package maker and installer |
+| `assets/` | UI font, icon names |
 | `web/` | the web installer, the editor with the tracker (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
 | `tests/` | tests that run on the build machine |
 | `LICENSES/` | licence texts of the bundled fonts, icons, ported DSP and SDK files |
@@ -469,12 +453,10 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 
 - **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):
   Felucca itself; the PHASE engine's waveforms (a C port of the oscillator of
-  [CrispyZebra](https://github.com/hugelton/CrispyZebra), GPL-3.0); the DRUM voices and kits; the Hügelton Sample
-  Pack (the drum samples, GPL-3.0-only, not CC0); the [Fukiai](https://github.com/hugelton/Fukiai) icon
+  [CrispyZebra](https://github.com/hugelton/CrispyZebra), GPL-3.0); the DRUM voices and kits; the [Fukiai](https://github.com/hugelton/Fukiai) icon
   font ([MIT](LICENSES/MIT-Fukiai.txt))
 - Fonts: [Inter Tight](https://github.com/rsms/inter-tight) by The Inter Project Authors, [SIL OFL 1.1](LICENSES/OFL-InterTight.txt);
   the browser emulator's labels: [DotGothic16](https://github.com/fontworks-fonts/DotGothic16) by The DotGothic16 Project Authors, [SIL OFL 1.1](LICENSES/OFL-DotGothic16.txt)
-- Samples: [Versilian Studios](https://versilian-studios.com/) [VSCO-2 Community Edition](https://github.com/sgossner/VSCO-2-CE) and [VCSL](https://github.com/sgossner/VCSL), CC0 1.0: the SAMPLE sets, also SLICE's PIANO and PIANO HD ([attribution](assets/samples-cc0/ATTRIBUTION.txt))
 - VOICE engine: after [klattsch](https://github.com/tgies/klattsch) by Tony Gies (MIT); formant data from Klatt (1980) and Hillenbrand et al. (1995)
 - PHYS engine: models ported from [DaisySP](https://github.com/electro-smith/DaisySP) by Electrosmith and Emilie Gillet ([MIT](LICENSES/MIT-DaisySP.txt)) and from Emilie Gillet's [eurorack](https://github.com/pichenettes/eurorack) code ([MIT](LICENSES/MIT-Rings.txt))
 - FM6 engine: msfa from [Dexed](https://github.com/asb2m10/dexed) by Google Inc. and Pascal Gauthier ([Apache-2.0](LICENSES/Apache-2.0-msfa.txt))
@@ -489,7 +471,7 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 
 ## Licence
 
-Free software: [GPL-3.0-only](LICENSE), the Hügelton Sample Pack included. The bundled fonts and the
+Free software: [GPL-3.0-only](LICENSE). The bundled fonts and the
 ported DSP keep their own licences ([LICENSES/](LICENSES/)); details in [LICENSING.md](LICENSING.md).
 
 M-VAVE and FM-1 are trademarks of their respective owners. Felucca is not affiliated with or endorsed by them.

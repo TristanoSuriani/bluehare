@@ -13,8 +13,8 @@
  *   - the panel: buttons and encoders by their printed labels (panel.c's table maps them to the matrix),
  *     the keys as fm1_in.notes, the LEDs read back from fm1_led / fm1_led_dim through the key matrix;
  *   - the screen: lcd_fill / lcd_blit into a 240 x 240 RGB565 frame (the panel's byte order);
- *   - the flash: a 1 MiB NOR image behind storage.c's hooks (settings, projects, user presets, the user
- *     sample slots read through it as XIP); the page keeps its storage sectors and gives them back at boot.
+ *   - the flash: a 1 MiB NOR image behind storage.c's hooks (settings, projects, user presets); the page keeps its
+ *     storage sectors and gives them back at boot.
  * Not here: USB (MIDI, audio, the editor, updates), TRS MIDI, the serial console, the battery (full), the
  * crash / UBOOT paths. Nothing of the firmware changes for this file.
  *   web/emu/build.sh  ->  build/emu/{felucca.wasm, worklet.js, index.html} */
@@ -33,7 +33,6 @@
 #endif
 
 static uint8_t nor[0x100000];            /* the SPI NOR (erased: 0xFF) */
-#define SMP_USER_XIP(k) ((const uint8_t *)nor + SMP_USER_BASE + (k) * SMP_USER_SIZE)   /* eng_sample.c */
 #define main hostsim_main
 #include "../../tests/hostsim.c"
 #undef main
@@ -444,12 +443,12 @@ EXPORT uint8_t *web_anim_levels(void)
 }
 
 /* for the test and the bench (web/emu/emu_test.mjs), a heavy song straight into the tracks (as hostsim's
- * renders set them): T1 FM6 PAD, T2 PHYS DRONE STRING (SYMP), T3 WAVE SCAN PAD (1.5; GRAIN CLOUD PAD in a build with
- * GRAIN), 4-note chords on all 16
+ * renders set them): T1 FM6 PAD, T2 PHYS DRONE STRING (SYMP), T3 WAVE SCAN PAD (GRAIN CLOUD PAD until 1.5), 4-note
+ * chords on all 16
  * steps, held; T4 DRUM, kick snare and hats. PLAY is the page's (or the test's) to press */
 EXPORT void web_test_heavy(void)
 {
-    static const uint8_t ENG[3][2] = {{12, 4}, {ENGI_PHYS, 7}, {FELUCCA_GRAIN ? 8 : ENGI_WAVE, FELUCCA_GRAIN ? 0 : 1}};
+    static const uint8_t ENG[3][2] = {{12, 4}, {ENGI_PHYS, 7}, {ENGI_WAVE, 1}};
     static const uint8_t CH[4][4] = {{48, 55, 60, 64}, {45, 52, 57, 60}, {41, 48, 53, 57}, {43, 50, 55, 59}};
     uint32_t p, i;
     for (p = 0; p < 3u; p++) {

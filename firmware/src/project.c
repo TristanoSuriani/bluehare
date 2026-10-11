@@ -261,8 +261,8 @@ static int proj_read(pr_t *r, int apply)
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         uint32_t e = pr_u8(r), pre = pr_u8(r);
-        if (!eng_ok(e) && !eng_ok(eng_sub(e)))      /* (an engine this build leaves out loads: the track gets the */
-            return 1;                               /* engine its sounds load as, ui_input.c) */
+        if (!eng_ok(e))                             /* (a retired engine: the project is refused) */
+            return 1;
         if (apply) {
             t->eng_req = (uint8_t)e;
             t->user = 0;
@@ -608,7 +608,6 @@ static int project_restore(int (*get)(uint32_t), uint32_t count)
     tk_pl.loop_pat = tk.order[0];
     sync_reload = 1;
     ui.force = 1;
-    memset(snd_said, 0, sizeof snd_said);         /* a missing sample is said again, after LOADED */
     return bad;
 }
 
@@ -677,9 +676,6 @@ static int project_rename(uint32_t slot, const char *name)
 /* settings + learned panel table: one flash object. The flash copy wins at
  * boot (the .noinit copies are garbage after a power-off). */
 #include "settings_persist.c"
-#if FELUCCA_FLASH && FELUCCA_SLICE
-#include "slice_store.c"                          /* SLICE's MAN slices, kept in the user slots */
-#endif
 #if FELUCCA_FLASH
 static persist_t persist_saved;
 static uint8_t persist_pending;                 /* 1 requested, 2 waiting after a flash error */
@@ -697,16 +693,6 @@ static void persist_boot(void)                    /* before settings_init / pane
         return;
     fl_plain_window_init();                        /* flash above 0x93000 reads as plaintext through XIP
                                                     * (user sample sets are played from there) */
-#if FELUCCA_SLICE
-    slc_store_boot();                              /* (the scans read each slot's stored slices) */
-#endif
-#if FELUCCA_SAMPLES
-    {
-        uint32_t k;
-        for (k = 0; k < SMP_USER_SLOTS; k++)
-            smp_user_scan(k);
-    }
-#endif
     {
         int n = st_load(OBJ_SETTINGS, &p, sizeof p);
         if (settings_import(&p, n))
@@ -721,9 +707,6 @@ static void settings_poll(void)
 {
 #if FELUCCA_FLASH
     persist_t p;
-#if FELUCCA_SLICE
-    slc_store_poll();                              /* SLICE's slices edited on the SLICES page */
-#endif
     if (!persist_pending || !flash_ok || transport_busy() ||
         (persist_pending == 2u && (uint32_t)(fm1_ms - persist_retry_ms) < 1000u))
         return;

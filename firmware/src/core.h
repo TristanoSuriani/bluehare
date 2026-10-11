@@ -3,7 +3,7 @@
 /* FELUCCA core types: tracks, voices, engines, parameters.
  * Four tracks, each a synth part: its own engine, preset, parameters, voices and 64-step
  * pattern. The parts share one budget of NVOICE sounding voices (voice.c). Drums are the DRUM
- * engine (General MIDI map) on any part; the SAMPLE engine's PERC set is retired (drum_from_perc).
+ * engine (General MIDI map) on any part.
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
 
@@ -12,29 +12,11 @@
 #define NPART 4                  /* synth parts: tracks 1..4 */
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
-/* The engines that play recorded material (SAMPLE, GRAIN, SLICE) are left out by default (1.5): set FELUCCA_<NAME>=1 to
- * build one. A left-out engine keeps its number (the stores and the protocol name engines by number): it is
- * reserved, named "-", never offered, and a sound of it that arrives loads as another engine (engines.c eng_sub).
- * GRAIN and SLICE play SAMPLE's material: building either one brings that in (FELUCCA_SAMPLES), not SAMPLE itself */
-#ifndef FELUCCA_SAMPLE
-#define FELUCCA_SAMPLE 0         /* the SAMPLE engine (eng_sample.c), engine 4 */
-#endif
-#ifndef FELUCCA_GRAIN
-#define FELUCCA_GRAIN 0          /* the GRAIN engine (eng_grain.c), engine 8 */
-#endif
-#ifndef FELUCCA_SLICE
-#define FELUCCA_SLICE 0          /* the SLICE engine (eng_slice.c), engine 13, and its SLICES page */
-#endif
-#define FELUCCA_SAMPLES (FELUCCA_SAMPLE || FELUCCA_GRAIN || FELUCCA_SLICE)   /* the sample material: the built-in sets,
-                                  * the user sample slots and their upload (eng_sample.c, editor.c ED_SMP_*) */
-#ifndef FELUCCA_FM4
-#define FELUCCA_FM4 0            /* the DIGITAL engine (eng_digital.c, four-operator FM): kept in the tree, not built
-                                  * by default; replaced by FM6, its sounds convert (fm4_convert.c) */
-#endif
-#define NENGINES 18              /* engine numbers 0..17, every build (append-only; the reserved ones: eng_ok) */
-#define ENGI_DIGITAL 1u          /* reserved without FELUCCA_FM4: never selectable (eng_ok), its sounds load as FM6 */
-#define NENG_SHOWN (NENGINES - !FELUCCA_FM4 - !FELUCCA_SAMPLE - !FELUCCA_GRAIN - !FELUCCA_SLICE)   /* the engines one
-                                  * can pick: PRESETS, the EDIT layer, the editor, in the order of engines.c ENGINE_ORDER */
+#define NENGINES 18              /* engine numbers 0..17 (append-only: the stores and the protocol name engines by number;
+                                  * 1, 4, 8, 13 are retired: engines.c eng_ok) */
+#define ENG_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u)   /* DIGITAL SAMPLE GRAIN SLICE */
+#define NENG_SHOWN (NENGINES - 4)   /* the engines one can pick: PRESETS, the EDIT layer, the editor, in the order of
+                                  * engines.c ENGINE_ORDER */
 #define UP_SLOTS 32u             /* user presets (upreset.c) */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -117,10 +99,8 @@ static void params_by_count(int16_t *out, const int16_t *in, uint32_t np, const 
 
 /* engine indices the stores name (engines.c ENGINES[]: append-only) */
 #define ENGI_ANALOG 0u
-#define ENGI_GRAIN 8u
 #define ENGI_PHYS 9u
 #define ENGI_DRUM 10u
-#define ENGI_SLICE 13u
 #define ENGI_WAVE 14u            /* 1.5 */
 #define ENGI_BYTE 15u            /* 1.5 */
 #define ENGI_WEST 16u            /* 1.5 */
@@ -135,26 +115,6 @@ static int drum_from_phys(uint32_t engine, int16_t *e)
     e[0] = (int16_t)((e[7] < 0 ? 0 : e[7] > 127 ? 127 : e[7]) >> 5);   /* PERC -> KIT: STD HAND CYM H+CYM */
     e[6] = (int16_t)(e[6] >= 64);                                       /* KICK: PUNCH, ROUND */
     e[7] = 0;
-    return 1;
-}
-
-/* SAMPLE SET 4 was PERC, the GM-mapped drum kit (tools/gen_samples.py); retired after 1.0.2: its index stays
- * (SET / GRAIN SRC 4 is an alias of PIANO, USR1..3 keep 5..7). A sound that selected it is the DRUM engine with
- * its default kit (eng_drum.c DRUM_PRESETS[0]: the same GM key map, so its patterns still play as drums): its E
- * values become the kit's, the rest of the sound (mix, sends, matrix, ..) stays. 1 = it was one (its engine is
- * ENGI_DRUM now); projects (project.c proj_perc), user presets (upreset.c up_migrate), factory preset 4 and
- * favourites (ui.c, settings_persist.c). Idempotent */
-#define ENGI_SAMPLE 4u
-#define SMP_SET_PERC 4u
-#define DRUM_KIT_E {0, 64, 70, 64, 64, 100, 0, 0}   /* {KIT STD, TUNE, TONE, DECY, SNAP, ACC, KICK PUNCH, DRV} */
-static int drum_from_perc(uint32_t engine, int16_t *e)
-{
-    static const int16_t KIT[8] = DRUM_KIT_E;
-    uint32_t i;
-    if (engine != ENGI_SAMPLE || e[0] != (int16_t)SMP_SET_PERC)
-        return 0;
-    for (i = 0; i < 8u; i++)
-        e[i] = KIT[i];
     return 1;
 }
 

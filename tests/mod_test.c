@@ -545,8 +545,8 @@ static int demos(const char *dir)
         fclose(f);
         n++;
     }
-    /* VEL -> AMP: DIGITAL E.PIANO (without FELUCCA_FM4: converted, FM6), the same note at velocities 10 .. 127, twice as much dynamics */
-    fresh(1, 0);
+    /* VEL -> AMP: FM6 TINE EP, the same note at velocities 10 .. 127, twice as much dynamics */
+    fresh(ENGI_FM6, 0);
     slot(t, 0, MS_VEL, MD_AMP, 63);
     slot(t, 1, MS_VEL, MD_CUT, 30);
     if ((f = demo_open(dir, "vel_amp", 16u * (FS / 4u / CTL) * CTL + FS / CTL * CTL))) {

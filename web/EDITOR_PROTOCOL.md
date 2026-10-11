@@ -76,15 +76,14 @@ a user preset's stored pattern is still read and written (and kept in flash), bu
 **1.5 (engines):** NENGINES is 18 in every build. Four engines are appended: 14 WAVE (wavetables), 15 BYTE (bytebeat),
 16 WEST (complex oscillator, wavefolder, low-pass gate) and 17 HOOVER (PWM saws, sub, bend); the user-slot engine of
 `FAV_GET` / `FAV_SET` is 18;
-`NAMES`, `DESC` and the rest treat them as any engine. SAMPLE (4), GRAIN (8) and SLICE (13) are left out of the default
-build (firmware `FELUCCA_SAMPLE` / `FELUCCA_GRAIN` / `FELUCCA_SLICE`): such an engine is reserved as DIGITAL is, `INFO`
-names it "-", `NAMES` lists no presets, its EDIT descriptors are "-" (range 0..0), and no track keeps it: a `SET` of
-`G_ENGSEL` to it, a `PRESET` of it, `UP_LOAD` of a slot stored with it, a project or a song instrument with it all load
-the engine its sounds load as, with its first preset: SAMPLE → 12 FM6, GRAIN → 14 WAVE, SLICE → 10 DRUM (`UP_PUT` still
-takes it; `UP_LIST` / `UP_GET` report the record as stored). Without any of the three there are no user sample slots:
-`SMP_INFO` answers 0 slots of 0 KiB, `SMP_BEGIN` / `SMP_WRITE` / `SMP_END` get no reply, `SMP_ERASE` of slot 0..2
-answers rc 0 (an empty slot: a complete backup's empty sample objects restore), and `BACKUP_LIST` reports objects
-32..34 empty; an editor skips the sample objects of a backup when it restores to such a device.
+`NAMES`, `DESC` and the rest treat them as any engine. DIGITAL (1), SAMPLE (4), GRAIN (8) and SLICE (13) are removed:
+their numbers are retired. `INFO` names them "-", `NAMES` lists no presets, their EDIT descriptors are "-" (range 0..0),
+and no track keeps one: a `SET` of `G_ENGSEL` to one or a `PRESET` of one plays ANALOG (`PRESET` with its preset
+number on ANALOG); `UP_PUT` of one answers rc 1, and a slot stored with one (an older firmware's bank) is listed empty
+(`UP_LOAD` rc 1); a project with a track on one is refused (`PROJECT` load: LOAD ERROR on the device); a song's
+instrument of one is dropped (none). There are no user sample slots: `SMP_INFO` answers 0 slots of 0 KiB, `SMP_BEGIN` /
+`SMP_WRITE` / `SMP_END` get no reply, `SMP_ERASE` of slot 0..2 answers rc 0 (an empty slot), and `BACKUP_LIST`
+reports objects 32..34 empty; the editor skips an archive's sample objects when it restores.
 
 ## Framing
 
@@ -109,7 +108,7 @@ watches (v2, `WATCH`), the device also sends push frames (cmds 23, 24, 26) at an
 | string | ASCII bytes, ended by a 0 byte |
 | scope | 0 = parameter of the selected track (`P_*`, 0..P_COUNT−1); 1 = global parameter (`G_*`, 0..G_COUNT−1) |
 | track | 0..3: tracks 1..4 (synth parts) |
-| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 reserved (DIGITAL before 1.0: see below), 2 PHASE, 3 LOFI, 4 SAMPLE, 5 VOICE, 6 TRIO, 7 WHEEL, 8 GRAIN, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 SLICE, 14 WAVE, 15 BYTE, 16 WEST, 17 HOOVER (1.5: NENGINES 18 in every build; 1.0.4 .. 1.4.1: 14, a build with `FELUCCA_SLICE=0` 13; 1.5 leaves 4, 8 and 13 out by default: named "-", see 1.5 above). The device and the editor list them in another order (ANALOG FM6 WAVE WEST HOOVER PHASE LOFI SAMPLE VOICE TRIO WHEEL GRAIN PHYS NOISE BYTE SLICE DRUM: `ENGINE_ORDER`, those built); the numbers stay |
+| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 retired (DIGITAL), 2 PHASE, 3 LOFI, 4 retired (SAMPLE), 5 VOICE, 6 TRIO, 7 WHEEL, 8 retired (GRAIN), 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 retired (SLICE), 14 WAVE, 15 BYTE, 16 WEST, 17 HOOVER (1.5: NENGINES 18; 1.0.4 .. 1.4.1: 14, a build with `FELUCCA_SLICE=0` 13; a retired number is named "-", see 1.5 above). The device and the editor list them in another order (ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM: `ENGINE_ORDER`); the numbers stay |
 
 The engine parameters are `P_E0..P_E7`: P_COUNT−8 .. P_COUNT−1 (96..103 since 1.2; 91..98 in 1.1), and `INFO` gives `P_E0`.
 Their meaning, range and names depend on the current engine, so re-read `DESC` for them
@@ -129,21 +128,10 @@ P_COUNT 69): slot k (1..4) is `SRCk`, `DSTk`, `AMTk` at ids 49 + 3 (k − 1) .. 
 (a factory preset sets all twelve to 0). The modulation never changes the stored values: `GET`,
 `DUMP` and the pushes report what was set.
 
-**DIGITAL (engine 1) was replaced by FM6 (Dexed-based)** in 1.0. The number stays reserved: `INFO` names it
-"-" (a build with `FELUCCA_FM4=1` has DIGITAL back, named "DIGITAL"), `NAMES 1` lists no presets, its EDIT
-descriptors are "-" with DIGITAL's ranges, and no track ever has it. Whatever brings a DIGITAL sound plays it as
-FM6 with a patch converted from its values (`firmware/src/fm4_convert.c`; the patch is the track's own, `FM6_GET`
-reads it, a project keeps it): `SET` of `G_ENGSEL` = 1 (DIGITAL's first preset), `PRESET` 1 k (its preset k),
-`UP_LOAD` of a slot stored with engine 1 (`UP_PUT` still takes engine 1: the record keeps the DIGITAL values, every
-load converts them), projects with DIGITAL tracks (their motion on E1..E8 and ids 61..80 is dropped). The track
-reports engine 12 (FM6) and the FM6 preset that covers the sound. The editor converts DIGITAL patches of library
-files the same way (it equals the firmware's, `test_web.mjs`).
-
-The four FM operator envelopes (the DIGITAL engine's OP1..OP4 ENV and OP LEVEL pages, `eng_digital.c`) are
-twenty track parameters at ids 61..80, five per operator: operator k (1..4) has `ATK`, `DEC`, `SUS`, `REL`,
-`LVL` at ids 61 + 5 (k − 1) .. 65 + 5 (k − 1). Since DIGITAL was retired they are inert: no page and no editor
-layout shows them, only the conversion of a DIGITAL sound reads them (its FM6 tracks hold the defaults). The ids
-and labels stay (library files key values by label).
+**DIGITAL (engine 1)** was replaced by FM6 (Dexed-based) in 1.0 and removed in 1.5 (above). Its four operator
+envelopes are twenty track parameters at ids 61..80, five per operator: operator k (1..4) has `ATK`, `DEC`, `SUS`,
+`LVL`, `REL` at ids 61 + 5 (k − 1) .. 65 + 5 (k − 1). They are inert: no page and no editor layout shows them and
+nothing reads them; the ids and labels stay (the stored layouts, and library files key values by label).
 
 | id | label | fmt, range, default |
 | --- | --- | --- |
@@ -153,9 +141,7 @@ and labels stay (library files key values by label).
 | 64, 69, 74, 79 | REL | TIME, 0..127, 0 |
 | 65, 70, 75, 80 | LVL | PCT, 0..127, 127 |
 
-The defaults change nothing: the sound is the same as before the parameters existed. The master `ENV`
-(ids 1..4) shapes the whole voice; these shape each operator on top of it. Other engines ignore them, and the
-device shows the pages for DIGITAL only. Descriptors are the same for every engine.
+Descriptors are the same for every engine.
 
 The chord keys (SCL > CHORD on the device, `firmware/src/chord.c`) are two track parameters at ids 81, 82:
 
@@ -165,7 +151,7 @@ The chord keys (SCL > CHORD on the device, `firmware/src/chord.c`) are two track
 | 82 | VOIC | enum: 0 CLOSE, 1 OPEN (1-5-3), 2 INV1, 3 INV2, 4 +OCT (the root an octave down; a seventh drops its fifth) |
 
 With CHRD on, a key, a MIDI note of that track and so the arp's held notes play the chord (at most 4 notes),
-and live recording writes it into one step; MONO / LEGATO / UNISON play its root; a kit (DRUM, SLICE)
+and live recording writes it into one step; MONO / LEGATO / UNISON play its root; a kit (DRUM)
 ignores it. Both defaults are 0: nothing changes until CHRD is set. They are the track's, like ARP and SCL: a
 sound load (a factory preset, `UP_LOAD`, an audition) keeps them, and motion never records them.
 
@@ -184,7 +170,7 @@ global `G_CLOCK` (id 2, label "CLK") 3 (INT, USB, TRS). `G_MIDI` (id 12) is an e
 `DESC` names it like the value it now plays (an alias), the device never holds it (a `SET` of it lands on that value
 and the reply says so) and its knob steps over it. Of a repeated name, the original is the first value when that has
 the name, else the last one with it; an editor should list only the originals and show an alias by its name when
-it ever sees one. Today: SAMPLE SET and GRAIN SRC 1 and 4 (once TRANH, PERC) = 0 PIANO; DRUM KIT (engine 10, E1)
+it ever sees one. Today: DRUM KIT (engine 10, E1)
 1, 2, 3 (once HAND, CYM, H+CYM; 1.0.5) = 6 (66), 5 (10), 8 (77): its names are STD 66 10 77 80 10 66 55 77, the
 device's knob steps STD 80 10 66 55 77. An editor of before 1.0.5 (first of a name = original) offers 66 10 77
 at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device answers with 6 5 8.
@@ -206,8 +192,8 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 | 11 SMP_BEGIN | slot 0..2 | slot, rc (0 ok). Erases the slot's header sector: the slot is empty from now on |
 | 12 SMP_WRITE | slot, offset (3 × 7 bit, LSB first), pack7 data (≤ 256 bytes) | slot, offset, rc: 0 ok, 1 arguments, 2 erase, 3 write, 4 slot in use (send SMP_BEGIN first). Offset ≥ 512 and a multiple of 256; writes go in increasing order (a write at a 4 KiB boundary erases that sector) |
 | 13 SMP_END | slot, pack7 header (480 bytes) | slot, rc: 0 ok, 1 size, 2 header, 3 data CRC, 4 flash, 5 zones |
-| 14 SMP_ERASE | slot | slot, rc (erases the whole slot, ~1 s; 1.5 without sample slots: rc 0 at once for slot 0..2) |
-| 15 SMP_INFO | — | slots, slot KiB, then per slot: zone count (0 = empty), name string, data KiB (1.5 without SAMPLE, GRAIN and SLICE: 0 slots, 0 KiB; cmds 11..13 then get no reply) |
+| 14 SMP_ERASE | slot | slot, rc (erases the whole slot, ~1 s; 1.5, no sample slots: rc 0 at once for slot 0..2) |
+| 15 SMP_INFO | — | slots, slot KiB, then per slot: zone count (0 = empty), name string, data KiB (1.5, the slots removed: 0 slots, 0 KiB; cmds 11..13 get no reply) |
 | 16 UP_LIST | start, count (1..16) | start, count, total slots, then per slot: used (0/1), engine, name string ("" if unused); 1.2: then one category byte per slot listed (below; 0 if unused) |
 | 17 UP_GET | slot | slot, used, engine, name, P_COUNT × v14, 16 × (note, flags), then (v5) kind (0 a note pattern, 1 a drum grid) and for kind 1 16 × hi; 1.2: then the category |
 | 18 UP_PUT | slot, engine, name, P_COUNT × v14, 16 × (note, flags) [, kind 0 or 1, 16 × hi (v5) [, category (1.2)]] | slot, rc (0 ok, 1 args, 2 flash). Writes flash: allow 1 s |
@@ -239,31 +225,10 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 | 66 BACKUP_GET | id, offset u32, count lo, count hi (≤ 256) | id, rc, offset u32, count lo, count hi, pack7 data |
 | 67 BACKUP_PUT | op 0 begin: 0, id, size u32, crc u32; op 1 data: 1, id, offset u32, pack7 data; op 2 commit: 2, id; op 3 abort: 3, id | op, id, rc |
 
-Without flash (no flash part found at boot) `SMP_BEGIN`, `SMP_WRITE`, `SMP_END` and `SMP_ERASE` get no
-reply.
-
 **pack7:** groups of up to 7 bytes, each preceded by one byte holding their top bits
 (bit j = bit 7 of byte j). A mask must have at least one following data byte;
 unused mask bits in the last group must be zero. Oversized or incomplete transfers
-are rejected; SMP_WRITE decodes at most 256 bytes, SMP_END exactly 480 bytes.
-
-**User sample slot** (80 KiB each, SAMPLE engine sets USR1..USR3; reference uploader
-`tools/fm1_sample_upload.py`, slot builder `sampleio.user_slot`; the editor's port of it is
-checked byte for byte by `web/test_web.mjs`): header at 0, ADPCM data at 512.
-
-| Offset | Field |
-| --- | --- |
-| 0 | magic `"FSMP"` (u32 0x504D5346), u16 version 1, u8 zone count 1..16, u8 0 |
-| 8 | name, 8 ASCII bytes (0-padded) |
-| 16 | u32 data length (bytes), u32 CRC-32 (zlib) of the data, 8 bytes 0 |
-| 32 | 16 zones × 28 bytes: u32 off (in the data), n (samples), loop start, loop end, rate (Hz / 44100 × 65536); i16 root × 16 (MIDI note), ADPCM predictor at the loop start; u8 step index at the loop start, lo note, hi note, looped (0/1) |
-
-Data is IMA ADPCM, 4 bit, low nibble first, starting from predictor 0 and step index 0.
-All little endian.
-
-The slot's last 4 KiB sector (offset 0x13000) holds SLICE's slices set by hand on the device (`src/slice_store.c`:
-magic `"SLM1"`, the sample's length and data CRC, the slice starts) when the data leaves it free (at most 77,312
-bytes). An upload writes over it like any other data; a record that is not the slot's sample's is ignored.
+are rejected; BACKUP_PUT decodes at most 256 bytes.
 
 `fmt` values (`firmware/src/core.h`):
 
@@ -300,11 +265,6 @@ numbered 0..31 (the device shows U01..U32).
   10; E1..E8 {MODEL, TUNE, TONE, DECY, SNAP, ACC, KICK 0..127, PERC 0..127} become {KIT = PERC / 32, TUNE,
   TONE, DECY, SNAP, ACC, KICK 0 PUNCH / 1 ROUND (old ≥ 64), DRV 0}), and `UP_GET` / `UP_LIST` give it so.
   Projects do the same. PHYS's MODEL is 0..3 (MODAL STRNG MEMB SYMP) now.
-- **SAMPLE SET 4** was PERC, the General MIDI drum kit, until 1.0.2. A record of SAMPLE (engine 4) with E1 (SET)
-  = 4, stored then or sent by `UP_PUT`, is the DRUM engine with its default kit: the device rewrites it (engine 10,
-  E1..E8 = DRUM KIT's {0, 64, 70, 64, 64, 100, 0, 0}, the other values and the pattern as they were). Projects
-  and `PRESET` 4 / 4 do the same (a project's track keeps its steps). SET 4 itself stays (`DESC` names it "PIANO":
-  an alias, as SET 1; a `SET` of 4 lands on 0), and USR1..USR3 stay 5..7; GRAIN's SRC 4 plays PIANO.
 - **DRUM KIT 1..3** were HAND, CYM and H+CYM until 1.0.4 (STD with a conga / claves, a cymbal, both). Since 1.0.5
   they play the VA kits 66, 10 and 77, and a record holding one loads as that kit: `UP_GET` / `UP_LOAD` give KIT 6, 5
   or 8 (the record itself is not rewritten). Projects, motion events and `SET` do the same.
@@ -319,7 +279,7 @@ numbered 0..31 (the device shows U01..U32).
   5 KEYS, 6 DRUM, 7 FX, 8 OTHER (append-only; the device's PRESETS > LIST filters by it, its NAME screen sets it).
   `UP_LIST` sends one byte per listed slot after all the slot entries (0 for an empty slot); `UP_GET` ends with it
   (after kind 0, or after kind 1's 16 bytes). A record saved without one (before 1.2, or by an editor that sends none)
-  reports its engine's: 6 DRUM for DRUM and SLICE, else 8 OTHER. `UP_PUT` takes it as one byte after the kind and its
+  reports its engine's: 6 DRUM for DRUM, else 8 OTHER. `UP_PUT` takes it as one byte after the kind and its
   16 bytes (send kind 0 and 16 zeros for a note pattern); 0 stores none, 9 or more is rc 1. An older editor reads up to
   where it knows and ignores the rest; firmware before 1.2 rejects an `UP_PUT` with the category (rc 1), so send it
   only to a device that answers `UP_GET` with it. The device keeps it in a byte of the record no value uses (the
@@ -506,10 +466,7 @@ grid lives in the steps themselves, so every engine has it:
   (op, slot, used); a failed PROJECT save gets no reply, allowing the editor to report
   a timeout instead of confirming the previous used slot. The previous slot is kept.
   A pending PLAY or SONG start also prevents a device save.
-- **Published samples.** SMP_END repeated with an identical committed header succeeds without
-  another write or zone scan. A different header is rejected (rc 2) until SMP_BEGIN,
-  so sounding sample voices cannot see their zone table change.
-- **Safety.** `PROJECT` save, sample-slot commands, `UP_PUT` / `UP_STORE` / `UP_ERASE`, and the tagged preference writes below write flash, and only in
+- **Safety.** `PROJECT` save, `UP_PUT` / `UP_STORE` / `UP_ERASE`, and the tagged preference writes below write flash, and only in
   Felucca's own storage; never the app or the update area.
 
 
@@ -738,7 +695,7 @@ this firmware sends 3. Requests name objects, never flash addresses.
 | 6, 7 | user preset banks (slots 1..16, 17..32) | the bank's size, or 0 if empty |
 | 8 | the FM6 patch bank of 1.0..1.0.2 (B1..B27). Since 1.0.3 always listed empty (see below) | 3472, or 0 if empty |
 | 9 | the user presets' FM6 patches (1.0.3; `up_fm6.c`: per slot a tag and the packed patch) | 3728, or 0 if none |
-| 32..34 | user sample slots 1..3: header (512 bytes) then ADPCM data | 512 + data length, or 0 if empty |
+| 32..34 | the user sample slots 1..3 until 1.5 (header, then ADPCM data); since 1.5 always listed empty | 0 |
 
 Reading: `BACKUP_LIST` (no arguments) stops the transport, then takes a snapshot of the runtime object and
 answers `1, rc, count` (13 since 1.0.3, 12 with FM6 up to 1.0.2, 11 before) and, per object in the order above, `id, size u32, crc u32` (CRC-32, zlib). The other objects are read as
@@ -746,8 +703,8 @@ they are in RAM or flash. Then `BACKUP_GET` reads an object in pieces: `id, offs
 (count 1..256, LSB first 7 bit pair) answers `id, rc, offset u32, count lo, count hi` and the data as pack7. Check each object's CRC
 against the list; if it differs the device changed, so start again.
 
-Restoring: `BACKUP_PUT` takes ids 0..9 (firmware before 1.0.3: 0..8, id 9 answers rc 1 at begin and nothing is written) (the samples are written with `SMP_BEGIN` / `SMP_WRITE` / `SMP_END`,
-or `SMP_ERASE` for an empty slot). Begin: `0, id, size u32, crc u32`: size is 3840 (FUN10), 3648 (FUN9), 3584 (FUN8) or 3388 (FUN7, FUN6) for id 0,
+Restoring: `BACKUP_PUT` takes ids 0..9 (firmware before 1.0.3: 0..8, id 9 answers rc 1 at begin and nothing is written); an
+archive's sample objects (ids 32..34) are not restored since 1.5 (there are no sample slots). Begin: `0, id, size u32, crc u32`: size is 3840 (FUN10), 3648 (FUN9), 3584 (FUN8) or 3388 (FUN7, FUN6) for id 0,
 the settings record's size for id 1, 3840, 3648, 3584, 3388 or 0 (empty the slot) for ids 2..5, the bank's size or 0 for 6 and 7,
 3472 or 0 for 8 (the FM6 bank: its magic, layout and every byte below 128 are checked), 3728 or 0 for 9 (its magic,
 version and slot count checked; 0 clears the patches). FUN9, FUN8, FUN7 and FUN6 become FUN10 (1.2; firmware before
@@ -790,7 +747,7 @@ answers rc 3), bit 1 = user presets carry their patch (target 3; backup id 9). T
 without the tag has the bank and SLOT 0..34 (F1..F8, B1..B27): an editor should not offer the bank either way.
 
 SLOT (P_E0 + 7), since 1.0.3: 0..7 load that factory patch into the track; 8 (OWN) is the track's own patch (what
-a project, a user preset, a converted DIGITAL sound or an FM6_PUT to the track put there). Every such load sets SLOT
+a project, a user preset or an FM6_PUT to the track put there). Every such load sets SLOT
 to F n when the patch is that factory patch unchanged, else OWN, and nothing reloads over it. Setting SLOT from OWN
 to F n keeps the own patch aside; setting it back to OWN brings it back. 1.4.1: 9..40 (B1..B32) load a voice of
 the voice bank (below) the same way; a `SET` to a bank slot without a voice is refused (SLOT goes back to the value

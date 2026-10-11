@@ -86,12 +86,15 @@ int main(void)
     bad += check("UP_PUT slot 32 -> args", up_parse(a, n, &r, &slot) == 1);
     n = put_frame(a, 0, NENGINES, "X", 0);
     bad += check("UP_PUT bad engine -> args", up_parse(a, n, &r, &slot) == 1);
-    n = put_frame(a, 3, ENGI_DIGITAL, "OLD FM", 0);   /* (DIGITAL, retired: a record keeps it, its load converts) */
-    bad += check("UP_PUT engine 1 (DIGITAL): kept as it is", up_parse(a, n, &r, &slot) == 0 && slot == 3u &&
-                                                        r.engine == ENGI_DIGITAL && up_valid(&r));
-    up_migrate(&r);
-    bad += check("  a bank read keeps it engine 1 (its values DIGITAL's)", r.engine == ENGI_DIGITAL && up_value(&r, P_E4) ==
-                                                                       (int16_t)P_E4);
+    {
+        uint32_t e, ok = 1;
+        for (e = 1; e < 14u; e++)                       /* 1 4 8 13: DIGITAL SAMPLE GRAIN SLICE (removed in 1.5) */
+            if (ENG_RETIRED(e)) {
+                n = put_frame(a, 3, e, "OLD", 0);
+                ok &= up_parse(a, n, &r, &slot) == 1;
+            }
+        bad += check("UP_PUT of a retired engine (1 4 8 13) -> args", ok);
+    }
     n = put_frame(a, 0, 0, "", 0);
     bad += check("UP_PUT empty name -> args", up_parse(a, n, &r, &slot) == 1);
     n = put_frame(a, 0, 0, "THIRTEEN CHRS", 0);
@@ -219,48 +222,6 @@ int main(void)
         bad += check("UP_PUT of PHYS DRUM -> DRUM engine", ok);
     }
 
-    /* SAMPLE SET 4 (PERC, the GM kit, retired after 1.0.2) -> the DRUM engine with its default kit: from flash (an
-     * older layout too), by UP_PUT; the rest of the sound and the pattern as stored; another SET stays SAMPLE */
-    {
-        static const int16_t KIT[8] = DRUM_KIT_E;
-        up_rec_t d = r, m = r, o = r, before;
-        uint32_t k;
-        d.engine = m.engine = o.engine = ENGI_SAMPLE;
-        o.np = P_COUNT - 2u;                                /* an older layout: E0 at np - 8 */
-        for (k = 0; k < 8u; k++) {
-            up_set_value(&d, P_E0 + k, (int16_t)(k ? 30 + k : SMP_SET_PERC));
-            up_set_value(&m, P_E0 + k, (int16_t)(k ? 30 + k : 2));   /* FLUTE: stays SAMPLE */
-            up_set_value(&o, o.np - 8u + k, (int16_t)(k ? 30 + k : SMP_SET_PERC));
-        }
-        *up_rec(19) = d;
-        *up_rec(20) = m;
-        *up_rec(21) = o;
-        st_save(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]);
-        memset(up_bank, 0, sizeof up_bank);
-        up_bank_check(1, st_load(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]));
-        ok = up_used(19) && up_rec(19)->engine == ENGI_DRUM && up_used(20) && up_rec(20)->engine == ENGI_SAMPLE &&
-             !memcmp(up_rec(20)->p, m.p, sizeof m.p) && up_used(21) && up_rec(21)->engine == ENGI_DRUM &&
-             !memcmp(up_rec(19)->note, d.note, sizeof d.note) && !memcmp(up_rec(19)->flags, d.flags, sizeof d.flags);
-        for (k = 0; k < 8u; k++)
-            ok &= up_value(up_rec(19), P_E0 + k) == KIT[k] && up_value(up_rec(21), o.np - 8u + k) == KIT[k];
-        for (k = 0; k < P_E0; k++)
-            ok &= up_value(up_rec(19), k) == up_value(&d, k);
-        bad += check("bank load: SAMPLE PERC -> DRUM kit, FLUTE kept", ok);
-        before = *up_rec(19);
-        up_migrate(up_rec(19));
-        bad += check("  migrated again: as it is", !memcmp(up_rec(19), &before, sizeof before));
-        n = put_frame(a, 3, ENGI_SAMPLE, "Old perc", 0);
-        {
-            uint32_t at = 3u + 8u + 1u + 2u * P_E0, u = (uint32_t)(SMP_SET_PERC + 8192);   /* E0 of the frame: SET 4 */
-            a[at - 1u] = u & 127u;
-            a[at] = (u >> 7) & 127u;
-        }
-        ok = up_parse(a, n, &got, &slot) == 0 && got.engine == ENGI_DRUM;
-        for (k = 0; k < 8u; k++)
-            ok &= up_value(&got, P_E0 + k) == KIT[k];
-        bad += check("UP_PUT of SAMPLE PERC -> DRUM kit", ok);
-    }
-
     /* map by count: a record from a build with 2 parameters fewer */
     for (i = 0; i < P_COUNT; i++)
         def[i] = (int16_t)(1000 + i);
@@ -317,7 +278,7 @@ int main(void)
                 uint32_t np = NPS[b];
                 up_rec_t o;
                 memset(&o, 0, sizeof o);
-                o.used = UP_USED; o.ver = VERS[a]; o.engine = 1; o.np = (uint8_t)np;
+                o.used = UP_USED; o.ver = VERS[a]; o.engine = 0; o.np = (uint8_t)np;
                 memcpy(o.name, "OLD", 3);
                 for (i = 0; i < np; i++)
                     up_set_value(&o, i, (int16_t)(i % 100u - 30));

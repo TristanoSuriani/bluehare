@@ -465,8 +465,8 @@ static void tk_grid_row(uint32_t i, uint32_t p, uint32_t r)
     uint32_t len = tk_len(p), k, sig, cur = r == tku.row, play = song.playing && tk_pl.pat == p && tk_pl.row == r;
     uint16_t bg, fg;
     char b[4];
-    sig = 0x811C9DC5u ^ (p << 8 | r) ^ (r < len ? 0u : 0x55u) ^ cur * 0x1000u ^ play * 0x2000u ^ song.sel * 0x4000u ^
-          (uint32_t)tku.field << 16;
+    sig = ((0x811C9DC5u ^ (p << 8 | r)) * 16777619u ^ ((r < len ? 0u : 1u) | cur << 1 | play << 2 | (uint32_t)song.sel << 3 |
+          (uint32_t)tku.field << 6)) * 16777619u;   /* (each its own bits: a cursor row never hashes as another pattern's) */
     if (r < len)
         for (k = 0; k < NTRK; k++)
             sig = (sig ^ tk_bits(tk_at(p, r, k)) ^ tk_chord(tk_at(p, r, k)) << 24) * 16777619u;
@@ -998,20 +998,13 @@ static void tk_knob_inst(uint32_t k, int32_t s)
                     break;
             }
             in->src = (uint8_t)(TK_SRC_USER + u);
-        } else {                                    /* the engine's presets as PRESETS lists them (no aliases) */
+        } else {                                    /* the engine's presets */
             const engine_t *e = ENGINES[in->src % NENGINES];
             int32_t p = in->preset, st = s > 0 ? 1 : -1, n = s > 0 ? s : -s;
             if (!e->npresets)
                 return;
-            while (n--) {
-                int32_t q = p;
-                do
-                    q += st;
-                while (q >= 0 && q < (int32_t)e->npresets && preset_orig(e, (uint32_t)q) != (uint32_t)q);
-                if (q < 0 || q >= (int32_t)e->npresets)
-                    break;
-                p = q;
-            }
+            while (n-- && p + st >= 0 && p + st < (int32_t)e->npresets)
+                p += st;
             in->preset = (uint8_t)p;
         }
     } else {

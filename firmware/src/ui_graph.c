@@ -209,83 +209,6 @@ static uint32_t str_hash(uint32_t h, const char *s)
     return h;
 }
 
-#if FELUCCA_SAMPLE
-/* One shared, reduced sample display. Decode only in the UI/main loop with a
- * private IMA state, 512 samples per frame; no audio voice state is touched.
- * Cache follows the sample zone, selected note and user-slot generation. */
-#define SAMPLE_WAVE_COLS 96u
-static struct {
-    int16_t lo[SAMPLE_WAVE_COLS], hi[SAMPLE_WAVE_COLS];
-    const smp_zone_t *zone;
-    uint32_t key, gen, pos;
-    int32_t pred, index, peak;
-    uint8_t ready;
-} sample_wave;
-
-static uint32_t sample_wave_zone(const track_t *t)
-{
-    uint32_t si = (uint32_t)t->p[P_E0] % SMP_NALL, i, zi = 0xFFFFu;
-    if (si < SMP_NSETS) {
-        const smp_set_t *set = &SMP_SETS[si];
-        for (i = 0; i < set->nz; i++)
-            if (last_note >= SMP_ZONES[set->z0 + i].lo && last_note <= SMP_ZONES[set->z0 + i].hi) zi = set->z0 + i;
-        if (zi == 0xFFFFu && set->nz) zi = set->z0;
-    } else {
-        uint32_t k = si - SMP_NSETS;
-        for (i = 0; i < usr_nz[k]; i++)
-            if (last_note >= usr_zone[k][i].lo && last_note <= usr_zone[k][i].hi) zi = 0x8000u | k << 5 | i;
-        if (zi == 0xFFFFu && usr_nz[k]) zi = 0x8000u | k << 5;
-    }
-    return zi;
-}
-
-static void sample_wave_tick(const track_t *t)
-{
-    uint32_t zi = sample_wave_zone(t), key = zi + ((uint32_t)last_note << 16), i;
-    if (key != sample_wave.key || sample_wave.gen != smp_user_gen || !sample_wave.zone) {
-        sample_wave.key = key; sample_wave.gen = smp_user_gen;
-        sample_wave.zone = zi == 0xFFFFu ? 0 : smp_zone(zi);
-        sample_wave.pos = 0; sample_wave.pred = sample_wave.index = 0;
-        sample_wave.peak = 1; sample_wave.ready = 0;
-        for (i = 0; i < SAMPLE_WAVE_COLS; i++) sample_wave.lo[i] = sample_wave.hi[i] = 0;
-    }
-    const smp_zone_t *z = sample_wave.zone;
-    if (!z || !z->n || sample_wave.ready) return;
-    for (i = 0; i < 512u && sample_wave.pos < z->n; i++) {
-        uint32_t pos = sample_wave.pos, b = SMP_DATA[z->off + (pos >> 1)];
-        uint32_t code = (pos & 1u) ? b >> 4 : b & 15u;
-        int32_t step = IMA_STEP[sample_wave.index], d = step >> 3;
-        if (code & 4u) d += step;
-        if (code & 2u) d += step >> 1;
-        if (code & 1u) d += step >> 2;
-        sample_wave.pred = clamp(sample_wave.pred + ((code & 8u) ? -d : d), -32768, 32767);
-        sample_wave.index = clamp(sample_wave.index + IMA_IDX[code & 7u], 0, 88);
-        uint32_t col = pos * SAMPLE_WAVE_COLS / z->n;
-        int32_t v = sample_wave.pred, a = v < 0 ? -v : v;
-        if (v < sample_wave.lo[col]) sample_wave.lo[col] = (int16_t)v;
-        if (v > sample_wave.hi[col]) sample_wave.hi[col] = (int16_t)v;
-        if (a > sample_wave.peak) sample_wave.peak = a;
-        sample_wave.pos++;
-    }
-    sample_wave.ready = sample_wave.pos == z->n;
-}
-
-static void graph_sample(uint16_t c)
-{
-    uint32_t i;
-    const smp_zone_t *z = sample_wave.zone;
-    cv_rect(PANEL_X0, 48, PANEL_W, 1, T_RAISE);
-    for (i = 0; i < SAMPLE_WAVE_COLS; i++) {
-        int32_t x = 12 + (int32_t)i * 216 / (SAMPLE_WAVE_COLS - 1u);
-        cv_line(x, 48 - sample_wave.hi[i] * 38 / sample_wave.peak,
-                x, 48 - sample_wave.lo[i] * 38 / sample_wave.peak, c);
-    }
-    if (z->looped && TSEL->p[P_E3]) {
-        int32_t left = 12 + (int32_t)(z->ls * 216u / z->n), right = 12 + (int32_t)(z->le * 216u / z->n);
-        cv_line(left, 4, left, 90, T_MID); cv_line(right, 4, right, 90, T_MID);
-    }
-}
-#endif
 
 /* WAVE (eng_wave.c): the frame POS plays (its two neighbours crossfaded, the fullest copy), one cycle across */
 static void graph_wave(const track_t *t, uint16_t c)
@@ -304,60 +227,6 @@ static void graph_wave(const track_t *t, uint16_t c)
     }
 }
 
-#if FELUCCA_SLICE
-/* SLICES (ui_slice.c): the waveform from the marker before the selected one to the one after it (the selected
- * slice tinted, its marker the accent, outside the slices DIM), under it the whole material with every marker and
- * the view; then the selected slice's length and the source */
-static void graph_slices(void)
-{
-    uint32_t a, b, len, n = slice_count(), j = slice_sel(), i, src, div, ma, mb;
-    char t[20], u[12];
-    if (!slice_src(&src, &div) || !n) {             /* (it plays a sine: eng_slice.c) */
-        panel_alert(ICON_X_NOFILE, "SAMPLE NOT FOUND");
-        return;
-    }
-    slice_view(&a, &b, &len);
-    slice_env(a, b);
-    ma = slice_mark(0);
-    mb = slice_mark(n);
-#define SPX(p) (12 + (int32_t)((uint32_t)((p) - a) * SP_COLS / (b - a)))   /* p in [a, b] */
-    if (j < n) {                                     /* the selected slice */
-        uint32_t s0 = slice_mark(j), s1 = slice_mark(j + 1u);
-        int32_t x0 = SPX(s0 > a ? s0 : a), x1 = SPX(s1 < b ? s1 : b);
-        if (x1 > x0)
-            cv_rect(x0, 6, x1 - x0, 80, T_TINT);
-    }
-    for (i = 0; i < SP_COLS; i++) {
-        uint32_t p = a + (uint32_t)((uint32_t)i * (b - a) / SP_COLS);
-        cv_line(12 + (int32_t)i, 46 - sp.hi[i] * 38 / 64, 12 + (int32_t)i, 46 - sp.lo[i] * 38 / 64,
-                p >= ma && p < mb ? T_THEME : T_DIM);
-    }
-    for (i = 0; i <= n; i++) {                       /* the markers in the view (the selected one last: on top) */
-        uint32_t p = slice_mark(i);
-        if (i != j && p >= a && p <= b)
-            cv_rect(SPX(p), 4, 1, 84, T_MID);
-    }
-    {
-        uint32_t p = slice_mark(j);
-        if (p >= a && p <= b)
-            cv_rect(SPX(p) > 226 ? 226 : SPX(p), 2, 2, 88, T_ACCENT);
-    }
-#undef SPX
-    cv_rrect(12, 96, (int32_t)SP_COLS, 3, 1, T_RAISE, T_SURF);   /* the whole: every marker, the view */
-    for (i = 0; i <= n; i++)
-        cv_rect(12 + (int32_t)((uint32_t)slice_mark(i) * (SP_COLS - 1u) / len), 94, 1, 7, i == j ? T_ACCENT : T_MID);
-    {
-        int32_t x0 = 12 + (int32_t)((uint32_t)a * SP_COLS / len), x1 = 12 + (int32_t)((uint32_t)b * SP_COLS / len);
-        cv_rect(x0, 103, x1 - x0 < 2 ? 2 : x1 - x0, 2, T_THEME);
-    }
-    str_cpy(t, "LEN ", sizeof t);
-    slice_time(u, j < n ? slice_mark(j + 1u) - slice_mark(j) : len - mb);
-    str_cpy(t + 4, u, sizeof t - 4);
-    str_cpy(t + str_len(t), " S", sizeof t - str_len(t));
-    cv_text(12, 104, &AF_M, t, T_MID);                  /* the slice's detail (M): its capitals rows 108 .. 118 */
-    cv_text_r(228, 104, &AF_M, N_SLC_SRC[src], src && src != SLC_SRC_PIANO ? T_THEME : T_DIM, T_SURF);
-}
-#endif
 
 /* WHEEL: the nine drawbars as rounded bars over RAISE slots (the bars of the knob just turned: the accent),
  * their footages under them */
@@ -460,7 +329,7 @@ static uint32_t fm6_alg_of(const track_t *t)
 {
     return t->p[P_E0] >= 1 && t->p[P_E0] <= 32 ? (uint32_t)t->p[P_E0] - 1u : fm6_patch[(t - trk) % NTRK][FP_ALG] & 31u;
 }
-/* FM6's EDIT pages: the algorithm, drawn as graph_fm draws DIGITAL's, "ALG 05" top left; SLOT on a bank voice (B1..B32,
+/* FM6's EDIT pages: the algorithm (graph_fm), "ALG 05" top left; SLOT on a bank voice (B1..B32,
  * 1.4.1): its name top right. Carriers THEME with INK
  * numerals, modulators RAISE with THEME ones; an operator at output level 0: a DIM numeral (a carrier on RAISE).
  * Routes THEME, the feedback loop MID (DIM at feedback 0), the output bus MID. The knob just turned in ACCENT:
@@ -577,62 +446,6 @@ static void graph_fm6env(const track_t *t, uint16_t c)
     cv_text_r(228, 4 - GOY, &AF_S, b, T_TEXT, T_SURF);
 }
 
-#if FELUCCA_FM4
-/* DIGITAL's eight algorithms as FM charts, read from src/eng_digital.c's switch (alg) (ui_test.c checks
- * these tables against it). FM_CELL: per operator 1..4 its grid cell, the column in 24 px steps (bits 0..2)
- * and the row above the output bus (bits 4..5; row 0 = the carriers). FM_MOD: per destination operator d a
- * nibble at bit 4 d of the operators modulating it (bit k = operator k + 1). Operator 4 feeds itself (FB). */
-static const uint8_t FM_CELL[8][4] = {
-    {0x00, 0x10, 0x20, 0x30}, {0x01, 0x11, 0x20, 0x22}, {0x01, 0x10, 0x20, 0x12}, {0x01, 0x12, 0x10, 0x20},
-    {0x00, 0x10, 0x02, 0x12}, {0x00, 0x02, 0x04, 0x12}, {0x00, 0x02, 0x04, 0x14}, {0x00, 0x02, 0x04, 0x06}};
-static const uint16_t FM_MOD[8] = {0x0842, 0x00C2, 0x004A, 0x0806, 0x0802, 0x0888, 0x0800, 0x0000};
-/* Modulators above what they modulate, the carriers on the bottom row over the output bus (an arrow out).
- * Carriers THEME with INK numerals, modulators RAISE with THEME ones; an operator at LEVEL 0: DIM numeral.
- * Routes by IDX: DIM at 0, MID, THEME from 64; op 4's feedback loop MID (DIM at FB 0). The knob just turned
- * (an operator's ratio or level, IDX, FB): ACCENT. Junction dots where routes split or merge. */
-static void graph_fm(const track_t *t, uint16_t c)
-{
-    uint32_t alg = (uint32_t)t->p[P_E0] & 7u, k, j, mods = FM_MOD[alg], car = 0, hop = 9;
-    uint32_t hot = ui.hot_t ? (uint32_t)cur_page()->id[ui.hot_col & 3u] : 0u;
-    int32_t x[4], y[4], lo = 7, hi = 0, top = 0, bus, cl = 240, cr = 0, idx = t->p[P_E4];
-    uint16_t ec = hot == P_E4 ? T_ACCENT : !idx ? T_DIM : idx < 64 ? T_MID : c;
-    if (hot >= P_E1 && hot <= P_E3) hop = hot - P_E1 + 1u;
-    else if (hot >= P_FM1_ATK && hot < P_E0) hop = (hot - P_FM1_ATK) / 5u;
-    for (k = 0; k < 4u; k++) {
-        int32_t col = FM_CELL[alg][k] & 7, row = FM_CELL[alg][k] >> 4;
-        lo = col < lo ? col : lo; hi = col > hi ? col : hi; top = row > top ? row : top;
-    }
-    bus = 50 + (27 + 23 * top) / 2;                  /* the chart centred on the 100 px scale */
-    for (k = 0; k < 4u; k++) {
-        x[k] = 120 + (FM_CELL[alg][k] & 7) * 24 - (lo + hi) * 12;
-        y[k] = bus - 6 - FM_BH - 23 * (FM_CELL[alg][k] >> 4);
-        if (FM_CELL[alg][k] < 0x10) { car |= 1u << k; cl = x[k] < cl ? x[k] : cl; cr = x[k] > cr ? x[k] : cr; }
-    }
-    for (k = 0; k < 4u; k++) {                       /* into k: sources down to its jog row, across, down */
-        uint32_t m = (mods >> (4u * k)) & 15u;
-        for (j = 0; j < 4u; j++) if (m >> j & 1u) {
-            uint32_t fan = mods & (0x1111u << j);
-            fm_route(x[j], y[j] + FM_BH, x[k], y[k] - 3, y[k], ec);
-            if (fan & (fan - 1u)) fm_dot(x[j], y[k] - 3, ec);   /* one operator modulating several */
-        }
-        if (m & (m - 1u)) fm_dot(x[k], y[k] - 3, ec);           /* several modulating one */
-        if (car >> k & 1u) {
-            cv_rect(x[k], y[k] + FM_BH, 1, bus - y[k] - FM_BH, T_MID);
-            if (x[k] != cl) fm_dot(x[k], bus, T_MID);
-        }
-    }
-    fm_bus(cl, cr, bus);                             /* the output bus and its arrow */
-    fm_loop(x[3], y[3], hot == P_E6 ? T_ACCENT : t->p[P_E6] ? T_MID : T_DIM);   /* op 4's feedback */
-    for (k = 0; k < 4u; k++) {
-        char b[2] = {(char)('1' + k), 0};
-        uint32_t on = t->p[P_FM1_LEVEL + k * 5u] != 0, fill_c = (car >> k & 1u) && on;
-        uint16_t f = k == hop ? T_ACCENT : c, fill = fill_c ? f : T_RAISE;
-        cv_rrect(x[k] - 10, y[k], 21, FM_BH, 3, fill, T_SURF);
-        GFX_HOOK_ALIGN(x[k] - 10, y[k], x[k] + 11, y[k] + FM_BH, AL_HV, "DIGITAL operator number in its box");
-        cv_text_in(x[k] - 10, y[k] + CAP_IN(S, FM_BH), 21, &AF_S, b, fill_c ? T_INK : on ? f : T_DIM, fill);
-    }
-}
-#endif
 /* the stored song (project.c proj_good, kept up to date by its saves and loads): used, its name */
 static char graph_pname[13];
 static uint32_t graph_pname_sig;
@@ -736,31 +549,21 @@ static uint32_t graph_signature(void)
             h ^= (uint32_t)graph_project_used(i) << (20u + i);
         h += graph_pname_sig;
     }
-#if FELUCCA_SLICE
-    if (pg->graph == GR_SLICES && slice_page_ok()) h ^= slice_sig();
-#endif
-    if (pg->scope == SC_ENGINE && (ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL || t->eng_req % NENGINES == ENGI_FM6 ||
-                                   (FELUCCA_FM4 && t->eng_req % NENGINES == ENGI_DIGITAL)))
+    if (pg->scope == SC_ENGINE && (ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL || t->eng_req % NENGINES == ENGI_FM6))
         h ^= (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u;
     if ((pg->scope == SC_ENGINE || fop_page(pg->graph)) && t->eng_req % NENGINES == ENGI_FM6)   /* the patch (PAT's algorithm,
                                                      * levels, FB; the operator pages: the operator, the stage) */
         h ^= (fm6_pgen[(t - trk) % NTRK] + 1u) * 2246822519u + (fop_op + 1u) * 40503u + (fop_stg + 1u) * 7919u;
-#if FELUCCA_SAMPLE
-    if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE) h ^= sample_wave.pos * 13u + sample_wave.key;
-#endif
     return h;
 }
 /* 4-letter engine tags of the preset list */
 static const char *eng_abbr(const char *name)
 {
     static const char *const A[][2] = {{"ANALOG", "ANLG"},
-#if FELUCCA_FM4
-                                       {"DIGITAL", "DGTL"},
-#endif
                                        {"PHASE", "PHAS"}, {"LOFI", "LOFI"},
-                                       {"SAMPLE", "SMPL"}, {"VOICE", "VOCL"}, {"TRIO", "TRIO"}, {"WHEEL", "WHEL"},
-                                       {"GRAIN", "GRAN"}, {"PHYS", "PHYS"}, {"DRUM", "DRUM"},
-                                       {"NOISE", "NOIS"}, {"FM6", "FM6"}, {"SLICE", "SLCE"}, {"HOOVER", "HOOV"}};
+                                       {"VOICE", "VOCL"}, {"TRIO", "TRIO"}, {"WHEEL", "WHEL"},
+                                       {"PHYS", "PHYS"}, {"DRUM", "DRUM"},
+                                       {"NOISE", "NOIS"}, {"FM6", "FM6"}, {"HOOVER", "HOOV"}};
     uint32_t i;
     for (i = 0; i < sizeof A / sizeof A[0]; i++)
         if (str_eq(name, A[i][0]))
@@ -1254,9 +1057,6 @@ static void draw_graph(void)
         draw_home_tracks();
         return;
     }
-#if FELUCCA_SAMPLE
-    if (!ui.home && pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE) sample_wave_tick(t);
-#endif
     sig = graph_signature();
     if (!ui.force && sig == ui.graph_sig)
         return;
@@ -1318,12 +1118,6 @@ static void draw_graph(void)
             cv_oy = 0;
             panel_note("TURN TO PICK", "[OCT+] CONFIRM", 0);
             break;
-#if FELUCCA_SLICE
-        case GR_SLICES:
-            cv_oy = 0;
-            graph_slices();
-            break;
-#endif
         case GR_FMOP:
         case GR_FMOP2:
             if (fop_ok()) graph_fm6(t, c, fop_op % 6u);   /* the chart, the operator picked */
@@ -1333,15 +1127,8 @@ static void draw_graph(void)
             break;
         default:
             if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) graph_wheel(t, c);
-#if FELUCCA_SAMPLE
-            else if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE && sample_wave.ready) graph_sample(c);
-#endif
             else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WAVE) graph_wave(t, c);
             else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_FM6) graph_fm6(t, c, 6u);   /* EDIT 1 and 2 */
-#if FELUCCA_FM4
-            else if ((pg->scope == SC_ENGINE || pg->id[0] == P_FM1_LEVEL) && t->eng_req % NENGINES == ENGI_DIGITAL)
-                graph_fm(t, c);                      /* (OP LEVEL too: the levels on the chart) */
-#endif
             else { cv_oy = 0; graph_scope(c); }
             break;
         }

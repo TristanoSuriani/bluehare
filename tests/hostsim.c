@@ -107,18 +107,6 @@ static void host_preset_values(track_t *t, uint32_t e, uint32_t pi, const preset
 static void host_preset_req(track_t *t, uint32_t e, uint32_t pi)
 {
     uint32_t n = ENGINES[e]->npresets;
-#if !FELUCCA_FM4
-    if (e == ENGI_DIGITAL) {                      /* DIGITAL preset pi (retired): converted, as ui.c fm4_load_preset */
-        uint8_t v[FP_SIZE + 1u];
-        uint32_t tr = (uint32_t)(t - trk) % NTRK;
-        fm4_preset_values(t->p, pi);
-        t->preset = (uint8_t)fm4_convert(t->p, v);
-        t->eng_req = ENGI_FM6;
-        fm6_set_patch(tr, v);
-        fm6_slot[tr] = (uint8_t)t->p[P_E7];
-        return;
-    }
-#endif
     if (!n) {
         t->eng_req = (uint8_t)e;
         t->preset = 0;
@@ -132,18 +120,9 @@ static void host_preset_req(track_t *t, uint32_t e, uint32_t pi)
 static void host_preset(track_t *t, uint32_t e, uint32_t pi)
 {
     host_preset_req(t, e, pi);
-    t->engine = t->eng_req;                       /* (DIGITAL without FELUCCA_FM4: FM6) */
+    t->engine = t->eng_req;
 }
 
-/* A saved SAMPLE PERC sound, as 1.0.2 and earlier stored it (SET 4, the GM kit; retired since: every load
- * turns it into DRUM, core.h drum_from_perc). Put straight into a track it plays SET 4's alias (PIANO): only
- * for the migration tests, which pass it through a load */
-static void host_legacy_sample_perc(track_t *t)
-{
-    static const preset_t PERC = {"PERC", {SMP_SET_PERC, 0, 0, 0, 127, 0, 0, 0}, {0, 127, 127, 60}, 0, 0};
-    host_preset_values(t, ENGI_SAMPLE, SMP_SET_PERC, &PERC);
-    t->engine = ENGI_SAMPLE;
-}
 /* the drums of the render tests: DRUM's kit (the power-on track 4; until 1.0.2 these used SAMPLE PERC) */
 static void host_drums(track_t *t) { host_preset(t, ENGI_DRUM, 0); }
 
@@ -435,10 +414,9 @@ static int steal_test(const char *dir)
 
 /* a preset change across engines while notes sound (the PRESETS knob, the editor's PRESET) must not click:
  * part 1 as a plain sine pad (ANALOG SINE KEY, filter open, slow release, no sends: smooth, so the largest
- * sample step is set by the pitches), (a) a chord held and released, the switch to DIGITAL (its E.PIANO; without
- * FELUCCA_FM4 converted: FM6) in its release
+ * sample step is set by the pitches), (a) a chord held and released, the switch to FM6 (its TINE EP) in its release
  * tail; (b) twice a chord held, the switch to PHASE / LOFI while it is held (the preset change releases
- * it); (c) a switch to SAMPLE with a note in its second block: that note must sound on the new engine. As ui.c
+ * it); (c) a switch to WAVE with a note in its second block: that note must sound on the new engine. As ui.c
  * set_engine_of + apply_preset_to: eng_req, the new engine's values and panic_req at once (the main loop
  * writes them with the audio IRQ off). Compares the largest sample step in the 10 ms after (a) and (b)
  * with the largest one in the 0.1 s before (a hard cut of the voices: many times larger).
@@ -463,7 +441,7 @@ static int xfade_test(const char *dir)
     /* switches: (a) in a release tail, (b) twice with a chord held, (c) with a note right after it */
     const uint32_t sw[4] = {11u * B, 23u * B, 29u * B + 7u * CTL, 33u * B};
     const uint32_t on[3] = {B, 15u * B, 25u * B}, sine[3] = {14u * B, 24u * B, 32u * B};
-    const uint8_t to[4] = {1, 2, 3, 4};
+    const uint8_t to[4] = {ENGI_FM6, 2, 3, ENGI_WAVE};
     char path[512];
     FILE *w;
     int32_t *L = calloc(frames + CTL, sizeof *L);               /* (the last block may run past frames) */
@@ -761,9 +739,9 @@ static int tracks_test(const char *dir)
         if (eng_ok(e))
             printf(" %s %s %.1f%s", ENGINES[e]->name, ENGINES[e]->presets[heavy[e]].name, best_e[e],
                    e + 1u < NENGINES ? "," : "\n");
-    {   /* FM (DIGITAL with FELUCCA_FM4, else FM6), PHASE, VOICE (their heaviest presets) and drums on part 4 at once:
-         * 3 + 3 + 2 notes and the hits in the budget of 8 */
-        const uint8_t fm = FELUCCA_FM4 ? ENGI_DIGITAL : ENGI_FM6;
+    {   /* FM6, PHASE, VOICE (their heaviest presets) and drums on part 4 at once: 3 + 3 + 2 notes and the hits in the
+         * budget of 8 */
+        const uint8_t fm = ENGI_FM6;
         uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {2, (uint8_t)heavy[2], 3}, {5, (uint8_t)heavy[5], 2},
                                    {ENGI_DRUM, 0, DRUM_HITS}};
         uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {2, (uint8_t)heavy[2], 8}, {5, (uint8_t)heavy[5], 4},

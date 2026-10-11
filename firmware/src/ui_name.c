@@ -5,7 +5,7 @@
  * Where: SAVE > USER, SAVE (KNOB 4, OCT+) and SAVE > PROJECT, SAVE: after the OVERWRITE? dialog when the slot is
  * used, the NAME screen opens before anything is written; OCT+ writes, OCT- cancels (back to the page, nothing
  * written). EDIT on those pages renames the selected slot (only its name is written). The name is prefilled:
- * USER the sound's own (the user preset it came from) or the automatic one ("DIGITAL 14"), PROJECT the current
+ * USER the sound's own (the user preset it came from) or the automatic one ("ANALOG 14"), PROJECT the current
  * project's (as loaded or last saved; none: "PROJECT A"), so SAVE, OCT+, OCT+ saves with the default name.
  * Writing needs the transport stopped (STOP TO SAVE; the screen stays).
  *
