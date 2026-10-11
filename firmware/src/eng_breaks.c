@@ -173,6 +173,13 @@ static const preset_t BREAKS_PRESETS[] = {
     {"SAMPLER", {0, 1, 20, 0, 0, 58, 64, 70}, {0, 0, 127, 5}, 0, 1, FX(20, 0, 0, 15)},
     {"CRUSHED", {0, 1, 0, 20, 20, 64, 64, 110}, {0, 0, 127, 5}, 0, 1, FX(30, 0, 10, 10)},
     {"DUB BREAK", {0, 0, 30, 10, 0, 56, 80, 30}, {0, 0, 127, 10}, 0, 1, FX(10, 0, 60, 30)},
+    /* (Fel-Tracker, the IDM review) */
+    {"CHOPPED", {4, 1, 0, 10, 30, 64, 64, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 0, 15)},
+    {"LOFI DUST", {0, 1, 30, 0, 0, 54, 70, 50}, {0, 0, 127, 5}, 0, 1, FX(10, 20, 0, 25)},
+    {"GLITCH ROLLS", {0, 1, 0, 100, 60, 64, 56, 30}, {0, 0, 127, 5}, 0, 1, FX(10, 0, 20, 15)},
+    {"TIGHT BREAK", {0, 1, 10, 0, 0, 70, 40, 0}, {0, 0, 127, 5}, 0, 1, FX(20, 0, 0, 10)},
+    {"SLOW SWING", {0, 0, 70, 0, 0, 60, 80, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 10, 25)},
+    {"SHRED", {0, 3, 0, 90, 90, 80, 50, 60}, {0, 0, 127, 5}, 0, 1, FX(30, 0, 20, 10)},
 };
 
 /* the keys: the breaks from the first C (C2 = 36 FUNKY), an octave of them */
@@ -186,7 +193,7 @@ static const engine_t ENG_BREAKS = {
     .name = "BREAKS",
     .id = EID_BREAKS,
     .cc = 0x45,                  /* CC74 STUTR, CC71 SHUF */
-    .cats = "DDDDDDDDDD",
+    .cats = "DDDDDDDDDDDDDDDD",
     .page_title = {"BREAK", "MANGLE"},
     .edit = {
         {"SLICE", F_INT, 0, 15, 0, 0, 0},

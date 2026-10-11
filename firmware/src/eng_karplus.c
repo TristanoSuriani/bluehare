@@ -134,13 +134,20 @@ static const preset_t KARPLUS_PRESETS[] = {
     {"ACID PLUCK", {2, 100, 50, 50, 10, 0, 80, 90}, {0, 0, 127, 20}, 0, 1, FX(40, 0, 30, 10)},
     {"BELL STRING", {3, 127, 10, 110, 20, 100, 0, 0}, {0, 0, 127, 90}, 0, 0, FX(0, 30, 30, 50)},
     {"DULCIMER", {3, 110, 20, 100, 30, 40, 10, 0}, {0, 0, 127, 60}, 0, 0, FX(0, 20, 25, 40)},
+    /* (Fel-Tracker, the IDM review) */
+    {"SITAR", {2, 120, 15, 100, 6, 30, 0, 40}, {0, 0, 127, 60}, 0, 0, FX(10, 20, 20, 40)},
+    {"UPRIGHT", {1, 30, 80, 70, 40, 0, 90, 10}, {0, 0, 127, 20}, 0, 1, FX(10, 0, 0, 15)},
+    {"MUSIC BOX", {3, 127, 5, 90, 10, 127, 0, 0}, {0, 0, 127, 70}, 0, 0, FX(0, 20, 30, 55)},
+    {"KALIMBA", {3, 90, 30, 60, 50, 60, 20, 0}, {0, 0, 127, 40}, 0, 0, FX(0, 0, 30, 40)},
+    {"FUZZ STRING", {0, 100, 30, 90, 20, 0, 40, 127}, {0, 0, 127, 30}, 0, 1, FX(40, 20, 40, 25)},
+    {"BOWED PAD", {1, 50, 50, 127, 40, 0, 0, 0}, {95, 0, 127, 90}, 0, 0, FX(0, 70, 20, 80)},
 };
 
 static const engine_t ENG_KARPLUS = {
     .name = "KARPLUS",
     .id = EID_KARPLUS,
     .cc = 0x32,                  /* CC74 BRIGHT, CC71 DAMP */
-    .cats = "UUUUUBUUUU",
+    .cats = "UUUUUBUUUUUBKULP",
     .page_title = {"PLUCK", "STRING"},
     .edit = {
         {"EXCT", F_ENUM, 0, 3, 1, N_KP_EXCT, 0},
