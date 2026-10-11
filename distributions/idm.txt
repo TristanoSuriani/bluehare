@@ -1,12 +1,12 @@
 # IDM: the engines in display order, one a line (names: firmware/src/engine_ids.h; at most 16). Planned engines that
 # are not written yet stay commented out until they are
-ANALOG
+SID
 PHASE
 WAVE
 BYTE
 WEST
 HOOVER
-PHYS
+DUBSIREN
 KARPLUS
 VOSIM
 PARTICLE

@@ -375,6 +375,14 @@ In the order the device lists them:
   run at the note's speed: tones that wander) or the logistic and Henon maps (a new value each period: buzz that
   changes every cycle). CHAOS is the system's parameter, from order to wild; OUT the variable heard; SMTH; FOLD; SINE
   mixes in the note's sine; SEED: the same attack every note or a new one; TONE
+- **SID** (the IDM distribution): a voice of the C64's sound chip, in its manner. WAVE TRI SAW PUL NOIS (the chip's
+  pitched shift-register noise) or the chip's combined waves (TS PT PS PTS); PW, PWM; MOD RING / SYNC / both against a
+  master at the note, the oscillator MDTN semitones above it (the sync lead, ring bells); FILT the 12 dB multimode
+  filter (LP BP HP) at CUT with RES, a little gritty. The SHP routings move PW and MDTN
+- **DUBSIREN** (the IDM distribution): the sound-system siren box with its own tape echo. WAVE, an LFO on the pitch
+  (RATE, DEPTH, SHAPE: two-tone, whoop up or down, wail), SWEEP (the dive or the rise), TIME (turned while it sounds,
+  the echoes bend), FDBK (runs away while held, settles when let go), MIX. ATK and REL are its envelope; the voice
+  lasts until the echoes die away
 - **SPEECH** (the IDM distribution): words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
   are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD

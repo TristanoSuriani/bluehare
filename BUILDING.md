@@ -78,7 +78,7 @@ FELUCCA_DIST=default ./build.sh    # another one (build/felucca-default.fwsc)
 | Distribution | Engines |
 | --- | --- |
 | `default` | ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM |
-| `idm` | ANALOG PHASE WAVE BYTE WEST HOOVER PHYS KARPLUS VOSIM PARTICLE CHAOS NOISE DRUM FMPERC SPEECH LOFI (16) |
+| `idm` | SID PHASE WAVE BYTE WEST HOOVER DUBSIREN KARPLUS VOSIM PARTICLE CHAOS NOISE DRUM FMPERC SPEECH LOFI (16) |
 
 The engines a distribution leaves out are not linked. A build numbers its engines 0, 1, .. in the distribution's
 order (`core.h` `ENGI_*`, `engines.c` `ENGINES[]`), but everything stored and the editor protocol name an engine by its

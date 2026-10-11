@@ -43,6 +43,8 @@ karplus_render 94
 vosim_render 139
 particle_render 654
 chaos_render 655
+sid_render 316
+dubsiren_render 299
 fm1_alnk0_irq 37502
 fm1_timer5_irq 33387
 click_render 30

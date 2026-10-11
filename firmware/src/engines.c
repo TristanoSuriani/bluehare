@@ -23,6 +23,8 @@
 #include "eng_vosim.c"          /* VOSIM: formant pulse trains (1.5) */
 #include "eng_particle.c"       /* PARTICLE: a cloud of synthesized grains (1.5) */
 #include "eng_chaos.c"          /* CHAOS: chaotic systems as oscillators (1.5) */
+#include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
+#include "eng_dubsiren.c"       /* DUBSIREN: the sound-system siren, its own tape echo (1.5) */
 
 /* the engine of an id this build has none for (a retired id, or an engine left out): what the editor protocol
  * describes for it (NAMES, DESC: no presets, nothing to edit, named "-"). No track ever plays it */
@@ -100,11 +102,11 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 }
 
 /* the parts at power-on (engine index, preset): bass, pad, lead, drums (ANALOG ACID, FM6 PAD, LOFI PULSE LD, DRUM
- * KIT; without FM6 the pad is VOSIM's FORMANT PAD); an engine the build leaves out: its first engine, preset 0 */
+ * KIT; without ANALOG the bass is SID BASS, without FM6 the pad VOSIM's FORMANT PAD); an engine the build leaves out: its first engine, preset 0 */
 #define TRK_PICK(X, p) {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : 0u, FELUCCA_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
     {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : 0u}
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(ANALOG, 4), TRK_PICK2(FM6, 4, VOSIM, 13), TRK_PICK(LOFI, 0),
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(ANALOG, 4, SID, 0), TRK_PICK2(FM6, 4, VOSIM, 13), TRK_PICK(LOFI, 0),
                                           TRK_PICK(DRUM, 0)};
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

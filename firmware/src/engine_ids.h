@@ -8,13 +8,13 @@
  *               raises core.h EID_COUNT
  *   substitute  the engine a sound of this one loads as in a distribution without it (and down that one's own, if it
  *               is missing too; at the end the distribution's first engine): engines.c eng_load_id */
-ENGINE(ANALOG, 0, HOOVER)
+ENGINE(ANALOG, 0, SID)
 ENGINE(PHASE, 2, ANALOG)
 ENGINE(LOFI, 3, BYTE)
 ENGINE(VOICE, 5, SPEECH)
 ENGINE(TRIO, 6, ANALOG)
 ENGINE(WHEEL, 7, FM6)
-ENGINE(PHYS, 9, WEST)
+ENGINE(PHYS, 9, KARPLUS)
 ENGINE(DRUM, 10, ANALOG)
 ENGINE(NOISE, 11, ANALOG)
 ENGINE(FM6, 12, WAVE)
@@ -28,3 +28,5 @@ ENGINE(KARPLUS, 20, PHYS)
 ENGINE(VOSIM, 21, SPEECH)
 ENGINE(PARTICLE, 22, WAVE)
 ENGINE(CHAOS, 23, NOISE)
+ENGINE(SID, 24, ANALOG)
+ENGINE(DUBSIREN, 25, HOOVER)

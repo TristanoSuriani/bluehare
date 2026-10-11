@@ -449,7 +449,7 @@ EXPORT uint8_t *web_anim_levels(void)
 EXPORT void web_test_heavy(void)
 {
     static const uint8_t ENG[3][2] = {{FELUCCA_ENG_FM6 ? (uint8_t)ENGI_FM6 : (uint8_t)ENGI_VOSIM, FELUCCA_ENG_FM6 ? 4 : 13},
-                                      {ENGI_PHYS, 7}, {ENGI_WAVE, 1}};
+                                      {FELUCCA_ENG_PHYS ? (uint8_t)ENGI_PHYS : (uint8_t)ENGI_KARPLUS, FELUCCA_ENG_PHYS ? 7 : 2}, {ENGI_WAVE, 1}};
     static const uint8_t CH[4][4] = {{48, 55, 60, 64}, {45, 52, 57, 60}, {41, 48, 53, 57}, {43, 50, 55, 59}};
     uint32_t p, i;
     for (p = 0; p < 3u; p++) {
