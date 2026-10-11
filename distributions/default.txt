@@ -1,0 +1,15 @@
+# The default distribution: the engines in display order, one a line (names: firmware/src/engine_ids.h; at most 16)
+ANALOG
+FM6
+WAVE
+WEST
+HOOVER
+PHASE
+LOFI
+VOICE
+TRIO
+WHEEL
+PHYS
+NOISE
+BYTE
+DRUM

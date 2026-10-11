@@ -107,8 +107,8 @@
 #                   operator envelopes (stages, rates, the voice ending), bit-stable notes, a click-free retrigger, no DC /
 #                   clipping over the factory patches, the macros' directions, PTCH, pack / unpack and the SysEx
 #                   layouts, the 6-voice cap, the cost per voice; demos in build/fm6_demo/.
-# ENGINES (tests/engines_test.c): a build without FM6, HOOVER and DRUM (core.h FELUCCA_ENG_<NAME>=0): the engines left
-#                   numbered from 0 in display order, the ids both ways, a left-out engine's sound loading as its substitute
+# ENGINES (tests/engines_test.c): the IDM distribution (FELUCCA_DIST=idm, no VOICE TRIO WHEEL HOOVER): its engines
+#                   numbered from 0 in its order, the ids both ways, a left-out engine's sound loading as its substitute
 #                   (projects, G_ENGSEL / PRESET, the song's instruments), its user presets kept but not listed, every
 #                   engine left rendering.
 # ROBUST (tests/robust_test.c): damaged or crafted stored data and editor requests: a song's fields out of range refused (an engine past the
@@ -134,7 +134,7 @@ run() { echo "== $1"; shift; "$@" || fail=1; }
 $CC -o "$OUT/storage_test" tests/storage_test.c
 run "flash storage (A/B, torn writes)" "$OUT/storage_test"
 
-$CC -o "$OUT/upreset_test" tests/upreset_test.c
+$CC -Ibuild/gen -o "$OUT/upreset_test" tests/upreset_test.c   # (core.h: build/gen/dist_default.h)
 run "user presets (UP_PUT parser, bank round trip, versions, PHYS DRUM -> DRUM, grid records, retired engines refused)" "$OUT/upreset_test"
 
 $CC -o "$OUT/input_test" tests/input_test.c
@@ -219,8 +219,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/robust_test" tests/robust_test.c -lm
     run "robustness: engine ids, retained old projects, preset patterns, malformed requests" \
         "$OUT/robust_test"
-    $CC -w -DFELUCCA_ENG_FM6=0 -DFELUCCA_ENG_HOOVER=0 -DFELUCCA_ENG_DRUM=0 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm
-    run "a build without FM6 HOOVER DRUM: the engines from 0, ids both ways, substitutes in projects / protocol / songs, user presets kept" \
+    $CC -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm
+    run "the IDM distribution: its engines from 0, ids both ways, substitutes in projects / protocol / songs, user presets kept" \
         "$OUT/engines_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/mod_test" tests/mod_test.c -lm
     mkdir -p build/mod_demo
@@ -242,6 +242,11 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
     run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
+    $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm" tests/regress.c -lm
+    run "regression, the IDM distribution: its presets' golden renders and CPU" "$OUT/regress_idm" tests/golden.txt tests/cpu_baseline.txt
+    $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
+    mkdir -p build/speech_demo
+    run "SPEECH: every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/descdump" tests/descdump.c -lm
     echo "== parameter and engine tables as JSON (for the editor mock test)"
     "$OUT/descdump" > "$OUT/desc.json" || fail=1

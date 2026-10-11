@@ -12,167 +12,42 @@
 #define NPART 4                  /* synth parts: tracks 1..4 */
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
-/* ---- the engines. Two numbers name one:
+/* ---- the engines. The tree holds every engine (engine_ids.h); a distribution (distributions/<name>.txt, at most 16) is
+ * the set one build holds, FELUCCA_DIST=<name> (build.py; default: "default"). Two numbers name an engine:
  * its id (EID_*): fixed for good, what everything stored and the editor protocol use (projects, user presets, the
- *   song's instruments, favourites; the protocol's engine byte, G_ENGSEL). Append-only; 1 DIGITAL, 4 SAMPLE,
- *   8 GRAIN, 13 SLICE are retired (removed in 1.5) and never given again. A new engine takes the next free id.
- * its index (ENGI_*): its place in this build's engines.c ENGINES[] (0 .. NENGINES - 1), what a track holds
- *   (eng_req) and the code compares; the build's engines in their display order, so the numbers differ by build.
- * A build leaves an engine out with FELUCCA_ENG_<NAME>=0 (build.py: also FELUCCA_ENGINES="ANALOG FM6 .."); its code
- * is not linked (nothing refers to it but the table) and its ENGI_ is ENG_ABSENT, which no track's engine equals
- * (a compare with it folds to false). A stored sound of an engine the build lacks loads as its substitute
- * (engines.c eng_load_id) */
-#define EID_ANALOG 0u
-#define EID_PHASE 2u
-#define EID_LOFI 3u
-#define EID_VOICE 5u
-#define EID_TRIO 6u
-#define EID_WHEEL 7u
-#define EID_PHYS 9u
-#define EID_DRUM 10u
-#define EID_NOISE 11u
-#define EID_FM6 12u
-#define EID_WAVE 14u
-#define EID_BYTE 15u
-#define EID_WEST 16u
-#define EID_HOOVER 17u
-#define EID_COUNT 18u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+ *   song's instruments, favourites; the protocol's engine byte, G_ENGSEL). Append-only (engine_ids.h).
+ * its index (ENGI_*): its place in this build's engines.c ENGINES[] (0 .. NENGINES - 1), the distribution's order,
+ *   what a track holds (eng_req) and the code compares.
+ * The engines the distribution leaves out are not linked (nothing refers to them but the table) and their ENGI_ is
+ * ENG_ABSENT, which no track's engine equals (a compare with it folds to false). A stored sound of an engine the build
+ * lacks loads as its substitute (engines.c eng_load_id) */
+enum {                           /* the ids */
+#define ENGINE(N, id, sub) EID_##N = id,
+#include "engine_ids.h"
+#undef ENGINE
+};
+#define EID_COUNT 19u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 #define EID_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u)   /* DIGITAL SAMPLE GRAIN SLICE */
 #define ENG_ABSENT 0x100u        /* the ENGI_ of an engine the build leaves out: no uint8_t equals it */
-#ifndef FELUCCA_ENG_ANALOG
-#define FELUCCA_ENG_ANALOG 1
+#ifndef FELUCCA_DIST
+#define FELUCCA_DIST default
 #endif
-#ifndef FELUCCA_ENG_FM6
-#define FELUCCA_ENG_FM6 1
-#endif
-#ifndef FELUCCA_ENG_WAVE
-#define FELUCCA_ENG_WAVE 1
-#endif
-#ifndef FELUCCA_ENG_WEST
-#define FELUCCA_ENG_WEST 1
-#endif
-#ifndef FELUCCA_ENG_HOOVER
-#define FELUCCA_ENG_HOOVER 1
-#endif
-#ifndef FELUCCA_ENG_PHASE
-#define FELUCCA_ENG_PHASE 1
-#endif
-#ifndef FELUCCA_ENG_LOFI
-#define FELUCCA_ENG_LOFI 1
-#endif
-#ifndef FELUCCA_ENG_VOICE
-#define FELUCCA_ENG_VOICE 1
-#endif
-#ifndef FELUCCA_ENG_TRIO
-#define FELUCCA_ENG_TRIO 1
-#endif
-#ifndef FELUCCA_ENG_WHEEL
-#define FELUCCA_ENG_WHEEL 1
-#endif
-#ifndef FELUCCA_ENG_PHYS
-#define FELUCCA_ENG_PHYS 1
-#endif
-#ifndef FELUCCA_ENG_NOISE
-#define FELUCCA_ENG_NOISE 1
-#endif
-#ifndef FELUCCA_ENG_BYTE
-#define FELUCCA_ENG_BYTE 1
-#endif
-#ifndef FELUCCA_ENG_DRUM
-#define FELUCCA_ENG_DRUM 1
-#endif
-enum {                           /* the indices: the build's engines in display order (engines.c ENGINES[]) */
-#if FELUCCA_ENG_ANALOG
-    ENGI_ANALOG,
-#endif
-#if FELUCCA_ENG_FM6
-    ENGI_FM6,
-#endif
-#if FELUCCA_ENG_WAVE
-    ENGI_WAVE,
-#endif
-#if FELUCCA_ENG_WEST
-    ENGI_WEST,
-#endif
-#if FELUCCA_ENG_HOOVER
-    ENGI_HOOVER,
-#endif
-#if FELUCCA_ENG_PHASE
-    ENGI_PHASE,
-#endif
-#if FELUCCA_ENG_LOFI
-    ENGI_LOFI,
-#endif
-#if FELUCCA_ENG_VOICE
-    ENGI_VOICE,
-#endif
-#if FELUCCA_ENG_TRIO
-    ENGI_TRIO,
-#endif
-#if FELUCCA_ENG_WHEEL
-    ENGI_WHEEL,
-#endif
-#if FELUCCA_ENG_PHYS
-    ENGI_PHYS,
-#endif
-#if FELUCCA_ENG_NOISE
-    ENGI_NOISE,
-#endif
-#if FELUCCA_ENG_BYTE
-    ENGI_BYTE,
-#endif
-#if FELUCCA_ENG_DRUM
-    ENGI_DRUM,
-#endif
-    NENGINES                     /* engines in this build (at least one) */
-};
-#if !FELUCCA_ENG_ANALOG
-#define ENGI_ANALOG ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_FM6
-#define ENGI_FM6 ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_WAVE
-#define ENGI_WAVE ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_WEST
-#define ENGI_WEST ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_HOOVER
-#define ENGI_HOOVER ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_PHASE
-#define ENGI_PHASE ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_LOFI
-#define ENGI_LOFI ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_VOICE
-#define ENGI_VOICE ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_TRIO
-#define ENGI_TRIO ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_WHEEL
-#define ENGI_WHEEL ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_PHYS
-#define ENGI_PHYS ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_NOISE
-#define ENGI_NOISE ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_BYTE
-#define ENGI_BYTE ENG_ABSENT
-#endif
-#if !FELUCCA_ENG_DRUM
-#define ENGI_DRUM ENG_ABSENT
-#endif
+#define DIST_H2(f) #f
+#define DIST_H1(n) DIST_H2(dist_##n.h)
+#define DIST_H(n) DIST_H1(n)
+#include DIST_H(FELUCCA_DIST)    /* build/gen/dist_<name>.h (tools/gen_dist.py): FELUCCA_ENG_<NAME>, FELUCCA_DIST_ENGINES */
+#define FELUCCA_VERSION_DIST FELUCCA_VERSION FELUCCA_DIST_TAG   /* "v1.5", "v1.5 IDM": the version as shown */
+enum {                           /* the indices: the distribution's engines in its order (engines.c ENGINES[]) */
+#define X(N) ENGI_##N,
+    FELUCCA_DIST_ENGINES(X)
+#undef X
+    NENGINES                     /* engines in this build (1 .. 16) */
+};                               /* (the ones left out: ENGI_<NAME> ENG_ABSENT, in the generated header) */
+typedef char eng_count_ok[NENGINES > 0 && NENGINES <= 16 ? 1 : -1];
 #define NENG_SHOWN NENGINES      /* (the engines one can pick: all of the build's, in their order) */
 /* engine index e is engine X (a uint8_t compared without the warning that an engine left out would raise: still false,
  * folded away) */
 #define ENG_IS(e, X) ((uint32_t)(e) == (uint32_t)ENGI_##X)
-typedef char eng_at_least_one[NENGINES > 0 ? 1 : -1];
 #define UP_SLOTS 32u             /* user presets (upreset.c) */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 

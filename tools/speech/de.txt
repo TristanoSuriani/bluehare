@@ -1,0 +1,34 @@
+# SPEECH bank DE: German numbers and machine words (see en_num.txt for the format; RR the uvular r, AX0 a vocalised
+# r or a schwa, X ach, C ich, TS z, UE ue, OE oe, EE long e, OO long o, AU au, EU eu); 32 words
+NULL     N UH1 L
+EINS     AY1 N S
+ZWEI     TS V AY1
+DREI     D RR AY1
+VIER     F IY1 AX0
+FUENF    F UE1 N F
+SECHS    Z EH1 K S
+SIEBEN   Z IY1 B AX0 N
+ACHT     AA1 X T
+NEUN     N EU1 N
+ZEHN     TS EE1 N
+ELF      EH1 L F
+ZWOELF   TS V OE1 L F
+HUNDERT  HH UH1 N D AX0 T
+TAUSEND  T AU1 Z AX0 N T
+ROBOTER  RR OO1 B AO0 T AX0
+COMPUTER K AO0 M P Y UW1 T AX0
+SYSTEM   Z UE0 S T EE1 M
+FEHLER   F EE1 L AX0
+DATEN    D AA1 T AX0 N
+MASCHINE M AA0 SH IY1 N AX0
+MUSIK    M UW0 Z IY1 K
+ELEKTRO  EE0 L EH1 K T RR OO0
+TECHNO   T EH1 C N OO0
+START    SH T AA1 RR T
+STOP     SH T AO1 P
+JA       Y AA1
+NEIN     N AY1 N
+HALLO    HH AA0 L OO1
+ACHTUNG  AA1 X T UH0 NG
+STIMME   SH T IH1 M AX0
+ENDE     EH1 N D AX0

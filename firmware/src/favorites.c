@@ -7,17 +7,23 @@ typedef struct {
     uint32_t user, filter;
 } favorites_t;
 static favorites_t favorites;
-/* ids 16 on (1.5: WEST, HOOVER) have no row of their own in the stored layout: their presets 0..7 star bits of a
- * byte BYTE's presets never reach (BYTE has 6; [15][8] engine 16, [15][9] 17; [15][10..31] are settings,
- * settings_persist.c) */
+/* ids 16 and 17 (1.5: WEST, HOOVER) have no row of their own in the stored layout: their presets 0..7 star bits of a
+ * byte BYTE's presets never reach (BYTE has 6; [15][8] id 16, [15][9] 17; [15][10..31] are settings,
+ * settings_persist.c). Ids 18 .. 21 take the rows of the retired ids 1, 4, 8, 13 (whose old stars an import clears
+ * once: settings_persist.c FAV_ROWS_FREED). An id past 21 needs a new settings layout */
 #define FAV_E16 (&favorites.factory[15][8])
+#define FAV_ROWS_FREED 1u       /* [15][12] bit 0: settings_persist.c */
+static const uint8_t FAV_ROW18[4] = {1, 4, 8, 13};
+typedef char fav_ids_fit[EID_COUNT <= 22u ? 1 : -1];
 static uint8_t *favorite_byte(uint32_t engine, uint32_t preset)
 {
-    if (engine >= EID_COUNT || preset >= 256u)
+    if (engine >= EID_COUNT || preset >= 256u || EID_RETIRED(engine))
         return 0;
     if (engine < 16u)
         return &favorites.factory[engine][preset / 8u];
-    return engine <= 17u && preset < 8u ? FAV_E16 + (engine - 16u) : 0;
+    if (engine >= 18u)
+        return &favorites.factory[FAV_ROW18[engine - 18u]][preset / 8u];
+    return preset < 8u ? FAV_E16 + (engine - 16u) : 0;
 }
 static int favorite_has(uint32_t engine, uint32_t preset)
 {

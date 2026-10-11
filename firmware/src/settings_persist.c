@@ -10,6 +10,7 @@
  * [15][26]: MENU > DISPLAY > HOME (1.3; 0 = SCOPE, 1 TRACKS, ui.c ui_home_view);
  * [15][24]: MENU's 1.2 flags SCOPE MIX, STEP PREVIEW ON, (CHORD ENTRY ADD until 1.4.1) (bits 0-2, ui.c ui_prefs2; 0 = the defaults);
  * [15][10]: MENU > ANIM IDLE (1.2, Discussion #135, ui.c ui_idle: bit 0; 0 = off, ANIM as its bit in MENU's flags says);
+ * [15][12]: bit 0 FAV_ROWS_FREED (1.5): the retired engine ids' favourite rows cleared (favorites.c: ids 18 .. 21 use them);
  * [15][11]: PRESETS > LIST's category (1.2, Discussion #90, ui.c ui_lcat: 0 none = ALL / FAV as favorites.filter says);
  * [15][14..23]: the FX layer's key map (1.2, ui_layer.c fx_keys: 16 white keys x 5 bits, perform.c perf_map_of; 0 = the
  * key's default, an unknown code too: kept as saved, a later firmware's effect survives a round trip here).
@@ -64,6 +65,12 @@ static int settings_import(persist_t *p, int n)
 #ifdef FELUCCA_FAVORITES
     memcpy(&favorites, &p->favorites, sizeof favorites);
     favorites.filter = favorites.filter == 1u;
+    if (!(favorites.factory[15][12] & FAV_ROWS_FREED)) {   /* the retired ids' rows: their old stars cleared, once */
+        uint32_t r;                                          /* (ids 18 .. 21 star there now: favorites.c) */
+        for (r = 0; r < 4u; r++)
+            memset(favorites.factory[FAV_ROW18[r]], 0, sizeof favorites.factory[0]);
+        favorites.factory[15][12] |= FAV_ROWS_FREED;
+    }
 #endif
     if (p->panel.magic == PANEL_MAGIC) panel = p->panel;
     return current ? 1 : 2;

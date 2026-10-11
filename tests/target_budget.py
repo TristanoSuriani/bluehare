@@ -23,6 +23,7 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "slicer_track",
          "wave_render", "byte_render", "west_render",       # WAVE, BYTE, WEST (1.5: eng_wave.c, eng_byte.c, eng_west.c)
          "hoover_render",                                   # HOOVER (1.5: eng_hoover.c)
+         "speech_render",                                   # SPEECH (1.5: eng_speech.c; the IDM distribution's)
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
          "uac_tap48",                                       # the USB audio input at 48 kHz: the 44.1 -> 48 resampler (usb.c)
          "click_render",                                    # the metronome's click (click.c), while it sounds
@@ -31,7 +32,8 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "perf_flanger", "perf_phaser",                     # .. FLANGER, PHASER (1.2), while held or fading
          "rev_room", "rev_spring", "rev_hall", "rev_side_mix"]   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
 # absent from some builds: skipped then; present, checked against these
-OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
+OPTIONAL = {"uac_tap48": 504,           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
+            "speech_render": 217}       # the engines of distributions other than the default (FELUCCA_DIST=idm ..)
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...

@@ -916,6 +916,21 @@ static int chk_hang(char *msg, uint32_t n)
 
 /* ------------------------------------------------------------ files --- */
 typedef struct { char name[64]; char val[64]; } kv_t;
+/* a golden / CPU entry of another distribution: "preset/<E>/.." or "cpu/<E>/.." of an engine this build does not hold
+ * (kept in the files, never "gone") */
+static int other_dist(const char *name)
+{
+    const char *p = !strncmp(name, "preset/", 7) ? name + 7 : !strncmp(name, "cpu/", 4) ? name + 4 : 0;
+    uint32_t e, n;
+    if (!p || !strncmp(p, "mix/", 4))
+        return 0;
+    for (n = 0; p[n] && p[n] != '/'; n++)
+        ;
+    for (e = 0; e < NENGINES; e++)
+        if (strlen(ENGINES[e]->name) == n && !strncmp(ENGINES[e]->name, p, n))
+            return 0;
+    return 1;
+}
 static uint32_t load_kv(const char *path, kv_t *kv, uint32_t max)
 {
     FILE *f = fopen(path, "r");
@@ -967,6 +982,9 @@ int main(int argc, char **argv)
     const char *gpath = argc > 1 ? argv[1] : "tests/golden.txt";
     const char *cpath = argc > 2 ? argv[2] : "tests/cpu_baseline.txt";
     int gupd = getenv("GOLDEN_UPDATE") != 0, cupd = getenv("BUDGET_UPDATE") != 0, verbose = getenv("VERBOSE") != 0;
+    /* a distribution other than the default (FELUCCA_DIST): its presets' renders and costs only, against the same
+     * files (the mixes and the checks are written for the default's engines); nothing there is "gone" */
+    const int dist = FELUCCA_DIST_TAG[0] != 0;
     uint32_t jobs_at_once = getenv("JOBS") ? (uint32_t)atoi(getenv("JOBS")) : 8u;
     static const char *const MN[4] = {"POLY", "MONO", "LEGATO", "UNISON"};
     static const char *const SN[6] = {"dry", "chorus", "delay", "reverb", "all", "dist"};
@@ -974,7 +992,7 @@ int main(int argc, char **argv)
     static const uint8_t SEND_E[1][2] = {{0, 3}};
     static uint8_t cpu_parts[MAXJ][NPART][3];
     static kv_t gold[MAXJ], cpu[MAXJ];
-    uint32_t ng, nc, e, pi, i, g0, g1, c0, c1, k0, ncpu = 0;
+    uint32_t ng, nc, e, pi, i, g0, g1, c0, c1, k0, ncpu = 0, nmix;
     uint32_t g_changed = 0, g_new = 0, g_gone = 0, h_fail = 0, c_fail = 0, c_warn = 0, k_fail = 0, crash = 0;
     double heavy[NENGINES] = {0}, heavy_ns[NENGINES] = {0}, idle_now, idle_base;
     uint32_t heavy_p[NENGINES] = {0};
@@ -994,6 +1012,8 @@ int main(int argc, char **argv)
             j->e = (uint8_t)e;
             j->pi = (uint8_t)pi;
         }
+    if (dist)
+        goto renders_done;
     add(J_DRUMS, "drums/drum_gm_kit");
     for (i = 0; i < DV_NKIT; i++) {                 /* the model kits (KIT 80 10 66 55 77) */
         snprintf(name, sizeof name, "drums/kit_%s", N_DRUM_KIT[DK_80 + i]);
@@ -1023,6 +1043,7 @@ int main(int argc, char **argv)
         j->e = 0, j->pi = 4, j->arg = 0;
         add(J_SONG, "slicer/song_gate_stut")->arg = 1;
     }
+renders_done:
     g1 = nj;
     {   /* determinism: the first preset render once more */
         job_t *j = add(J_PRESET, "repeat");
@@ -1032,6 +1053,8 @@ int main(int argc, char **argv)
 
     /* 4: the voice checks */
     k0 = nj;
+    if (dist)
+        goto checks_done;
     add(J_CHECK, "voices: budget of 8 across 4 parts")->check = chk_budget;
     add(J_CHECK, "voices: reuse before the stolen tail fades")->check = chk_retrigger_budget;
     add(J_CHECK, "voices: budget after a live mode change")->check = chk_mode_budget;
@@ -1043,6 +1066,7 @@ int main(int argc, char **argv)
     add(J_CHECK, "voices: UNISON keeps its note")->check = chk_keep_unison;
     add(J_CHECK, "voices: VOICE engine cap")->check = chk_voice_cap;
     add(J_CHECK, "routing: no hanging notes")->check = chk_hang;
+checks_done:
     run_jobs(J, nj, jobs_at_once);
 
     /* 3: CPU, one child at a time (the ns are for information; the instruction counts do not care) */
@@ -1061,7 +1085,7 @@ int main(int argc, char **argv)
             j->e = (uint8_t)e;
             j->pi = (uint8_t)pi;
         }
-    for (i = 0; i < DV_NKIT; i++) {                 /* DRUM's model kits: the 8 lanes, as its preset above */
+    for (i = 0; i < (dist ? 0u : DV_NKIT); i++) {   /* DRUM's model kits: the 8 lanes, as its preset above */
         job_t *j;
         snprintf(name, sizeof name, "cpu/DRUM/kit_%s", N_DRUM_KIT[DK_80 + i]);
         j = add(J_CPU, name);
@@ -1078,6 +1102,8 @@ int main(int argc, char **argv)
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
         j->e = 0xFF;
+        if (dist)
+            goto mixes_done;
         j = add(J_CPU, "cpu/mix/idle_drums");
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
         cpu_parts[ncpu][3][0] = ENGI_DRUM, cpu_parts[ncpu][3][1] = 0, cpu_parts[ncpu][3][2] = DRUM_HITS;
@@ -1086,8 +1112,8 @@ int main(int argc, char **argv)
         j = add(J_CPU, "cpu/mix/3parts_full_drums");
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
         cpu_parts[ncpu][0][0] = ENGI_FM6, cpu_parts[ncpu][0][1] = 0, cpu_parts[ncpu][0][2] = 8;
-        cpu_parts[ncpu][1][0] = 2, cpu_parts[ncpu][1][1] = 0, cpu_parts[ncpu][1][2] = 8;
-        cpu_parts[ncpu][2][0] = 5, cpu_parts[ncpu][2][1] = 0, cpu_parts[ncpu][2][2] = 4;
+        cpu_parts[ncpu][1][0] = ENGI_PHASE, cpu_parts[ncpu][1][1] = 0, cpu_parts[ncpu][1][2] = 8;
+        cpu_parts[ncpu][2][0] = ENGI_VOICE, cpu_parts[ncpu][2][1] = 0, cpu_parts[ncpu][2][2] = 4;
         cpu_parts[ncpu][3][0] = ENGI_DRUM, cpu_parts[ncpu][3][1] = 0, cpu_parts[ncpu][3][2] = DRUM_HITS;
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
         j->e = 0xFF;
@@ -1096,7 +1122,9 @@ int main(int argc, char **argv)
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
         j->e = 0xFE;
     }
+mixes_done:
     c1 = nj;
+    nmix = dist ? 1u : 4u;                          /* (the mixes, last: idle first) */
     run_jobs(J + c0, c1 - c0, 1);
 
     /* ---- report: goldens and health ---- */
@@ -1149,7 +1177,7 @@ int main(int argc, char **argv)
         uint32_t k, found = 0;
         for (k = g0; k < g1 && !found; k++)
             found = !strcmp(J[k].name, gold[i].name);
-        if (!found) {
+        if (!found && !dist && !other_dist(gold[i].name)) {
             if (!gupd)
                 printf("regress: GOLDEN GONE  %s (no such render now)\n", gold[i].name);
             g_gone++;
@@ -1168,8 +1196,18 @@ int main(int argc, char **argv)
         }
         fprintf(f, "# FELUCCA golden renders (tests/regress.c): name, FNV-1a 64 of the output samples.\n"
                    "# Rewritten by GOLDEN_UPDATE=1 tests/run_tests.sh -- only for an intended change of the sound.\n");
-        for (i = g0; i < g1; i++)
-            fprintf(f, "%s %016llx\n", J[i].name, (unsigned long long)J[i].r.hash);
+        for (i = 0; i < ng; i++) {                  /* the file in its order: the new hashes in place, the other */
+            uint32_t k;                             /* distributions' renders kept, the gone ones left out */
+            for (k = g0; k < g1 && strcmp(J[k].name, gold[i].name); k++)
+                ;
+            if (k < g1)
+                fprintf(f, "%s %016llx\n", J[k].name, (unsigned long long)J[k].r.hash);
+            else if (dist || other_dist(gold[i].name))
+                fprintf(f, "%s %s\n", gold[i].name, gold[i].val);
+        }
+        for (i = g0; i < g1; i++)                   /* then the new renders */
+            if (!kv_get(gold, ng, J[i].name))
+                fprintf(f, "%s %016llx\n", J[i].name, (unsigned long long)J[i].r.hash);
         fclose(f);
         printf("regress: golden file %s rewritten (%u renders; %u had changed, %u new, %u gone)\n", gpath, g1 - g0,
                g_changed, g_new, g_gone);
@@ -1188,8 +1226,8 @@ int main(int argc, char **argv)
     /* a preset's own cost: its count less the idle mix's (the mix alone is half of a light preset's),
      * so +25 % means 25 % more engine work; the mixes as they are */
     nc = load_kv(cpath, cpu, MAXJ);
-    idle_now = J[c1 - 4u].r.ipc;
-    idle_base = kv_get(cpu, nc, J[c1 - 4u].name) ? atof(kv_get(cpu, nc, J[c1 - 4u].name)) : 0;
+    idle_now = J[c1 - nmix].r.ipc;
+    idle_base = kv_get(cpu, nc, J[c1 - nmix].name) ? atof(kv_get(cpu, nc, J[c1 - nmix].name)) : 0;
     for (i = c0; i < c1; i++) {
         const job_t *j = &J[i];
         const char *want = kv_get(cpu, nc, j->name);
@@ -1221,7 +1259,9 @@ int main(int argc, char **argv)
     }
     if (!J[c0].r.ipc)
         printf("regress: CPU: no instruction counter on this host (proc_pid_rusage); the budget is not checked\n");
-    else if (cupd) {
+    else if (cupd && dist) {
+        printf("regress: BUDGET_UPDATE with a distribution other than the default: not written (add its lines by hand)\n");
+    } else if (cupd) {
         FILE *f = fopen(cpath, "w");
         if (!f) {
             perror(cpath);
@@ -1232,6 +1272,9 @@ int main(int argc, char **argv)
                 CPU_TOL * 100);
         for (i = c0; i < c1; i++)
             fprintf(f, "%s %.0f\n", J[i].name, J[i].r.ipc);
+        for (i = 0; i < nc; i++)                    /* (the other distributions' engines: kept) */
+            if (other_dist(cpu[i].name))
+                fprintf(f, "%s %s\n", cpu[i].name, cpu[i].val);
         fclose(f);
         printf("regress: CPU baseline %s rewritten (%u entries)\n", cpath, c1 - c0);
     }
@@ -1240,7 +1283,7 @@ int main(int argc, char **argv)
         if (eng_ok(e))
             printf("regress:   %-8s %-14s %6.0f instr  %6.1f ns\n", ENGINES[e]->name, ENGINES[e]->presets[heavy_p[e]].name,
                    heavy[e], heavy_ns[e]);
-    for (i = c1 - 4u; i < c1; i++)
+    for (i = c1 - nmix; i < c1; i++)
         printf("regress:   %-23s %6.0f instr  %6.1f ns\n", J[i].name + 8, J[i].r.ipc, J[i].r.ns);
 
     printf("regress: %u golden renders (%u changed, %u gone), %u health failures, %u voice / routing checks failed, "

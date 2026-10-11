@@ -27,7 +27,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Fourteen engines** (below; a build can hold any set of them, BUILDING.md "Engines"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
+- **Fourteen engines** in the default distribution (below; other distributions hold other sets of the engines, up to 16:
+  BUILDING.md "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
   8 voices shared between them. ALGORITHM selects the track on every page
@@ -352,6 +353,12 @@ In the order the device lists them:
   PW with the voice's own LFO at RATE (the SHP routings move PW too), DTN detuning the second, SUB a square an octave
   down; BEND starts each note up to two octaves away and slides it in over BTIM (the swoop); CUT, a low-pass. Its
   presets send plenty to the chorus, which makes the rest of the sound
+- **SPEECH** (the IDM distribution): words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
+  through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
+  are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD
+  picks one. MODE TONE plays WORD at the keys' pitch, WORDS makes every key a word; RATE, INTN (the intonation, 0
+  monotone), BUZZ (to a whisper), FORM (the filter's clock: every formant up or down), END (STOP, HOLD the last vowel
+  while held, LOOP)
 - **PHASE**: phase distortion (ported from CrispyZebra)
 - **LOFI**: chiptune; pulse, triangle, saw, noise and a 4-bit wave RAM, stepped envelope, sweep, arpeggio
 - **VOICE**: formant oscillator, sung vowels

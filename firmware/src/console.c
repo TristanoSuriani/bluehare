@@ -193,7 +193,7 @@ static void con_status(void)
 {
     const engine_t *e = ENGINES[TSEL->eng_req % NENGINES];
     con_puts("felucca ");
-    con_puts(FELUCCA_VERSION);
+    con_puts(FELUCCA_VERSION_DIST);
     con_puts("\r\n");
     con_kv("uptime_ms", (int32_t)fm1_ms);
     con_kv("cpu_pct", (int32_t)(song.cpu_q8 * 100u / 256u));
@@ -376,7 +376,7 @@ static void cdc_task(void)                              /* main loop */
 {
     if (cdc.dtr && !con.dtr_seen) {
         con_puts("\r\nFelucca ");
-        con_puts(FELUCCA_VERSION);
+        con_puts(FELUCCA_VERSION_DIST);
         con_puts(" console - 'help'\r\n> ");
     }
     con.dtr_seen = cdc.dtr;

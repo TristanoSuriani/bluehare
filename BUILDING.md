@@ -65,34 +65,37 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `c
 `FELUCCA_USB_LAYOUT` (`0` to `3`, default `0`) picks other USB descriptor layouts for testing; see
 `firmware/src/usb.c`.
 
-## Engines
+## Distributions
 
-A build holds any set of the engines (at least one): ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS
-NOISE BYTE DRUM, all by default. Name the ones you want, or switch single ones off:
+The tree holds every engine (`firmware/src/engine_ids.h`); a **distribution** is the set one build holds, at most 16,
+in the order the device lists them: `distributions/<name>.txt`, one engine a line.
 
 ```
-FELUCCA_ENGINES="ANALOG FM6 WAVE DRUM" ./build.sh     # these only (spaces or commas)
-FELUCCA_ENG_WHEEL=0 FELUCCA_ENG_VOICE=0 ./build.sh    # all but these
+./build.sh                     # the default distribution (build/felucca.fwsc)
+FELUCCA_DIST=idm ./build.sh    # IDM (build/felucca-idm.fwsc; the version shows as "v1.4.1 IDM")
 ```
 
-The engines left out are not linked: ANALOG, HOOVER and DRUM alone make a 261 KB image (all of them: 438 KB) and
-need 57 KB of RAM (69 KB). A build numbers its engines 0, 1, .. in their display order (`firmware/src/core.h`
-`ENGI_*`, `engines.c` `ENGINES[]`), but everything stored and the editor protocol name an engine by its fixed id
-(`EID_*`), so a project, a user preset, a song or a backup moves between builds of other engines:
+| Distribution | Engines |
+| --- | --- |
+| `default` | ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM |
+| `idm` | ANALOG FM6 PHASE WAVE BYTE WEST PHYS NOISE DRUM SPEECH LOFI (FM PERC, PARTICLE, VOSIM, CHAOS, KARPLUS to come) |
 
-- a sound of an engine the build lacks loads as its substitute, with the substitute's first preset (a project's track
-  keeps the rest of its sound): HOOVER → ANALOG, ANALOG → HOOVER, PHASE / VOICE / TRIO / NOISE / WAVE → ANALOG,
-  LOFI ↔ BYTE, WHEEL → FM6, FM6 → WAVE, PHYS ↔ WEST, DRUM → ANALOG; if that one is missing too, down the same chain,
-  else the build's first engine (`engines.c` `EID_SUB`);
+The engines a distribution leaves out are not linked. A build numbers its engines 0, 1, .. in the distribution's
+order (`core.h` `ENGI_*`, `engines.c` `ENGINES[]`), but everything stored and the editor protocol name an engine by its
+fixed id (`EID_*`), so a project, a user preset, a song or a backup moves between distributions:
+
+- a sound of an engine the distribution lacks loads as its substitute (`engine_ids.h`), with the substitute's first
+  preset (a project's track keeps the rest of its sound); if that one is missing too, down the same chain, else the
+  distribution's first engine;
 - a user preset of such an engine is kept as it is but listed nowhere and loads nothing (the editor still reads and
   writes it);
-- the power-on parts (ANALOG ACID, FM6 PAD, LOFI PULSE LD, DRUM KIT) whose engine is missing start as the build's
-  first engine;
+- the power-on parts (ANALOG ACID, FM6 PAD, LOFI PULSE LD, DRUM KIT) whose engine is missing start as the first engine;
 - the editor sees the missing engines as "-" (`INFO`), as it does the retired ids.
 
-A new engine takes the next free id (18), an entry in `core.h` (its `EID_`, flag and place in the `ENGI_` order),
-`engines.c` (`ENGINES[]`, `ENG_OF_ID`, `EID_SUB`), `params.c` (`N_ENGNAME`) and `tools/build.py` (`ENGINES`).
-The favourites have no row for ids past 17 yet: one more engine needs a new settings layout (`favorites.c`).
+A new engine: its `eng_<name>.c` (an `ENG_<NAME>` with `.id`), a line in `engine_ids.h` (the next free id, its
+substitute; raise `core.h` `EID_COUNT`), an include in `engines.c`, and its name in the distributions that hold it.
+The favourites have rows for ids up to 21 (`favorites.c`). The EDIT layer has 15 white keys for engines (INIT on the
+next): a distribution of 16 reaches its last engine on KNOB 1 only.
 
 ## Browser emulator
 

@@ -210,7 +210,7 @@ static const preset_t FORMANT_PRESETS[] = {
     {"WHISPER", {0, 95, 88, 3, 50, 120, 50, 0}, {50, 90, 110, 90}, 0, 0, FX(0, 40, 30, 70)},
 };
 
-static const engine_t ENG_FORMANT = {
+static const engine_t ENG_VOICE = {
     .name = "VOICE",
     .id = EID_VOICE,
     .cc = 0x07,

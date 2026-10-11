@@ -4,7 +4,8 @@
 #include <string.h>
 #include <assert.h>
 #define __attribute__(x)
-#define EID_COUNT 18u
+#define EID_COUNT 19u
+#define EID_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u)
 #define UP_SLOTS 32u
 static uint8_t fx_lowcut;
 static void fm1_led_key(unsigned k, int on) { (void)k; (void)on; }
@@ -27,7 +28,8 @@ int main(void)
     original.magic = PERSIST_MAGIC;
     original.palette = 4; original.bold = original.lowcut = original.zoom = 1;   /* old id 4: MONO, now GREY */
     original.panel = PANEL_DEFAULT; original.panel.enc[0] = 3;
-    original.favorites.factory[8][0] = 1;
+    original.favorites.factory[9][0] = 1;
+    original.favorites.factory[15][12] = 1u;           /* (a 1.5 record: the retired rows already cleared) */
     original.favorites.user = 1u << 31; original.favorites.filter = 1;
     p = original;
     assert(settings_import(&p, sizeof p) == 1); settings_init();
@@ -51,12 +53,23 @@ int main(void)
         p = original; assert(settings_import(&p, sizeof p) == 1); settings_init();
     }
 #ifdef FELUCCA_FAVORITES
-    assert(favorite_has(8, 0) && favorite_has(EID_COUNT, 31) && favorites.filter);
+    assert(favorite_has(9, 0) && favorite_has(EID_COUNT, 31) && favorites.filter);
+    {   /* 1.5: the retired ids' rows (1, 4, 8, 13) cleared once, then ids 18 .. 21 star there */
+        persist_t q = original;
+        q.favorites.factory[8][0] = 1u; q.favorites.factory[1][3] = 0x40u;   /* (an older record: a GRAIN and a */
+        q.favorites.factory[15][12] = 0;                                     /* DIGITAL star) */
+        assert(settings_import(&q, sizeof q) == 1 && !favorite_has(20, 0) && !favorites.factory[1][3] &&
+               (favorites.factory[15][12] & 1u) && favorite_has(9, 0));
+        assert(favorite_set(18, 30, 1) && favorite_has(18, 30) && favorites.factory[1][3] == 0x40u);
+        settings_export(&q);
+        assert(settings_import(&q, sizeof q) == 1 && favorite_has(18, 30));   /* (kept: cleared only once) */
+        p = original; assert(settings_import(&p, sizeof p) == 1);
+    }
 #endif
     settings.lowcut = 0;
     settings_export(&p);
     assert(!p.lowcut && p.bold == 1 && p.favorites.user == (1u << 31));   /* bold: kept as saved */
-    assert(p.favorites.factory[8][0] == 1 && p.favorites.filter == 1);
+    assert(p.favorites.factory[9][0] == 1 && p.favorites.filter == 1);
     assert(p.panel.enc[0] == 3); /* saving one feature preserves the other */
     p = original; p.magic = 0x50455233u;
     assert(settings_import(&p, sizeof p - sizeof p.favorites) == 2);

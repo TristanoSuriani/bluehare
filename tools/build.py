@@ -102,7 +102,9 @@ def generate():
             [tools / "gen_ui_palettes.py", GEN / "ui_palettes.h"],
             [tools / "gen_tables.py", GEN / "felucca_tables.h"],
             [tools / "gen_fm6_patches.py", GEN / "felucca_fm6.h"],
-            [tools / "gen_wavetables.py", GEN / "felucca_wavetables.h"]]
+            [tools / "gen_wavetables.py", GEN / "felucca_wavetables.h"],
+            [tools / "gen_speech.py", GEN / "felucca_speech.h"],
+            [tools / "gen_dist.py", SRC, GEN]]
     procs = [subprocess.Popen([sys.executable, *map(str, c)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               text=True) for c in cmds]
     failed = []
@@ -176,28 +178,13 @@ def build_loader():
 
 # ---- app
 
-# the engines a build can hold (firmware/src/core.h FELUCCA_ENG_<NAME>, all on by default)
-ENGINES = ["ANALOG", "FM6", "WAVE", "WEST", "HOOVER", "PHASE", "LOFI", "VOICE", "TRIO", "WHEEL", "PHYS", "NOISE",
-           "BYTE", "DRUM"]
-
-
-def engine_flags():
-    """-D flags for the engines: FELUCCA_ENGINES="ANALOG FM6 DRUM" (spaces or commas) builds those only; else
-    FELUCCA_ENG_<NAME>=0 / 1 one by one (unset: the firmware's default, on)"""
-    pick = os.environ.get("FELUCCA_ENGINES")
-    if pick:
-        want = {n.strip().upper() for n in pick.replace(",", " ").split() if n.strip()}
-        unknown = want - set(ENGINES)
-        if unknown or not want:
-            raise SystemExit(f"build: FELUCCA_ENGINES: unknown {', '.join(sorted(unknown))} (known: {' '.join(ENGINES)})"
-                             if unknown else "build: FELUCCA_ENGINES names none")
-        return [f"-DFELUCCA_ENG_{n}={int(n in want)}" for n in ENGINES]
-    out = []
-    for n in ENGINES:
-        v = os.environ.get(f"FELUCCA_ENG_{n}")
-        if v in ("0", "1"):
-            out.append(f"-DFELUCCA_ENG_{n}={v}")
-    return out
+def distribution():
+    """the distribution built: FELUCCA_DIST=<name> (distributions/<name>.txt; default "default")"""
+    name = (os.environ.get("FELUCCA_DIST") or "default").strip().lower()
+    if not (SRC / "distributions" / f"{name}.txt").exists():
+        have = " ".join(sorted(p.stem for p in (SRC / "distributions").glob("*.txt")))
+        raise SystemExit(f"build: FELUCCA_DIST={name}: no distributions/{name}.txt (have: {have})")
+    return name
 
 
 def build_app():
@@ -208,7 +195,7 @@ def build_app():
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
-    flags += engine_flags()
+    flags.append(f"-DFELUCCA_DIST={distribution()}")   # (core.h includes build/gen/dist_<name>.h)
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
@@ -348,14 +335,15 @@ def main():
     ap.add_argument("--release", metavar="X.Y", help="release build: identity FM-1_9XY, version string vX.Y")
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")
     a = ap.parse_args()
-    name = "felucca.fwsc"
+    dist = distribution()
+    name = "felucca.fwsc" if dist == "default" else f"felucca-{dist}.fwsc"
     if a.release:                   # one digit each: the identity has room for two (X.Y.Z and X.Y.Z.W keep X.Y's)
         m = re.fullmatch(r"(\d)\.(\d)(?:\.\d){0,2}(-[A-Za-z0-9]+)?", a.release)
         if not m:
             raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z, X.Y.Z.W or X.Y-suffix, one digit each")
         PRODUCT = "FM-1_9" + m[1] + m[2]
         VERSION = "v" + a.release.lower()      # e.g. v1.0, v1.1-rc1
-        name = f"felucca-{a.release}.fwsc"
+        name = f"felucca-{a.release}.fwsc" if dist == "default" else f"felucca-{a.release}-{dist}.fwsc"
     fm1pkg_make.SDK = a.sdk
     for rel, sha in SDK_SHA256.items():          # fail early without the SDK
         if hashlib.sha256(fm1pkg_make.sdk_file(rel)).hexdigest() != sha:

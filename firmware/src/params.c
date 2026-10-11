@@ -40,13 +40,11 @@ static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"}
 static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"};
 static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE",
                                      "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"};
-#define ENG_NAME(X, n) (FELUCCA_ENG_##X ? n : "-")
 static const char *const N_ENGNAME[EID_COUNT] = {   /* by id (G_ENGSEL); "-": a retired id or an engine left out */
-    [0] = ENG_NAME(ANALOG, "ANALOG"), [1] = "-", [2] = ENG_NAME(PHASE, "PHASE"), [3] = ENG_NAME(LOFI, "LOFI"), [4] = "-",
-    [5] = ENG_NAME(VOICE, "VOICE"), [6] = ENG_NAME(TRIO, "TRIO"), [7] = ENG_NAME(WHEEL, "WHEEL"), [8] = "-",
-    [9] = ENG_NAME(PHYS, "PHYS"), [10] = ENG_NAME(DRUM, "DRUM"), [11] = ENG_NAME(NOISE, "NOISE"), [12] = ENG_NAME(FM6, "FM6"),
-    [13] = "-", [14] = ENG_NAME(WAVE, "WAVE"), [15] = ENG_NAME(BYTE, "BYTE"), [16] = ENG_NAME(WEST, "WEST"),
-    [17] = ENG_NAME(HOOVER, "HOOVER"),
+    [1] = "-", [4] = "-", [8] = "-", [13] = "-",
+#define ENGINE(N, id, sub) [EID_##N] = FELUCCA_ENG_##N ? #N : "-",
+#include "engine_ids.h"
+#undef ENGINE
 };   /* (engines.c ENGINES[]; "-": not built) */
 
 #define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}

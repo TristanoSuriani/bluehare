@@ -110,3 +110,11 @@ sends/ANALOG/dist 1ff75ac225e918e0
 song/4track_mix 29b2f72412e2dc0c
 slicer/gate/ANALOG_ACID 07581a19222c2474
 slicer/song_gate_stut 96ec50124d2206cc
+preset/SPEECH/00_ROBOT 9ab7c1bef71ca43c
+preset/SPEECH/01_COUNT 2b931235865cd438
+preset/SPEECH/02_SPELL be8135cd3fcbdaa4
+preset/SPEECH/03_WHISPER e451e1b74fb505a8
+preset/SPEECH/04_ROBOTER 2fbdfbcae815c134
+preset/SPEECH/05_STEM 27a4ea082cf003f0
+preset/SPEECH/06_MONOTONE 85c16e08e6ae0960
+preset/SPEECH/07_VOWEL_PAD 12c8eff3bc6bf95c

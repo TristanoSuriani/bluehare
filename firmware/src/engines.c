@@ -17,6 +17,7 @@
 #include "eng_byte.c"           /* BYTE: bytebeat formulas (1.5) */
 #include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
 #include "eng_hoover.c"         /* HOOVER: PWM saws, sub, bend: the rave lead (1.5) */
+#include "eng_speech.c"         /* SPEECH: LPC words (1.5; tools/gen_speech.py) */
 
 /* the engine of an id this build has none for (a retired id, or an engine left out): what the editor protocol
  * describes for it (NAMES, DESC: no presets, nothing to edit, named "-"). No track ever plays it */
@@ -35,51 +36,12 @@ static const engine_t ENG_NONE = {
     .knob = {P_ATK, P_DEC, P_SUS, P_REL},
 };
 
-/* this build's engines, in their display order (PRESETS browsing and its ENG knob, the EDIT layer's keys, the editor's
- * list): the order of core.h's ENGI_ enum, which must match. Only what is listed here is linked */
+/* this build's engines, in the distribution's order (core.h FELUCCA_DIST_ENGINES: the ENGI_ indices). Only what is
+ * listed here is linked */
 static const engine_t *const ENGINES[NENGINES] = {
-#if FELUCCA_ENG_ANALOG
-    &ENG_ANALOG,
-#endif
-#if FELUCCA_ENG_FM6
-    &ENG_FM6,
-#endif
-#if FELUCCA_ENG_WAVE
-    &ENG_WAVE,
-#endif
-#if FELUCCA_ENG_WEST
-    &ENG_WEST,
-#endif
-#if FELUCCA_ENG_HOOVER
-    &ENG_HOOVER,
-#endif
-#if FELUCCA_ENG_PHASE
-    &ENG_PHASE,
-#endif
-#if FELUCCA_ENG_LOFI
-    &ENG_LOFI,
-#endif
-#if FELUCCA_ENG_VOICE
-    &ENG_FORMANT,                /* VOICE (eng_formant.c: "voice" is a sounding note in voice.c) */
-#endif
-#if FELUCCA_ENG_TRIO
-    &ENG_TRIO,
-#endif
-#if FELUCCA_ENG_WHEEL
-    &ENG_WHEEL,
-#endif
-#if FELUCCA_ENG_PHYS
-    &ENG_PHYS,
-#endif
-#if FELUCCA_ENG_NOISE
-    &ENG_NOISE,
-#endif
-#if FELUCCA_ENG_BYTE
-    &ENG_BYTE,
-#endif
-#if FELUCCA_ENG_DRUM
-    &ENG_DRUM,
-#endif
+#define X(N) &ENG_##N,
+    FELUCCA_DIST_ENGINES(X)
+#undef X
 };
 
 /* a track's engine as an index (the audio paths: a compare, cheaper than % NENGINES; a bad number: 0) */
@@ -91,23 +53,21 @@ static inline uint32_t eng_idx(uint32_t e) { return e < NENGINES ? e : 0u; }
 #define EID_IDX(X) (FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : ENG_NO)
 static const uint8_t ENG_OF_ID[EID_COUNT] = {
     [1] = ENG_NO, [4] = ENG_NO, [8] = ENG_NO, [13] = ENG_NO,   /* (retired) */
-    [EID_ANALOG] = EID_IDX(ANALOG), [EID_PHASE] = EID_IDX(PHASE), [EID_LOFI] = EID_IDX(LOFI),
-    [EID_VOICE] = EID_IDX(VOICE), [EID_TRIO] = EID_IDX(TRIO), [EID_WHEEL] = EID_IDX(WHEEL), [EID_PHYS] = EID_IDX(PHYS),
-    [EID_DRUM] = EID_IDX(DRUM), [EID_NOISE] = EID_IDX(NOISE), [EID_FM6] = EID_IDX(FM6), [EID_WAVE] = EID_IDX(WAVE),
-    [EID_BYTE] = EID_IDX(BYTE), [EID_WEST] = EID_IDX(WEST), [EID_HOOVER] = EID_IDX(HOOVER),
+#define ENGINE(N, id, sub) [EID_##N] = EID_IDX(N),
+#include "engine_ids.h"
+#undef ENGINE
 };
 static uint32_t eng_id(uint32_t e) { return ENGINES[eng_idx(e)]->id; }
 static uint32_t eng_of_id(uint32_t id) { return id < EID_COUNT ? ENG_OF_ID[id] : ENG_NO; }
 /* the engine of id, or ENG_NONE: what the protocol describes for an id (NAMES, DESC) */
 static const engine_t *eng_by_id(uint32_t id) { return eng_of_id(id) == ENG_NO ? &ENG_NONE : ENGINES[eng_of_id(id)]; }
 /* the engine a stored sound of id loads as: its own when the build has it; an engine left out: its substitute (the
- * nearest kind, down this chain, else the build's first engine), *sub set; ENG_NO for a retired or unknown id (a clean
+ * one engine_ids.h names, down that chain, else the build's first engine), *sub set; ENG_NO for a retired or unknown id (a clean
  * break: the stores refuse such a sound) */
-static const uint8_t EID_SUB[EID_COUNT] = {
-    [EID_ANALOG] = EID_HOOVER, [EID_PHASE] = EID_ANALOG, [EID_LOFI] = EID_BYTE, [EID_VOICE] = EID_ANALOG,
-    [EID_TRIO] = EID_ANALOG, [EID_WHEEL] = EID_FM6, [EID_PHYS] = EID_WEST, [EID_DRUM] = EID_ANALOG,
-    [EID_NOISE] = EID_ANALOG, [EID_FM6] = EID_WAVE, [EID_WAVE] = EID_ANALOG, [EID_BYTE] = EID_LOFI,
-    [EID_WEST] = EID_PHYS, [EID_HOOVER] = EID_ANALOG,
+static const uint8_t EID_SUB[EID_COUNT] = {     /* (engine_ids.h: each engine's substitute) */
+#define ENGINE(N, id, sub) [EID_##N] = EID_##sub,
+#include "engine_ids.h"
+#undef ENGINE
 };
 static uint32_t eng_load_id(uint32_t id, int *sub)
 {
