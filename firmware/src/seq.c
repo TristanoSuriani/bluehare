@@ -57,7 +57,7 @@ static int32_t midi_base(void)
 /* MIDI channel 0..15 of track i (keys -> MIDI out): its channel in ROUT's block (SEL, CH1-4: 1..4) */
 static uint32_t trk_midi_ch(uint32_t i) { return (midi_base() > 0 ? (uint32_t)midi_base() : 0u) + i % NTRK; }
 
-static int drum_track(const track_t *t) { return eng_idx(t->eng_req) == ENGI_DRUM; }
+static int drum_track(const track_t *t) { return eng_idx(t->eng_req) == ENGI_DRUM || eng_idx(t->eng_req) == ENGI_KIT; }
 
 /* the 27 keys from F: black or white, and the key's place among the keys of its colour (white 0..15, black
  * 0..10) */

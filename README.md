@@ -390,6 +390,16 @@ In the order the device lists them:
 - **ACID** (the IDM distribution): the acid bass line. SAW or SQR (SUB an octave down) into a four-pole low-pass (CUT,
   RES up to its squeal, DRIV into its saturation), opened by ENV at each note and closed over DEC; notes played hard
   are accents (ACC: louder, opened more, closed faster, building up over accents in a row). Slides: LEGATO with GLIDE
+- **KIT** (the IDM distribution): a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
+  map (its lane LEVELs and the EDIT layer's lane MUTEs too). KIT: FM, METAL, BIT, GLITCH, DEEP; TUNE, DECAY, PUNCH, FM,
+  SNAP, TONE move every lane; VARY gives every hit its own small differences. A closed hat chokes the open one
+- **BREAKS** (the IDM distribution): a synthesized breakbeat player at the song's tempo. The key picks one of 12 breaks
+  (FUNKY, CLASSIC, THINK, HALFTIME, BOOM BAP, JUNGLE, TWO STEP, SHUFFLE, BUSY, DRILL, SPARSE, GALLOP), looping while
+  held; SLICE the 16th it starts from (chops), RATE (half .. double time), SWING, STUTR (rolls into 32nds and 64ths),
+  SHUF (jumps to other 16ths), TUNE, DECAY, CRUSH
+- **RISERS** (the IDM distribution): build-ups and landings timed to the song: LEN beats (1 .. 32) of a climb RANGE
+  semitones along CURVE. NOIS (a resonant noise sweep), SAW (a detuned stack, SPRD), SINE, SHEP (an endless Shepard
+  rise), DOWN (a downlifter), BOOM (an impact, a sub drop); BUILD gates it faster and faster, NOISE mixes noise in
 - **SPEECH** (the IDM distribution): words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
   are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD

@@ -1414,7 +1414,7 @@ function makeMockDevice(opt = {}) {
     E("MIDI", ["USB", "TRS"], 0), E("SYNC", NDASH, 0), E("ROUT", ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"], 0), D("CPU", F.INT, 0, 0, 0),
     D("SLOT", F.INT, 1, 1, 1), E("NAME", NDASH, 0), E("LOAD", NGO, 0), E("SAVE", NGO, 0),   /* (1.5: one song) */
     E("ENG", ["ANALOG", "-", "PHASE", "LOFI", "-", "VOICE", "TRIO", "WHEEL",
-      "-", "PHYS", "DRUM", "NOISE", "FM6", "-", "WAVE", "BYTE", "WEST", "HOOVER", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"], 0), E("SET", NGO, 0),   /* (1.5: WAVE BYTE WEST HOOVER;
+      "-", "PHYS", "DRUM", "NOISE", "FM6", "-", "WAVE", "BYTE", "WEST", "HOOVER", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"], 0), E("SET", NGO, 0),   /* (1.5: WAVE BYTE WEST HOOVER;
                                                      "-" a retired number) */
     E("CLRSQ", NGO, 0), E("INIT", NGO, 0),
     E("TYPE", ["ROOM", "SPRING", "HALL"], 2),       /* G_RTYPE (id 24, was G_DRCH): the reverb's model (HALL: 1.2) */
@@ -1529,6 +1529,9 @@ function makeMockDevice(opt = {}) {
     GONE,                                         /* 25: DUBSIREN (the same) */
     GONE,                                         /* 26: FMKEYS (the same) */
     GONE,                                         /* 27: ACID (the same) */
+    GONE,                                         /* 28: KIT (the same) */
+    GONE,                                         /* 29: BREAKS (the same) */
+    GONE,                                         /* 30: RISERS (the same) */
   ];
   const FM6_E = ENG.findIndex((e) => e.name === "FM6"), FM6_OWN = FM6.FACTORY_PK.length, DRUM_E = ENG.findIndex((e) => e.name === "DRUM");
   /* factory PATTERNS[] (engines.c; the device loads them from SAVE > PHRASES, presets only suggest one): absolute

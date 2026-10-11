@@ -348,7 +348,7 @@ static uint32_t layer_btn(void);
 static int page_visible(uint32_t i)
 {
     if (PAGES[i].scope == SC_TRACK && PAGES[i].id[0] >= P_LN0 && PAGES[i].id[0] <= P_LN7)
-        return TSEL->eng_req % NENGINES == ENGI_DRUM;
+        return TSEL->eng_req % NENGINES == ENGI_DRUM || TSEL->eng_req % NENGINES == ENGI_KIT;
     if (PAGES[i].graph >= GR_FMOP && PAGES[i].graph <= GR_FMENV)
         return TSEL->eng_req % NENGINES == ENGI_FM6;
     return 1;

@@ -50,22 +50,23 @@ static int32_t fmp_noise_env(int32_t nb, uint32_t type, int32_t blocks)
     return fmp_fall(nb, 12);
 }
 
-static void fmperc_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+/* the voice's hit: its 8 values e[] (RATIO .. TONE, as EDIT's), at pitch16 (base_inc its increment, 0: worked out)
+ * into y[] (n <= CTL), no amplitude yet; v holds its state (KIT and BREAKS run it on their own lanes too) */
+static void fmp_run(const int16_t *e, voice_t *v, int32_t *y, uint32_t n, int32_t base16, uint32_t base_inc)
 {
-    const int16_t *p = t->p;
-    uint32_t rm = FMP_RATIO[(uint32_t)p[P_E0] & 15u], inc, minc, i, nz = (uint32_t)v->s[4], type = (uint32_t)p[P_E4] % 3u;
+    uint32_t rm = FMP_RATIO[(uint32_t)e[0] & 15u], inc, minc, i, nz = (uint32_t)v->s[4], type = (uint32_t)e[4] % 3u;
     int32_t sw = v->s[0], ix = v->s[1], nb = v->s[3], prev = v->s[2], tf = v->s[5], bl = v->s[7];
     int32_t bh = (int32_t)v->ph[2];
-    int32_t pitch16, idx, wx, bw, fq, fb = p[P_E5], noise = p[P_E6], tone = p[P_E7], kt;
-    sw = fmp_fall(sw, p[P_E2]);                       /* the envelopes, once a block */
-    ix = fmp_fall(ix, p[P_E2] + 8);
+    int32_t pitch16, idx, wx, bw, fq, fb = e[5], noise = e[6], tone = e[7], kt;
+    sw = fmp_fall(sw, e[2]);                          /* the envelopes, once a block */
+    ix = fmp_fall(ix, e[2] + 8);
     nb = fmp_noise_env(nb, type, v->s[6]);
     if (v->s[6] < 1000)
         v->s[6]++;
-    pitch16 = m->pitch16 + ((p[P_E3] * 16 * sw) >> 15);   /* SWEEP: semitones above the note at the hit */
-    inc = pitch16 == m->pitch16 ? m->inc : pitch_inc((uint32_t)clamp(pitch16, 0, 2047));
+    pitch16 = base16 + ((e[3] * 16 * sw) >> 15);     /* SWEEP: semitones above the note at the hit */
+    inc = pitch16 == base16 && base_inc ? base_inc : pitch_inc((uint32_t)clamp(pitch16, 0, 2047));
     minc = (inc >> 8) >= 0xFFFFFFFFu / rm ? 0xFFFFFFFFu : (inc >> 8) * rm;
-    idx = (p[P_E1] * 12 * (3277 + ((29490 * ix) >> 15))) >> 15;   /* INDEX x (0.1 .. 1), radians Q8 (at most ~6) */
+    idx = (e[1] * 12 * (3277 + ((29490 * ix) >> 15))) >> 15;   /* INDEX x (0.1 .. 1), radians Q8 (at most ~6) */
     bw = (int32_t)(FMP_BW / ((inc >> 8) | 4096u));
     wx = 256 + (((idx + (idx < 256 ? idx : 256)) * (int32_t)rm) >> 8);   /* (Carson: the sidebands' top, in notes) */
     if (wx > bw)
@@ -93,7 +94,7 @@ static void fmperc_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
             tf += ((s - tf) * kt) >> 15;
             s -= tf;
         }
-        out[i] += voice_amp(clamp(s, -32767, 32767), m, i) << 1;
+        y[i] = clamp(s, -32767, 32767);
         v->ph[0] += inc;
         v->ph[1] += minc;
     }
@@ -105,6 +106,16 @@ static void fmperc_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
     v->s[5] = tf;
     v->s[7] = bl;
     v->ph[2] = (uint32_t)bh;
+}
+
+static void fmperc_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+{
+    int32_t y[CTL];
+    uint32_t i;
+    n = n > CTL ? CTL : n;
+    fmp_run(&t->p[P_E0], v, y, n, m->pitch16, m->inc);
+    for (i = 0; i < n; i++)
+        out[i] += voice_amp(y[i], m, i) << 1;
 }
 
 /* {RATIO, INDEX, FDEC, SWEEP, NTYP, FDBK, NOISE, TONE}; ADSR {ATK DEC SUS REL}: SUS 0 for a hit; FX: DIST CHO DLY REV.

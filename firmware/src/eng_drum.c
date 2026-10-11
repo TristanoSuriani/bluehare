@@ -105,6 +105,8 @@ static uint32_t drum_lane(uint32_t note)
 static uint32_t drum_swaps(const track_t *t)
 {
     uint32_t kit = drum_kit_plays(t->p[P_E0]);
+    if (!ENG_IS(t->engine, DRUM))                     /* (KIT shares the lanes' names: no swaps) */
+        return 0u;
     return kit >= DK_80 ? DK_SWAP[kit - DK_80] : 0u;
 }
 

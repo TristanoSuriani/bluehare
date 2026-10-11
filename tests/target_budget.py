@@ -30,6 +30,8 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "particle_render", "chaos_render",                 # PARTICLE, CHAOS (1.5: eng_particle.c, eng_chaos.c; IDM's)
          "sid_render", "dubsiren_render",                   # SID, DUBSIREN (1.5: eng_sid.c, eng_dubsiren.c; IDM's)
          "fmkeys_render", "acid_render",                    # FMKEYS, ACID (1.5: eng_fmkeys.c, eng_acid.c; IDM's)
+         "kit_render", "breaks_render", "risers_render",    # KIT, BREAKS, RISERS (1.5; IDM's)
+         "fmp_run",                                         # FMPERC's voice (eng_fmperc.c), KIT's and BREAKS' too
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
          "uac_tap48",                                       # the USB audio input at 48 kHz: the 44.1 -> 48 resampler (usb.c)
          "click_render",                                    # the metronome's click (click.c), while it sounds
@@ -49,7 +51,9 @@ ENGINE_OF = {"analog_render": "ANALOG", "phase_render": "PHASE", "lofi_render": 
              "vosim_render": "VOSIM",
              "particle_render": "PARTICLE", "chaos_render": "CHAOS",
              "sid_render": "SID", "dubsiren_render": "DUBSIREN",
-             "fmkeys_render": "FMKEYS", "acid_render": "ACID"}
+             "fmkeys_render": "FMKEYS", "acid_render": "ACID",
+             "kit_render": "KIT", "breaks_render": "BREAKS", "risers_render": "RISERS",
+             "fmp_run": "FMPERC"}
 ENGINE_OF.update({n: "FM6" for n in ("fm6_render", "fm6_op_run", "fm6_op_fb")})
 ENGINE_OF.update({n: "PHYS" for n in ("px_modal_block", "px_modal_run", "px_memb_block", "px_string_excite",
                                       "px_string_run", "px_symp_run")})

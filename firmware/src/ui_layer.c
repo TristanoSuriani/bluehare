@@ -521,6 +521,7 @@ static const eqa_t EQA_DRUM[NLANE] = {EQA_LANE(0), EQA_LANE(1), EQA_LANE(2), EQA
     EQA_LANE(6), EQA_LANE(7)};
 static const eqa_set_t EQA[] = {
     {FELUCCA_ENG_DRUM ? (uint8_t)ENGI_DRUM : ENG_NO, NLANE, EQA_DRUM},   /* (no DRUM in the build: none) */
+    {FELUCCA_ENG_KIT ? (uint8_t)ENGI_KIT : ENG_NO, NLANE, EQA_DRUM},     /* (KIT: the same lanes, drum_mute) */
 };
 typedef char eqa_fits[NLANE <= 11 ? 1 : -1];       /* (11 black keys) */
 

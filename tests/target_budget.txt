@@ -38,7 +38,7 @@ byte_render 135
 west_render 135
 hoover_render 380
 speech_render 217
-fmperc_render 119
+fmperc_render 20
 karplus_render 94
 vosim_render 139
 particle_render 654
@@ -47,6 +47,10 @@ sid_render 316
 dubsiren_render 299
 fmkeys_render 108
 acid_render 331
+kit_render 28
+breaks_render 190
+risers_render 510
+fmp_run 92
 fm1_alnk0_irq 37502
 fm1_timer5_irq 33387
 click_render 30

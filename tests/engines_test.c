@@ -32,8 +32,8 @@ static void stream_rehash(void)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"SID", "ACID", "WAVE", "BYTE", "WEST", "HOOVER", "DUBSIREN", "KARPLUS", "VOSIM",
-                                        "PARTICLE", "CHAOS", "FMKEYS", "DRUM", "FMPERC", "SPEECH", "LOFI"};
+    static const char *const ORDER[] = {"SID", "ACID", "WAVE", "BREAKS", "WEST", "HOOVER", "DUBSIREN", "KARPLUS", "VOSIM",
+                                        "PARTICLE", "CHAOS", "FMKEYS", "KIT", "FMPERC", "SPEECH", "RISERS"};
     uint8_t a[16] = {0};
     int bad = 0, ok = 1, sub;
     uint32_t i, e, off;
@@ -55,11 +55,11 @@ int main(void)
 
     /* power-on */
     reset();                                            /* (tk_defaults: the instruments of the power-on parts) */
-    bad += check("power-on: SID BASS (no ANALOG), VOSIM FORMANT PAD (no FM6), LOFI PULSE LD, DRUM KIT; the instruments by id",
+    bad += check("power-on: SID BASS (no ANALOG), VOSIM FORMANT PAD (no FM6), SID SYNC LEAD, FM KIT; the instruments by id",
                  TRK_DEF[0][0] == ENGI_SID && TRK_DEF[0][1] == 0u && TRK_DEF[1][0] == ENGI_VOSIM &&
                  str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[1][1]].name, "FORMANT PAD") &&
-                 TRK_DEF[2][0] == ENGI_LOFI && TRK_DEF[3][0] == ENGI_DRUM && tk.instr[1].src == EID_VOSIM &&
-                 tk.instr[3].src == EID_DRUM);
+                 TRK_DEF[2][0] == ENGI_SID && TRK_DEF[2][1] == 2u && TRK_DEF[3][0] == ENGI_KIT && tk.instr[1].src == EID_VOSIM &&
+                 tk.instr[3].src == EID_KIT);
 
     /* protocol */
     reset();

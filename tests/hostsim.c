@@ -124,7 +124,7 @@ static void host_preset(track_t *t, uint32_t e, uint32_t pi)
 }
 
 /* the drums of the render tests: DRUM's kit (the power-on track 4; until 1.0.2 these used SAMPLE PERC) */
-static void host_drums(track_t *t) { host_preset(t, ENGI_DRUM, 0); }
+static void host_drums(track_t *t) { host_preset(t, FELUCCA_ENG_DRUM ? ENGI_DRUM : ENGI_KIT, 0); }
 
 /* a step of the renders' songs, written as they were for the step sequencer of 1.4 (the goldens keep their songs): into
  * row i of the tracker's pattern 00, which plays them: its first note, a REST an OFF, a TIE nothing (the note rings);
