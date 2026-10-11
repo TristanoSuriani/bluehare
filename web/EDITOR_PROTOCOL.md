@@ -73,17 +73,28 @@ a user preset's stored pattern is still read and written (and kept in flash), bu
 `UP_STORE` stores an empty one. `PROJECT` saves and loads the one song whatever the slot. See "1.5: the tracker (78,
 79)" below.
 
-**1.5 (engines):** NENGINES is 18 in every build. Four engines are appended: 14 WAVE (wavetables), 15 BYTE (bytebeat),
-16 WEST (complex oscillator, wavefolder, low-pass gate) and 17 HOOVER (PWM saws, sub, bend); the user-slot engine of
-`FAV_GET` / `FAV_SET` is 18;
-`NAMES`, `DESC` and the rest treat them as any engine. DIGITAL (1), SAMPLE (4), GRAIN (8) and SLICE (13) are removed:
-their numbers are retired. `INFO` names them "-", `NAMES` lists no presets, their EDIT descriptors are "-" (range 0..0),
-and no track keeps one: a `SET` of `G_ENGSEL` to one or a `PRESET` of one plays ANALOG (`PRESET` with its preset
-number on ANALOG); `UP_PUT` of one answers rc 1, and a slot stored with one (an older firmware's bank) is listed empty
-(`UP_LOAD` rc 1); a project with a track on one is refused (`PROJECT` load: LOAD ERROR on the device); a song's
-instrument of one is dropped (none). There are no user sample slots: `SMP_INFO` answers 0 slots of 0 KiB, `SMP_BEGIN` /
-`SMP_WRITE` / `SMP_END` get no reply, `SMP_ERASE` of slot 0..2 answers rc 0 (an empty slot), and `BACKUP_LIST`
-reports objects 32..34 empty; the editor skips an archive's sample objects when it restores.
+**1.5 (engines):** the engine byte everywhere (`INFO`'s names, `DUMP` / `RELOAD` / `TRACK`, `PRESET`, `NAMES`,
+`G_ENGSEL`, `UP_*`, `FAV_*`, the tracker's instruments, projects) is the engine's **id**, fixed for good: NENGINES (in
+`INFO`) is the number of ids, 18, the same in every build. Four engines are appended: 14 WAVE (wavetables), 15 BYTE
+(bytebeat), 16 WEST (complex oscillator, wavefolder, low-pass gate) and 17 HOOVER (PWM saws, sub, bend); the user-slot
+engine of `FAV_GET` / `FAV_SET` is 18. `NAMES`, `DESC` and the rest treat them as any engine.
+
+A build holds a set of the engines (BUILDING.md "Engines"); an id it has no engine for is named "-" in `INFO`, `NAMES`
+lists no presets for it, and no track ever plays it:
+
+- **retired ids** (DIGITAL 1, SAMPLE 4, GRAIN 8, SLICE 13: removed in 1.5) are a clean break: `UP_PUT` of one answers
+  rc 1 and a slot stored with one (an older firmware's bank) is listed empty (`UP_LOAD` rc 1); a project with a track on
+  one is refused (`PROJECT` load: LOAD ERROR on the device); a song's instrument of one is dropped (none);
+- **an engine the build leaves out** plays its substitute (`firmware/src/engines.c` `EID_SUB`) with the substitute's
+  first preset: a project's track (the rest of its sound as saved), a song's instrument (kept as it is: a build with
+  the engine plays it again); a user preset of one is kept (`UP_LIST` / `UP_GET` / `UP_PUT` as any) but `UP_LOAD`
+  answers rc 1;
+- a `SET` of `G_ENGSEL` or a `PRESET` naming either kind loads the substitute (a retired id: the build's first engine),
+  its first preset; the reply and `DUMP` name the engine it loaded.
+
+There are no user sample slots: `SMP_INFO` answers 0 slots of 0 KiB, `SMP_BEGIN` / `SMP_WRITE` / `SMP_END` get no
+reply, `SMP_ERASE` of slot 0..2 answers rc 0 (an empty slot), and `BACKUP_LIST` reports objects 32..34 empty; the
+editor skips an archive's sample objects when it restores.
 
 ## Framing
 

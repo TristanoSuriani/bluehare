@@ -4,7 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #define __attribute__(x)
-#define NENGINES 9u
+#define EID_COUNT 18u
 #define UP_SLOTS 32u
 static uint8_t fx_lowcut;
 static void fm1_led_key(unsigned k, int on) { (void)k; (void)on; }
@@ -51,7 +51,7 @@ int main(void)
         p = original; assert(settings_import(&p, sizeof p) == 1); settings_init();
     }
 #ifdef FELUCCA_FAVORITES
-    assert(favorite_has(8, 0) && favorite_has(NENGINES, 31) && favorites.filter);
+    assert(favorite_has(8, 0) && favorite_has(EID_COUNT, 31) && favorites.filter);
 #endif
     settings.lowcut = 0;
     settings_export(&p);

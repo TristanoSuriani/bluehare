@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* Engine table (order = PRESETS browsing order and the engine numbers of the editor protocol) and the parts' sounds at
+/* Engine table (this build's engines in display order: the indices; their ids: core.h) and the parts' sounds at
  * power-on. */
 #include "dsp.c"
 #include "eng_analog.c"
@@ -18,10 +18,8 @@
 #include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
 #include "eng_hoover.c"         /* HOOVER: PWM saws, sub, bend: the rave lead (1.5) */
 
-/* a retired engine number (1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE: removed in 1.5): never selectable (eng_ok), no
- * presets, silent, named "-" (the editor leaves such names out). A track never keeps one: a project naming one is
- * refused, a user preset of one is not loaded, a song's instrument of one is dropped, an engine change to one plays
- * ANALOG */
+/* the engine of an id this build has none for (a retired id, or an engine left out): what the editor protocol
+ * describes for it (NAMES, DESC: no presets, nothing to edit, named "-"). No track ever plays it */
 static void eng_none_note_on(struct track *t, voice_t *v) { (void)t; (void)v; }
 static void eng_none_render(struct track *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
@@ -37,68 +35,107 @@ static const engine_t ENG_NONE = {
     .knob = {P_ATK, P_DEC, P_SUS, P_REL},
 };
 
-/* the editor protocol, user presets and projects store these indices: append, never reorder */
+/* this build's engines, in their display order (PRESETS browsing and its ENG knob, the EDIT layer's keys, the editor's
+ * list): the order of core.h's ENGI_ enum, which must match. Only what is listed here is linked */
 static const engine_t *const ENGINES[NENGINES] = {
-    &ENG_ANALOG,                 /* 0 */
-    &ENG_NONE,                   /* 1: retired (DIGITAL) */
-    &ENG_PHASE,                  /* 2 */
-    &ENG_LOFI,                   /* 3 */
-    &ENG_NONE,                   /* 4: retired (SAMPLE) */
-    &ENG_FORMANT,                /* 5 VOICE (eng_formant.c: "voice" is a sounding note in voice.c) */
-    &ENG_TRIO,                   /* 6 */
-    &ENG_WHEEL,                  /* 7 */
-    &ENG_NONE,                   /* 8: retired (GRAIN) */
-    &ENG_PHYS,                   /* 9 (ENGI_PHYS) */
-    &ENG_DRUM,                   /* 10 (ENGI_DRUM) */
-    &ENG_NOISE,                  /* 11 */
-    &ENG_FM6,                    /* 12 (ENGI_FM6) */
-    &ENG_NONE,                   /* 13: retired (SLICE) */
-    &ENG_WAVE,                   /* 14 (ENGI_WAVE, 1.5) */
-    &ENG_BYTE,                   /* 15 (ENGI_BYTE, 1.5) */
-    &ENG_WEST,                   /* 16 (ENGI_WEST, 1.5) */
-    &ENG_HOOVER,                 /* 17 (ENGI_HOOVER, 1.5) */
+#if FELUCCA_ENG_ANALOG
+    &ENG_ANALOG,
+#endif
+#if FELUCCA_ENG_FM6
+    &ENG_FM6,
+#endif
+#if FELUCCA_ENG_WAVE
+    &ENG_WAVE,
+#endif
+#if FELUCCA_ENG_WEST
+    &ENG_WEST,
+#endif
+#if FELUCCA_ENG_HOOVER
+    &ENG_HOOVER,
+#endif
+#if FELUCCA_ENG_PHASE
+    &ENG_PHASE,
+#endif
+#if FELUCCA_ENG_LOFI
+    &ENG_LOFI,
+#endif
+#if FELUCCA_ENG_VOICE
+    &ENG_FORMANT,                /* VOICE (eng_formant.c: "voice" is a sounding note in voice.c) */
+#endif
+#if FELUCCA_ENG_TRIO
+    &ENG_TRIO,
+#endif
+#if FELUCCA_ENG_WHEEL
+    &ENG_WHEEL,
+#endif
+#if FELUCCA_ENG_PHYS
+    &ENG_PHYS,
+#endif
+#if FELUCCA_ENG_NOISE
+    &ENG_NOISE,
+#endif
+#if FELUCCA_ENG_BYTE
+    &ENG_BYTE,
+#endif
+#if FELUCCA_ENG_DRUM
+    &ENG_DRUM,
+#endif
 };
 
-/* a track's engine number as an index (the audio paths: a compare, cheaper than % NENGINES; a bad number: 0) */
+/* a track's engine as an index (the audio paths: a compare, cheaper than % NENGINES; a bad number: 0) */
 static inline uint32_t eng_idx(uint32_t e) { return e < NENGINES ? e : 0u; }
 
-/* the order the engines are shown in (PRESETS browsing and its ENG knob, the EDIT layer's keys, the editor's list):
- * engine indices, never a retired one. The indices stay as they are (the stores and the protocol hold them); only
- * this table orders them */
-static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
-    0,                           /* ANALOG */
-    12,                          /* FM6 */
-    14,                          /* WAVE */
-    16,                          /* WEST */
-    17,                          /* HOOVER */
-    2, 3,                        /* PHASE LOFI */
-    5, 6, 7,                     /* VOICE TRIO WHEEL */
-    9,                           /* PHYS */
-    11,                          /* NOISE */
-    15,                          /* BYTE */
-    10,                          /* DRUM */
+/* ids <-> indices. eng_id(e): engine e's id. eng_of_id(id): the index of the engine with that id, ENG_NO when the build
+ * has none (a retired id, an engine left out, an id past the last) */
+#define ENG_NO 0xFFu
+#define EID_IDX(X) (FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : ENG_NO)
+static const uint8_t ENG_OF_ID[EID_COUNT] = {
+    [1] = ENG_NO, [4] = ENG_NO, [8] = ENG_NO, [13] = ENG_NO,   /* (retired) */
+    [EID_ANALOG] = EID_IDX(ANALOG), [EID_PHASE] = EID_IDX(PHASE), [EID_LOFI] = EID_IDX(LOFI),
+    [EID_VOICE] = EID_IDX(VOICE), [EID_TRIO] = EID_IDX(TRIO), [EID_WHEEL] = EID_IDX(WHEEL), [EID_PHYS] = EID_IDX(PHYS),
+    [EID_DRUM] = EID_IDX(DRUM), [EID_NOISE] = EID_IDX(NOISE), [EID_FM6] = EID_IDX(FM6), [EID_WAVE] = EID_IDX(WAVE),
+    [EID_BYTE] = EID_IDX(BYTE), [EID_WEST] = EID_IDX(WEST), [EID_HOOVER] = EID_IDX(HOOVER),
 };
-
-/* the engines one can pick (all but the retired numbers), in ENGINE_ORDER: eng_ok(e), the n-th of them eng_vis(n),
- * e's place among them eng_rank(e), the next / previous one eng_step(e, dir) (wraps) */
-static int eng_ok(uint32_t e) { return e < NENGINES && ENGINES[e] != &ENG_NONE; }
-static uint32_t eng_vis(uint32_t n) { return ENGINE_ORDER[n % NENG_SHOWN]; }
-static uint32_t eng_rank(uint32_t e)
+static uint32_t eng_id(uint32_t e) { return ENGINES[eng_idx(e)]->id; }
+static uint32_t eng_of_id(uint32_t id) { return id < EID_COUNT ? ENG_OF_ID[id] : ENG_NO; }
+/* the engine of id, or ENG_NONE: what the protocol describes for an id (NAMES, DESC) */
+static const engine_t *eng_by_id(uint32_t id) { return eng_of_id(id) == ENG_NO ? &ENG_NONE : ENGINES[eng_of_id(id)]; }
+/* the engine a stored sound of id loads as: its own when the build has it; an engine left out: its substitute (the
+ * nearest kind, down this chain, else the build's first engine), *sub set; ENG_NO for a retired or unknown id (a clean
+ * break: the stores refuse such a sound) */
+static const uint8_t EID_SUB[EID_COUNT] = {
+    [EID_ANALOG] = EID_HOOVER, [EID_PHASE] = EID_ANALOG, [EID_LOFI] = EID_BYTE, [EID_VOICE] = EID_ANALOG,
+    [EID_TRIO] = EID_ANALOG, [EID_WHEEL] = EID_FM6, [EID_PHYS] = EID_WEST, [EID_DRUM] = EID_ANALOG,
+    [EID_NOISE] = EID_ANALOG, [EID_FM6] = EID_WAVE, [EID_WAVE] = EID_ANALOG, [EID_BYTE] = EID_LOFI,
+    [EID_WEST] = EID_PHYS, [EID_HOOVER] = EID_ANALOG,
+};
+static uint32_t eng_load_id(uint32_t id, int *sub)
 {
     uint32_t n;
-    if (!eng_ok(e))
-        e = ENGI_ANALOG;
-    for (n = 0; n < NENG_SHOWN && ENGINE_ORDER[n] != e; n++)
-        ;
-    return n < NENG_SHOWN ? n : 0u;
+    if (sub)
+        *sub = 0;
+    if (id >= EID_COUNT || EID_RETIRED(id))
+        return ENG_NO;
+    for (n = 0; n < EID_COUNT && eng_of_id(id) == ENG_NO; n++)
+        id = EID_SUB[id];
+    if (sub)
+        *sub = n != 0u;
+    return n < EID_COUNT ? eng_of_id(id) : 0u;
 }
+
+/* the engines one can pick (all of the build's), in display order: eng_ok(e), the n-th of them eng_vis(n), e's place
+ * among them eng_rank(e), the next / previous one eng_step(e, dir) (wraps). (The table is in display order: these are
+ * the index itself) */
+static int eng_ok(uint32_t e) { return e < NENGINES; }
+static uint32_t eng_vis(uint32_t n) { return n % NENGINES; }
+static uint32_t eng_rank(uint32_t e) { return e < NENGINES ? e : 0u; }
 static uint32_t eng_step(uint32_t e, int32_t dir)
 {
-    return eng_vis((eng_rank(e % NENGINES) + (dir > 0 ? 1u : NENG_SHOWN - 1u)) % NENG_SHOWN);
+    return (eng_rank(e) + (dir > 0 ? 1u : NENGINES - 1u)) % NENGINES;
 }
 
-
-/* the parts at power-on (engine, preset): bass, pad, lead, drums */
-static const uint8_t TRK_DEF[NPART][2] = {{0, 4}, {ENGI_FM6, 4}, {3, 0}, {ENGI_DRUM, 0}}; /* ANALOG ACID,
-                                                                       * FM6 PAD, LOFI PULSE LD, DRUM KIT */
+/* the parts at power-on (engine index, preset): bass, pad, lead, drums (ANALOG ACID, FM6 PAD, LOFI PULSE LD, DRUM
+ * KIT); an engine the build leaves out: its first engine, preset 0 */
+#define TRK_PICK(X, p) {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : 0u, FELUCCA_ENG_##X ? (uint8_t)(p) : 0u}
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(ANALOG, 4), TRK_PICK(FM6, 4), TRK_PICK(LOFI, 0), TRK_PICK(DRUM, 0)};
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

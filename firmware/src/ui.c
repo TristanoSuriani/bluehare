@@ -646,10 +646,6 @@ static void apply_preset_to(track_t *t, uint32_t pi)
 {
     const engine_t *e = ENGINES[t->eng_req % NENGINES];
     uint32_t i;
-    if (!eng_ok(t->eng_req % NENGINES)) {             /* a retired engine (a stored number): ANALOG */
-        set_engine_of(t, ENGI_ANALOG);
-        return;
-    }
     load_begin(t);
     panic_req |= (uint8_t)(1u << trk_index(t));       /* MONO/POLY may change: release what sounds */
     t->user = 0;
@@ -688,9 +684,7 @@ static void set_engine_of(track_t *t, uint32_t ei)
 {
     const engine_t *e;
     uint32_t i;
-    ei %= NENGINES;
-    if (!eng_ok(ei))                                  /* a retired engine (a stored number): ANALOG */
-        ei = ENGI_ANALOG;
+    ei %= NENGINES;                                   /* (an index of this build: the stores map ids, engines.c) */
     e = ENGINES[ei];
     load_begin(t);
     fm1_irq_off();
@@ -720,12 +714,12 @@ static void select_engine(uint32_t e)
     ui.force = 1;
 }
 
-/* the presets of every engine (in ENGINE_ORDER), then the used user presets, as one list (the PRESETS knob and the
+/* the presets of every engine (in display order, engines.c ENGINES[]), then the used user presets, as one list (the PRESETS knob and the
  * PRESETS page browse it) */
 static uint32_t preset_all_pos(uint32_t *total)          /* list index of the selected track's preset */
 {
     uint32_t n = 0, cur = 0, e, r;
-    for (r = 0; r < NENG_SHOWN; r++) {                  /* (engines.c ENGINE_ORDER) */
+    for (r = 0; r < NENG_SHOWN; r++) {
         const engine_t *en = ENGINES[e = eng_vis(r)];
         if (e == TSEL->eng_req)
             cur = n + TSEL->preset % (en->npresets ? en->npresets : 1u);
@@ -765,12 +759,14 @@ static void list_set(uint32_t m)
     ui_lcat = (uint8_t)(m >= 2u && m < LIST_N ? m - 1u : 0u);
 }
 static const char *list_name(uint32_t m) { return m == 0u ? "ALL" : m == 1u ? "FAV" : CAT_NAME[(m - 1u) % CAT_N]; }
+/* the favourites' engine of list entry e (preset_all_at: an index, NENGINES = a user preset): its id (favorites.c) */
+static uint32_t fav_eng(uint32_t e) { return e >= NENGINES ? EID_COUNT : eng_id(e); }
 /* the category of list entry e, k (preset_all_at: NENGINES = user preset k) */
 static uint32_t sound_cat(uint32_t e, uint32_t k) { return e == NENGINES ? up_cat(k) : preset_cat(e, k); }
 static int list_keep(uint32_t e, uint32_t k)
 {
     uint32_t m = list_mode();
-    return m == 1u ? favorite_has(e, k) : m ? sound_cat(e, k) == m - 1u : 1;
+    return m == 1u ? favorite_has(fav_eng(e), k) : m ? sound_cat(e, k) == m - 1u : 1;
 }
 /* the category of the sound track t plays: its user preset's, else its factory preset's (the NAME screen's default) */
 static uint32_t track_cat(const track_t *t)
@@ -807,13 +803,12 @@ static uint32_t preset_at(uint32_t n, uint32_t *k)
 static int preset_favorite(void)
 {
     uint32_t k = user_of(TSEL);
-    return favorite_has(k < UP_SLOTS ? NENGINES : TSEL->eng_req,
-                                        k < UP_SLOTS ? k : TSEL->preset);
+    return favorite_has(k < UP_SLOTS ? EID_COUNT : eng_id(TSEL->eng_req), k < UP_SLOTS ? k : TSEL->preset);
 }
 static void preset_mark(int on)
 {
     uint32_t k = user_of(TSEL);
-    if (favorite_set(k < UP_SLOTS ? NENGINES : TSEL->eng_req, k < UP_SLOTS ? k : TSEL->preset, on)) {
+    if (favorite_set(k < UP_SLOTS ? EID_COUNT : eng_id(TSEL->eng_req), k < UP_SLOTS ? k : TSEL->preset, on)) {
         ui.force = 1;
         settings_save();
     }

@@ -354,6 +354,9 @@ static const preset_t TRIO_PRESETS[] = {
 
 static const engine_t ENG_TRIO = {
     .name = "TRIO",
+    .id = EID_TRIO,
+    .cc = 0x67,
+    .cats = "BLLUP",
     .page_title = {"OSC", "TONE"},
     .edit = {
         {"WAVE", F_ENUM, 0, 15, 0, N_TRIO_WAVE, 0},

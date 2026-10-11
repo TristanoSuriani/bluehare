@@ -182,6 +182,9 @@ static const preset_t PHASE_PRESETS[] = {
 
 static const engine_t ENG_PHASE = {
     .name = "PHASE",
+    .id = EID_PHASE,
+    .cc = 0x30,
+    .cats = "LKPLUU",
     .page_title = {"PHS", "LINE"},
     .edit = {
         {"WAVE", F_ENUM, 0, 7, 0, N_PD_WAVE, 0},

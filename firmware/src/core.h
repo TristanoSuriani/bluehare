@@ -12,11 +12,167 @@
 #define NPART 4                  /* synth parts: tracks 1..4 */
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
-#define NENGINES 18              /* engine numbers 0..17 (append-only: the stores and the protocol name engines by number;
-                                  * 1, 4, 8, 13 are retired: engines.c eng_ok) */
-#define ENG_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u)   /* DIGITAL SAMPLE GRAIN SLICE */
-#define NENG_SHOWN (NENGINES - 4)   /* the engines one can pick: PRESETS, the EDIT layer, the editor, in the order of
-                                  * engines.c ENGINE_ORDER */
+/* ---- the engines. Two numbers name one:
+ * its id (EID_*): fixed for good, what everything stored and the editor protocol use (projects, user presets, the
+ *   song's instruments, favourites; the protocol's engine byte, G_ENGSEL). Append-only; 1 DIGITAL, 4 SAMPLE,
+ *   8 GRAIN, 13 SLICE are retired (removed in 1.5) and never given again. A new engine takes the next free id.
+ * its index (ENGI_*): its place in this build's engines.c ENGINES[] (0 .. NENGINES - 1), what a track holds
+ *   (eng_req) and the code compares; the build's engines in their display order, so the numbers differ by build.
+ * A build leaves an engine out with FELUCCA_ENG_<NAME>=0 (build.py: also FELUCCA_ENGINES="ANALOG FM6 .."); its code
+ * is not linked (nothing refers to it but the table) and its ENGI_ is ENG_ABSENT, which no track's engine equals
+ * (a compare with it folds to false). A stored sound of an engine the build lacks loads as its substitute
+ * (engines.c eng_load_id) */
+#define EID_ANALOG 0u
+#define EID_PHASE 2u
+#define EID_LOFI 3u
+#define EID_VOICE 5u
+#define EID_TRIO 6u
+#define EID_WHEEL 7u
+#define EID_PHYS 9u
+#define EID_DRUM 10u
+#define EID_NOISE 11u
+#define EID_FM6 12u
+#define EID_WAVE 14u
+#define EID_BYTE 15u
+#define EID_WEST 16u
+#define EID_HOOVER 17u
+#define EID_COUNT 18u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+#define EID_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u)   /* DIGITAL SAMPLE GRAIN SLICE */
+#define ENG_ABSENT 0x100u        /* the ENGI_ of an engine the build leaves out: no uint8_t equals it */
+#ifndef FELUCCA_ENG_ANALOG
+#define FELUCCA_ENG_ANALOG 1
+#endif
+#ifndef FELUCCA_ENG_FM6
+#define FELUCCA_ENG_FM6 1
+#endif
+#ifndef FELUCCA_ENG_WAVE
+#define FELUCCA_ENG_WAVE 1
+#endif
+#ifndef FELUCCA_ENG_WEST
+#define FELUCCA_ENG_WEST 1
+#endif
+#ifndef FELUCCA_ENG_HOOVER
+#define FELUCCA_ENG_HOOVER 1
+#endif
+#ifndef FELUCCA_ENG_PHASE
+#define FELUCCA_ENG_PHASE 1
+#endif
+#ifndef FELUCCA_ENG_LOFI
+#define FELUCCA_ENG_LOFI 1
+#endif
+#ifndef FELUCCA_ENG_VOICE
+#define FELUCCA_ENG_VOICE 1
+#endif
+#ifndef FELUCCA_ENG_TRIO
+#define FELUCCA_ENG_TRIO 1
+#endif
+#ifndef FELUCCA_ENG_WHEEL
+#define FELUCCA_ENG_WHEEL 1
+#endif
+#ifndef FELUCCA_ENG_PHYS
+#define FELUCCA_ENG_PHYS 1
+#endif
+#ifndef FELUCCA_ENG_NOISE
+#define FELUCCA_ENG_NOISE 1
+#endif
+#ifndef FELUCCA_ENG_BYTE
+#define FELUCCA_ENG_BYTE 1
+#endif
+#ifndef FELUCCA_ENG_DRUM
+#define FELUCCA_ENG_DRUM 1
+#endif
+enum {                           /* the indices: the build's engines in display order (engines.c ENGINES[]) */
+#if FELUCCA_ENG_ANALOG
+    ENGI_ANALOG,
+#endif
+#if FELUCCA_ENG_FM6
+    ENGI_FM6,
+#endif
+#if FELUCCA_ENG_WAVE
+    ENGI_WAVE,
+#endif
+#if FELUCCA_ENG_WEST
+    ENGI_WEST,
+#endif
+#if FELUCCA_ENG_HOOVER
+    ENGI_HOOVER,
+#endif
+#if FELUCCA_ENG_PHASE
+    ENGI_PHASE,
+#endif
+#if FELUCCA_ENG_LOFI
+    ENGI_LOFI,
+#endif
+#if FELUCCA_ENG_VOICE
+    ENGI_VOICE,
+#endif
+#if FELUCCA_ENG_TRIO
+    ENGI_TRIO,
+#endif
+#if FELUCCA_ENG_WHEEL
+    ENGI_WHEEL,
+#endif
+#if FELUCCA_ENG_PHYS
+    ENGI_PHYS,
+#endif
+#if FELUCCA_ENG_NOISE
+    ENGI_NOISE,
+#endif
+#if FELUCCA_ENG_BYTE
+    ENGI_BYTE,
+#endif
+#if FELUCCA_ENG_DRUM
+    ENGI_DRUM,
+#endif
+    NENGINES                     /* engines in this build (at least one) */
+};
+#if !FELUCCA_ENG_ANALOG
+#define ENGI_ANALOG ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_FM6
+#define ENGI_FM6 ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_WAVE
+#define ENGI_WAVE ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_WEST
+#define ENGI_WEST ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_HOOVER
+#define ENGI_HOOVER ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_PHASE
+#define ENGI_PHASE ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_LOFI
+#define ENGI_LOFI ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_VOICE
+#define ENGI_VOICE ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_TRIO
+#define ENGI_TRIO ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_WHEEL
+#define ENGI_WHEEL ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_PHYS
+#define ENGI_PHYS ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_NOISE
+#define ENGI_NOISE ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_BYTE
+#define ENGI_BYTE ENG_ABSENT
+#endif
+#if !FELUCCA_ENG_DRUM
+#define ENGI_DRUM ENG_ABSENT
+#endif
+#define NENG_SHOWN NENGINES      /* (the engines one can pick: all of the build's, in their order) */
+/* engine index e is engine X (a uint8_t compared without the warning that an engine left out would raise: still false,
+ * folded away) */
+#define ENG_IS(e, X) ((uint32_t)(e) == (uint32_t)ENGI_##X)
+typedef char eng_at_least_one[NENGINES > 0 ? 1 : -1];
 #define UP_SLOTS 32u             /* user presets (upreset.c) */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -97,20 +253,12 @@ static void params_by_count(int16_t *out, const int16_t *in, uint32_t np, const 
         out[P_E0 + i] = in[nc + i];
 }
 
-/* engine indices the stores name (engines.c ENGINES[]: append-only) */
-#define ENGI_ANALOG 0u
-#define ENGI_PHYS 9u
-#define ENGI_DRUM 10u
-#define ENGI_WAVE 14u            /* 1.5 */
-#define ENGI_BYTE 15u            /* 1.5 */
-#define ENGI_WEST 16u            /* 1.5 */
-#define ENGI_HOOVER 17u          /* 1.5 */
 /* PHYS MODEL DRUM (MODEL 4, before 1.0) -> the DRUM engine, its E values in place: {MODEL, TUNE, TONE, DECY,
  * SNAP, ACC, KICK 0..127, PERC 0..127} -> {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK 0..1, DRV 0}. 1 = it was one
- * (its engine is ENGI_DRUM now); projects (project.c) and user presets (upreset.c) */
+ * (its engine is EID_DRUM now); projects (project.c) and user presets (upreset.c): ids */
 static int drum_from_phys(uint32_t engine, int16_t *e)
 {
-    if (engine != ENGI_PHYS || e[0] != 4)
+    if (engine != EID_PHYS || e[0] != 4)
         return 0;
     e[0] = (int16_t)((e[7] < 0 ? 0 : e[7] > 127 ? 127 : e[7]) >> 5);   /* PERC -> KIT: STD HAND CYM H+CYM */
     e[6] = (int16_t)(e[6] >= 64);                                       /* KICK: PUNCH, ROUND */
@@ -160,6 +308,10 @@ typedef struct {
 struct track;
 typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c files) */
     const char *name;            /* "ANALOG" (PRESETS, the editor) */
+    uint8_t id;                  /* its id (EID_*: what the stores and the protocol name it by) */
+    uint8_t cc;                  /* the standard CC map (midi_control.c): CC74's E index + 1 in the high nibble, CC71's
+                                  * in the low one, 0 = none */
+    const char *cats;            /* its factory presets' categories, a letter each in preset order (category.c) */
     const char *page_title[2];   /* EDIT 1 and EDIT 2 */
     param_desc_t edit[8];        /* P_E0..P_E7 */
     const preset_t *presets;
@@ -240,7 +392,8 @@ static inline uint32_t tk_chord_notes(const tk_cell_t *c, uint8_t *out)
     }
     return k;
 }
-/* an instrument: a factory preset of an engine (src < NENGINES), a user preset (TK_SRC_USER + its slot), or none */
+/* an instrument: a factory preset of an engine (src: its id, < EID_COUNT), a user preset (TK_SRC_USER + its slot), or
+ * none */
 #define TK_SRC_NONE 0xFFu
 #define TK_SRC_USER 0x80u
 typedef struct { uint8_t src, preset; } tk_inst_t;

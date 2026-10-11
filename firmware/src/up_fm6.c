@@ -83,7 +83,7 @@ static uint32_t upf_tag(const up_rec_t *r)       /* FNV-1a of the record without
     return h;
 }
 
-static int upf_fm6(uint32_t k) { return up_used(k) && up_rec(k)->engine == ENGI_FM6; }
+static int upf_fm6(uint32_t k) { return up_used(k) && up_rec(k)->engine == EID_FM6; }
 
 /* a 128-byte packed record's 7-bit bytes, 8 to 7 bytes (UPF_PK) and back (the voice bank too, fm6_vbank.c) */
 static void upf_pk_get(const uint8_t *d, uint8_t *pk)
@@ -200,7 +200,7 @@ static void upf_track_load(track_t *t, uint32_t k)
 {
     uint8_t pk[FM6_PACKED], v[FP_SIZE + 1u];
     uint32_t tr = (uint32_t)(t - trk);
-    if (tr >= NTRK || t->eng_req != ENGI_FM6)
+    if (tr >= NTRK || !ENG_IS(t->eng_req, FM6))
         return;
     if (upf_get(k, pk)) {
         int32_t s = t->p[P_E7];

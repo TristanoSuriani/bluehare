@@ -1931,6 +1931,7 @@ function makeMockDevice(opt = {}) {
       }
       case CMD.PRESET:
         if (a.length < 2 || a[0] >= ENG.length) return null;
+        if (ENG[a[0]] === GONE) { setEngine(0); break; }   /* (an id with no engine: the first one, its first preset) */
         if (a[0] !== st.engine) setEngine(a[0]);
         applyPreset(a[1]);
         b(st.engine); b(st.preset);

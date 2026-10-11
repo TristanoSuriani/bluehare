@@ -275,6 +275,9 @@ static const preset_t DRUM_PRESETS[] = {
 
 static const engine_t ENG_DRUM = {
     .name = "DRUM",
+    .id = EID_DRUM,
+    .cc = 0x30,
+    .cats = "D",
     .page_title = {"KIT", "HIT"},
     .edit = {
         {"KIT", F_ENUM, 0, DK_COUNT - 1, DK_STD, N_DRUM_KIT, 0},

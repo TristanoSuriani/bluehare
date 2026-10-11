@@ -80,6 +80,9 @@ static const preset_t HOOVER_PRESETS[] = {
 
 static const engine_t ENG_HOOVER = {
     .name = "HOOVER",
+    .id = EID_HOOVER,
+    .cc = 0x81,
+    .cats = "LLKBPF",
     .page_title = {"OSC", "BEND"},
     .edit = {
         {"PW", F_PCT, 0, 127, 40, 0, 0},
@@ -99,4 +102,4 @@ static const engine_t ENG_HOOVER = {
     .keep = 0x0B,                /* the filter, the LFO (a retrigger keeps the sweep going) */
 };
 /* favorites.c: HOOVER's stars are one byte ([15][9]) */
-_Static_assert(NELEM(HOOVER_PRESETS) <= 8u && NENGINES <= 18u, "favorites.c FAV_E16: a row for engine 18 on wanted");
+_Static_assert(NELEM(HOOVER_PRESETS) <= 8u && EID_COUNT <= 18u, "favorites.c FAV_E16: a row for engine 18 on wanted");

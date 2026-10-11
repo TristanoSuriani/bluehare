@@ -206,21 +206,13 @@ static int midi_track_held(uint32_t track)
 
 /* The standard CC map (#103): always on, these CCs only, on the track the channel plays (ROUT as notes). A CC
  * sets its parameter as a knob would, 0..127 over the parameter's range (64: the middle of a bipolar one). CC74 / CC71 are
- * the engine's own brightness / resonance (MIDI_CC_ENG); an engine without one ignores them. CC121 resets none
+ * the engine's own brightness / resonance (engine_t cc); an engine without one ignores them. CC121 resets none
  * of them (RP-015: they are the sound's) */
 #define MCC_CUT 0xFEu
 #define MCC_RES 0xFFu
 static const uint8_t MIDI_CC_MAP[][2] = {
     {5, P_GLIDE}, {7, P_LEVEL}, {10, P_PAN}, {71, MCC_RES}, {72, P_REL}, {73, P_ATK}, {74, MCC_CUT}, {75, P_DEC},
     {91, P_REV}, {93, P_CHOR}, {94, P_DLY},
-};
-/* per engine (ENGINES[] order): CC74's E index + 1 in the high nibble, CC71's in the low one, 0 = none */
-static const uint8_t MIDI_CC_ENG[NENGINES] = {
-    0x56, 0x00, 0x30, 0x80, 0x00, 0x07, 0x67, 0x00,   /* ANALOG CUT RES, -, PHASE DCW, LOFI TONE, -, VOICE Q, TRIO CUT
-                                                       * RES, WHEEL - */
-    0x00, 0x30, 0x30, 0x34, 0x30,                     /* -, PHYS BRIT, DRUM TONE, NOISE FREQ RES, FM6 MLVL */
-    0x00, 0x56, 0x60, 0x73, 0x81,                     /* -, WAVE CUT RES, BYTE TONE, WEST CUT FOLD, HOOVER CUT PW (-: a
-                                                       * retired number) */
 };
 static void __attribute__((noinline)) midi_cc_map(track_t *t, uint32_t cc, uint32_t value)
 {
@@ -233,7 +225,7 @@ static void __attribute__((noinline)) midi_cc_map(track_t *t, uint32_t cc, uint3
     if (id >= MCC_CUT) {
         if (id == 0xFFFFu)
             return;
-        e = MIDI_CC_ENG[eng_idx(t->eng_req)] >> (id == MCC_CUT ? 4 : 0) & 15u;
+        e = ENGINES[eng_idx(t->eng_req)]->cc >> (id == MCC_CUT ? 4 : 0) & 15u;
         if (!e)
             return;
         id = P_E0 + e - 1u;

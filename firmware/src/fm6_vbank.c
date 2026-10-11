@@ -46,7 +46,7 @@ static void fm6_bank_changed(void)
 {
     uint32_t tr;
     for (tr = 0; tr < NTRK; tr++)
-        if (trk[tr].eng_req == ENGI_FM6 && fm6_bank_slot(fm6_slot[tr]) >= 0)
+        if (ENG_IS(trk[tr].eng_req, FM6) && fm6_bank_slot(fm6_slot[tr]) >= 0)
             fm6_adopt(tr);
 }
 

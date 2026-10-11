@@ -413,7 +413,7 @@ async function editorRetired() {
   const a1 = d.engine;
   await rq(E.req.preset(13, 2));                  /* PRESET 13 2 (SLICE) */
   d = E.parse[C.DUMP](await rq(E.req.dump()), info);
-  ok(a1 === 0 && d.engine === 0 && d.preset === 2, "retired: G_ENGSEL / PRESET of one plays ANALOG (its preset number on ANALOG)");
+  ok(a1 === 0 && d.engine === 0 && d.preset === 0, "retired: G_ENGSEL / PRESET of one plays the first engine's first preset");
   const rc = await E.bank.put(rq, 9, { name: "OLD", engine: 8, p: d.p.slice(), pattern: null });
   ok(rc === 1 && !(await E.bank.get(rq, info, 9)).used, "retired: UP_PUT of a GRAIN sound refused");
   const ctx = { keys: null, engines: info.engines, pe0: info.pe0 };

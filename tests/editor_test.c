@@ -138,15 +138,15 @@ static int preferences(void)
         host_wire[5] == 2 && host_wire[8] == 9 && host_wire[10] == 127);
     a[0] = 2; request(ED_UI_SET, a, 2);
     bad += check("unsupported preference is reported without applying it", host_wire[5] == 2);
-    a[0] = ENGI_DRUM; a[1] = 0; a[2] = 64; a[3] = 1;
+    a[0] = EID_DRUM; a[1] = 0; a[2] = 64; a[3] = 1;
     request(ED_FAV_SET, a, 4);
-    bad += check("FAV_SET marks DRUM as a normal engine", host_wire[5] == 3 && favorite_has(ENGI_DRUM, 0));
+    bad += check("FAV_SET marks DRUM as a normal engine", host_wire[5] == 3 && favorite_has(EID_DRUM, 0));
     request(ED_FAV_GET, a, 4);
     bad += check("FAV_GET reads the bounded favorite range", host_wire[5] == 0 && host_wire[10] == 1);
-    a[0] = NENGINES; a[1] = 31; request(ED_FAV_SET, a, 4);
-    bad += check("empty user slot cannot be starred", host_wire[5] == 1 && !favorite_has(NENGINES, 31));
+    a[0] = EID_COUNT; a[1] = 31; request(ED_FAV_SET, a, 4);
+    bad += check("empty user slot cannot be starred", host_wire[5] == 1 && !favorite_has(EID_COUNT, 31));
     up_store(31, "Saved"); request(ED_FAV_SET, a, 4);
-    bad += check("saved user slot can be starred without changing its sound", host_wire[5] == 3 && favorite_has(NENGINES, 31));
+    bad += check("saved user slot can be starred without changing its sound", host_wire[5] == 3 && favorite_has(EID_COUNT, 31));
     a[3] = 32; request(ED_FAV_GET, a, 4);
     bad += check("favorite range cannot cross the end of user slots", host_wire[5] == 1);
     request(ED_FAV_SET, a, 3);
@@ -981,7 +981,7 @@ static int drum_kit_retired(void)
     uint32_t r, i, k = 0, ok = 1;
     int bad = 0;
     reset();
-    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + ENGI_DRUM) & 127; a[3] = (8192 + ENGI_DRUM) >> 7;
+    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_DRUM) & 127; a[3] = (8192 + EID_DRUM) >> 7;   /* (by id) */
     request(ED_SET, a, 4);
     a[0] = 0; a[1] = P_E0;
     request(ED_DESC, a, 2);
@@ -993,14 +993,14 @@ static int drum_kit_retired(void)
             ok &= !strcmp(n, WANT[i]);
     }
     bad += check("DESC of DRUM KIT: STD 66 10 77 80 10 66 55 77 (1..3 as the kits they play)", ok);
-    for (r = 1, ok = ed_eng(TSEL) == ENGI_DRUM; r < 4u; r++) {
+    for (r = 1, ok = ed_eng(TSEL) == EID_DRUM; r < 4u; r++) {
         uint32_t u = r + 8192u;
         a[0] = 0; a[1] = P_E0; a[2] = u & 127u; a[3] = u >> 7;
         request(ED_SET, a, 4);
         ok &= TSEL->p[P_E0] == MAP[r] && (int32_t)(host_wire[7] | host_wire[8] << 7) - 8192 == MAP[r];
     }
     bad += check("SET of DRUM KIT 1..3 lands on 66 10 77 (and replies it)", ok);
-    a[k++] = 5; a[k++] = ENGI_DRUM;                        /* slot U06, DRUM, KIT 3 (H+CYM) */
+    a[k++] = 5; a[k++] = EID_DRUM;                         /* slot U06, DRUM, KIT 3 (H+CYM) */
     memcpy(a + k, "OLDKIT", 6); k += 6; a[k++] = 0;
     for (i = 0; i < P_COUNT; i++) {
         uint32_t u = (uint32_t)((i == P_E0 ? 3 : param_desc_of(ENGI_DRUM, i)->def) + 8192);

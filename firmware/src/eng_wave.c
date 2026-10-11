@@ -144,6 +144,9 @@ static const preset_t WAVE_PRESETS[] = {
 
 static const engine_t ENG_WAVE = {
     .name = "WAVE",
+    .id = EID_WAVE,
+    .cc = 0x56,
+    .cats = "KPLBPUKL",
     .page_title = {"WAVE", "TONE"},
     .edit = {
         {"TBL", F_ENUM, 0, WT_NBANK - 1, 0, N_WT_BANK, 0},

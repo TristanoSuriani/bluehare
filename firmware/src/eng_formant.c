@@ -212,6 +212,9 @@ static const preset_t FORMANT_PRESETS[] = {
 
 static const engine_t ENG_FORMANT = {
     .name = "VOICE",
+    .id = EID_VOICE,
+    .cc = 0x07,
+    .cats = "PLBF",
     .page_title = {"VOWL", "TONE"},
     .edit = {
         {"VOWL", F_INT, 0, 127, 0, 0, 0},

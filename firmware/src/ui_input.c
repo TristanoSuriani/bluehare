@@ -652,9 +652,9 @@ static void ui_input(void)
     int32_t s, sel = 0, ks[4] = {0, 0, 0, 0};
     static uint32_t lock_ms;                            /* BPM LOCK: the last locked SELECT turn (fm1_ms | 1; 0 none) */
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */
-    for (k = 0; k < NTRK; k++)                          /* a retired engine number any other way (the loads refuse */
-        if (!eng_ok(trk[k].eng_req % NENGINES))         /* one): ANALOG */
-            set_engine_of(&trk[k], ENGI_ANALOG);
+    for (k = 0; k < NTRK; k++)                          /* an engine index past the build's any other way (every */
+        if (trk[k].eng_req >= NENGINES)                 /* load maps ids): its first engine */
+            set_engine_of(&trk[k], 0);
     perf_latch_on = fx_latch & 1u;                      /* (MENU > FX LATCH; a settings load sets it too) */
     fx_map_sync();                                      /* (the FX layer's key map: ui_layer.c, a settings load too) */
     fx_usb_fixed = (ui_prefs & PREF_USB_FIXED) != 0u;   /* (MENU > USB LEVEL: fx.c, audio.c) */

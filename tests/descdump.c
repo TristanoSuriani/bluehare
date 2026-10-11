@@ -75,9 +75,9 @@ int main(void)
     js_descs(TP, P_E0);                                  /* P_E0.. are the engine's */
     printf(",\n\"GP\":");
     js_descs(GP, G_COUNT);
-    printf(",\n\"ENG\":[");
-    for (e = 0; e < NENGINES; e++) {
-        const engine_t *en = ENGINES[e];
+    printf(",\n\"ENG\":[");                         /* by id (the protocol's numbers; "-": none in this build) */
+    for (e = 0; e < EID_COUNT; e++) {
+        const engine_t *en = eng_by_id(e);
         printf("%s\n {\"name\":", e ? "," : "");
         js_str(en->name);
         printf(",\"titles\":[");
@@ -103,7 +103,7 @@ int main(void)
         }
         printf("]}");
     }
-    printf("],\n\"ORDER\":[");                      /* the engines as shown (engines.c ENGINE_ORDER), by name */
+    printf("],\n\"ORDER\":[");                      /* the engines as shown (engines.c ENGINES[]), by name */
     for (k = 0; k < NENG_SHOWN; k++) {
         if (k)
             putchar(',');
@@ -111,7 +111,7 @@ int main(void)
     }
     printf("],\n\"TRK_DEF\":[");
     for (k = 0; k < NPART; k++)
-        printf("%s[%d,%d]", k ? "," : "", TRK_DEF[k][0], TRK_DEF[k][1]);
+        printf("%s[%d,%d]", k ? "," : "", (int)eng_id(TRK_DEF[k][0]), TRK_DEF[k][1]);   /* (by id) */
     printf("],\n\"FM6\":{\"bank\":0,\"own\":%u,\"init\":", (unsigned)FM6_OWN);   /* FM6: the packed patches (no bank since 1.0.3) */
     for (i = 0; i < FM6_PACKED; i++)
         printf("%s%d", i ? "," : "[", FM6_INIT[i]);

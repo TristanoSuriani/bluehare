@@ -19,7 +19,7 @@
  *   u8 version, u8 P_COUNT, u8 G_COUNT; G_COUNT x i16 the globals (SLOT NAME LOAD SAVE as their defaults); u8 the
  *   selected track and 12 bytes the name (neither in the hash below: a rename changes the name in place; the track
  *   selected is no change of the music the autosave has to keep)
- *   per track: u8 engine, u8 preset, u8 n, n x (u8 id, i16 value), u8 has FM6 patch, [FM6_PACKED bytes]
+ *   per track: u8 engine id (core.h EID_*), u8 preset, u8 n, n x (u8 id, i16 value), u8 has FM6 patch, [FM6_PACKED bytes]
  *   u8 norder, norder x u8 order; TK_PATS x u8 len; TK_INSTS x (u8 src, u8 preset); NTRK x u8 cut; NTRK x u8 res
  *   per pattern: u16 n, n x (u8 row * NTRK + track, 3 bytes the cell), in ascending place; then u16 m, m x (u8 place,
  *   u8 the chord) for its cells with a chord, in ascending place
@@ -139,7 +139,7 @@ static void proj_write(pw_t *w, const char *name)
         int16_t v[P_COUNT];
         for (i = 0; i < P_COUNT; i++)
             v[i] = t->p[i];
-        pw_u8(w, e);
+        pw_u8(w, eng_id(e));                            /* (the engine's id: a build of other engines reads it) */
         pw_u8(w, t->preset);
         for (i = n = 0; i < P_COUNT; i++)
             n += v[i] != param_desc_of(e, i)->def;
@@ -261,12 +261,14 @@ static int proj_read(pr_t *r, int apply)
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         uint32_t e = pr_u8(r), pre = pr_u8(r);
-        if (!eng_ok(e))                             /* (a retired engine: the project is refused) */
+        int sub;
+        e = eng_load_id(e, &sub);                   /* the id -> this build's engine (one it lacks: its substitute) */
+        if (e == ENG_NO)                            /* (a retired or unknown id: the project is refused) */
             return 1;
         if (apply) {
             t->eng_req = (uint8_t)e;
             t->user = 0;
-            t->preset = (uint8_t)(ENGINES[e]->npresets ? pre % ENGINES[e]->npresets : 0u);
+            t->preset = (uint8_t)(ENGINES[e]->npresets && !sub ? pre % ENGINES[e]->npresets : 0u);
             for (i = 0; i < P_COUNT; i++)
                 t->p[i] = param_desc_of(e, i)->def;
         }
@@ -279,6 +281,10 @@ static int proj_read(pr_t *r, int apply)
             if (apply && id < P_COUNT)
                 t->p[id] = (int16_t)param_fit(param_desc_of(e, id), v);
         }
+        if (apply && sub)                           /* a substitute: its first preset's engine values (the rest of the
+                                                     * sound as saved) */
+            for (i = 0; i < 8u; i++)
+                t->p[P_E0 + i] = ENGINES[e]->npresets ? ENGINES[e]->presets[0].e[i] : ENGINES[e]->edit[i].def;
         if (pr_u8(r)) {
             uint8_t pk[FM6_PACKED], v[FP_SIZE + 1u];
             pr_bytes(r, pk, sizeof pk);

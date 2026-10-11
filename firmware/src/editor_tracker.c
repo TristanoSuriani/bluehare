@@ -62,9 +62,11 @@ static int edt_inst_put(tk_inst_t *in, const uint8_t *e)
     if (e[0] == 0u) {
         in->src = TK_SRC_NONE;
         in->preset = 0;
-    } else if (e[0] == 1u && e[1] < NENGINES && eng_ok(e[1])) {
+    } else if (e[0] == 1u && e[1] < EID_COUNT && eng_load_id(e[1], 0) != ENG_NO) {   /* an engine id (one the build lacks:
+                                                           * kept, it plays its substitute: tracker.c tk_inst_engine) */
+        const engine_t *en = eng_by_id(e[1]);
         in->src = e[1];
-        in->preset = (uint8_t)(ENGINES[e[1]]->npresets ? e[2] % ENGINES[e[1]]->npresets : 0u);
+        in->preset = (uint8_t)(en->npresets ? e[2] % en->npresets : e[2]);
     } else if (e[0] == 2u && e[1] < UP_SLOTS) {
         in->src = (uint8_t)(TK_SRC_USER + e[1]);
         in->preset = 0;

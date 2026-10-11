@@ -549,7 +549,7 @@ static uint32_t graph_signature(void)
             h ^= (uint32_t)graph_project_used(i) << (20u + i);
         h += graph_pname_sig;
     }
-    if (pg->scope == SC_ENGINE && (ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL || t->eng_req % NENGINES == ENGI_FM6))
+    if (pg->scope == SC_ENGINE && (t->eng_req % NENGINES == ENGI_WHEEL || t->eng_req % NENGINES == ENGI_FM6))
         h ^= (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u;
     if ((pg->scope == SC_ENGINE || fop_page(pg->graph)) && t->eng_req % NENGINES == ENGI_FM6)   /* the patch (PAT's algorithm,
                                                      * levels, FB; the operator pages: the operator, the stage) */
@@ -661,7 +661,7 @@ static void graph_browse(void)
             str_cpy(nm, ENGINES[e]->presets[k].name, sizeof nm);
         }
         list_row(y, sel, tag, T_DIM, nm, T_TEXT, x1);
-        if (favorite_has(e, k)) {
+        if (favorite_has(fav_eng(e), k)) {
             GFX_HOOK_ALIGN(0, y, 0, y + 16, AL_V, "list row star centred up/down");
             cv_icon_in(214, y, 0, 16, 12, ICON_X_STAR, sel ? T_INK : T_ACCENT, sel ? T_THEME : T_SURF);
         }
@@ -1126,7 +1126,7 @@ static void draw_graph(void)
             if (fop_ok()) graph_fm6env(t, c);
             break;
         default:
-            if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) graph_wheel(t, c);
+            if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WHEEL) graph_wheel(t, c);
             else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WAVE) graph_wave(t, c);
             else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_FM6) graph_fm6(t, c, 6u);   /* EDIT 1 and 2 */
             else { cv_oy = 0; graph_scope(c); }

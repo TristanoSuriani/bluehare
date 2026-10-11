@@ -57,7 +57,7 @@ static int32_t midi_base(void)
 /* MIDI channel 0..15 of track i (keys -> MIDI out): its channel in ROUT's block (SEL, CH1-4: 1..4) */
 static uint32_t trk_midi_ch(uint32_t i) { return (midi_base() > 0 ? (uint32_t)midi_base() : 0u) + i % NTRK; }
 
-static int drum_track(const track_t *t) { return ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM; }
+static int drum_track(const track_t *t) { return eng_idx(t->eng_req) == ENGI_DRUM; }
 
 /* the 27 keys from F: black or white, and the key's place among the keys of its colour (white 0..15, black
  * 0..10) */
@@ -581,7 +581,6 @@ static int midi_in_block(uint32_t ch)      /* ch is one of ROUT's block (not wit
 }
 static track_t *midi_track(uint32_t ch) { return midi_in_block(ch) ? &trk[ch - (uint32_t)midi_base()] : TSEL; }
 
-static const uint8_t MIDI_CC_ENG[NENGINES];   /* (midi_control.c: the engines' filter, CC74 / CC71) */
 #include "tracker.c"
 #include "midi_control.c"
 #include "midi_clock.c"

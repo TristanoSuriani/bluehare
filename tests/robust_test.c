@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Robustness against damaged or crafted stored data and editor requests (the 1.0.4 audit's items 5-10): the real
  * C paths of the editor build (editor_test.c is the base: hostsim, stubs, RAM flash).
- *   projects            (1.5: the song's stream) an engine number past the last or retired refused under a valid hash; no
+ *   projects            (1.5: the song's stream) an engine id past the last or retired refused under a valid hash; no
  *                       position, a pattern of no row, an unknown FX refused; values out of range loaded inside it
  *   user presets        a bank from flash or a backup: each record's pattern inside its fields; a retired engine's
  *                       record not valid
@@ -37,7 +37,7 @@ static int projects(void)
     *tk_at(0, 0, 0) = tk_pack(60, 0, 0, 0);
     bad += check("a song saves and loads", !project_save(0) && (project_load(0), tk_note(tk_at(0, 0, 0)) == 60u));
     keep = proj_ram[0][off];
-    for (e0 = NENGINES; e0 < 256u; e0 += 37u) {
+    for (e0 = EID_COUNT; e0 < 256u; e0 += 37u) {
         proj_ram[0][off] = (uint8_t)e0;
         stream_rehash();
         project_new();
@@ -49,7 +49,7 @@ static int projects(void)
         stream_rehash();
         project_new();
         project_load(0);
-        refused &= ENG_RETIRED(e0) && !tk_note(tk_at(0, 0, 0)) && eng_ok(trk[0].eng_req);
+        refused &= EID_RETIRED(e0) && !tk_note(tk_at(0, 0, 0)) && eng_ok(trk[0].eng_req);
     }
     proj_ram[0][off] = keep;
     stream_rehash();
@@ -94,7 +94,7 @@ static int user_presets(void)
     r->note[3] = 200; r->flags[3] = 0x43;
     r->note[4] = 0; r->flags[4] = 0x03;                     /* a rest with flags */
     r = &bk->r[1];                                          /* a drum grid: accents where there is no hit */
-    r->used = UP_USED; r->ver = UP_VER_GRID; r->engine = ENGI_DRUM; r->np = 8; r->name[0] = 'G';
+    r->used = UP_USED; r->ver = UP_VER_GRID; r->engine = EID_DRUM; r->np = 8; r->name[0] = 'G';
     r->note[0] = 0x05; r->flags[0] = 0xFF;
     up_bank_check(0, sizeof *bk);
     bad += check("a bank from flash: a note pattern's note inside 0..127, its flags inside their fields",

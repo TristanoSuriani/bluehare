@@ -78,8 +78,19 @@ static uint32_t ed_unpack7(const uint8_t *a, uint32_t na, uint8_t *out, uint32_t
 }
 static uint8_t ed_buf[512] __attribute__((aligned(4)));
 
-/* the engine byte of DUMP / RELOAD / TRACK */
-static uint32_t ed_eng(const track_t *t) { return t->eng_req % NENGINES; }
+/* the engine byte of DUMP / RELOAD / TRACK: the engine's id (the protocol names engines by id) */
+static uint32_t ed_eng(const track_t *t) { return eng_id(t->eng_req); }
+/* the engine a request's id asks for: the build's own, its substitute (an engine left out), the build's first for a
+ * retired or unknown id; *sub set when it is not that id's own */
+static uint32_t ed_engine_of(uint32_t id, int *sub)
+{
+    uint32_t e = eng_load_id(id, sub);
+    if (e == ENG_NO) {
+        *sub = 1;
+        return 0u;
+    }
+    return e;
+}
 
 /* ---- live sync (v2): while the editor WATCHes, device-side changes are pushed.
  * Shadows of the selected track's p[] + song.g[] are kept in step with what the editor knows (its own SET updates
@@ -334,13 +345,13 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     switch (cmd) {
     case ED_INFO:
         ed_str("FELUCCA " FELUCCA_VERSION, 24);
-        ed_b(NENGINES);
+        ed_b(EID_COUNT);                                  /* (NENGINES of the protocol: the ids, "-" none here) */
         ed_b(P_COUNT);
         ed_b(G_COUNT);
         ed_b(0);                                          /* NSTEP (1.5: no steps) */
         ed_b(P_E0);
-        for (i = 0; i < NENGINES; i++)
-            ed_str(ENGINES[i]->name, 8);
+        for (i = 0; i < EID_COUNT; i++)
+            ed_str(eng_by_id(i)->name, 8);
         ed_b(NTRK);                                       /* v3 */
         ed_b(16);                                          /* v6: CHAIN_ROWS (1.5: no A..D song; kept: editors read the
                                                             * tags after it only when it is 16) */
@@ -363,10 +374,11 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         if (na < 2u || !(d = ed_desc(a[0], a[1], &vp)))
             return;
         if (cmd == ED_SET && na >= 4u) {
-            if (a[0] == 1 && a[1] == G_ENGSEL) {          /* engine change: the safe path (a retired number: ANALOG) */
+            if (a[0] == 1 && a[1] == G_ENGSEL) {          /* engine change by id: the safe path (ed_engine_of) */
                 ed_load_t b;
+                int sub;
                 ed_load_before(&b);
-                set_engine((uint32_t)clamp(ed_rv(a + 2), 0, NENGINES - 1));
+                set_engine(ed_engine_of((uint32_t)clamp(ed_rv(a + 2), 0, EID_COUNT - 1), &sub));
                 ed_load_after(&b);
             } else if (d->max > d->min) {
                 *vp = (int16_t)enum_orig(d, clamp(ed_rv(a + 2), d->min, d->max));
@@ -405,14 +417,18 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             for (i = 0; i <= (uint32_t)(d->max - d->min) && i < 24u; i++)
                 ed_str(d->names[i], 8);
         break;
-    case ED_PRESET: {                                      /* engine, preset */
+    case ED_PRESET: {                                      /* engine id, preset (an id the build lacks: ed_engine_of,
+                                                           * its first preset) */
         ed_load_t b;
-        if (na < 2u || a[0] >= NENGINES)
+        uint32_t e;
+        int sub;
+        if (na < 2u || a[0] >= EID_COUNT)
             return;
+        e = ed_engine_of(a[0], &sub);
         ed_load_before(&b);
-        if (a[0] != TSEL->eng_req)
-            set_engine(a[0]);
-        apply_preset(a[1]);
+        if (e != TSEL->eng_req)
+            set_engine(e);
+        apply_preset(sub ? 0u : a[1]);
         ed_load_after(&b);
         ui.force = 1;
         ed_b(ed_eng(TSEL));
@@ -432,16 +448,19 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(a[1] & 3u);
         ed_b(project_used(a[1] & 3u));
         break;
-    case ED_NAMES:                                         /* preset names of an engine */
-        if (na < 1u || a[0] >= NENGINES)
+    case ED_NAMES: {                                       /* preset names of an engine (by id) */
+        const engine_t *en;
+        if (na < 1u || a[0] >= EID_COUNT)
             return;
+        en = eng_by_id(a[0]);
         ed_b(a[0]);
-        ed_b(ENGINES[a[0]]->npresets);
-        for (i = 0; i < ENGINES[a[0]]->npresets; i++)
-            ed_str(ENGINES[a[0]]->presets[i].name, 12);
+        ed_b(en->npresets);
+        for (i = 0; i < en->npresets; i++)
+            ed_str(en->presets[i].name, 12);
         for (i = 0; i < 2u; i++)                           /* then the two edit-page titles */
-            ed_str(ENGINES[a[0]]->page_title[i], 8);
+            ed_str(en->page_title[i], 8);
         break;
+    }
     case ED_SMP_ERASE:                                     /* no sample slots (removed in 1.5): USR1..3 are empty, */
         if (na < 1u || a[0] >= 3u)                         /* so erasing one is done (a backup's restore of an */
             return;                                        /* empty slot goes through) */

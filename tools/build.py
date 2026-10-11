@@ -176,6 +176,30 @@ def build_loader():
 
 # ---- app
 
+# the engines a build can hold (firmware/src/core.h FELUCCA_ENG_<NAME>, all on by default)
+ENGINES = ["ANALOG", "FM6", "WAVE", "WEST", "HOOVER", "PHASE", "LOFI", "VOICE", "TRIO", "WHEEL", "PHYS", "NOISE",
+           "BYTE", "DRUM"]
+
+
+def engine_flags():
+    """-D flags for the engines: FELUCCA_ENGINES="ANALOG FM6 DRUM" (spaces or commas) builds those only; else
+    FELUCCA_ENG_<NAME>=0 / 1 one by one (unset: the firmware's default, on)"""
+    pick = os.environ.get("FELUCCA_ENGINES")
+    if pick:
+        want = {n.strip().upper() for n in pick.replace(",", " ").split() if n.strip()}
+        unknown = want - set(ENGINES)
+        if unknown or not want:
+            raise SystemExit(f"build: FELUCCA_ENGINES: unknown {', '.join(sorted(unknown))} (known: {' '.join(ENGINES)})"
+                             if unknown else "build: FELUCCA_ENGINES names none")
+        return [f"-DFELUCCA_ENG_{n}={int(n in want)}" for n in ENGINES]
+    out = []
+    for n in ENGINES:
+        v = os.environ.get(f"FELUCCA_ENG_{n}")
+        if v in ("0", "1"):
+            out.append(f"-DFELUCCA_ENG_{n}={v}")
+    return out
+
+
 def build_app():
     flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
     for flag in ("FELUCCA_FLASH", "FELUCCA_OTA", "FELUCCA_OTA_DRYRUN", "FELUCCA_OTA_RAMONLY", "FELUCCA_CDC",
@@ -184,6 +208,7 @@ def build_app():
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
+    flags += engine_flags()
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")

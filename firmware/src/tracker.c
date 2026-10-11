@@ -50,7 +50,7 @@ static const uint8_t TKC_PARAM[TKC_N] = {0xFF, P_LEVEL, P_ATK, P_DEC, P_SUS, P_R
 /* the parameter id the engine's filter is (TKP_CUT / TKP_RES on track t's engine), 0xFF: it has none */
 static uint32_t tk_filter_id(const track_t *t, uint32_t which)
 {
-    uint32_t e = MIDI_CC_ENG[eng_idx(t->eng_req)] >> (which == TKP_CUT ? 4 : 0) & 15u;
+    uint32_t e = ENGINES[eng_idx(t->eng_req)]->cc >> (which == TKP_CUT ? 4 : 0) & 15u;
     return e ? P_E0 + e - 1u : 0xFFu;
 }
 static uint32_t tk_param_id(const track_t *t, uint32_t cmd)
@@ -93,6 +93,16 @@ static uint8_t tk_trk_inst[NTRK];       /* the instrument each track took last (
 /* instrument i (1..TK_INSTS) becomes track t's sound: the engine (switched after its voices fade, voice.c
  * engine_block), its EDIT values, the voice mode, FM6's patch; the track's settings stay (see the top). Audio ISR (a
  * row) or main loop with the audio IRQ off (the INSTR page). Not inlined: once a row at most, out of the ISR's loop */
+/* instrument in's factory sound in this build: the engine (its src is an engine id: the build's own, or the substitute
+ * of one it lacks), *pi its preset (a substitute: its first); ENG_NO for none (a user preset, none, a retired id) */
+static uint32_t tk_inst_engine(const tk_inst_t *in, uint32_t *pi)
+{
+    int sub;
+    uint32_t e = in->src < EID_COUNT ? eng_load_id(in->src, &sub) : ENG_NO;
+    if (e != ENG_NO)
+        *pi = sub || !ENGINES[e]->npresets ? 0u : (uint32_t)in->preset % ENGINES[e]->npresets;
+    return e;
+}
 static __attribute__((noinline)) void tk_inst_apply(track_t *t, uint32_t i)
 {
     const tk_inst_t *in;
@@ -104,12 +114,11 @@ static __attribute__((noinline)) void tk_inst_apply(track_t *t, uint32_t i)
     if (in->src >= TK_SRC_USER && in->src != TK_SRC_NONE) {
         if (tk_user_sound)
             tk_user_sound(t, (uint32_t)(in->src - TK_SRC_USER) % UP_SLOTS);
-    } else if (in->src < NENGINES && eng_ok(in->src)) {
-        e = ENGINES[in->src];
-        t->eng_req = in->src;
+    } else if ((k = tk_inst_engine(in, &pi)) != ENG_NO) {
+        e = ENGINES[k];
+        t->eng_req = (uint8_t)k;
         t->user = 0;
         if (e->npresets) {
-            pi = (uint32_t)in->preset % e->npresets;
             t->preset = (uint8_t)pi;
             for (k = 0; k < 8u; k++)
                 t->p[P_E0 + k] = (int16_t)e->presets[pi].e[k];
@@ -134,6 +143,7 @@ static uint32_t tk_track_inst(uint32_t k)
     const track_t *t = &trk[k % NTRK];
     uint32_t i = tk_trk_inst[k % NTRK];
     const tk_inst_t *in;
+    uint32_t e, pi;
     if (!i || i > TK_INSTS)
         return 0;
     in = &tk.instr[i - 1u];
@@ -141,9 +151,9 @@ static uint32_t tk_track_inst(uint32_t k)
         return 0;
     if (in->src >= TK_SRC_USER)
         return t->user == in->src - TK_SRC_USER + 1u ? i : 0u;
-    if (t->user || t->eng_req != in->src)
+    if ((e = tk_inst_engine(in, &pi)) == ENG_NO || t->user || t->eng_req != e)
         return 0;
-    return !ENGINES[in->src]->npresets || t->preset == in->preset % ENGINES[in->src]->npresets ? i : 0u;
+    return !ENGINES[e]->npresets || t->preset == pi ? i : 0u;
 }
 
 /* -------------------------------------------------------------- playback --- */
@@ -437,7 +447,7 @@ static void tk_defaults(void)
     for (i = 0; i < TK_INSTS; i++)
         tk.instr[i].src = TK_SRC_NONE;
     for (i = 0; i < NPART; i++) {
-        tk.instr[i].src = TRK_DEF[i][0];
+        tk.instr[i].src = (uint8_t)eng_id(TRK_DEF[i][0]);   /* (an instrument names its engine by id) */
         tk.instr[i].preset = TRK_DEF[i][1];
     }
     memset(tk.cut, TK_INST_VAL, sizeof tk.cut);
@@ -460,7 +470,7 @@ static void tk_bound(void)
             tk.len[i] = TK_ROWS;
     for (i = 0; i < TK_INSTS; i++) {
         uint8_t s = tk.instr[i].src;
-        if (s != TK_SRC_NONE && (s >= TK_SRC_USER ? s - TK_SRC_USER >= UP_SLOTS : !eng_ok(s)))
+        if (s != TK_SRC_NONE && (s >= TK_SRC_USER ? s - TK_SRC_USER >= UP_SLOTS : eng_load_id(s, 0) == ENG_NO))
             tk.instr[i].src = TK_SRC_NONE;
     }
     for (i = 0; i < NTRK; i++) {

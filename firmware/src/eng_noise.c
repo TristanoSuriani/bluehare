@@ -250,6 +250,9 @@ static const preset_t NOISE_PRESETS[] = {
 
 static const engine_t ENG_NOISE = {
     .name = "NOISE",
+    .id = EID_NOISE,
+    .cc = 0x34,
+    .cats = "FFFF",
     .page_title = {"SRC", "MOVE"},
     .edit = {
         {"MODE", F_ENUM, 0, 3, 0, N_NOISE_MODE, 0},

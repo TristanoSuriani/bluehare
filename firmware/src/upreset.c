@@ -29,7 +29,7 @@
  * gets the four at their defaults, which play as before); firmware before reads a record of 103 by count too (its
  * 91 parameters before P_E0 and the engine's 8: the four new ones are left out).
  * SPREAD (P_SPRD, #148, before 1.2's release) made it P_COUNT 104 the same way: a record of 103 gets SPREAD 0.
- * A record of a retired engine (DIGITAL, SAMPLE, GRAIN, SLICE: removed in 1.5, core.h ENG_RETIRED) is not valid: the
+ * A record of a retired engine (DIGITAL, SAMPLE, GRAIN, SLICE: removed in 1.5, core.h EID_RETIRED) is not valid: the
  * slot shows as empty (UP_PUT refuses one) and its bytes stay in flash until the slot is written.
  *
  * With -DUP_HOST (host test) only the part above #ifndef UP_HOST is built;
@@ -78,7 +78,7 @@ static int up_to_v4(up_rec_t *r)                 /* 1 = r is version 4 / 5 (now)
     uint32_t i;
     if (r->ver >= 4u)
         return 1;
-    if (r->ver == 1u && r->engine == ENGI_PHYS)
+    if (r->ver == 1u && r->engine == EID_PHYS)
         return 0;
     for (i = 0; i < r->np; i++)
         if ((v[i] = r->p[i]) < -64 || v[i] > 127)
@@ -97,7 +97,7 @@ static void up_set_cat(up_rec_t *r, uint32_t c)  /* c CAT_BASS..CAT_OTHER; a rec
 
 static int up_valid(const up_rec_t *r)
 {
-    if (!(r->used == UP_USED && r->ver >= 1u && r->ver <= UP_VER_GRID && r->engine < NENGINES && !ENG_RETIRED(r->engine) &&
+    if (!(r->used == UP_USED && r->ver >= 1u && r->ver <= UP_VER_GRID && r->engine < EID_COUNT && !EID_RETIRED(r->engine) &&
           r->np >= 8u && r->np <= (r->ver >= 4u ? UP_PMAX * 2u : UP_PMAX) && r->name[0])) return 0;
     if (r->ver >= 4u) for (uint32_t i = 0; i < r->np; i++) if (r->packed[i] > 191u) return 0;
     return 1;
@@ -118,7 +118,7 @@ static void up_migrate(up_rec_t *r)
     if (!up_valid(r)) return;
     for (k = 0; k < 8u; k++) e[k] = up_value(r, r->np - 8u + k);
     if (drum_from_phys(r->engine, e)) {
-        r->engine = ENGI_DRUM;
+        r->engine = EID_DRUM;
         for (k = 0; k < 8u; k++) up_set_value(r, r->np - 8u + k, e[k]);
     }
 }
@@ -199,7 +199,7 @@ static int up_parse(const uint8_t *a, uint32_t na, up_rec_t *r, uint32_t *slot)
         ;
     k = 3u + n;                                  /* after the name's 0 */
     end = k + 2u * P_COUNT + 32u;
-    if (a[0] >= UP_SLOTS || a[1] >= NENGINES || ENG_RETIRED(a[1]) || 2u + n >= na || !up_name_ok(a + 2, n) ||
+    if (a[0] >= UP_SLOTS || a[1] >= EID_COUNT || EID_RETIRED(a[1]) || 2u + n >= na || !up_name_ok(a + 2, n) ||
         (na != end && ((na != end + 17u && na != end + 18u) || a[end] > 1u)) || (na == end + 18u && a[end + 17u] >= CAT_N))
         return 1;
     up_rec_t staged, *target = r;
@@ -242,17 +242,19 @@ static int up_parse(const uint8_t *a, uint32_t na, up_rec_t *r, uint32_t *slot)
 }
 
 #ifndef UP_HOST
+/* parameter i's descriptor for a record of engine id e (an engine the build lacks: ENG_NONE's, its values 0) */
+static const param_desc_t *up_desc(uint32_t e, uint32_t i) { return i >= P_E0 ? &eng_by_id(e)->edit[i - P_E0] : &TP[i]; }
 static void up_values(const up_rec_t *r, int16_t *v)   /* mapped and clamped for its engine */
 {
     int16_t def[P_COUNT];
     uint32_t i;
     for (i = 0; i < P_COUNT; i++)
-        def[i] = param_desc_of(r->engine, i)->def;
+        def[i] = up_desc(r->engine, i)->def;
     up_params(r, v, def);
-    if (r->ver == 1u && ENGINES[r->engine] == &ENG_PHYS)   /* (before 1.0: MODEL 2 was DUST) */
+    if (r->ver == 1u && r->engine == EID_PHYS)   /* (before 1.0: MODEL 2 was DUST) */
         phys_legacy(&v[P_E0]);
     for (i = 0; i < P_COUNT; i++)
-        v[i] = (int16_t)param_fit(param_desc_of(r->engine, i), v[i]);   /* (a retired KIT: the kit it plays) */
+        v[i] = (int16_t)param_fit(up_desc(r->engine, i), v[i]);   /* (a retired KIT: the kit it plays) */
 }
 
 #include "up_fm6.c"                            /* the FM6 user presets' patches: the same kind of store */
@@ -269,7 +271,7 @@ static void up_boot(void)                      /* persist_boot: the banks from f
     fvb_boot();                                  /* FM6's voice bank: a staged one finished, its voices */
 #ifdef FELUCCA_FAVORITES
     for (uint32_t k = 0; k < UP_SLOTS; k++)
-        if (!up_used(k)) favorite_set(NENGINES, k, 0);
+        if (!up_used(k)) favorite_set(EID_COUNT, k, 0);
 #endif
 }
 
@@ -314,7 +316,7 @@ static int up_put(uint32_t k, const up_rec_t *r)
 #endif
     if (!r) {
 #ifdef FELUCCA_FAVORITES
-        if (favorite_set(NENGINES, k, 0)) settings_save();
+        if (favorite_set(EID_COUNT, k, 0)) settings_save();
 #endif
         uint32_t i;
         for (i = 0; i < NTRK; i++)
@@ -337,12 +339,12 @@ static void up_slot_label(char *b, uint32_t k)  /* "U07" */
     b[3] = 0;
 }
 
-/* the automatic name of engine e's sound in slot k: engine name + slot number ("ANALOG 07"); b holds 13 */
+/* the automatic name of engine e's (an index; ENG_NO: one the build lacks) sound in slot k: engine name + slot number
+ * ("ANALOG 07"); b holds 13 */
 static void up_auto_name(char *b, uint32_t e, uint32_t k)
 {
     char l[4];
-    e %= NENGINES;
-    str_cpy(b, ENGINES[e]->name, 9);
+    str_cpy(b, e < NENGINES ? ENGINES[e]->name : "USER", 9);
     up_slot_label(l, k);
     str_cpy(b + str_len(b), " ", 2);
     str_cpy(b + str_len(b), l + 1, 3);
@@ -354,7 +356,7 @@ static void up_set_name(up_rec_t *r, uint32_t k, const char *name)
     char b[16];
     uint32_t i;
     if (!name || !name[0]) {
-        up_auto_name(b, r->engine, k);
+        up_auto_name(b, eng_of_id(r->engine), k);
         name = b;
     }
     memset(r->name, 0, sizeof r->name);
@@ -374,7 +376,7 @@ static int up_store_cat(uint32_t k, const char *name, uint32_t cat)
     memset(&r, 0, sizeof r);
     r.used = UP_USED;
     r.ver = UP_VER;
-    r.engine = TSEL->eng_req;
+    r.engine = (uint8_t)eng_id(TSEL->eng_req);     /* (a record names its engine by id) */
     r.np = P_COUNT;
     up_set_name(&r, k, name);
     for (i = 0; i < P_COUNT; i++)
@@ -382,7 +384,7 @@ static int up_store_cat(uint32_t k, const char *name, uint32_t cat)
     up_set_cat(&r, cat ? cat : track_cat(TSEL));      /* (the pattern: empty) */
     {
         int rc = up_put(k, &r);                         /* the record first, then its FM6 patch (up_fm6.c) */
-        if ((rc == 0 || rc == 3) && r.engine == ENGI_FM6) {
+        if ((rc == 0 || rc == 3) && r.engine == EID_FM6) {
             int u = upf_store(k, (uint32_t)(TSEL - trk));
             if (u == 2)
                 rc = 2;
@@ -407,15 +409,20 @@ static int up_rename_cat(uint32_t k, const char *name, uint32_t cat)
 }
 static int up_rename(uint32_t k, const char *name) { return up_rename_cat(k, name, 0); }
 
+/* the engine (index) a used slot's sound plays on; ENG_NO: an engine the build lacks (the slot is kept, listed with
+ * no engine's sounds, loads nothing) */
+static uint32_t up_engine(uint32_t k) { return eng_of_id(up_rec(k % UP_SLOTS)->engine); }
+
 /* slot k -> the selected part's sound: engine and every parameter except the track's own (param_kept:
- * the mix, ARP, SCL, the old pattern parameters, the SLICER); the record's pattern is never loaded. 0 ok, 1 empty */
+ * the mix, ARP, SCL, the old pattern parameters, the SLICER); the record's pattern is never loaded. 0 ok, 1 empty (or
+ * a sound of an engine the build lacks: up_engine; the record is kept as it is) */
 static int up_load(uint32_t k)
 {
     const up_rec_t *r;
     int16_t v[P_COUNT];
     uint32_t i;
     track_t *t = TSEL;
-    if (!up_used(k))
+    if (!up_used(k) || up_engine(k) == ENG_NO)
         return 1;
     r = up_rec(k);
     up_values(r, v);
@@ -423,7 +430,7 @@ static int up_load(uint32_t k)
     panic_req |= (uint8_t)(1u << song.sel);
     {
         fm1_irq_off();                                  /* the audio ISR must not see half a sound */
-        t->eng_req = r->engine;
+        t->eng_req = (uint8_t)up_engine(k);
         for (i = 0; i < P_COUNT; i++)
             if (!param_kept(i))
                 t->p[i] = v[i];
@@ -446,10 +453,11 @@ static void up_tk_sound(track_t *t, uint32_t k)
     const up_rec_t *r;
     int16_t v[P_COUNT];
     uint32_t i;
-    if (!up_used(k) || !eng_ok((r = up_rec(k))->engine))
+    if (!up_used(k) || up_engine(k) == ENG_NO)
         return;
+    r = up_rec(k);
     up_values(r, v);
-    t->eng_req = r->engine;
+    t->eng_req = (uint8_t)up_engine(k);
     for (i = 0; i < 8u; i++)
         t->p[P_E0 + i] = v[P_E0 + i];
     t->p[P_VOICE] = v[P_VOICE];
@@ -458,22 +466,23 @@ static void up_tk_sound(track_t *t, uint32_t k)
     upf_track_load(t, k);                               /* FM6: the preset's own patch (up_fm6.c) */
 }
 
-/* the engine a used slot's sound plays on */
-static uint32_t up_engine(uint32_t k) { return up_rec(k)->engine; }
 
-static uint32_t up_count(void)                 /* used slots */
+
+/* the PRESETS list's user presets: the used slots of an engine the build has */
+static int up_avail(uint32_t k) { return up_used(k) && up_engine(k) != ENG_NO; }
+static uint32_t up_count(void)                 /* those slots */
 {
     uint32_t k, n = 0;
     for (k = 0; k < UP_SLOTS; k++)
-        n += (uint32_t)up_used(k);
+        n += (uint32_t)up_avail(k);
     return n;
 }
 
-static uint32_t up_nth(uint32_t n)             /* slot of the n-th used one (n < up_count()) */
+static uint32_t up_nth(uint32_t n)             /* slot of the n-th of them (n < up_count()) */
 {
     uint32_t k;
     for (k = 0; k < UP_SLOTS; k++)
-        if (up_used(k) && !n--)
+        if (up_avail(k) && !n--)
             return k;
     return 0;
 }

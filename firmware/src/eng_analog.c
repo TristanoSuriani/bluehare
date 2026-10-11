@@ -182,6 +182,9 @@ static const preset_t ANALOG_PRESETS[] = {
 
 static const engine_t ENG_ANALOG = {
     .name = "ANALOG",
+    .id = EID_ANALOG,
+    .cc = 0x56,
+    .cats = "LPBPBKLBULLP",
     .page_title = {"OSC", "FLT"},
     .edit = {
         {"WAVE", F_ENUM, 0, 6, 0, N_ANALOG_WAVE, 0},

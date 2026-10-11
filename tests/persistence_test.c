@@ -112,7 +112,7 @@ static void mig_rec(up_bank_t *b, uint32_t i, uint32_t engine, int16_t slot, cha
     memset(r, 0, sizeof *r);
     r->used = UP_USED; r->ver = UP_VER; r->engine = (uint8_t)engine; r->np = P_COUNT;
     r->name[0] = tag;
-    for (k = 0; k < P_COUNT; k++) up_set_value(r, k, param_desc_of(engine, k)->def);
+    for (k = 0; k < P_COUNT; k++) up_set_value(r, k, param_desc_of(eng_of_id(engine), k)->def);   /* (engine: an id) */
     up_set_value(r, P_E7, slot);
     up_set_value(r, P_E0, (int16_t)(tag & 7));          /* (each record another sound) */
 }
@@ -124,11 +124,11 @@ static void mig_setup(void)
     memset(nor, 0xFF, sizeof nor);
     memset(b, 0, sizeof b);
     for (uint32_t i = 0; i < 2u; i++) { b[i].magic = UP_BANK_MAGIC; b[i].rsize = sizeof(up_rec_t); b[i].nslot = UP_PER_BANK; }
-    mig_rec(&b[0], 0, ENGI_FM6, FM6_NFACTORY + 2, 'A');
-    mig_rec(&b[0], 1, ENGI_FM6, 1, 'B');
-    mig_rec(&b[0], 2, ENGI_FM6, FM6_NFACTORY + 4, 'C');
-    mig_rec(&b[0], 3, ENGI_DRUM, FM6_NFACTORY + 2, 'D');
-    mig_rec(&b[1], 1, ENGI_FM6, FM6_NFACTORY + 0, 'E');
+    mig_rec(&b[0], 0, EID_FM6, FM6_NFACTORY + 2, 'A');
+    mig_rec(&b[0], 1, EID_FM6, 1, 'B');
+    mig_rec(&b[0], 2, EID_FM6, FM6_NFACTORY + 4, 'C');
+    mig_rec(&b[0], 3, EID_DRUM, FM6_NFACTORY + 2, 'D');
+    mig_rec(&b[1], 1, EID_FM6, FM6_NFACTORY + 0, 'E');
     st_save(OBJ_UPRESET0, &b[0], sizeof b[0]);
     st_save(OBJ_UPRESET0 + 1, &b[1], sizeof b[1]);
     memset(&mig_bank, 0, sizeof mig_bank);
@@ -707,12 +707,12 @@ int main(void)
     fail_after = -1;
     bad += check("failed preset save rolls back bank and generation", ok && up_gen == before &&
                   !memcmp(&up_bank[0], &bank, sizeof bank));
-    favorite_set(NENGINES, 3, 1);
+    favorite_set(EID_COUNT, 3, 1);
     fail_after = 1;
     ok = up_put(3, 0) == 2;
     fail_after = -1;
     bad += check("failed preset erasure retains both the sound and its favorite", ok && up_used(3) &&
-                  favorite_has(NENGINES, 3) && !memcmp(&up_bank[0], &bank, sizeof bank));
+                  favorite_has(EID_COUNT, 3) && !memcmp(&up_bank[0], &bank, sizeof bank));
     memset(&up_bank[0], 0, sizeof up_bank[0]);
     up_boot();
     bad += check("failed preset save keeps old flash", !memcmp(&up_bank[0], &bank, sizeof bank));

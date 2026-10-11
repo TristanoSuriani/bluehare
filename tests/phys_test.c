@@ -158,7 +158,7 @@ static void torture(void)
         uint32_t frames = FS * 6u, nk = 0;
         int32_t peak = 0;
         host_tracks_init();
-        host_preset(&trk[0], 9, preset_of(md));
+        host_preset(&trk[0], ENGI_PHYS, preset_of(md));
         trk[0].p[P_SUS] = 127;
         for (f = 0; f < frames; f += CTL) {
             int32_t o[2 * CTL];
@@ -261,7 +261,7 @@ static void cost(void)
         {"SYMP, curved bridge", PM_SYMP, {PM_SYMP, 127, 127, 127, 127, 127, 127, 127}},
     };
     uint32_t i, ok = 1;
-    double idle = cpu(0, 0, 0, 0), wire = cpu(2, 5, 0, 8) - idle, worst = 0, modal = 0;
+    double idle = cpu(0, 0, 0, 0), wire = cpu(ENGI_PHASE, 5, 0, 8) - idle, worst = 0, modal = 0;
     if (idle <= 0) {
         printf("phys_test: cost: no instruction counter on this host (proc_pid_rusage); not checked\n");
         return;
@@ -269,7 +269,7 @@ static void cost(void)
     printf("phys_test: cost, instructions per sample over the idle mix (%.0f), 8 notes asked (PHYS plays 3):\n", idle);
     printf("phys_test:   %-34s %6.0f  (the limit)\n", "PHASE WIRE (heaviest preset)", wire);
     for (i = 0; i < sizeof W / sizeof W[0]; i++) {
-        double c = cpu(9, 0, W[i].e, 8) - idle, lim = wire;
+        double c = cpu(ENGI_PHYS, 0, W[i].e, 8) - idle, lim = wire;
         if (!i)
             modal = c;
         if (W[i].md >= PM_MEMB)                         /* the new models: at most MODAL struck */
@@ -338,7 +338,7 @@ static void play_preset(uint32_t f, uint32_t pi)
     uint32_t k;
     if (!f) {
         host_tracks_init();
-        host_preset(&trk[0], 9, pi);
+        host_preset(&trk[0], ENGI_PHYS, pi);
     }
     if (f % (FS / 8u) >= CTL)
         return;
@@ -356,7 +356,7 @@ static void play_model(uint32_t f, uint32_t md)
     uint32_t i, step = FS * 6u / 10u, n = f / step, cnt = 7u, base = 24u, iv = 12u;
     if (!f) {
         host_tracks_init();
-        host_preset(&trk[0], 9, 0);
+        host_preset(&trk[0], ENGI_PHYS, 0);
         for (i = 0; i < 8u; i++)
             trk[0].p[P_E0 + i] = ENG_PHYS.edit[i].def;
         trk[0].p[P_E0] = (int16_t)md;

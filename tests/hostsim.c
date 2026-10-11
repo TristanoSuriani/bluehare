@@ -198,7 +198,7 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
     host_preset(t2, TRK_DEF[1][0], TRK_DEF[1][1]);
-    host_preset(t3, 3, 0);
+    host_preset(t3, ENGI_LOFI, 0);
     host_drums(td);
     tk.len[0] = 16;
     for (i = 0; i < 16u; i++) {
@@ -742,11 +742,11 @@ static int tracks_test(const char *dir)
     {   /* FM6, PHASE, VOICE (their heaviest presets) and drums on part 4 at once: 3 + 3 + 2 notes and the hits in the
          * budget of 8 */
         const uint8_t fm = ENGI_FM6;
-        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {2, (uint8_t)heavy[2], 3}, {5, (uint8_t)heavy[5], 2},
+        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_PHASE, (uint8_t)heavy[ENGI_PHASE], 3}, {ENGI_VOICE, (uint8_t)heavy[ENGI_VOICE], 2},
                                    {ENGI_DRUM, 0, DRUM_HITS}};
-        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {2, (uint8_t)heavy[2], 8}, {5, (uint8_t)heavy[5], 4},
+        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_PHASE, (uint8_t)heavy[ENGI_PHASE], 8}, {ENGI_VOICE, (uint8_t)heavy[ENGI_VOICE], 4},
                                   {ENGI_DRUM, 0, DRUM_HITS}};
-        uint8_t vv[NPART][3] = {{5, (uint8_t)heavy[5], 4}, {5, (uint8_t)heavy[5], 4}, {0, 0, 0}, {0, 0, 0}};
+        uint8_t vv[NPART][3] = {{ENGI_VOICE, (uint8_t)heavy[ENGI_VOICE], 4}, {ENGI_VOICE, (uint8_t)heavy[ENGI_VOICE], 4}, {0, 0, 0}, {0, 0, 0}};
         uint8_t idle[NPART][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {ENGI_DRUM, 0, DRUM_HITS}};
         uint32_t bm2 = 0, bm3 = 0;
         double two_voice, none;

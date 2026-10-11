@@ -362,7 +362,7 @@ static int cc_map_test(void)
     int bad = 0, ok = 1; uint32_t i, e; int16_t before[P_COUNT];
     midi_test_reset();
     bad += check("power-on parts: ANALOG, FM6, LOFI, DRUM", trk[0].eng_req == 0u && trk[1].eng_req == ENGI_FM6 &&
-                 trk[2].eng_req == 3u && trk[3].eng_req == ENGI_DRUM);
+                 trk[2].eng_req == ENGI_LOFI && trk[3].eng_req == ENGI_DRUM);
     for (i = 0; i < NELEM(COMMON); i++) {
         queued(0xB0, COMMON[i].cc, 127, 1);
         ok &= trk[0].p[COMMON[i].id] == TP[COMMON[i].id].max;
@@ -385,7 +385,7 @@ static int cc_map_test(void)
     queued(0xB3, 74, 10, 1);
     bad += check("CC74 on DRUM (channel 4): TONE", trk[3].p[P_E2] == 10);
     for (e = 0, ok = 1; e < NENGINES; e++) {   /* the table names a continuous EDIT value of every engine */
-        uint32_t m = MIDI_CC_ENG[e], k;
+        uint32_t m = ENGINES[e]->cc, k;
         for (k = 0; k < 2u; k++) {
             uint32_t n = (m >> (k ? 0 : 4)) & 15u;
             const param_desc_t *d = n ? &ENGINES[e]->edit[n - 1u] : 0;
@@ -393,7 +393,7 @@ static int cc_map_test(void)
         }
     }
     bad += check("every engine's CC74 / CC71 target is a continuous EDIT value (or none)", ok);
-    trk[2].eng_req = trk[2].engine = 7u;               /* WHEEL: no brightness, no resonance */
+    trk[2].eng_req = trk[2].engine = ENGI_WHEEL;       /* WHEEL: no brightness, no resonance */
     memcpy(before, trk[2].p, sizeof before); queued(0xB2, 74, 3, 1); queued(0xB2, 71, 3, 1);
     bad += check("CC74 / CC71 on WHEEL: ignored", !memcmp(before, trk[2].p, sizeof before));
     memcpy(before, trk[0].p, sizeof before);

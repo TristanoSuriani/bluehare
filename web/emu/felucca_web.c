@@ -448,7 +448,7 @@ EXPORT uint8_t *web_anim_levels(void)
  * steps, held; T4 DRUM, kick snare and hats. PLAY is the page's (or the test's) to press */
 EXPORT void web_test_heavy(void)
 {
-    static const uint8_t ENG[3][2] = {{12, 4}, {ENGI_PHYS, 7}, {ENGI_WAVE, 1}};
+    static const uint8_t ENG[3][2] = {{ENGI_FM6, 4}, {ENGI_PHYS, 7}, {ENGI_WAVE, 1}};
     static const uint8_t CH[4][4] = {{48, 55, 60, 64}, {45, 52, 57, 60}, {41, 48, 53, 57}, {43, 50, 55, 59}};
     uint32_t p, i;
     for (p = 0; p < 3u; p++) {

@@ -106,6 +106,9 @@ static const preset_t BYTE_PRESETS[] = {
 
 static const engine_t ENG_BYTE = {
     .name = "BYTE",
+    .id = EID_BYTE,
+    .cc = 0x60,
+    .cats = "LFBLFF",
     .page_title = {"FORM", "TONE"},
     .edit = {
         {"FORM", F_ENUM, 0, BF_COUNT - 1, 0, N_BYTE_FORM, 0},

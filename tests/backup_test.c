@@ -329,7 +329,7 @@ int main(void)
         for (uint32_t k = 0; k < 5u; k++) {             /* slots 1..5: B3, F2, B5 (empty), B3 on DRUM, B3 */
             up_rec_t *r = &ub.r[k];
             uint32_t e = k == 3u ? ENGI_DRUM : ENGI_FM6;
-            r->used = UP_USED; r->ver = UP_VER; r->engine = (uint8_t)e; r->np = P_COUNT;
+            r->used = UP_USED; r->ver = UP_VER; r->engine = (uint8_t)eng_id(e); r->np = P_COUNT;   /* (a record: the id) */
             r->name[0] = (char)('A' + k);
             for (uint32_t i = 0; i < P_COUNT; i++) up_set_value(r, i, param_desc_of(e, i)->def);
             up_set_value(r, P_E7, SL[k]);                 /* (the raw stored value: B slots as 1.0.2 wrote them) */

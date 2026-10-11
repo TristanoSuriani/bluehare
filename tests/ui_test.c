@@ -873,7 +873,7 @@ static int test_favorites(void)
     before = *TSEL;
     turn(EN_K3, 1);
     bad += check("a DRUM sound can be a favorite on any track", preset_favorite() &&
-                 favorite_has(ENGI_DRUM, 0) && !memcmp(TSEL, &before, sizeof before));
+                 favorite_has(EID_DRUM, 0) && !memcmp(TSEL, &before, sizeof before));
     turn(EN_PRESET, 1);
     bad += check("filtered browsing crosses DRUM and synth sounds while retaining the track's pattern and ARP",
                  TSEL->eng_req == 0 && preset_favorite() &&
@@ -896,14 +896,14 @@ static int test_favorites(void)
     up_store(31, "Favorite");
     up_load(31);
     turn(EN_K3, 1);
-    bad += check("user slot 32 has its own favorite reference", favorite_has(NENGINES, 31) && preset_favorite());
+    bad += check("user slot 32 has its own favorite reference", favorite_has(EID_COUNT, 31) && preset_favorite());
     up_store(31, "Renamed");
-    bad += check("overwriting or renaming a user slot retains its star", favorite_has(NENGINES, 31));
+    bad += check("overwriting or renaming a user slot retains its star", favorite_has(EID_COUNT, 31));
     up_put(31, 0);
     bad += check("successful erasure removes the user slot star and source label",
-                 !favorite_has(NENGINES, 31) && !up_used(31) && !TSEL->user);
+                 !favorite_has(EID_COUNT, 31) && !up_used(31) && !TSEL->user);
     up_store(31, "New sound");
-    bad += check("reusing the erased slot does not restore its old star", !favorite_has(NENGINES, 31));
+    bad += check("reusing the erased slot does not restore its old star", !favorite_has(EID_COUNT, 31));
     return bad;
 }
 
@@ -921,8 +921,7 @@ static int test_categories(void)
     memset(&favorites, 0, sizeof favorites);
     memset(up_bank, 0, sizeof up_bank);
     for (e = 0; e < NENGINES; e++) {
-        const char *c = PRESET_CAT[e];
-        if (!eng_ok(e)) continue;                          /* (a retired number: no presets) */
+        const char *c = ENGINES[e]->cats ? ENGINES[e]->cats : "";
         ok &= str_len(c) == ENGINES[e]->npresets;
         for (k = 0; k < ENGINES[e]->npresets; k++)
             ok &= preset_cat(e, k) >= CAT_BASS && preset_cat(e, k) <= CAT_OTHER;
@@ -934,18 +933,18 @@ static int test_categories(void)
          * other engine's or setting */
         favorites_t before;
         for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
-            favorite_set(ENGI_BYTE, k, 1);
+            favorite_set(EID_BYTE, k, 1);
         before = favorites;
         for (k = 0, ok = 1; k < ENGINES[ENGI_WEST]->npresets; k++)
-            ok &= favorite_set(ENGI_WEST, k, 1) && favorite_has(ENGI_WEST, k) && !favorite_has(ENGI_HOOVER, k);
-        ok &= favorite_set(ENGI_HOOVER, 2, 1) && favorite_has(ENGI_HOOVER, 2) && !favorite_has(ENGI_HOOVER, 1);
-        ok &= !favorite_set(ENGI_WEST, 8, 1) && !favorite_has(ENGI_WEST, 8) && !favorite_set(NENGINES + 1u, 0, 1) &&
+            ok &= favorite_set(EID_WEST, k, 1) && favorite_has(EID_WEST, k) && !favorite_has(EID_HOOVER, k);
+        ok &= favorite_set(EID_HOOVER, 2, 1) && favorite_has(EID_HOOVER, 2) && !favorite_has(EID_HOOVER, 1);
+        ok &= !favorite_set(EID_WEST, 8, 1) && !favorite_has(EID_WEST, 8) && !favorite_set(EID_COUNT + 1u, 0, 1) &&
               favorites.factory[15][8] == 0xFFu && favorites.factory[15][9] == 4u;
         before.factory[15][8] = 0xFFu;
         before.factory[15][9] = 4u;
         ok &= !memcmp(&before, &favorites, sizeof favorites);
         for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
-            ok &= favorite_has(ENGI_BYTE, k);
+            ok &= favorite_has(EID_BYTE, k);
         bad += check("  WEST's and HOOVER's favourites: their own bits, BYTE's and the settings bytes untouched", ok);
         memset(&favorites, 0, sizeof favorites);
     }
@@ -1033,7 +1032,7 @@ static int test_categories(void)
         int16_t v0[P_COUNT], v1[P_COUNT];
         uint32_t c0;
         memset(r, 0, sizeof *r);
-        r->used = UP_USED; r->ver = 2; r->engine = ENGI_DRUM; r->np = 72;
+        r->used = UP_USED; r->ver = 2; r->engine = EID_DRUM; r->np = 72;
         str_cpy(r->name, "OLD KIT", 12);
         for (i = 0; i < 72u; i++) r->p[i] = (int16_t)(i % 100u);
         up_bank[0].magic = UP_BANK_MAGIC; up_bank[0].rsize = sizeof(up_rec_t); up_bank[0].nslot = UP_PER_BANK;
@@ -1043,9 +1042,9 @@ static int test_categories(void)
         up_values(r, v1);
         bad += check("  a version 2 record: listed by its engine (DRUM); a rename with a category makes it version 4, same sound",
                      c0 == CAT_DRUM && ok && r->ver == UP_VER && up_cat(9) == CAT_FX && !memcmp(v0, v1, sizeof v0));
-        r->ver = 1; r->engine = ENGI_PHYS;
+        r->ver = 1; r->engine = EID_PHYS;
         bad += check("  a version 1 PHYS record keeps its version (MODEL 2 = DUST): no category",
-                     (up_set_cat(r, CAT_PAD), r->ver == 1u && up_cat(9) == cat_of_engine(ENGI_PHYS)));
+                     (up_set_cat(r, CAT_PAD), r->ver == 1u && up_cat(9) == cat_of_engine(EID_PHYS)));
         memset(r, 0, sizeof *r);
     }
     /* PROJECT: KNOB 3 a random name */
@@ -1479,7 +1478,7 @@ static int mono_screens(uint32_t pal, int (*chk)(void), uint32_t *n)
     uint32_t e, i;
     for (e = 0; e < NENGINES; e++) {
         if (!eng_ok(e))
-            continue;                               /* (a retired number: never a track's) */
+            continue;
         for (i = 0; i < NPAGES; i++) {
             ui_power_on(); set_engine_of(TSEL, e); song.playing = 1; song.rec = 1;
             ui.home = 0; ui.page = (uint8_t)i; page_entered();
@@ -2801,11 +2800,11 @@ static int test_quick_layers(void)
     TSEL->p[P_SLCR] = SL_STUT; song.playing = 1;
     before = *TSEL;
     sync_reload = 0;
-    lay_combo(B_EDIT, white(eng_rank(2)));             /* (the keys: the engines one can pick, engines.c eng_vis) */
-    ok = TSEL->eng_req == 2u && TSEL->preset == 0u && ui.layer == LAYER_EDIT && sync_reload && !gates();
-    key_up(white(eng_rank(2))); frame();
+    lay_combo(B_EDIT, white(eng_rank(ENGI_PHASE)));             /* (the keys: the engines one can pick, engines.c eng_vis) */
+    ok = TSEL->eng_req == ENGI_PHASE && TSEL->preset == 0u && ui.layer == LAYER_EDIT && sync_reload && !gates();
+    key_up(white(eng_rank(ENGI_PHASE))); frame();
     key_down(white(1)); key_up(white(1)); frame();
-    ok &= TSEL->eng_req == ENGI_FM6;                    /* (G3: FM6, second in ENGINE_ORDER) */
+    ok &= TSEL->eng_req == ENGI_FM6;                    /* (G3: FM6, second in display order) */
     key_down(white(LY_INIT - 1u)); key_up(white(LY_INIT - 1u)); frame();
     ok &= TSEL->eng_req == eng_vis(LY_INIT - 1u) && (LY_INIT < NENG_SHOWN || TSEL->eng_req == ENGI_DRUM);   /* (the last
                                                          * key: DRUM; with more than 15 engines the 15th) */
@@ -2828,9 +2827,9 @@ static int test_quick_layers(void)
     bad += check("  every engine one can pick has its white key from F3 (NENG_SHOWN, 15 at most; never a retired one)",
                  ok && a == LY_INIT && LY_INIT == (NENG_SHOWN < 15u ? NENG_SHOWN : 15u));
     set_engine_of(TSEL, 0);
-    lay_combo(B_EDIT, white(eng_rank(3))); key_up(white(eng_rank(3))); frame();
+    lay_combo(B_EDIT, white(eng_rank(ENGI_LOFI))); key_up(white(eng_rank(ENGI_LOFI))); frame();
     turn(EN_K2, 1);
-    ok = TSEL->eng_req == 3u && TSEL->preset == 1u;
+    ok = TSEL->eng_req == ENGI_LOFI && TSEL->preset == 1u;
     turn(EN_K3, 1);
     ok &= preset_favorite();
     oct_back();
@@ -3314,43 +3313,38 @@ static int test_fm6_charts(void)
            check("FM6 charts: carriers on the bottom row, modulators a row up, one per cell, at most 4 rows", layout);
 }
 
-/* 1.5: DIGITAL, SAMPLE, GRAIN and SLICE removed: engines 1, 4, 8, 13 are retired ("-", never offered, silent, no
- * presets) and a clean break: a project naming one is refused, a user preset of one is not valid, a song's instrument
- * of one is dropped, an engine change to one or a track that got one any other way (the main loop's net) plays ANALOG;
- * the engines one can pick in their display order; the power-on parts */
+/* 1.5: engine ids and this build's indices (core.h): every engine's id, both ways; the retired ids (1 DIGITAL, 4 SAMPLE,
+ * 8 GRAIN, 13 SLICE) map to none, are "-" with no presets, a clean break: a project naming one is refused, a user
+ * preset of one is not valid, a song's instrument of one is dropped; the engines one can pick in their display order;
+ * the power-on parts (the substitutes of a build without some engines: tests/engines_test.c) */
 static int test_retired_engines(void)
 {
     static const uint8_t GONE[4] = {1, 4, 8, 13};
+    static const struct { uint32_t idx, id; const char *name; } MAP[] = {
+        {ENGI_ANALOG, EID_ANALOG, "ANALOG"}, {ENGI_FM6, EID_FM6, "FM6"}, {ENGI_WAVE, EID_WAVE, "WAVE"},
+        {ENGI_WEST, EID_WEST, "WEST"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"}, {ENGI_PHASE, EID_PHASE, "PHASE"},
+        {ENGI_LOFI, EID_LOFI, "LOFI"}, {ENGI_VOICE, EID_VOICE, "VOICE"}, {ENGI_TRIO, EID_TRIO, "TRIO"},
+        {ENGI_WHEEL, EID_WHEEL, "WHEEL"}, {ENGI_PHYS, EID_PHYS, "PHYS"}, {ENGI_NOISE, EID_NOISE, "NOISE"},
+        {ENGI_BYTE, EID_BYTE, "BYTE"}, {ENGI_DRUM, EID_DRUM, "DRUM"}};
     static const char *const ORDER[] = {"ANALOG", "FM6", "WAVE", "WEST", "HOOVER", "PHASE", "LOFI", "VOICE", "TRIO",
                                         "WHEEL", "PHYS", "NOISE", "BYTE", "DRUM"};
-    int bad = 0, ok = 1;
+    int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
-    for (i = 0; i < 4u; i++)
-        ok &= ENG_RETIRED(GONE[i]) && str_eq(ENGINES[GONE[i]]->name, "-") && !eng_ok(GONE[i]) &&
-              !ENGINES[GONE[i]]->npresets && str_eq(N_ENGNAME[GONE[i]], "-") && !*PRESET_CAT[GONE[i]];
+    ok = NENGINES == NELEM(MAP);
+    for (i = 0; i < NELEM(MAP); i++)
+        ok &= MAP[i].idx == i && ENGINES[i]->id == MAP[i].id && eng_id(i) == MAP[i].id && eng_of_id(MAP[i].id) == i &&
+              eng_load_id(MAP[i].id, &sub) == i && !sub && str_eq(ENGINES[i]->name, MAP[i].name) &&
+              str_eq(N_ENGNAME[MAP[i].id], MAP[i].name) && eng_by_id(MAP[i].id) == ENGINES[i];
+    bad += check("engine ids: every engine's id and index both ways (ENGINES[] in the ENGI_ order), its name by id", ok);
+    for (i = 0, ok = 1; i < 4u; i++)
+        ok &= EID_RETIRED(GONE[i]) && eng_of_id(GONE[i]) == ENG_NO && eng_load_id(GONE[i], &sub) == ENG_NO &&
+              eng_by_id(GONE[i]) == &ENG_NONE && !eng_by_id(GONE[i])->npresets && str_eq(N_ENGNAME[GONE[i]], "-");
+    ok &= eng_of_id(EID_COUNT) == ENG_NO && eng_load_id(EID_COUNT, &sub) == ENG_NO && eng_by_id(200) == &ENG_NONE;
+    bad += check("retired ids 1 4 8 13 (DIGITAL SAMPLE GRAIN SLICE) and ids past the last: no engine, \"-\", refused", ok);
     for (i = 0; i < NENGINES; i++)
         all |= (uint32_t)eng_ok(i) << i;
-    ok &= NENG_SHOWN == 14u && all == ((1u << NENGINES) - 1u) - (1u << 1 | 1u << 4 | 1u << 8 | 1u << 13);
-    bad += check("retired: 1 4 8 13 (DIGITAL SAMPLE GRAIN SLICE) are \"-\", silent, never offered; 14 engines shown", ok);
-    for (i = 0, ok = 1; i < 4u; i++) {
-        set_engine_of(TSEL, GONE[i]);
-        ok &= TSEL->eng_req == ENGI_ANALOG && TSEL->preset == 0u;
-        TSEL->eng_req = GONE[i];                         /* (any other path: the main loop's net) */
-        frame();
-        ok &= TSEL->eng_req == ENGI_ANALOG;
-    }
-    bad += check("  an engine change to one, or a track that got one any other way: ANALOG", ok);
-    for (i = 0, ok = 1; i < 4u; i++) {                   /* a project with one: refused, the music as it was */
-        song.playing = 0;
-        set_engine_of(&trk[1], ENGI_FM6);
-        trk[1].eng_req = GONE[i];
-        ok &= !project_save(2);
-        set_engine_of(&trk[1], ENGI_WAVE);
-        project_load(2);
-        ok &= trk[1].eng_req == ENGI_WAVE && !msg_is("LOADED");
-    }
-    bad += check("  a project naming one is refused (not loaded)", ok);
+    /* (a project naming one is refused: tests/robust_test.c, which crafts the stored stream) */
     {   /* a user preset stored with one (an older firmware's bank): not valid, the slot empty */
         up_rec_t rec;
         memset(&rec, 0, sizeof rec);
@@ -3387,7 +3381,7 @@ static int test_retired_engines(void)
     bad += check("PRESETS KNOB 2: the engines in order, back to the first",
                  seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_FM6 && eng_step(ENGI_FM6, 1) == ENGI_WAVE &&
                  eng_step(ENGI_FM6, -1) == 0u && eng_step(0, -1) == ENGI_DRUM);
-    /* the display order (engines.c ENGINE_ORDER): every engine one can pick once; the PRESETS list follows it */
+    /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
     ok = NENG_SHOWN == NELEM(ORDER);
     for (i = 0; ok && i < NENG_SHOWN; i++)
         ok &= str_eq(ENGINES[eng_vis(i)]->name, ORDER[i]) && eng_rank(eng_vis(i)) == i && eng_ok(eng_vis(i));
@@ -3400,7 +3394,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown ANALOG FM6 WAVE WEST HOOVER PHASE ... NOISE BYTE DRUM (ENGINE_ORDER); PRESETS lists them so",
+    bad += check("engines shown ANALOG FM6 WAVE WEST HOOVER PHASE ... NOISE BYTE DRUM (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;
@@ -6385,7 +6379,7 @@ static int test_tracker_play(void)
     /* instruments and FX */
     ui_power_on();
     song.g[G_SWING] = 0;
-    tk.instr[4].src = ENGI_DRUM;                        /* instrument 05: DRUM's first kit */
+    tk.instr[4].src = EID_DRUM;                         /* instrument 05: DRUM's first kit (by id) */
     tk.instr[4].preset = 0;
     atk = t0->p[P_ATK];
     rev = t0->p[P_REV];
@@ -6565,7 +6559,7 @@ static int test_tracker_heads(void)
     ui_power_on();
     go_page(GR_TKPAT); frame();
     ok = !tk_track_inst(0) && !tk_track_inst(1);                 /* (power on: the tracks' own sounds) */
-    tk.instr[4].src = ENGI_PHYS; tk.instr[4].preset = 0;
+    tk.instr[4].src = EID_PHYS; tk.instr[4].preset = 0;
     tk_put(0, 0, 1, tk_pack(60, 5, 0, 0));
     press(B_PLAY);
     events_block(CTL);
@@ -6834,7 +6828,7 @@ static int test_tracker_project(void)
     tk_put(TK_PATS - 1u, 31, 0, tk_pack_ch(127u - 1u, 63, TKC_GLIDE, 127, 0x0C));
     tk.order[1] = 7; tk.order[2] = TK_PATS - 1u; tk.order[3] = TK_LO; tk.norder = 4;
     tk.len[7] = 12; tk.len[TK_PATS - 1u] = 1;
-    tk.instr[8].src = ENGI_FM6; tk.instr[8].preset = 3;
+    tk.instr[8].src = EID_FM6; tk.instr[8].preset = 3;
     tk.instr[9].src = TK_SRC_USER + 4u;
     tk.cut[1] = 40; tk.res[2] = 100;
     song.g[G_BPM] = 99;

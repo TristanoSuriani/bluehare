@@ -27,7 +27,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Fourteen engines** (below), each with its own factory presets; every factory sound has a category (BASS, LEAD,
+- **Fourteen engines** (below; a build can hold any set of them, BUILDING.md "Engines"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
   8 voices shared between them. ALGORITHM selects the track on every page

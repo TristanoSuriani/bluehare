@@ -46,7 +46,7 @@ On Linux x86-64 the toolchain runs natively and Docker is not needed.
 `./build.sh --release 1.0` makes a release build: the package identity becomes `FM-1_910`
 and the version string `v1.0`; the package is `build/felucca-1.0.fwsc`, and
 `build/release-1.0/` holds what a release ships: the package, the app
-(`felucca-1.0-app.bin`), `SHA256SUMS`, the sample attribution, `LICENSE`, `LICENSING.md` and
+(`felucca-1.0-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
 `LICENSES/` (the package contains Apache-2.0 SDK files, so the licence texts travel with it).
 
 Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `core.h` and `icons.c`):
@@ -64,6 +64,35 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `c
 
 `FELUCCA_USB_LAYOUT` (`0` to `3`, default `0`) picks other USB descriptor layouts for testing; see
 `firmware/src/usb.c`.
+
+## Engines
+
+A build holds any set of the engines (at least one): ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS
+NOISE BYTE DRUM, all by default. Name the ones you want, or switch single ones off:
+
+```
+FELUCCA_ENGINES="ANALOG FM6 WAVE DRUM" ./build.sh     # these only (spaces or commas)
+FELUCCA_ENG_WHEEL=0 FELUCCA_ENG_VOICE=0 ./build.sh    # all but these
+```
+
+The engines left out are not linked: ANALOG, HOOVER and DRUM alone make a 261 KB image (all of them: 438 KB) and
+need 57 KB of RAM (69 KB). A build numbers its engines 0, 1, .. in their display order (`firmware/src/core.h`
+`ENGI_*`, `engines.c` `ENGINES[]`), but everything stored and the editor protocol name an engine by its fixed id
+(`EID_*`), so a project, a user preset, a song or a backup moves between builds of other engines:
+
+- a sound of an engine the build lacks loads as its substitute, with the substitute's first preset (a project's track
+  keeps the rest of its sound): HOOVER → ANALOG, ANALOG → HOOVER, PHASE / VOICE / TRIO / NOISE / WAVE → ANALOG,
+  LOFI ↔ BYTE, WHEEL → FM6, FM6 → WAVE, PHYS ↔ WEST, DRUM → ANALOG; if that one is missing too, down the same chain,
+  else the build's first engine (`engines.c` `EID_SUB`);
+- a user preset of such an engine is kept as it is but listed nowhere and loads nothing (the editor still reads and
+  writes it);
+- the power-on parts (ANALOG ACID, FM6 PAD, LOFI PULSE LD, DRUM KIT) whose engine is missing start as the build's
+  first engine;
+- the editor sees the missing engines as "-" (`INFO`), as it does the retired ids.
+
+A new engine takes the next free id (18), an entry in `core.h` (its `EID_`, flag and place in the `ENGI_` order),
+`engines.c` (`ENGINES[]`, `ENG_OF_ID`, `EID_SUB`), `params.c` (`N_ENGNAME`) and `tools/build.py` (`ENGINES`).
+The favourites have no row for ids past 17 yet: one more engine needs a new settings layout (`favorites.c`).
 
 ## Browser emulator
 

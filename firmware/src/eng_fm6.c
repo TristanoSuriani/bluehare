@@ -36,7 +36,6 @@
 #include "fm6_core.c"
 #include "felucca_fm6.h"         /* tools/gen_fm6_patches.py: FM6_INIT, FM6_FACTORY[] */
 
-#define ENGI_FM6 12u             /* engines.c ENGINES[] (append-only) */
 #define FM6_POLY 6               /* engine_t.poly */
 #define FM6_OWN FM6_NFACTORY     /* SLOT: the track's own patch (F1..F8 before it) */
 #define FM6_NBANK 32u            /* SLOT: B1..B32 after OWN, the voice bank (fm6_vbank.c) */
@@ -202,7 +201,7 @@ static void fm6_adopt(uint32_t tr)
     int32_t s = t->p[P_E7];
     tr %= NTRK;
     fm6_own_ok &= (uint8_t)~(1u << tr);
-    if (t->eng_req == ENGI_FM6) {
+    if (ENG_IS(t->eng_req, FM6)) {
         uint8_t v[FP_SIZE + 1u];
         uint32_t k, f = s >= 0 && s < (int32_t)FM6_NFACTORY ? (uint32_t)s : 0u;
         for (k = 0; k < FM6_NFACTORY; k++) {
@@ -220,7 +219,7 @@ static void fm6_adopt(uint32_t tr)
 static void fm6_track_loaded(const track_t *t)
 {
     uint32_t tr = (uint32_t)(t - trk);
-    if (tr < NTRK && t->eng_req == ENGI_FM6) {
+    if (tr < NTRK && ENG_IS(t->eng_req, FM6)) {
         fm6_own_ok &= (uint8_t)~(1u << tr);
         if (t->p[P_E7] >= 0 && t->p[P_E7] < (int32_t)FM6_NFACTORY)
             fm6_load_slot(tr, (uint32_t)t->p[P_E7]);
@@ -249,7 +248,7 @@ static void fm6_poll(void)
     uint32_t tr, bit;
     for (tr = 0; tr < NTRK; tr++) {
         int32_t s = trk[tr].p[P_E7];
-        if (trk[tr].eng_req != ENGI_FM6 || s == fm6_slot[tr])
+        if (!ENG_IS(trk[tr].eng_req, FM6) || s == fm6_slot[tr])
             continue;
         bit = 1u << tr;
         if (s < 0 || (s >= (int32_t)FM6_NFACTORY && fm6_bank_slot(s) < 0)) {   /* OWN */
@@ -419,6 +418,9 @@ static const preset_t FM6_PRESETS[] = {
 
 static const engine_t ENG_FM6 = {
     .name = "FM6",
+    .id = EID_FM6,
+    .cc = 0x30,
+    .cats = "KUBLPUKU",
     .page_title = {"OPS", "PATCH"},
     .edit = {
         {"ALG", F_INT, 0, 32, 0, N_FM6_ALG, 0},

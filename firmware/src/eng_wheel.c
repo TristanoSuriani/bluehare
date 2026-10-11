@@ -277,6 +277,9 @@ static const preset_t WHEEL_PRESETS[] = {
 
 static const engine_t ENG_WHEEL = {
     .name = "WHEEL",
+    .id = EID_WHEEL,
+    .cc = 0x00,
+    .cats = "KKKKK",
     .page_title = {"BARS", "TONE"},
     .edit = {
         {"REG", F_ENUM, 0, 15, 4, N_DRW_REG, 0},

@@ -657,11 +657,12 @@ static void tk_inst_names(uint32_t i, char *src, char *pre)
             up_name(k, pre);
         else
             str_cpy(pre, "EMPTY", 16);
-    } else {
-        const engine_t *e = ENGINES[in->src % NENGINES];
+    } else {                                        /* (the engine it plays here: an id the build lacks, its */
+        uint32_t pi, k = tk_inst_engine(in, &pi);   /* substitute) */
+        const engine_t *e = k == ENG_NO ? &ENG_NONE : ENGINES[k];
         str_cpy(src, e->name, 16);
         if (e->npresets)
-            str_cpy(pre, e->presets[in->preset % e->npresets].name, 16);
+            str_cpy(pre, e->presets[pi].name, 16);
     }
 }
 static void tk_draw_inst(void)
@@ -956,7 +957,13 @@ static void tk_knob_set(uint32_t k, int32_t s)
 /* instrument i's source as INSTR's KNOB 2 steps it: 0 none, 1..NENG_SHOWN the engines in display order, then USER */
 static uint32_t tk_src_rank(const tk_inst_t *in)
 {
-    return in->src == TK_SRC_NONE ? 0u : in->src >= TK_SRC_USER ? NENG_SHOWN + 1u : eng_rank(in->src) + 1u;
+    uint32_t pi, e;
+    if (in->src == TK_SRC_NONE)
+        return 0u;
+    if (in->src >= TK_SRC_USER)
+        return NENG_SHOWN + 1u;
+    e = tk_inst_engine(in, &pi);
+    return (e == ENG_NO ? 0u : eng_rank(e)) + 1u;
 }
 static void tk_inst_audition(void)              /* the instrument picked onto the selected track (the keys play it) */
 {
@@ -979,7 +986,7 @@ static void tk_knob_inst(uint32_t k, int32_t s)
     }
     if (k == 1u) {
         uint32_t r = (uint32_t)clamp((int32_t)tk_src_rank(in) + s, 0, NENG_SHOWN + 1);
-        in->src = (uint8_t)(!r ? TK_SRC_NONE : r > NENG_SHOWN ? TK_SRC_USER : eng_vis(r - 1u));
+        in->src = (uint8_t)(!r ? TK_SRC_NONE : r > NENG_SHOWN ? TK_SRC_USER : eng_id(eng_vis(r - 1u)));   /* (by id) */
         in->preset = 0;
         if (in->src == TK_SRC_USER) {               /* (the first used user preset) */
             uint32_t u;
@@ -998,11 +1005,13 @@ static void tk_knob_inst(uint32_t k, int32_t s)
                     break;
             }
             in->src = (uint8_t)(TK_SRC_USER + u);
-        } else {                                    /* the engine's presets */
-            const engine_t *e = ENGINES[in->src % NENGINES];
-            int32_t p = in->preset, st = s > 0 ? 1 : -1, n = s > 0 ? s : -s;
+        } else {                                    /* the engine's presets (of the one it plays here) */
+            uint32_t pi, ei = tk_inst_engine(in, &pi);
+            const engine_t *e = ei == ENG_NO ? &ENG_NONE : ENGINES[ei];
+            int32_t p = (int32_t)pi, st = s > 0 ? 1 : -1, n = s > 0 ? s : -s;
             if (!e->npresets)
                 return;
+            in->src = (uint8_t)eng_id(ei);
             while (n-- && p + st >= 0 && p + st < (int32_t)e->npresets)
                 p += st;
             in->preset = (uint8_t)p;

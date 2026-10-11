@@ -809,7 +809,7 @@ static void setup(int s)
         break;
     case S_EDIT_ANALOG: go_title("EDIT 1"); break;
     case S_EDIT_FM6: eng(ENGI_FM6); go_title("EDIT 1"); break;
-    case S_EDIT_WHEEL: eng(7); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
+    case S_EDIT_WHEEL: eng(ENGI_WHEEL); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_WAVE_2: eng(ENGI_WAVE); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;
     case S_EDIT_BYTE_2: eng(ENGI_BYTE); go_title("EDIT 2"); break;
     case S_EDIT_WAVE: eng(ENGI_WAVE); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
@@ -818,7 +818,7 @@ static void setup(int s)
     case S_EDIT_WEST_2: eng(ENGI_WEST); go_title("EDIT 2"); break;
     case S_EDIT_HOOVER: eng(ENGI_HOOVER); go_title("EDIT 1"); break;
     case S_EDIT_HOOVER_2: eng(ENGI_HOOVER); TSEL->p[P_E5] = -12; go_title("EDIT 2"); break;
-    case S_EDIT_PHYS: eng(9); go_title("EDIT 1"); break;
+    case S_EDIT_PHYS: eng(ENGI_PHYS); go_title("EDIT 1"); break;
     /* FM6's algorithm charts: 1 as it is; 5 with FB +3 just turned; 22 on EDIT 2, DTUN just turned (the carriers);
      * 32 with operator 6 at output level 0, MLVL just turned (no routes: nothing in ACCENT but nothing either) */
     case S_FM6_ALG1: eng(ENGI_FM6); TSEL->p[P_E0] = 1; go_title("EDIT 1"); break;
@@ -929,9 +929,9 @@ static void setup(int s)
     case S_SCL_PEEK: go_title("ENV"); ui.layer = LAYER_SCL; break;
     case S_SCL_ACTIVE: go_home(); ui.layer = LAYER_SCL; TSEL->p[P_ROOT] = 3; TSEL->p[P_SCALE] = 2; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_PEEK: go_title("EDIT 1"); ui.layer = LAYER_EDIT; break;
-    case S_EDIT_ACTIVE: eng(ENGI_FM6); apply_preset_to(TSEL, 2); favorite_set(ENGI_FM6, 2, 1); go_home(); ui.layer = LAYER_EDIT;
+    case S_EDIT_ACTIVE: eng(ENGI_FM6); apply_preset_to(TSEL, 2); favorite_set(EID_FM6, 2, 1); go_home(); ui.layer = LAYER_EDIT;
         ui.hot_col = 0; ui.hot_t = 30; break;
-    case S_EDIT_USER: song.playing = 0; eng(6); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(NENGINES, 6, 1);
+    case S_EDIT_USER: song.playing = 0; eng(ENGI_TRIO); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(EID_COUNT, 6, 1);
         go_home(); ui.layer = LAYER_EDIT; break;
     case S_LAYER_HINT: go_page(GR_TRK); ui.msg_t = 0; layer_tap(LAYER_GLO); break;
     /* #83: locked open by a double tap (the lock after the header's name): EDIT and FX */
@@ -1049,7 +1049,7 @@ static void sweep_columns(void)
     char name[64];
     for (e = 0; e < NENGINES; e++) {
         if (!eng_ok(e))
-            continue;                                    /* (a retired number: no track has it) */
+            continue;
         for (i = 0; i < NPAGES; i++) {
             state();
             pal(UI_GREY_INDEX);

@@ -97,6 +97,9 @@ static const preset_t WEST_PRESETS[] = {
 
 static const engine_t ENG_WEST = {
     .name = "WEST",
+    .id = EID_WEST,
+    .cc = 0x73,
+    .cats = "DDUBKLPD",
     .page_title = {"OSC", "GATE"},
     .edit = {
         {"RATIO", F_ENUM, 0, 15, 1, N_WEST_RATIO, 0},

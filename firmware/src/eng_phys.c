@@ -230,6 +230,9 @@ static const preset_t PHYS_PRESETS[] = {
 
 static const engine_t ENG_PHYS = {
     .name = "PHYS",
+    .id = EID_PHYS,
+    .cc = 0x30,
+    .cats = "UUUPUDDPU",
     .page_title = {"BODY", "EXCT"},
     .edit = {
         {"MODEL", F_ENUM, 0, PM_COUNT - 1, 0, N_PHYS_MODEL, 0},

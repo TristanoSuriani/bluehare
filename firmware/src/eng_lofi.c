@@ -215,6 +215,9 @@ static const preset_t LOFI_PRESETS[] = {
 
 static const engine_t ENG_LOFI = {
     .name = "LOFI",
+    .id = EID_LOFI,
+    .cc = 0x80,
+    .cats = "LBLLL",
     .page_title = {"CHIP", "MOTN"},
     .edit = {
         {"CHIP", F_ENUM, 0, 4, 0, N_CHIP, 0},
