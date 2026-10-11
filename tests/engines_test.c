@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as FELUCCA_DIST=idm, which has
- * no VOICE, TRIO, WHEEL. The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
+ * no VOICE, TRIO, WHEEL, FM6. The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
  * stored sound of an engine left out loads as its substitute (engines.c eng_load_id):
  *   the table      the indices in order, the ids both ways, the left-out ids map to none, the substitutes
  *   power-on       the parts whose engine is left out: the build's first engine
@@ -32,29 +32,31 @@ static void stream_rehash(void)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"ANALOG", "FM6", "PHASE", "WAVE", "BYTE", "WEST", "HOOVER", "PHYS", "KARPLUS",
+    static const char *const ORDER[] = {"ANALOG", "PHASE", "WAVE", "BYTE", "WEST", "HOOVER", "PHYS", "KARPLUS", "VOSIM",
                                         "NOISE", "DRUM", "FMPERC", "SPEECH", "LOFI"};
     uint8_t a[16] = {0};
     int bad = 0, ok = 1, sub;
     uint32_t i, e, off;
 
     /* the table */
-    ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_VOICE && !FELUCCA_ENG_TRIO && !FELUCCA_ENG_WHEEL && FELUCCA_ENG_HOOVER;
+    ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_VOICE && !FELUCCA_ENG_TRIO && !FELUCCA_ENG_WHEEL && !FELUCCA_ENG_FM6 && FELUCCA_ENG_HOOVER;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
     ok &= eng_of_id(EID_TRIO) == ENG_NO && eng_of_id(EID_WHEEL) == ENG_NO && eng_of_id(EID_VOICE) == ENG_NO &&
           ENGI_TRIO == ENG_ABSENT && str_eq(N_ENGNAME[EID_TRIO], "-") && eng_by_id(EID_WHEEL) == &ENG_NONE;
-    bad += check("engines: IDM, 14 in its order from 0, the ids both ways; VOICE TRIO WHEEL none", ok);
-    ok = eng_load_id(EID_HOOVER, &sub) == ENGI_HOOVER && !sub && eng_load_id(EID_WHEEL, &sub) == ENGI_FM6 && sub &&
+    bad += check("engines: IDM, 14 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 none", ok);
+    ok = eng_load_id(EID_HOOVER, &sub) == ENGI_HOOVER && !sub && eng_load_id(EID_WHEEL, &sub) == ENGI_WAVE && sub &&
+         eng_load_id(EID_FM6, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_VOICE, &sub) == ENGI_SPEECH && sub && eng_load_id(EID_TRIO, &sub) == ENGI_ANALOG && sub &&
          eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub && eng_load_id(13, &sub) == ENG_NO;
-    bad += check("  substitutes: HOOVER itself, WHEEL -> FM6, VOICE -> SPEECH, TRIO -> ANALOG; a retired id: none", ok);
+    bad += check("  substitutes: HOOVER itself, WHEEL -> FM6 -> WAVE, FM6 -> WAVE, VOICE -> SPEECH, TRIO -> ANALOG; a retired id: none", ok);
 
     /* power-on */
     reset();                                            /* (tk_defaults: the instruments of the power-on parts) */
-    bad += check("power-on: ANALOG ACID, FM6 PAD, LOFI PULSE LD, DRUM KIT at their indices here; the song's instruments by id",
-                 TRK_DEF[0][0] == ENGI_ANALOG && TRK_DEF[0][1] == 4u && TRK_DEF[1][0] == ENGI_FM6 && TRK_DEF[1][1] == 4u &&
-                 TRK_DEF[2][0] == ENGI_LOFI && TRK_DEF[3][0] == ENGI_DRUM && tk.instr[1].src == EID_FM6 &&
+    bad += check("power-on: ANALOG ACID, VOSIM FORMANT PAD (no FM6), LOFI PULSE LD, DRUM KIT here; the song's instruments by id",
+                 TRK_DEF[0][0] == ENGI_ANALOG && TRK_DEF[0][1] == 4u && TRK_DEF[1][0] == ENGI_VOSIM &&
+                 str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[1][1]].name, "FORMANT PAD") &&
+                 TRK_DEF[2][0] == ENGI_LOFI && TRK_DEF[3][0] == ENGI_DRUM && tk.instr[1].src == EID_VOSIM &&
                  tk.instr[3].src == EID_DRUM);
 
     /* protocol */
@@ -71,14 +73,14 @@ int main(void)
     bad += check("INFO: the ids' names, \"-\" for a retired id or an engine left out", ok && !strcmp(N_ENGNAME[EID_TRIO], "-"));
     a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_WHEEL) & 127; a[3] = (8192 + EID_WHEEL) >> 7;
     request(ED_SET, a, 4);
-    ok = TSEL->eng_req == ENGI_FM6 && TSEL->preset == 0u;
+    ok = TSEL->eng_req == ENGI_WAVE && TSEL->preset == 0u;
     a[0] = EID_TRIO; a[1] = 3;
     request(ED_PRESET, a, 2);
     ok &= TSEL->eng_req == ENGI_ANALOG && TSEL->preset == 0u && host_wire[5] == EID_ANALOG;
     a[0] = EID_TRIO;
     request(ED_NAMES, a, 1);
     ok &= host_wire[5] == EID_TRIO && host_wire[6] == 0;
-    bad += check("  G_ENGSEL WHEEL: FM6; PRESET TRIO 3: ANALOG's first preset (replies its id); NAMES TRIO: none", ok);
+    bad += check("  G_ENGSEL WHEEL: WAVE; PRESET TRIO 3: ANALOG's first preset (replies its id); NAMES TRIO: none", ok);
 
     /* projects: track 1 of a stored song re-stamped TRIO (as a full build saves it) */
     reset();
@@ -113,7 +115,7 @@ int main(void)
     fm1_irq_off();
     tk_inst_apply(&trk[2], 10);
     fm1_irq_on();
-    bad += check("instrument of WHEEL (left out): plays FM6's first preset", trk[2].eng_req == ENGI_FM6 && trk[2].preset == 0u);
+    bad += check("instrument of WHEEL (left out): plays WAVE's first preset (FM6 left out too)", trk[2].eng_req == ENGI_WAVE && trk[2].preset == 0u);
 
     /* sound */
     {

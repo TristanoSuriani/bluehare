@@ -40,6 +40,7 @@ hoover_render 380
 speech_render 217
 fmperc_render 119
 karplus_render 94
+vosim_render 139
 fm1_alnk0_irq 37502
 fm1_timer5_irq 33387
 click_render 30

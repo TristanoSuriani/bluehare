@@ -327,13 +327,19 @@ elif ! command -v node >/dev/null 2>&1 || [ ! -f build/gen/felucca_tables.h ]; t
     echo "== skip the browser emulator (needs node and build/gen)"
 else
     run "browser emulator: the firmware to WebAssembly (web/emu/build.sh -> build/emu)" sh web/emu/build.sh
-    cc -O2 -ffp-contract=off -w -Ibuild/gen -Ifirmware/src -o "$OUT/emu_native" web/emu/native_check.c -lm
+    BUILD_DIST=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' distributions/BUILD | head -n 1 | tr -d ' ' | tr 'A-Z' 'a-z')
+    # (build/emu holds the BUILD distribution: the native reference the same, as web/emu/build.sh reads it)
+    cc -O2 -ffp-contract=off -w -DFELUCCA_DIST="$BUILD_DIST" -Ibuild/gen -Ifirmware/src -o "$OUT/emu_native" \
+        web/emu/native_check.c -lm
     run "browser emulator: the same song from the native build" "$OUT/emu_native" "$OUT/emu_native.f32"
     run "browser emulator: boot, keys, MIDI, screen, LEDs, PLAY, a save kept across instances, = native, cost" \
         node web/emu/emu_test.mjs build/emu/felucca.wasm "$OUT/emu_native.f32"
+    cc -O2 -ffp-contract=off -w -DFELUCCA_DIST=default -Ibuild/gen -Ifirmware/src -o "$OUT/emu_native_default" \
+        web/emu/native_check.c -lm
+    run "browser emulator: the same song from the native build, default" "$OUT/emu_native_default" "$OUT/emu_native_default.f32"
     run "browser emulator, the default distribution (web/emu/build.sh -> build/emu-default)" env FELUCCA_DIST=default sh web/emu/build.sh
     run "browser emulator, default: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
-        node web/emu/emu_test.mjs build/emu-default/felucca.wasm "$OUT/emu_native.f32"
+        node web/emu/emu_test.mjs build/emu-default/felucca.wasm "$OUT/emu_native_default.f32"
 fi
 
 [ $fail -eq 0 ] && echo "ALL HOST TESTS PASSED" || { echo "HOST TESTS FAILED"; exit 1; }

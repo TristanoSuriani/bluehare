@@ -26,6 +26,7 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "speech_render",                                   # SPEECH (1.5: eng_speech.c; the IDM distribution's)
          "fmperc_render",                                   # FMPERC (1.5: eng_fmperc.c; IDM's)
          "karplus_render",                                  # KARPLUS (1.5: eng_karplus.c; IDM's)
+         "vosim_render",                                    # VOSIM (1.5: eng_vosim.c; IDM's)
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
          "uac_tap48",                                       # the USB audio input at 48 kHz: the 44.1 -> 48 resampler (usb.c)
          "click_render",                                    # the metronome's click (click.c), while it sounds
@@ -41,7 +42,8 @@ ENGINE_OF = {"analog_render": "ANALOG", "phase_render": "PHASE", "lofi_render": 
              "trio_render": "TRIO", "trio_pass": "TRIO", "wheel_render": "WHEEL", "wheel_block": "WHEEL",
              "phys_render": "PHYS", "drum_render": "DRUM", "noise_render": "NOISE", "wave_render": "WAVE",
              "byte_render": "BYTE", "west_render": "WEST", "hoover_render": "HOOVER", "speech_render": "SPEECH",
-             "fmperc_render": "FMPERC", "karplus_render": "KARPLUS"}
+             "fmperc_render": "FMPERC", "karplus_render": "KARPLUS",
+             "vosim_render": "VOSIM"}
 ENGINE_OF.update({n: "FM6" for n in ("fm6_render", "fm6_op_run", "fm6_op_fb")})
 ENGINE_OF.update({n: "PHYS" for n in ("px_modal_block", "px_modal_run", "px_memb_block", "px_string_excite",
                                       "px_string_run", "px_symp_run")})
