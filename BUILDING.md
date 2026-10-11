@@ -1,4 +1,8 @@
-# Building Felucca
+# Building Fel-Tracker (and Felucca)
+
+Fel-Tracker (Tristano Suriani's fork of Felucca by Leo Kuroshita) builds the same way Felucca does, and still under
+Felucca's file names (`felucca.bin`, `felucca.fwsc`). The distributions (below) are Fel-Tracker's. Whose work is
+whose: [AUTHORS.md](AUTHORS.md).
 
 The build makes three files in `build/`:
 

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* The firmware editor handler, USB framing and UART recovery against RAM flash.
  * Build with the generated tables and the same flags as hostsim.c. */
 static unsigned char host_flash[3][0x14000];   /* (flash 0xA0000..: what the editor's writes reach) */

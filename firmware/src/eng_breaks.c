@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* BREAKS (1.5): a breakbeat player, synthesized (no samples): a key starts a one-bar pattern of kick, snare (accents
  * and ghost notes) and hats (closed, open) at the song's tempo, looping while held; let go, it stops (the ADSR's
  * release). The key picks the pattern (12 an octave: the tracker changes the break row by row; a new note restarts

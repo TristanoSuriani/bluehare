@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* Editor protocol 1.5: the tracker's song (tracker.c) for the web editor (web/EDITOR_PROTOCOL.md "1.5: the tracker").
  * INFO advertises 58 02 pats rows insts ncmd order-lo order-hi (02: 6-byte cells with the chord; 01, before the chords,
  * was never released). One command, TRACKER (78): op, args -> op, rc, ...

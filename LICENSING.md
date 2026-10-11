@@ -1,11 +1,34 @@
-# Felucca licensing
+# Licensing: Fel-Tracker and Felucca
+
+Fel-Tracker is a fork of Felucca by Leo Kuroshita (Hügelton Instruments), developed by Tristano Suriani. Both are
+under the same licence, below. [AUTHORS.md](AUTHORS.md) says whose work is whose; this file covers the licences.
+Most of this file is Felucca's own licensing text. Fel-Tracker's part is the section "Fel-Tracker: Tristano
+Suriani's work".
 
 Felucca is free software, licensed under the GNU General Public License, version 3 only
 (`GPL-3.0-only`, full text in `LICENSE`). That covers the code and its own assets. A few
 bundled or ported parts keep their own licences; they are listed below, and their licence
 texts are in `LICENSES/`.
 
-Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments (Felucca)
+Copyright (C) 2026 Tristano Suriani (Fel-Tracker's additions and changes)
+
+## Fel-Tracker: Tristano Suriani's work
+
+Fel-Tracker's additions are GPL-3.0-only, as Felucca is. The new files carry
+`Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`. Felucca files that Fel-Tracker changed keep Leo Kuroshita's
+copyright line, followed by `Modified by Tristano Suriani for Fel-Tracker (2026)`. That line is the notice of
+modification GPL-3.0 section 5(a) asks for, and git history records the changes themselves.
+
+| What | Licence | Where |
+| --- | --- | --- |
+| The tracker | GPL-3.0-only | `firmware/src/tracker.c`, `ui_tracker.c`, `editor_tracker.c` |
+| Engine ids and distributions | GPL-3.0-only | `firmware/src/engine_ids.h`, `tools/gen_dist.py`, `distributions/` |
+| The engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, FMKEYS, ACID, KIT, BREAKS, RISERS | GPL-3.0-only | `firmware/src/eng_*.c` (the list in AUTHORS.md), `tools/gen_wavetables.py`, `tools/gen_speech.py`, `tools/speech/` |
+| Changes to Felucca's files | GPL-3.0-only (the files stay Leo Kuroshita's) | the files marked "Modified by Tristano Suriani" |
+
+Fel-Tracker's engines contain no third-party code. They are original implementations of published techniques; the
+references are in AUTHORS.md.
 
 ## What is GPL-3.0-only
 

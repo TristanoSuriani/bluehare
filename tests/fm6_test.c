@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* FM6 engine test (src/eng_fm6.c, src/fm6_core.c) on the Mac, through hostsim.c as regress.c.
  *   build/host/fm6_test [DEMODIR]          (run_tests.sh: build/fm6_demo)
  * 1. algorithms: every one of the 32 has its classic carrier count; with every operator at full level and

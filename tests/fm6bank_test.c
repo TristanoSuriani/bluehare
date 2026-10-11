@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* FM6's voice bank (1.4.1, Discussion #168; src/fm6_vbank.c, the editor's FM6B_* in src/editor_fm6.c) against
  * simulated NOR flash: a bank written whole and read back, its sectors (0xE7000, staged in the autosave's older copy,
  * nothing else touched, the tail erased), a power cut after any programmed byte or during any erase (the old bank or

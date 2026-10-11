@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Chord keys (firmware/src/chord.c; SCL > CHORD: CHRD, VOIC) against the real keyboard, MIDI IN, arp, recording
  * and voice code: the diatonic triads and sevenths of several scales and roots as music theory has them, the
  * fixed shapes, the voicings, at most 4 notes, the names, MONO plays the root, a key's or a MIDI note's release

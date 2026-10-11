@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Sound categories (1.2, Discussion #90): every sound in the PRESETS list belongs to one, so KNOB 4 (LIST) can show
  * only the basses, the pads, .. (ui.c list_mode). Factory presets: a static table here (a letter per preset, in the
  * engine's preset order); user presets: a byte of their record (upreset.c up_cat, set on the NAME screen when saving

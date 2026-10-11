@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+// Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
 // fm1backup.js against a simulated device: 7-bit packing, CRC, manifest checks, a full capture,
 // validation before the first write, restore order (live music last) and abort on a failed chunk.
 import { BACKUP_IDS, BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc, bkManifest, readBackup, captureBackup, restoreBackup } from "./fm1backup.js";

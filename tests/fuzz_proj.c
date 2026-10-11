@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Fuzz harness (1.5: the song store, project.c): random songs saved, their chunks mutated (headers and data, lengths,
  * with and without the stream's hash made valid again: attacker-controlled flash), then found, loaded, played and
  * rendered. run_tests.sh runs it briefly under ASan / UBSan with a fixed seed.   fuzz_proj [ITERATIONS [SEED]] */

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* The reverb bus's models (src/fx.c: REVERB TYPE, G_RTYPE: ROOM, SPRING, 1.2's HALL) on the Mac, through
  * hostsim.c as regress.c.
  *   build/host/reverb_test [DEMODIR [DEMODIR2]]          (run_tests.sh: build/fx_demo build/reverb_demo)

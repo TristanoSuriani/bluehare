@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* SPEECH (1.5): words, the way the LPC speech chips of the late 70s spoke them (Felucca's own: no chip's data or code).
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* SPEECH (1.5): words, the way the LPC speech chips of the late 70s spoke them (Fel-Tracker's own: no chip's data or code).
  *
  * A buzz (a glottal pulse each period) or a hiss (noise) through a 10-pole lattice filter running at 8820 Hz; the
  * filter's reflection coefficients glide from sound to sound, word by word. There are no recordings: the words are

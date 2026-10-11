@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* WHEEL: a tonewheel-style additive organ. Felucca's own design.
  *
  * Partials: nine sines per voice at the classic drawbar footages, 16' 5 1/3' 8' 4' 2 2/3' 2'

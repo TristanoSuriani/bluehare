@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
 # Felucca in the browser: the firmware's sources as the host tests build them (web/emu/felucca_web.c), compiled
 # to WebAssembly with Emscripten, plus the page. After X0X's web/emu/build.sh (charlesvestal/fm1-x0x, GPL-3.0).
 #   web/emu/build.sh                       ->  build/emu/{index.html, worklet.js, felucca.wasm, fonts/}: the distribution

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* RISERS (1.5): build-ups and their landings, timed to the song (Felucca's own). A note starts one, LEN beats long at
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* RISERS (1.5): build-ups and their landings, timed to the song (Fel-Tracker's own). A note starts one, LEN beats long at
  * the tempo (1 .. 32); it climbs RANGE semitones (the pitch, or the noise's band) along CURVE (straight .. slow then
  * fast) and holds at the top while the key is held. TYPE: NOIS white noise through a resonant band-pass rising (RES),
  * SAW a detuned stack of saws (SPRD) rising with its filter opening, SINE one sine rising, SHEP a Shepard tone (it

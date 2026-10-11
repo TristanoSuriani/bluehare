@@ -1,5 +1,9 @@
 # Felucca editor protocol (SysEx over USB-MIDI)
 
+This is Felucca's protocol, by Leo Kuroshita. Fel-Tracker (Tristano Suriani) changed it in 1.5: the tracker's
+commands, the engine ids and their count, the distribution tag, and the removal of the step sequencer's and the
+samples' commands. Those parts are marked 1.5. Whose work is whose: [AUTHORS.md](../AUTHORS.md).
+
 The firmware side is `firmware/src/editor.c`. Commands 1-15, track selection, dumps, step reads
 and parameter writes (27, 29, 30, 31) were checked on hardware. `tests/editor_test.c` also exercises the real C
 handler, malformed transfers and stop timeouts against simulated flash. User-preset

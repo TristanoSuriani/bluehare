@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* BYTE (1.5): bytebeat. A counter t runs from 0 at every note; a formula of t (shifts, products, AND / OR / XOR,
  * no divides) gives a byte, held until t moves on: the 8-bit rasp, chirps and self-similar melodies of one-line
- * C programs. Felucca's own formulas, after the form's well-known ones.
+ * C programs. Fel-Tracker's own formulas, after the form's well-known ones.
  *
  * t runs at 8 kHz on C4 and follows the key (an octave up: twice as fast), RATE shifts that in semitones: a formula
  * plays its pattern from the start at every note, transposed. A B C are the formula's constants: A 1..16 (a

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* The factory step patterns of 1.4 and before (firmware engines.c, gone with the step sequencer in 1.5): the host
  * tests that render a sound playing a line (fm6_test.c, noise_test.c) still use them. Absolute notes, 0 = rest;
  * flags 1 = accent, 2 = slide, 4 = tie (holds the previous note) */

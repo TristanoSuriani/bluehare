@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* The FM6 voice bank (1.4.1, Discussion #168): 32 voices loaded at once from the web editor (a 32-voice .syx, its
  * 128-byte packed records as they are), picked on the device with FM6's SLOT B1..B32 (eng_fm6.c). A voice is read
  * from flash when SLOT loads it, into the track's patch as F1..F8 load theirs: the patch is the track's from then on,
@@ -36,6 +37,7 @@ _Static_assert(sizeof(fvb_info_t) == FVB_VOICES - FVB_INFO, "FM6 voice bank head
 #define FVB_LEN (FVB_VOICES - FVB_INFO + FM6_NBANK * UPF_PK)   /* the record's payload: 3616 bytes */
 _Static_assert(FVB_INFO + FVB_LEN == 0xF00u, "the sector's tail (0xF00..) stays erased");
 
+#if FELUCCA_FLASH && FELUCCA_ENG_FM6                   /* (a build without FM6, or without flash: none of it) */
 static struct {
     uint32_t used;                             /* the voices written since FM6B_BEGIN */
     uint8_t on, copy;                          /* a transfer is open; its sector: the autosave's copy A (0) / B (1) */
@@ -50,7 +52,6 @@ static void fm6_bank_changed(void)
             fm6_adopt(tr);
 }
 
-#if FELUCCA_FLASH
 _Static_assert(FVB_LEN <= ST_PAYLOAD_MAX, "the payload fits st_buf");
 static uint32_t fvb_stage(void) { return st_sector(OBJ_AUTOSAVE, fvb_tx.copy); }
 
@@ -227,7 +228,8 @@ static const fvb_info_t *fvb_info(void)
     st_hdr_t h;
     return flash_ok && !fvb_valid(FVB_HOME, 0, &h) ? (const fvb_info_t *)st_buf : 0;
 }
-#else
+#else                                                    /* (Fel-Tracker: no FM6 in the distribution, no bank: the
+                                                          * editor is not offered one, editor.c INFO) */
 static void fvb_boot(void) {}
 static uint32_t fvb_begin(void) { return 4; }
 static uint32_t fvb_write(uint32_t k, const uint8_t *pk) { (void)k; (void)pk; return 5; }

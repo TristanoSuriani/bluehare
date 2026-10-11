@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Editor protocol: SysEx for the web editor (web/EDITOR_PROTOCOL.md; v2 = user presets + live sync,
  * v3 = four tracks: the v1 / v2 commands act on the selected track, cmds 27-30 reach any track;
  * v4 = TRACK_PARAM (31) and the TRACK_CHANGED push (32), enabled by WATCH bit 1;
@@ -365,7 +366,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
                                          * patches (FM6 target 3, backup id 9) */
         ed_b(0x4E); ed_b(1); ed_b(ED_MENU_N);   /* MENU settings: cmds 72, 73; the items MENU_DESC offers */
         /* (1.5: no 52 01 / 4C 01 / 41 01 / 54 01, the steps' ratchet, locks, motion, nudge; no 57 01, the A..D song) */
-        ed_b(0x56); ed_b(1); ed_b(FM6_NBANK);   /* 1.4.1: FM6's voice bank (cmds 74..77; SLOT 9..40 = B1..B32) */
+        if (FELUCCA_ENG_FM6) {          /* 1.4.1: FM6's voice bank (cmds 74..77; SLOT 9..40 = B1..B32); Fel-Tracker: */
+            ed_b(0x56); ed_b(1); ed_b(FM6_NBANK);   /* only in a distribution with FM6 (fm6_vbank.c) */
+        }
         ed_b(0x58); ed_b(2); ed_b(TK_PATS); ed_b(TK_ROWS); ed_b(TK_INSTS); ed_b(TKC_N);   /* 1.5: the tracker (78, 79) */
         ed_b(TK_ORDER); ed_b(TK_ORDER >> 7);
         break;

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 #define FELUCCA_FAVORITES 1
 /* Stable engine/preset references: by engine id (core.h EID_*; EID_COUNT: a user preset), whatever the build has. */
 typedef struct {

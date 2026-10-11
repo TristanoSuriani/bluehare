@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The tracker's pages (tracker.c plays the song): SEQ opens PATTERN, its taps go round PATTERN, SONG, SETTINGS, INSTR;
  * GLO opens SONG. Included at the end of ui_graph.c (its list helpers); ui_draw.c draws them (tk_draw), ui_input.c
  * sends them the knobs, PRESETS, EDIT and the keys (tk_knob, tk_presets, tk_edit_tap, tk_page_keys).

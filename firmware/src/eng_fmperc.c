@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* FMPERC (1.5): FM percussion. Two operators made to be hit (Felucca's own design, in the spirit of the FM drum voices
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* FMPERC (1.5): FM percussion. Two operators made to be hit (Fel-Tracker's own design, in the spirit of the FM drum voices
  * of the 90s machines): a modulating sine at RATIO times the note moves the carrier's phase by INDEX, and every hit
  * sweeps both down over FDEC: the pitch from SWEEP semitones above the note back to it, the index from INDEX to a
  * tenth of it, so a hit starts bright and high and settles into its tone. FDBK feeds the modulator back into itself

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Host test of the roadmap's sound items (Discussions #132, #104, #148), same sources as the firmware (hostsim.c):
  *   build/host/sound14_test [DEMO_DIR]      (run_tests.sh builds and runs it; demos in build/sound14_demo/)
  * 1. the matrix (mod.c): the lists only grew (every stored SRC / DST keeps its name), S&H holds one value a cycle of the

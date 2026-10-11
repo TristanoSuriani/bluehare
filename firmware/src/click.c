@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* The metronome's click (1.1, Ideas Discussion #131): MENU > AUDIO CLICK (OFF / REC / ON) and CLICK LEVEL (LOW / MID /
  * HIGH; 1.5: COUNT-IN is gone). seq.c decides when a beat clicks (click_beat: the song tempo's quarter notes, 4/4, the
  * bar's first beat accented); this file makes the sound. A short sine blip

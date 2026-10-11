@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as FELUCCA_DIST=idm, which has
  * no VOICE, TRIO, WHEEL, FM6, ANALOG, PHYS, PHASE, NOISE. The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
  * stored sound of an engine left out loads as its substitute (engines.c eng_load_id):

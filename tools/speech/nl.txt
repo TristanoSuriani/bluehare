@@ -1,3 +1,4 @@
+# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank NL: Dutch numbers and machine words (see en_num.txt for the format; RR the r, X the g / ch, GH a voiced
 # g, UE uu, OE eu, EE long e, OO long o, EI ij / ei, UI ui, OU ou / au); 32 words
 NUL      N UH1 L

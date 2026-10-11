@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Host test of the UI (firmware/src/ui*.c with the sound sources of hostsim.c;
  * the display and the HAL are stubs, the buttons and knobs are driven through them):
  *   SOUNDS     a sound load (PRESETS knob / page, TOOLS INIT, user preset) changes the sound only: ARP, SCL,

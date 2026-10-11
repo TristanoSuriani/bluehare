@@ -1,3 +1,4 @@
+# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank EN: English machine words (see en_num.txt for the format); 32 words
 ROBOT    R OW1 B AA2 T
 COMPUTER K AH0 M P Y UW1 T ER0

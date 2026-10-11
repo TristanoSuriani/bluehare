@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* CHAOS (1.5): chaotic systems as oscillators (Felucca's own). MODEL: two flows, integrated a step a sample at the
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* CHAOS (1.5): chaotic systems as oscillators (Fel-Tracker's own). MODEL: two flows, integrated a step a sample at the
  * note's speed (LRNZ the Lorenz attractor, ROSS Rossler's): never quite periodic, a tone that wanders; and two maps,
  * one new value each period of the note (LOGI the logistic map, HENO Henon's): pitched buzz whose waveform changes
  * every cycle. CHAOS is the system's parameter (Lorenz rho 24 .. 56, Rossler c 2 .. 18, logistic r 3.5 .. 4, Henon

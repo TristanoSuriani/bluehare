@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* KIT (1.5): a whole drum kit on one part, of FMPERC's voices (eng_fmperc.c fmp_run). DRUM's 8 lanes and its key and
  * note map (eng_drum.c drum_lane, DRUM_GM: the General MIDI drums, the kick on the first C), its lane LEVELs (EDIT >
  * LANES) and its lane MUTEs (the EDIT layer's black keys): KICK SNARE CLAP HAT CL HAT OP TOM RIM BELL (a cowbell).

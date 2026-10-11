@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* Every engine in the tree: ENGINE(NAME, id, substitute). Included where a table over all of them is built (core.h,
  * engines.c, params.c) and read by tools/gen_dist.py (a distribution names engines from here).
  *   NAME        its name (ENG_<NAME> in its eng_*.c file; the device and the editor show it)

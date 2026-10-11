@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* HOOVER (1.5): the rave lead of the early 90s, after the Alpha Juno's "what the" patch (Felucca's own design: no
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* HOOVER (1.5): the rave lead of the early 90s, after the Alpha Juno's "what the" patch (Fel-Tracker's own design: no
  * circuit modelled). Two detuned oscillators, each a pulse-width-modulated saw, a square an octave down, a bend into
  * the note, a low-pass; the chorus (a preset's CHO send) does the rest.
  *

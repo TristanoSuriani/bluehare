@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* PHYS engine test (src/eng_phys.c, src/phys_dsp.c, phys_symp.c) on the Mac, through hostsim.c
  * as regress.c.
  *   build/host/phys_test [DEMODIR]          (run_tests.sh: build/phys_demo)

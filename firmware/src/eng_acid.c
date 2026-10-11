@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* ACID (1.5): the acid bass line (Felucca's own, in the manner of the little silver bass box). An oscillator (WAVE:
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* ACID (1.5): the acid bass line (Fel-Tracker's own, in the manner of the little silver bass box). An oscillator (WAVE:
  * SAW, SQR; SUB a square an octave down) into a four-pole low-pass at CUT with RES (towards its own squeal), driven
  * into its saturation (DRIV); every note opens the filter by ENV and lets it close over DEC. Accent: a note played
  * hard (velocity 100 and up) is louder (as every note: the velocity), opens the filter by ACC more and closes it

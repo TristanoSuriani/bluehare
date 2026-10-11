@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* The project (1.5, the tracker): one song. What it holds: every track's sound (engine, preset, parameters, its FM6
  * patch), the globals, the selected track, the name, and the tracker's song (tracker.c: the 24 patterns, the order
  * list, the instruments, the tracks' filter settings). Projects of 1.4 and before (FUN1 .. FUN10, four slots of a

@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* WEST (1.5): west coast. A complex oscillator, a wavefolder and a low-pass gate, after the Buchla way of building a
- * voice (Felucca's own design: no circuit modelled).
+ * voice (Fel-Tracker's own design: no circuit modelled).
  *
  * A modulating sine at RATIO times the note (whole and half ratios, and four inharmonic ones for bells and metal)
  * moves the phase of the carrier sine by FM; FDBK feeds the modulator back into itself (sine -> saw-like -> noise).

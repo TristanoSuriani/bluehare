@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* WAVE (1.5): wavetables. Felucca's own design and tables (tools/gen_wavetables.py: 8 banks of 8 single-cycle
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* WAVE (1.5): wavetables. Fel-Tracker's own design and tables (tools/gen_wavetables.py: 8 banks of 8 single-cycle
  * frames, in flash).
  *
  * TBL picks the bank, POS the place between its frames (the two neighbours crossfaded): the SHP routings move it

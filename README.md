@@ -1,4 +1,26 @@
-# Felucca
+# Fel-Tracker
+
+**Fel-Tracker** is a fork of [Felucca](https://github.com/hugelton/Felucca), the multi-engine synthesizer firmware
+for the M-VAVE FM-1 by Leo Kuroshita ([Hügelton Instruments](https://hugelton.com)). It is developed by
+**Tristano Suriani** (<https://github.com/TristanoSuriani/fel-tracker>). It is an independent fork, not an official
+Felucca release.
+
+What Fel-Tracker adds, all by Tristano Suriani:
+
+- **The tracker**, in place of the step sequencer.
+- **Distributions:** builds of any set of up to 16 engines, with stable engine ids. The **IDM** distribution is the
+  default.
+- **Seventeen new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
+  FMKEYS, ACID, KIT, BREAKS and RISERS.
+
+Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
+Fel-Tracker's parts are marked *(Fel-Tracker)*.
+
+The rest of this README started as Felucca's. Its install links, site, sponsorship and issue tracker are Felucca's
+(Hügelton Instruments). They install official Felucca, not Fel-Tracker; to build Fel-Tracker, see
+[BUILDING.md](BUILDING.md).
+
+---
 
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/hugelton)
@@ -32,7 +54,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
   8 voices shared between them. ALGORITHM selects the track on every page
-- **Tracker** (this fork, replacing the step sequencer): 24 patterns of up to 64 rows (a row is a 1/16), a column per
+- **Tracker** *(Fel-Tracker, by Tristano Suriani; replaces Felucca's step sequencer)*: 24 patterns of up to 64 rows (a row is a 1/16), a column per
   track; each cell a note (or OFF) with an optional chord (up to three notes: a shape such as MAJ or MIN7, or two
   intervals), an instrument (01..3F, changing the track's sound on any row) and one FX (a parameter set for that row only: LEVEL,
   ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESONANCE, FLT ENV, PAN, DIST, CHORUS, DELAY, REVERB, GLIDE). PLAY on
@@ -328,7 +350,12 @@ way as from the menu, in the same tabs.
 
 ## Engines
 
-In the order the device lists them:
+Felucca's engines, by Leo Kuroshita: ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM.
+
+Fel-Tracker's engines, by Tristano Suriani, marked *(Fel-Tracker)* below: WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC,
+KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, FMKEYS, ACID, KIT, BREAKS and RISERS.
+
+A build holds the engines of its distribution (BUILDING.md "Distributions"). In the order the device lists them:
 
 - **ANALOG**: virtual analog; two oscillators (WAVE SYNC: the second hard-synced to the first; SUB: a square an
   octave down), noise, drive, resonant low-pass filter
@@ -336,71 +363,71 @@ In the order the device lists them:
   web editor (which imports .syx files) or on the device: EDIT > OPERATOR (ratio or fixed frequency, fine, level),
   OP ENV (each stage's rate and level, drawn as the envelope) and OPERATOR 2 (mode, detune, velocity), one
   operator at a time on the algorithm chart; macros on top; SLOT picks a factory patch (F1–F8), the track's own (OWN) or a voice of the bank the web editor sent (B1–B32)
-- **WAVE** (this fork): wavetables. TBL picks one of 8 tables of 8 frames each (BASIC: sine to narrow pulses;
+- **WAVE** *(Fel-Tracker)*: wavetables. TBL picks one of 8 tables of 8 frames each (BASIC: sine to narrow pulses;
   ADDTV: one partial to many; SYNC: a hard-sync sweep; RESO: a resonant peak climbing; VOX: vowels; FM: two-operator
   FM; DIGI: sparse, metallic spectra; BITS: stepped and 1-bit shapes), POS the place between its frames; the SHP
   routings move POS (ENV DEST / LFO DEST SHP, the matrix's SHP), so an envelope or the LFO scans the table. SYNC reads
   the frame up to 8x faster (windowed sync), DTN adds a detuned second oscillator, then DRV, a resonant low-pass and
   CRSH (sample-rate and bit reduction). The tables are band-limited per octave: high notes do not alias
-- **WEST** (this fork): west coast. A complex oscillator, a wavefolder and a low-pass gate: a modulating sine at RATIO
+- **WEST** *(Fel-Tracker)*: west coast. A complex oscillator, a wavefolder and a low-pass gate: a modulating sine at RATIO
   times the note (whole and half ratios, and 1.41, 1.73, 2.76, 3.55, 4.61 for bells and metal) moves the carrier's
   phase by FM (FDBK feeds the modulator back into itself, up to noise); FOLD folds the carrier over (the SHP routings
   move it), SYM shifts the fold off centre; the low-pass gate's cutoff follows the envelope through a vactrol-like lag,
   LPG of the way down from CUT, so a note darkens as it fades (the plucked, struck sound); TMBR opens FM and FOLD with
   the same envelope. FM and FOLD ease off on high notes so they do not alias
-- **HOOVER** (this fork): the early-90s rave lead, after the Alpha Juno's patch. Two oscillators, each a saw plus the
+- **HOOVER** *(Fel-Tracker)*: the early-90s rave lead, after the Alpha Juno's patch. Two oscillators, each a saw plus the
   same saw PW of a cycle on (a pulse-width-modulated saw: sweeping PW moves notches through the spectrum), PWM sweeping
   PW with the voice's own LFO at RATE (the SHP routings move PW too), DTN detuning the second, SUB a square an octave
   down; BEND starts each note up to two octaves away and slides it in over BTIM (the swoop); CUT, a low-pass. Its
   presets send plenty to the chorus, which makes the rest of the sound
-- **FMPERC** (the IDM distribution): FM percussion. A modulating sine at RATIO (whole, half and inharmonic ratios)
+- **FMPERC** *(Fel-Tracker; the IDM distribution)*: FM percussion. A modulating sine at RATIO (whole, half and inharmonic ratios)
   moves a carrier's phase by INDEX, and every hit sweeps both down over FDEC: the pitch from SWEEP semitones above the
   note, the index to a tenth, so a hit starts bright and high and settles. FDBK (towards noise); NOISE mixes in noise
   of the kind NTYP sets (SNAP a short burst, CLAP four bursts and a tail, HISS as long as the note); TONE darkens below
   0, thins above. 23 presets: six kicks (deep, sub, hard, distorted, punchy), snare, two claps, rim, closed and open
   hats, crash, ride, toms, conga, clave, cowbell, metal, a zap, a bell, a glitch
-- **KARPLUS** (the IDM distribution): a plucked string, Karplus-Strong. EXCT fills the string at the pluck (NOIS,
+- **KARPLUS** *(Fel-Tracker; the IDM distribution)*: a plucked string, Karplus-Strong. EXCT fills the string at the pluck (NOIS,
   PLUK filtered by BRIGHT, SAW, CLIK), POS plucks nearer the bridge or the middle, DAMP lets the highs die first, DECAY
   rings 0.1 .. 10 s, STIFF sharpens the overtones towards a bell, MUTE damps it on release, DRIVE saturates. Presets:
   nylon, steel, harp, koto, pizzicato, muted bass, dub and acid plucks, a bell string, a dulcimer
-- **VOSIM** (the IDM distribution): VOice SIMulation, two formants. Each period starts a train of PULS sin^2 pulses,
+- **VOSIM** *(Fel-Tracker; the IDM distribution)*: VOice SIMulation, two formants. Each period starts a train of PULS sin^2 pulses,
   each DECAY times the last; their width sets the formants F1 and F2, which stay put whatever the note (KTRK makes them
   follow it). SWEEP moves them at each note and lets them glide back (wah, brass, "yow"); BAL mixes them; BRTH adds
   breath. Presets: four vowels, talk lead, basses, brass, yow, choir, reed, whistle, growl, formant pad
-- **PARTICLE** (the IDM distribution): a cloud of synthesized grains. DENS grains a second (1 .. 400), each SIZE long
+- **PARTICLE** *(Fel-Tracker; the IDM distribution)*: a cloud of synthesized grains. DENS grains a second (1 .. 400), each SIZE long
   (2 .. 200 ms), at the note give or take SCAT semitones (QNT: free, semitones, octaves, fifths), gliding CHIRP; WAVE
   sine, triangle, FM or noise under SHAPE (a hit, a swell, backwards); TONE. Rain, bubbles, crackle, swarms, stardust,
   grain pads, drips, insects
-- **CHAOS** (the IDM distribution): chaotic systems as oscillators. MODEL: the Lorenz and Rossler attractors (flows
+- **CHAOS** *(Fel-Tracker; the IDM distribution)*: chaotic systems as oscillators. MODEL: the Lorenz and Rossler attractors (flows
   run at the note's speed: tones that wander) or the logistic and Henon maps (a new value each period: buzz that
   changes every cycle). CHAOS is the system's parameter, from order to wild; OUT the variable heard; SMTH; FOLD; SINE
   mixes in the note's sine; SEED: the same attack every note or a new one; TONE
-- **SID** (the IDM distribution): a voice of the C64's sound chip, in its manner. WAVE TRI SAW PUL NOIS (the chip's
+- **SID** *(Fel-Tracker; the IDM distribution)*: a voice of the C64's sound chip, in its manner. WAVE TRI SAW PUL NOIS (the chip's
   pitched shift-register noise) or the chip's combined waves (TS PT PS PTS); PW, PWM; MOD RING / SYNC / both against a
   master at the note, the oscillator MDTN semitones above it (the sync lead, ring bells); FILT the 12 dB multimode
   filter (LP BP HP) at CUT with RES, a little gritty. The SHP routings move PW and MDTN
-- **DUBSIREN** (the IDM distribution): the sound-system siren box with its own tape echo. WAVE, an LFO on the pitch
+- **DUBSIREN** *(Fel-Tracker; the IDM distribution)*: the sound-system siren box with its own tape echo. WAVE, an LFO on the pitch
   (RATE, DEPTH, SHAPE: two-tone, whoop up or down, wail), SWEEP (the dive or the rise), TIME (turned while it sounds,
   the echoes bend), FDBK (runs away while held, settles when let go), MIX. ATK and REL are its envelope; the voice
   lasts until the echoes die away
-- **FMKEYS** (the IDM distribution): FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
+- **FMKEYS** *(Fel-Tracker; the IDM distribution)*: FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
   index falls over DECAY, harder notes brighter by VEL) and the tine (the metallic strike of the attack, TINE; DTUNE
   its beating against the body); KSCL softens the top of the keyboard. Electric pianos, bells, tubular bells, marimba,
   vibes, clav, organ, harpsichord, kalimba, celesta, music box
-- **ACID** (the IDM distribution): the acid bass line. SAW or SQR (SUB an octave down) into a four-pole low-pass (CUT,
+- **ACID** *(Fel-Tracker; the IDM distribution)*: the acid bass line. SAW or SQR (SUB an octave down) into a four-pole low-pass (CUT,
   RES up to its squeal, DRIV into its saturation), opened by ENV at each note and closed over DEC; notes played hard
   are accents (ACC: louder, opened more, closed faster, building up over accents in a row). Slides: LEGATO with GLIDE
-- **KIT** (the IDM distribution): a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
+- **KIT** *(Fel-Tracker; the IDM distribution)*: a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
   map (its lane LEVELs and the EDIT layer's lane MUTEs too). KIT: FM, METAL, BIT, GLITCH, DEEP; TUNE, DECAY, PUNCH, FM,
   SNAP, TONE move every lane; VARY gives every hit its own small differences. A closed hat chokes the open one
-- **BREAKS** (the IDM distribution): a synthesized breakbeat player at the song's tempo. The key picks one of 12 breaks
+- **BREAKS** *(Fel-Tracker; the IDM distribution)*: a synthesized breakbeat player at the song's tempo. The key picks one of 12 breaks
   (FUNKY, CLASSIC, THINK, HALFTIME, BOOM BAP, JUNGLE, TWO STEP, SHUFFLE, BUSY, DRILL, SPARSE, GALLOP), looping while
   held; SLICE the 16th it starts from (chops), RATE (half .. double time), SWING, STUTR (rolls into 32nds and 64ths),
   SHUF (jumps to other 16ths), TUNE, DECAY, CRUSH
-- **RISERS** (the IDM distribution): build-ups and landings timed to the song: LEN beats (1 .. 32) of a climb RANGE
+- **RISERS** *(Fel-Tracker; the IDM distribution)*: build-ups and landings timed to the song: LEN beats (1 .. 32) of a climb RANGE
   semitones along CURVE. NOIS (a resonant noise sweep), SAW (a detuned stack, SPRD), SINE, SHEP (an endless Shepard
   rise), DOWN (a downlifter), BOOM (an impact, a sub drop); BUILD gates it faster and faster, NOISE mixes noise in
-- **SPEECH** (the IDM distribution): words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
+- **SPEECH** *(Fel-Tracker; the IDM distribution)*: words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
   are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD
   picks one. MODE TONE plays WORD at the keys' pitch, WORDS makes every key a word; RATE, INTN (the intonation, 0
@@ -413,7 +440,7 @@ In the order the device lists them:
 - **WHEEL**: tonewheel-style organ; drawbar registrations, percussion, key click, drive, rotary speaker
 - **PHYS**: physical models: modal resonators, strings, struck membranes, sympathetic strings
 - **NOISE**: noise from analog to digital: colours, crackle, shift-register and metallic tones
-- **BYTE** (this fork): bytebeat. A counter restarts at every note and runs at 8 kHz on C4 (following the key; RATE
+- **BYTE** *(Fel-Tracker)*: bytebeat. A counter restarts at every note and runs at 8 kHz on C4 (following the key; RATE
   shifts it); FORM picks a formula of it (SAW, PWM, SIERP, XOR, OR, CHIRP, 42, MELO, OCTS, GLTCH, NOISE, MASK), A B C
   are its constants (A mostly the pitch, B how fast the pattern moves, C a mask or a melody); LOOP restarts the counter
   (1K .. 256K steps) so a pattern repeats while held; BITS and TONE shape the 8-bit output
@@ -489,7 +516,10 @@ the FM-1 can be brought back:
 
 ## Support
 
-If Felucca is useful to you, [sponsoring on GitHub](https://github.com/sponsors/hugelton) or a donation
+Fel-Tracker: issues and ideas go to [TristanoSuriani/fel-tracker](https://github.com/TristanoSuriani/fel-tracker/issues).
+Please don't report Fel-Tracker problems to Felucca's tracker.
+
+Felucca: if Felucca is useful to you, [sponsoring on GitHub](https://github.com/sponsors/hugelton) or a donation
 on [itch.io](https://hugelton.itch.io/felucca) helps keep its development going.
 
 Issues are for reproducible bugs (one per issue). Ideas and requests go to
@@ -498,13 +528,20 @@ moved there. Pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## AI disclaimer
 
-Felucca is developed with the assistance of AI coding agents. These tools are used for coding, testing, documentation, translation, and maintenance.
+Fel-Tracker is developed by Tristano Suriani with the help of AI coding agents (for coding, testing and
+documentation). He decides its design, features, sound design and direction.
+
+Felucca (Leo Kuroshita's disclaimer): Felucca is developed with the assistance of AI coding agents. These tools are used for coding, testing, documentation, translation, and maintenance.
 The instrument's design, features, sound design, and overall direction are determined by the maintainer or community.
 No generative AI is used to create music, icons, or visual artwork for this project.
 For more details, see [On AI-Assisted Development and Responsibility](https://github.com/hugelton/Felucca/discussions/166).
 
 ## Credits
 
+- **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Fel-Tracker, meaning the tracker,
+  the distributions and engine ids, the engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE,
+  CHAOS, SID, DUBSIREN, FMKEYS, ACID, KIT, BREAKS and RISERS, and the changes to Felucca listed in
+  [AUTHORS.md](AUTHORS.md)
 - **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):
   Felucca itself; the PHASE engine's waveforms (a C port of the oscillator of
   [CrispyZebra](https://github.com/hugelton/CrispyZebra), GPL-3.0); the DRUM voices and kits; the [Fukiai](https://github.com/hugelton/Fukiai) icon
@@ -528,6 +565,8 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 Free software: [GPL-3.0-only](LICENSE). The bundled fonts and the
 ported DSP keep their own licences ([LICENSES/](LICENSES/)); details in [LICENSING.md](LICENSING.md).
 
-M-VAVE and FM-1 are trademarks of their respective owners. Felucca is not affiliated with or endorsed by them.
+M-VAVE and FM-1 are trademarks of their respective owners. Neither Felucca nor Fel-Tracker is affiliated with or
+endorsed by them. "Felucca" is Hügelton Instruments' name for its firmware; Fel-Tracker is an independent fork.
 
-Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+Felucca: Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+Fel-Tracker's additions and changes: Copyright (C) 2026 Tristano Suriani (see [AUTHORS.md](AUTHORS.md))

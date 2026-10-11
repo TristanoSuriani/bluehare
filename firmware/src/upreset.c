@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* User presets (editor protocol v2, cmds 16-21; the SAVE > USER page): 32
  * slots in two storage.c objects (OBJ_UPRESET0/1, A/B sectors at
  * 0xDC000..0xDFFFF), 16 records each, mirrored in RAM so browsing never

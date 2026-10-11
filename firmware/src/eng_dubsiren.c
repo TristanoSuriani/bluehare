@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* DUBSIREN (1.5): the sound-system siren box (Felucca's own, in the manner of the boxes): an oscillator (WAVE: SQR,
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* DUBSIREN (1.5): the sound-system siren box (Fel-Tracker's own, in the manner of the boxes): an oscillator (WAVE: SQR,
  * TRI, SAW, SINE) whose pitch an LFO swings DEPTH semitones up at RATE (~0.1 .. 20 Hz) in SHAPE (SQR the two-tone
  * "nee-naw", UP a whoop up, DOWN a whoop down, TRI a wail); SWEEP slides the whole pitch up or down from the note on
  * (+-32 semitones a second, on through the release: the dive), and the box's own tape echo: TIME (20 .. 460 ms; turned

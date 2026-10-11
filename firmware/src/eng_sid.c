@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* SID (1.5): a voice of the C64's sound chip, in its manner (Felucca's own, not a chip emulator). The oscillator is
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* SID (1.5): a voice of the C64's sound chip, in its manner (Fel-Tracker's own, not a chip emulator). The oscillator is
  * the chip's: a phase accumulator whose top 12 bits make the waves, WAVE one of TRI, SAW, PUL (PW its width) and NOIS
  * (the chip's 23-bit shift register clocked by the oscillator: pitched noise), or two or three of them at once, ANDed
  * as the chip combines them (TS, PT, PS, PTS: thin, nasal, buzzing). MOD as the chip's oscillator 3 on oscillator 1:

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* VOICE: formant oscillator, sung vowels from the keyboard. 4 voices.
  * After D. H. Klatt, "Software for a cascade/parallel formant synthesizer",
  * JASA 67 (1980): a glottal source (derivative of a Rosenberg (1971) pulse,

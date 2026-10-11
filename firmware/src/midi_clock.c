@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Adapted from MIDI clock contributions by ChanceTheMaker and keremimo (2026).
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Audio ISR state. Input timestamps keep USB/TRS jitter outside the render loop. */
 static struct {
     uint32_t pos, rendered, last_ms, start_ms, rem, interval_ms;

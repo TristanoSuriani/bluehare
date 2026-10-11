@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+// Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
 // The browser build (build/emu/felucca.wasm, web/emu/felucca_web.c) in Node, as the worklet runs it. After X0X's
 // tests/host/emu_test.mjs (charlesvestal/fm1-x0x, GPL-3.0).
 //   node web/emu/emu_test.mjs build/emu/felucca.wasm [NATIVE.f32]

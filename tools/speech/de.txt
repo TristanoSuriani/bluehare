@@ -1,3 +1,4 @@
+# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank DE: German numbers and machine words (see en_num.txt for the format; RR the uvular r, AX0 a vocalised
 # r or a schwa, X ach, C ich, TS z, UE ue, OE oe, EE long e, OO long o, AU au, EU eu); 32 words
 NULL     N UH1 L

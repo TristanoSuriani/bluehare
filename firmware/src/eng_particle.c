@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* PARTICLE (1.5): a cloud of synthesized grains (Felucca's own: no samples). While a note sounds, grains start at
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* PARTICLE (1.5): a cloud of synthesized grains (Fel-Tracker's own: no samples). While a note sounds, grains start at
  * random times, DENS a second on average (~1 .. 400), each SIZE long (~2 .. 200 ms), at the note give or take SCAT
  * semitones (random; QNT snaps the offset to FREE, SEMI semitones, OCT octaves, 5TH fifths and octaves), gliding CHIRP
  * over its length (up: bubbles, down: drips). Each grain is a WAVE (SINE, TRI, FM a bright bell-ish sine, NOIS a

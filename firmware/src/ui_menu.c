@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Felucca menu (HOME held): its rows in tabs (1.0.5: DISPLAY CONTROL AUDIO SYSTEM; 1.2: MIDI before SYSTEM; ALGORITHM
  * between them, PRESETS within one; no scrolling), the rows in menu_items.c (the settings, shared with the editor's
  * MENU_DESC / MENU_SET; 1.2: TUNE and MIDI IN, the project's). No BACK row: HOME closes it (ui_input.c). The two-valued
@@ -36,6 +37,12 @@ static void draw_about_qr(int32_t x, int32_t y)
 enum { MC_TEXT, MC_TITLE, MC_URL };
 typedef struct { const char *text; uint8_t kind; } menu_credit_t;
 static const menu_credit_t MENU_CREDITS[] = {
+    {"FEL-TRACKER", MC_TITLE},              /* Fel-Tracker: this fork of Felucca (AUTHORS.md) */
+    {"Tristano Suriani", MC_TEXT},
+    {"The tracker, the distributions, the engines WAVE BYTE WEST HOOVER SPEECH FMPERC KARPLUS VOSIM PARTICLE CHAOS SID "
+     "DUBSIREN FMKEYS ACID KIT BREAKS RISERS: GPL-3.0", MC_TEXT},
+    {"https://github.com/TristanoSuriani/fel-tracker", MC_URL},
+    {"", MC_TEXT},
     {"H\xFCgelton Instruments", MC_TITLE},  /* Felucca's own: above; these are ours too */
     {"Leo Kuroshita", MC_TEXT},
     {"CrispyZebra (PHASE waveforms), the DRUM voices, the Sample Pack: GPL-3.0", MC_TEXT},

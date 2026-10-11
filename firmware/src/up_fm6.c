@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* The user presets' FM6 patches (since 1.0.3): an FM6 user preset carries its track's patch, as a project does.
  * One storage.c object (OBJ_UPFM6, A/B: 0x9F000 / 0xFE000), mirrored in RAM (the pool): per user preset slot the
  * 128-byte packed patch (eng_fm6.c fm6_pack) with its 7-bit bytes packed 8 to the byte (112 bytes), and a tag.

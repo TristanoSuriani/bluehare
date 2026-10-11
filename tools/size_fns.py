@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
 """Build the main-loop code for size (build.py): the functions defined in SIZE_FILES get LLVM's
 minsize (about -Oz) while everything else (the sound, render and ISR code, the flash and OTA code,
 the main loop) keeps -Os. The JieLi clang 4 has no '#pragma clang attribute' and its minsize

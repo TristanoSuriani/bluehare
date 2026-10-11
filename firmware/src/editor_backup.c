@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Complete musical archive: no raw addresses are accepted. Small objects are staged
  * in main-loop RAM and fully validated before the existing A/B commit path writes.
  * Ids 32..34 (the user sample slots until 1.5) are listed empty; an archive's sample objects are not restored.

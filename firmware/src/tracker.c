@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The tracker: the song and how it plays (the audio ISR, events_block), the edits the UI makes (ui_tracker.c).
  *
  * The song (core.h tk_song_t): TK_PATS patterns of up to TK_ROWS rows, four columns each (one per track), and an order

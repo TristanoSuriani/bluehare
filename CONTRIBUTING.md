@@ -1,4 +1,10 @@
-# Contributing to Felucca
+# Contributing
+
+**Fel-Tracker** (this repository, Tristano Suriani's fork of Felucca) takes issues and pull requests at
+<https://github.com/TristanoSuriani/fel-tracker>. Please don't send Fel-Tracker problems to Felucca. The rest of
+this file is Felucca's own guide (Leo Kuroshita, Hügelton Instruments), for contributing to Felucca itself.
+
+## Contributing to Felucca
 
 Thanks for helping! To keep things easy to follow, please use the right place:
 

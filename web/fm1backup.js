@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+// Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
 // Local, complete musical archives. Requests name whitelisted objects, never flash addresses.
 // 8: the FM6 patch bank of 1.0..1.0.2 (listed empty since 1.0.3: a restore of an older archive's bank moves its patches
 // into the user presets restored before it); 9: the user presets' FM6 patches (1.0.3)

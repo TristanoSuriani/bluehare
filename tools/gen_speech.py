@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+# Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 """The SPEECH engine's data (firmware/src/eng_speech.c): its words, from the vocabulary files in tools/speech/ (a word:
 its name and its phonemes with the stress), and the filter of every sound they use.
 

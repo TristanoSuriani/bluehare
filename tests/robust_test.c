@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Robustness against damaged or crafted stored data and editor requests (the 1.0.4 audit's items 5-10): the real
  * C paths of the editor build (editor_test.c is the base: hostsim, stubs, RAM flash).
  *   projects            (1.5: the song's stream) an engine id past the last or retired refused under a valid hash; no

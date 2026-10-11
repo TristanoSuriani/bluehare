@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* KARPLUS (1.5): a plucked string, Karplus-Strong (Felucca's own: a delay line one period long, filled at the pluck,
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* KARPLUS (1.5): a plucked string, Karplus-Strong (Fel-Tracker's own: a delay line one period long, filled at the pluck,
  * fed back through a damping filter).
  *
  * At each note the line is filled with the excitation EXCT: NOIS white noise (a bright pluck), PLUK noise through a

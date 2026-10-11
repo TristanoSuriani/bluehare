@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* The editor's full backup (editor_backup.c: LIST / GET / PUT) against simulated NOR flash:
  * CRC before any write, stale runtime copies, USB resets and timeouts, malformed objects, the song's chunks (1.5)
  * backed up and restored whole, settings values and user preset banks kept byte for byte. */

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+# Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 """The distributions (distributions/<name>.txt: the engines in display order, one a line, at most 16) -> a header
 each, OUT_DIR/dist_<name>.h, that firmware/src/core.h includes for the one being built (FELUCCA_DIST=<name>):
   FELUCCA_DIST_TAG         "" for the default, else " <NAME>" (the version string, the package name)

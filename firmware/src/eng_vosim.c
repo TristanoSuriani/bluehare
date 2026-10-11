@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
+ * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* VOSIM (1.5): VOice SIMulation (Kaegi and Tempelaars, 1978), with two formants. Each period of the note starts a train
  * of PULS sin^2 pulses whose width sets the formant (F1, F2: ~130 Hz .. 4.2 kHz), each pulse DECAY times the one before;
  * after the train, silence until the next period. The formant stays where it is whatever the note (a voice, a reed,

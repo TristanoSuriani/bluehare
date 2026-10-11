@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
 """tools/fm1_install.py against a simulated FM-1 (no hardware, no mido).
 The fake device is the one in web/test_web.mjs: identity on the handshake,
 then "device asks, host answers" reads of the logical image. Run from the repo root:
