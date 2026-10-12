@@ -455,7 +455,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   are phonemes (`tools/speech/`). BANK: NUM (the numbers 0 .. 10), TECH (machines and technology, the Latin-rooted
   words of the control room: IGNITION, REACTOR, OVERRIDE ..), COSMOS (the planets, the bright stars, NEBULA, QUASAR,
   SUPERNOVA ..), FEEL (feelings: EUPHORIA, RAPTURE, DESPAIR, PARANOIA ..), DARK (darkness, intense events, overwhelm and
-  mystery: ABYSS, EXPLOSION, CATACLYSM, ENIGMA, OVERWHELM ..), PHON (single phonemes); WORD picks one. MODE TONE plays WORD at the keys' pitch, WORDS makes every key a word; RATE, INTN (the intonation, 0
+  mystery: ABYSS, EXPLOSION, CATACLYSM, ENIGMA, OVERWHELM ..), SYLL (vowels and sung syllables: AA, EE, OOH, PA, PARA,
+  DOO, YEAH ..), PHON (single phonemes); WORD picks one. Presets: sung vowels, syllables, the keys as words, screams MODE TONE plays WORD at the keys' pitch, WORDS makes every key a word; RATE, INTN (the intonation, 0
   monotone), BUZZ (to a whisper), FORM (the filter's clock: every formant up or down), END (STOP, HOLD the last vowel
   while held, LOOP)
 - **PHASE**: phase distortion (ported from CrispyZebra)

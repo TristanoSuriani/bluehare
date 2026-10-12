@@ -102,6 +102,10 @@ static void host_preset_values(track_t *t, uint32_t e, uint32_t pi, const preset
     t->p[P_ED_FLT] = p->fenv;
     t->p[P_VOICE] = p->mono ? V_LEGATO : V_POLY;
     t->p[P_OCT] = p->oct;                         /* (ui.c: the sound's octave, 0 for most) */
+    t->p[P_ED_SHP] = p->eshp;                     /* (ui.c: a moving shape) */
+    t->p[P_LD_SHP] = p->lshp;
+    t->p[P_LRATE] = p->lrate ? (int16_t)(p->lrate - 1u) : TP[P_LRATE].def;   /* (ui.c: the defaults first) */
+    t->p[P_LWAVE] = p->lwave ? (int16_t)(p->lwave - 1u) : TP[P_LWAVE].def;
     for (i = 0; i < 4u; i++)
         t->p[P_DIST + i] = (int16_t)(p->fx[i] ? p->fx[i] - 1 : FX_DEF[i]);
     fm6_track_loaded(t);                          /* FM6: the preset's patch (ui.c apply_preset_to) */
@@ -791,6 +795,9 @@ int main(int argc, char **argv)
         for (i = 0; i < 8; i++) inst.p[P_E0 + i] = p->e[i];
         inst.p[P_ATK] = p->env[0]; inst.p[P_DEC] = p->env[1];
         inst.p[P_SUS] = p->env[2]; inst.p[P_REL] = p->env[3]; inst.p[P_ED_FLT] = p->fenv;
+        inst.p[P_ED_SHP] = p->eshp; inst.p[P_LD_SHP] = p->lshp;
+        if (p->lrate) inst.p[P_LRATE] = (int16_t)(p->lrate - 1u);
+        if (p->lwave) inst.p[P_LWAVE] = (int16_t)(p->lwave - 1u);
     }
     fm6_track_loaded(&inst);                            /* FM6: the preset's patch */
     inst.p[P_VOICE] = (int16_t)mono;

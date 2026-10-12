@@ -155,13 +155,27 @@ static const preset_t WAVE_PRESETS[] = {
     {"SUB BASS", {0, 0, 0, 0, 50, 10, 20, 0}, {0, 50, 100, 20}, 10, 1, FX(10, 0, 0, 5)},
     {"SYNC BASS", {2, 50, 60, 0, 70, 30, 40, 0}, {0, 60, 70, 20}, 30, 1, FX(15, 0, 10, 5)},
     {"BIT ARP", {7, 40, 0, 0, 110, 0, 0, 60}, {0, 40, 0, 30}, 0, 0, FX(0, 0, 50, 20)},
+    /* (Fel-Tracker) the table moving: an LFO scanning it (the frames morphing), or each note's envelope (lrate: the
+     * LFO's RATE + 1, ~0.2 Hz at 26; lwave: its WAVE + 1, 1 SIN 2 TRI 5 S&H) */
+    {"MORPH PAD", {1, 50, 0, 16, 85, 10, 0, 0}, {80, 90, 115, 95}, 0, 0, FX(0, 60, 25, 75), .lshp = 50, .lrate = 26},
+    {"VOX MORPH", {4, 64, 0, 12, 90, 10, 0, 0}, {70, 90, 120, 95}, 0, 0, FX(0, 60, 25, 70), .lshp = 63, .lrate = 31,
+     .lwave = 2},
+    {"SWEEP LEAD", {2, 15, 0, 6, 100, 15, 20, 0}, {0, 70, 100, 30}, 0, 1, FX(0, 10, 40, 25), .eshp = 60},
+    {"SCAN BASS", {0, 15, 0, 0, 100, 30, 30, 0}, {0, 70, 40, 20}, 20, 1, FX(10, 0, 10, 5), .eshp = 63},
+    {"BELL SCAN", {5, 10, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45), .eshp = 63},
+    {"WOBBLE", {0, 64, 0, 4, 80, 25, 40, 0}, {0, 0, 127, 20}, 0, 1, FX(15, 0, 10, 5), .lshp = 55, .lrate = 68, .lwave = 1},
+    {"DIGI STEPS", {6, 64, 0, 0, 100, 10, 0, 20}, {0, 0, 127, 30}, 0, 0, FX(0, 10, 40, 30), .lshp = 63, .lrate = 58,
+     .lwave = 5},
+    {"EVOLVER", {1, 30, 30, 20, 90, 15, 10, 0}, {90, 90, 120, 100}, 0, 0, FX(0, 70, 30, 80), .eshp = 30, .lshp = 35,
+     .lrate = 22},
+    {"SYNC SCAN", {2, 20, 70, 0, 100, 10, 30, 0}, {0, 60, 90, 30}, 0, 1, FX(0, 10, 40, 25), .lshp = 45, .lrate = 40},
 };
 
 static const engine_t ENG_WAVE = {
     .name = "WAVE",
     .id = EID_WAVE,
     .cc = 0x56,
-    .cats = "KPLBPUKLPPPPBBU",
+    .cats = "KPLBPUKLPPPPBBUPPLBUBKPL",
     .page_title = {"WAVE", "TONE"},
     .edit = {
         {"TBL", F_ENUM, 0, WT_NBANK - 1, 0, N_WT_BANK, 0},

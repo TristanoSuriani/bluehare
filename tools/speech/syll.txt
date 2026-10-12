@@ -1,0 +1,34 @@
+# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# SPEECH bank SYLL: vowels and sung syllables (the format: num.txt); 32 words
+AA       AA1
+EE       IY1
+AY       AY1
+OH       OW1
+OOH      UW1
+AH       AH1
+EH       EH1
+OI       OY1
+PA       P AA1
+PARA     P AA1 R AA0
+BA       B AA1
+DA       D AA1
+TA       T AA1
+KA       K AA1
+GA       G AA1
+LA       L AA1
+MA       M AA1
+NA       N AA1
+YA       Y AA1
+WA       W AA1
+HA       HH AA1
+ZA       Z AA1
+SA       S AA1
+SHA      SH AA1
+DOO      D UW1
+BOO      B UW1
+YEAH     Y EH1 AH0
+WOW      W AW1
+OOWAH    UW1 W AA2
+AHA      AA0 HH AA1
+DADA     D AA1 D AA0
+LALA     L AA1 L AA0

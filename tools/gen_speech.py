@@ -25,7 +25,7 @@ FS = 8820.0                     # the filter's rate (44100 / 5)
 P = 10                          # poles
 HERE = Path(__file__).resolve().parent / "speech"
 BANKS = [("NUM", "num.txt"), ("TECH", "tech.txt"), ("COSMOS", "cosmos.txt"), ("FEEL", "feel.txt"),
-         ("DARK", "dark.txt")]   # then PHON
+         ("DARK", "dark.txt"), ("SYLL", "syll.txt")]   # then PHON
 WORDS = 32                      # a bank's most
 F45 = [(3300, 250), (3850, 300)]   # the upper resonances of a voiced sound
 

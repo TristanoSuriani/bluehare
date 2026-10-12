@@ -189,6 +189,9 @@ typedef struct {
     /* the rest of the patch; each value is stored + 1, 0 = the default */
     uint8_t fx[4];               /* DIST, CHORUS, DELAY, REVERB sends (the arp is the track's: a preset does not set it) */
     int8_t oct;                  /* (Fel-Tracker) OCT, the sound's octave (P_OCT; 0, the default, for most) */
+    int8_t eshp, lshp;           /* (Fel-Tracker) ENV -> SHAPE and LFO -> SHAPE (P_ED_SHP, P_LD_SHP; -64 .. 63, 0 none):
+                                  * a preset that moves its shape (WAVE: a scan through the table) */
+    uint8_t lrate, lwave;        /* (Fel-Tracker) the LFO's RATE and WAVE, + 1 (0: the default) */
 } preset_t;
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}
 

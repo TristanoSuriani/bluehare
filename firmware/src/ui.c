@@ -670,6 +670,12 @@ static void apply_preset_to(track_t *t, uint32_t pi)
     t->p[P_ED_FLT] = e->presets[pi].fenv;
     t->p[P_VOICE] = e->presets[pi].mono ? V_LEGATO : V_POLY;   /* mono presets keep the legato feel */
     t->p[P_OCT] = e->presets[pi].oct;                 /* the sound's octave (FMPERC's kicks: 3 down) */
+    t->p[P_ED_SHP] = e->presets[pi].eshp;             /* (a moving shape: ENV and LFO -> SHAPE, the LFO's rate, wave) */
+    t->p[P_LD_SHP] = e->presets[pi].lshp;
+    if (e->presets[pi].lrate)
+        t->p[P_LRATE] = (int16_t)(e->presets[pi].lrate - 1u);
+    if (e->presets[pi].lwave)
+        t->p[P_LWAVE] = (int16_t)(e->presets[pi].lwave - 1u);
     {   /* the sends */
         static const uint8_t FX_DEF[4] = {0, 24, 28, 36};
         const preset_t *pr = &e->presets[pi];
