@@ -10,8 +10,8 @@ What Fel-Tracker adds, all by Tristano Suriani:
 - **The tracker**, in place of the step sequencer.
 - **Distributions:** builds of any set of up to 16 engines, with stable engine ids. The **IDM** distribution is the
   default.
-- **Eighteen new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
-  DUBSIREN8 (SIREN8), FMKEYS, ACID, KIT, BREAKS and RISERS.
+- **Nineteen new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
+  DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, ACID, KIT, BREAKS and RISERS.
 
 Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
 Fel-Tracker's parts are marked *(Fel-Tracker)*.
@@ -356,7 +356,7 @@ way as from the menu, in the same tabs.
 Felucca's engines, by Leo Kuroshita: ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM.
 
 Fel-Tracker's engines, by Tristano Suriani, marked *(Fel-Tracker)* below: WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC,
-KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), FMKEYS, ACID, KIT, BREAKS and RISERS.
+KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, ACID, KIT, BREAKS and RISERS.
 
 A build holds the engines of its distribution (BUILDING.md "Distributions"). In the order the device lists them:
 
@@ -390,7 +390,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   of the kind NTYP sets (SNAP a short burst, CLAP four bursts and a tail, HISS as long as the note); TONE darkens below
   0, thins above. 23 presets: six kicks (deep, sub, hard, distorted, punchy), snare, two claps, rim, closed and open
   hats, crash, ride, toms, conga, clave, cowbell, metal, a zap, a bell, a glitch
-- **KARPLUS** *(Fel-Tracker; the IDM distribution)*: a plucked string, Karplus-Strong. EXCT fills the string at the pluck (NOIS,
+- **KARPLUS** *(Fel-Tracker; in no distribution since IDM gave its slot to DUBCHORD: a stored KARPLUS sound loads as
+  PHYS where there is one, else WEST)*: a plucked string, Karplus-Strong. EXCT fills the string at the pluck (NOIS,
   PLUK filtered by BRIGHT, SAW, CLIK), POS plucks nearer the bridge or the middle, DAMP lets the highs die first, DECAY
   rings 0.1 .. 10 s, STIFF sharpens the overtones towards a bell, MUTE damps it on release, DRIVE saturates. Presets:
   nylon, steel, harp, koto, pizzicato, muted bass, dub and acid plucks, a bell string, a dulcimer
@@ -420,6 +421,11 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   and the same 8 controls, made of fewer bits: the siren held a sample in two and cut to 8 bits after its envelope (a
   fading siren grows grittier), the echo 8 bits a sample (464 ms in 5 KB a track), each pass rougher. Its first 12
   presets are DUBSIREN's 12 in 8 bits, then ARCADE ZAP, DIRTY DUB, POCKET HORN, BROKEN TAPE
+- **DUBCHORD** *(Fel-Tracker; the IDM distribution)*: the dub-techno chord stab, a whole chord in one voice: a key plays
+  CHORD on its note (MIN7, MIN9, MIN11, MAJ7, SUS2, SUS4, 5THS, MIN; the same quality wherever the root goes), four notes
+  through one resonant low-pass, so a chord costs one voice of the budget. VOIC CLOSE, OPEN, SPREAD; WAVE SAW, SQR, SINE,
+  ORGAN; DTN detunes the notes in turn; CUT, RES, and the filter's ENV and DEC (the stab's opening). Its presets send
+  plenty to the delay (TAPE suits it) and the reverb; up to 4 chords a track
 - **FMKEYS** *(Fel-Tracker; the IDM distribution)*: FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
   index falls over DECAY, harder notes brighter by VEL) and the tine (the metallic strike of the attack, TINE; DTUNE
   its beating against the body); KSCL softens the top of the keyboard. Electric pianos, bells, tubular bells, marimba,
@@ -550,7 +556,7 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 
 - **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Fel-Tracker, meaning the tracker,
   the distributions and engine ids, the engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE,
-  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), FMKEYS, ACID, KIT, BREAKS and RISERS, and the changes to Felucca listed in
+  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, ACID, KIT, BREAKS and RISERS, and the changes to Felucca listed in
   [AUTHORS.md](AUTHORS.md)
 - **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):
   Felucca itself; the PHASE engine's waveforms (a C port of the oscillator of

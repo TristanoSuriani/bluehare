@@ -51,6 +51,7 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | SID (a C64 sound-chip voice) | `firmware/src/eng_sid.c` |
 | DUBSIREN (siren with tape echo) | `firmware/src/eng_dubsiren.c` |
 | DUBSIREN8, SIREN8 on the device (its 8-bit cousin) | `firmware/src/eng_dubsiren8.c` |
+| DUBCHORD (the dub-techno chord, a whole chord in one voice) | `firmware/src/eng_dubchord.c` |
 | FMKEYS (FM keyboards) | `firmware/src/eng_fmkeys.c` |
 | ACID (acid bass line) | `firmware/src/eng_acid.c` |
 | KIT (an FM drum kit on one part) | `firmware/src/eng_kit.c` |

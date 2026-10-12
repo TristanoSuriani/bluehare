@@ -27,6 +27,7 @@
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_dubsiren.c"       /* DUBSIREN: the sound-system siren, its own tape echo (1.5) */
 #include "eng_dubsiren8.c"      /* DUBSIREN8: its 8-bit cousin, every track (1.5) */
+#include "eng_dubchord.c"       /* DUBCHORD: the dub-techno chord, a whole chord in one voice (1.5) */
 #include "eng_fmkeys.c"         /* FMKEYS: FM electric pianos, bells, mallets (1.5) */
 #include "eng_acid.c"           /* ACID: the acid bass line (1.5) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */

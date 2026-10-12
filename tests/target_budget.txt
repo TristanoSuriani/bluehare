@@ -68,3 +68,4 @@ rev_hall 1995
 rev_side_mix 9
 dly_tape 123
 dubsiren8_render 300
+dubchord_render 840

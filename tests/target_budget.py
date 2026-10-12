@@ -40,7 +40,8 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "perf_begin", "perf_mute", "perf_pre", "perf_block", "perf_master",   # the FX layer (perform.c), when busy
          "rev_room", "rev_spring", "rev_hall", "rev_side_mix",
          "dly_tape",
-         "dubsiren8_render"]                                # DUBSIREN8 (Fel-Tracker 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Fel-Tracker 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
+         "dubsiren8_render",
+         "dubchord_render"]                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)                                # DUBSIREN8 (Fel-Tracker 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Fel-Tracker 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
