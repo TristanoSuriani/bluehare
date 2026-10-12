@@ -391,8 +391,13 @@ static int autosave_test(void)
     as_power_on();
     ok &= autosave_boot(1) == 1 && song.g[G_BPM] != 150 && tk_note(tk_at(0, 8, 0)) != 0u;
     bad += check("autosave: a write cut short (power off): the copy before is restored", ok);
-    {   /* a song too big for one chunk: a chunk of no length; power-on restores nothing and says so */
-        uint32_t p, r;
+    {   /* (Fel-Tracker) a song of several chunks: autosaved whole and restored whole; a write cut after any of its flash
+         * programs (chunks 1 .. first, chunk 0 the commit last): power-on restores the song before it or the new one,
+         * whole, never a mix */
+        uint32_t p, r, cut, cuts = 0, mixed = 0, done = 0;
+        char what[160];
+        st_hdr_t sh;
+        proj_hdr_t ph;
         as_power_on();
         autosave_boot(1);
         for (p = 0; p < 8u; p++)
@@ -401,10 +406,34 @@ static int autosave_test(void)
                     *tk_at(p, r, k) = tk_pack(30u + (r + k) % 60u, 1, 0, 0);
         w = as.writes;
         as_run(70000u);
-        ok = as.writes == w + 1u && st_load(OBJ_AUTOSAVE, raw, sizeof raw) == (int)PROJ_HDR;
+        ok = as.writes == w + 1u && st_current(OBJ_AUTOSAVE, &sh) >= 0;
+        memcpy(&ph, st_buf, sizeof ph);
+        ok &= ph.count > 1u;
         as_power_on();
-        ok &= autosave_boot(1) == 0 && tk_pat_empty(0) && str_eq(ui.msg, "SONG NOT RESTORED");
-        bad += check("autosave: a song too big for it: its place says so; power-on: SONG NOT RESTORED, no older music", ok);
+        ok &= autosave_boot(1) == 1 && tk_note(tk_at(7, 63, NTRK - 1u)) == 30u + (63u + NTRK - 1u) % 60u;
+        snprintf(what, sizeof what, "autosave: a song of %u chunks: written whole, power-on restores it whole", ph.count);
+        bad += check(what, ok);
+        for (cut = 1; cut < 400u && !done; cut++) {
+            int32_t b0;
+            as_power_on();
+            if (autosave_boot(1) != 1 || tk_note(tk_at(7, 63, NTRK - 1u)) != 30u + (63u + NTRK - 1u) % 60u) {
+                mixed++;
+                break;
+            }
+            b0 = song.g[G_BPM];
+            song.g[G_BPM] = (int16_t)(b0 < 200 ? b0 + 1 : 60);
+            fail_after = (int)cut;
+            as_run(70000u);
+            done = fail_after > 0;                       /* (the write finished before the cut) */
+            fail_after = -1;
+            cuts += !done;
+            as_power_on();
+            if (autosave_boot(1) != 1 || (song.g[G_BPM] != b0 && song.g[G_BPM] != (b0 < 200 ? b0 + 1 : 60)) ||
+                tk_note(tk_at(7, 63, NTRK - 1u)) != 30u + (63u + NTRK - 1u) % 60u)
+                mixed++;
+        }
+        snprintf(what, sizeof what, "  a write cut after each of its %u flash programs: the song before or the new one, whole, each time", cuts);
+        bad += check(what, done && !mixed && cuts > 30u);
     }
     /* wear: a 4-hour session: 3 h of editing (a change every 3 s), pauses and playing it back, then an hour away */
     as_power_on();

@@ -211,6 +211,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "metronome: beats sample for sample (internal and external clock), accent, level, MASTER, not in USB, PLAY armed at once (no count-in)" "$OUT/click_test"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/persistence_test" tests/persistence_test.c -lm
     run "persistence: deferred settings, retry and failed-save rollback" "$OUT/persistence_test"
+    $CC -w -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/persistence_test8" tests/persistence_test.c -lm
+    run "persistence built with 8 tracks (step 3b): the 16-chunk song store, the autosave of many chunks, cut anywhere" "$OUT/persistence_test8"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/backup_test" tests/backup_test.c -lm
     run "full backup: CRC before writes, stale runtime, USB reset / timeout, malformed objects, older projects" "$OUT/backup_test"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/fm6bank_test" tests/fm6bank_test.c -lm

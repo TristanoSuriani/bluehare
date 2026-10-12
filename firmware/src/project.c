@@ -794,9 +794,13 @@ static void settings_save(void)
 
 /* The autosave (1.2, Discussion #130): the music as it is (what the project holds) kept in its own storage object
  * (OBJ_AUTOSAVE, A/B at 0xE5000 / 0xE6000, never the song store), and put back at power-on (autosave_boot) with
- * MENU > SYSTEM > RESTORE LAST ON (the default). It is one chunk of the project's stream: a song whose stream is longer
- * than PROJ_DATA does not fit, and the autosave then holds a chunk of no length (count 0), so power-on restores
- * nothing rather than older music, and says so (SAVE THE SONG). Flash wear: a 4 KiB erase per write, the two sectors
+ * MENU > SYSTEM > RESTORE LAST ON (the default). It holds the project's stream in as many chunks as the song store
+ * (Fel-Tracker; 1.2 .. 1.5 one chunk): chunk 0 in OBJ_AUTOSAVE, 1 .. 15 in OBJ_AUTO1 .. (storage.c), every chunk of one
+ * write carrying its generation. Chunks 1 .. go first, each into the copy that does not hold the complete autosave's;
+ * chunk 0 last, through st_save (its copies take turns as before: fm6_vbank.c stages a bank in the one st_save writes
+ * next): a write cut short leaves the complete one as it was. A song past the store's size cannot be (the song store
+ * refuses it too): then a chunk of no length (count 0), power-on restores nothing and says so (SAVE THE SONG). Old
+ * autosaves (one chunk, generation 0) still restore. Flash wear: a 4 KiB erase per write, the two sectors
  * taking turns, so a write only when
  *   - something the project holds changed since the last one (autosave_sig: the stream's hash, no copy; not the
  *     PROJECT page's own controls),
@@ -847,14 +851,53 @@ static int autosave_quiet(void)
 static void autosave_hold(void) { as.t = fm1_ms; }   /* the editor's transfers: their staging RAM is proj_wire_u */
 
 #if FELUCCA_FLASH
-static int as_put(uint32_t chunk, uint32_t len)  /* the autosave: one chunk */
+static uint8_t as_copy[PROJ_CHUNKS];             /* chunk i's copy in the complete autosave (as_find) */
+static uint8_t as_pass;                          /* as_put: 1 chunks 1 .., 0 chunk 0 (the commit) */
+static uint32_t as_obj(uint32_t i) { return i ? OBJ_AUTO1 + i - 1u : OBJ_AUTOSAVE; }
+/* chunk i (1 ..) of copy c into st_buf, checked against chunk 0's header h: 0 = it belongs */
+static int as_chunk(uint32_t i, uint32_t c, const proj_hdr_t *h)
 {
-    return chunk || st_save(OBJ_AUTOSAVE, proj_wire_u.raw, PROJ_HDR + len) != 0;
+    st_hdr_t sh;
+    proj_hdr_t x;
+    if (i >= PROJ_CHUNKS || st_head(as_obj(i), c, &sh) || st_body(as_obj(i), c, &sh) || sh.len < PROJ_HDR)
+        return 1;
+    memcpy(&x, st_buf, sizeof x);
+    return x.magic != PROJ_MAGIC || x.index != i || x.gen != h->gen || x.count != h->count || x.len > sh.len - PROJ_HDR;
 }
-static int as_get(uint32_t chunk)
+/* the complete autosave: chunk 0's header (the current copy) into *h and every chunk's copy into as_copy; 0 = found */
+static int as_find(proj_hdr_t *h)
+{
+    st_hdr_t sh;
+    uint32_t i, c;
+    memset(as_copy, 0, sizeof as_copy);
+    if (st_current(OBJ_AUTOSAVE, &sh) < 0 || sh.len < PROJ_HDR)
+        return 1;
+    memcpy(h, st_buf, sizeof *h);
+    if (h->magic != PROJ_MAGIC || h->index || h->count > PROJ_CHUNKS)
+        return 1;
+    for (i = 1; i < h->count; i++) {
+        for (c = 0; c < 2u && as_chunk(i, c, h); c++)
+            ;
+        if (c == 2u)
+            return 1;
+        as_copy[i] = (uint8_t)c;
+    }
+    return 0;
+}
+static int as_put(uint32_t chunk, uint32_t len)  /* pass 1: chunks 1 .. into the other copies; pass 0: chunk 0 */
+{
+    if (chunk >= PROJ_CHUNKS || (as_pass ? !chunk : chunk != 0u))
+        return 0;
+    if (!chunk)
+        return st_save(OBJ_AUTOSAVE, proj_wire_u.raw, PROJ_HDR + len) != 0;
+    return st_save_to(as_obj(chunk), proj_wire_u.raw, PROJ_HDR + len, !as_copy[chunk]) != 0;
+}
+static int as_get(uint32_t chunk)                /* chunk of the complete autosave (as_find first) into st_buf */
 {
     st_hdr_t h;
-    return chunk || st_current(OBJ_AUTOSAVE, &h) < 0 || h.len < PROJ_HDR;
+    if (!chunk)
+        return st_current(OBJ_AUTOSAVE, &h) < 0 || h.len < PROJ_HDR;
+    return chunk >= PROJ_CHUNKS || st_head(as_obj(chunk), as_copy[chunk], &h) || st_body(as_obj(chunk), as_copy[chunk], &h);
 }
 #endif
 
@@ -880,15 +923,26 @@ static void autosave_poll(void)
     as.wrote = 1;
     memset(&w, 0, sizeof w);
     w.h = 2166136261u;
-    proj_write(&w, proj_name);                   /* (counted: does it fit one chunk?) */
+    proj_write(&w, proj_name);                   /* (counted: how many chunks?) */
     proj_wire_gen++;
-    if (w.n <= PROJ_DATA) {
-        memset(&w, 0, sizeof w);
-        w.h = 2166136261u;
-        w.put = as_put;
-        w.count = 1;
-        proj_write(&w, proj_name);
-        as.err = (uint8_t)w.err;
+    if (w.n <= PROJ_CHUNKS * PROJ_DATA) {
+        proj_hdr_t h;
+        uint32_t n = (w.n + PROJ_DATA - 1u) / PROJ_DATA, gen;
+        memset(&h, 0, sizeof h);
+        if (as_find(&h) && h.magic != PROJ_MAGIC)
+            h.gen = 0xFFFFFFFFu;                 /* (none at all: generation 0) */
+        gen = h.gen + 1u;                        /* (past chunk 0's, the commit: chunks of an older write never match) */
+        for (as_pass = 1; ; as_pass = 0) {       /* chunks 1 .. first, chunk 0 (the commit) last */
+            memset(&w, 0, sizeof w);
+            w.h = 2166136261u;
+            w.put = as_put;
+            w.count = n;
+            w.gen = gen;
+            proj_write(&w, proj_name);
+            as.err = (uint8_t)w.err;
+            if (as.err || !as_pass)
+                break;
+        }
     } else {                                     /* too big: a chunk of no length, nothing to restore */
         proj_hdr_t h = {PROJ_MAGIC, 0, 0, 0, {0, 0}, 0};
         memcpy(proj_wire_u.raw, &h, sizeof h);
@@ -915,8 +969,8 @@ static int autosave_boot(int allowed)
         proj_wire_gen++;
         if (h.magic == PROJ_MAGIC && !h.count) {
             ui_message("SONG NOT RESTORED");
-        } else if (h.magic == PROJ_MAGIC && h.count == 1u && !h.index) {
-            if (!project_restore(as_get, 1)) {
+        } else if (h.magic == PROJ_MAGIC && h.count && !h.index && !as_find(&h)) {
+            if (!project_restore(as_get, h.count)) {
                 proj_cur = PROJ_NO_SLOT;
                 ui_message("RESTORED");
                 rc = 1;
