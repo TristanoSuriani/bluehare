@@ -116,6 +116,7 @@ static __attribute__((noinline)) void tk_inst_apply(track_t *t, uint32_t i)
         if (tk_user_sound)
             tk_user_sound(t, (uint32_t)(in->src - TK_SRC_USER) % UP_SLOTS);
     } else if ((k = tk_inst_engine(in, &pi)) != ENG_NO) {
+        k = eng_for_track(t, k);                     /* (DUBSIREN off the last track: DUBSIREN8, the same preset) */
         e = ENGINES[k];
         t->eng_req = (uint8_t)k;
         t->user = 0;

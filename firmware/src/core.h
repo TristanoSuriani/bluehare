@@ -27,7 +27,7 @@ enum {                           /* the ids */
 #include "engine_ids.h"
 #undef ENGINE
 };
-#define EID_COUNT 31u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+#define EID_COUNT 32u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 #define EID_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u)   /* DIGITAL SAMPLE GRAIN SLICE */
 #define ENG_ABSENT 0x100u        /* the ENGI_ of an engine the build leaves out: no uint8_t equals it */
 #ifndef FELUCCA_DIST
@@ -220,6 +220,9 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
      * done() says so (once per control tick, before the render), not at the end of the ADSR's release */
     uint8_t ownenv;
     int (*done)(struct track *t, voice_t *v);
+    /* (Fel-Tracker) 1 = on the last track alone (DUBSIREN: its echo is that track's): a sound of it loaded on another
+     * track becomes its substitute (engines.c eng_for_track) */
+    uint8_t last_track;
 } engine_t;
 
 /* ------------------------------------------------- tracks, the song --- */

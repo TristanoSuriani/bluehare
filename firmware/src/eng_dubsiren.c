@@ -10,8 +10,12 @@
  * saturated as a tape loop is.
  * Its own envelope: ATK and REL of the ADSR (DEC, SUS are not used: a siren is on or off); the voice lasts until
  * the echoes have died away (ownenv). One voice a part (the echo is the part's).
+ * The last track only (Fel-Tracker, the 8-track plan): its 16-bit echo is one line, the last track's (track 4, or 8 in
+ * an 8-track build); a DUBSIREN sound loaded on another track becomes DUBSIREN8 (engines.c eng_for_track), and one
+ * that plays there anyway (no line: a build without DUBSIREN8) plays its siren dry.
  * Voice state: ph[0] the oscillator, ph[1] the LFO, s[0] the envelope (Q15), s[1] the sweep (1/16 semitone, Q8),
- * s[2] the last block's echo level. The echo: ds_echo[part] (in the pool), 11025 samples a second. */
+ * s[2] the last block's echo level. The echo: ds_echo (in the pool), 11025 samples a second. DUBSIREN8
+ * (eng_dubsiren8.c) shares the block's envelope, LFO and pitch (ds_block) and the voice's end (ds_done). */
 static const char *const N_DS_WAVE[] = {"SQR", "TRI", "SAW", "SINE", 0};
 static const char *const N_DS_SHAPE[] = {"SQR", "UP", "DOWN", "TRI", 0};
 #define DS_LEN 5120u             /* the echo line: 464 ms at 11025 a second */
@@ -20,9 +24,9 @@ typedef struct {
     uint32_t w, cnt;             /* the next write; the input samples summed so far (4 make one) */
     int32_t acc, lp, d8;         /* their sum; the loop's low-pass; the delay (samples, Q8: glides to TIME) */
 } ds_echo_t;
-static ds_echo_t ds_echo[NPART] __attribute__((section(".pool")));
+static ds_echo_t ds_echo[1] __attribute__((section(".pool")));   /* the last track's */
 
-static ds_echo_t *ds_of(track_t *t) { return t >= &trk[0] && t < &trk[NPART] ? &ds_echo[t - trk] : 0; }
+static ds_echo_t *ds_of(track_t *t) { return t == &trk[NPART - 1] ? &ds_echo[0] : 0; }
 static int32_t ds_target(const track_t *t) { return (220 + t->p[P_E5] * 38) << 8; }   /* TIME: 220 .. 5046 samples */
 
 static void dubsiren_note_on(track_t *t, voice_t *v)
@@ -50,19 +54,15 @@ static int32_t ds_step(int32_t env, int32_t k, int up)   /* the envelope a block
     return env - env / tau - 1 < 0 ? 0 : env - env / tau - 1;
 }
 
-static void dubsiren_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+/* the block's envelope (into *envp), sweep and LFO; the oscillator's increment (DUBSIREN, DUBSIREN8) */
+static uint32_t ds_block(track_t *t, voice_t *v, const vmod_t *m, int32_t *envp)
 {
-    ds_echo_t *e = ds_of(t);
     const int16_t *p = t->p;
-    uint32_t wave = (uint32_t)p[P_E0] & 3u, shape = (uint32_t)p[P_E3] & 3u, i, inc, lph;
-    int32_t env = v->s[0], sw = v->s[1], lfo, p16, fb = p[P_E6] * 270, dry = 32767 - p[P_E7] * 128, wet = p[P_E7] * 258;
-    int32_t level = 0;
-    if (!e)
-        return;
-    env = ds_step(env, v->gate ? p[P_ATK] : p[P_REL], v->gate);
-    if (!v->gate && fb > 26000)                       /* (let go: the runaway settles, the tail ends in seconds) */
-        fb = 26000;
+    uint32_t shape = (uint32_t)p[P_E3] & 3u, lph;
+    int32_t sw = v->s[1], lfo, p16;
+    *envp = ds_step(v->s[0], v->gate ? p[P_ATK] : p[P_REL], v->gate);
     sw = clamp(sw + p[P_E4] * 3 / 2, -196608, 196608);   /* SWEEP: +-32 semitones a second, +-48 at most */
+    v->s[1] = sw;
     lph = v->ph[1] + (pitch_inc((uint32_t)(p[P_E1] * 11)) >> 1);   /* RATE: ~0.13 .. 20 Hz, a block at a time */
     v->ph[1] = lph;
     switch (shape) {                                  /* the LFO, 0 .. 32767: up from the note */
@@ -72,19 +72,52 @@ static void dubsiren_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, co
     default: lfo = (osc_tri(lph) + 32768) >> 1; break;
     }
     p16 = m->pitch16 + (sw >> 8) + ((lfo * p[P_E2] * 16) >> 15);
-    inc = pitch_inc((uint32_t)clamp(p16, 0, 2047));
+    return pitch_inc((uint32_t)clamp(p16, 0, 2047));
+}
+/* the oscillator's next sample, WAVE (DUBSIREN, DUBSIREN8) */
+static inline __attribute__((always_inline)) int32_t ds_osc(uint32_t wave, voice_t *v, uint32_t inc)
+{
+    int32_t s;
+    switch (wave) {
+    case 0u: s = osc_pulse(v->ph[0], inc, 0x80000000u); break;
+    case 1u: s = osc_tri(v->ph[0]); break;
+    case 2u: s = osc_saw(v->ph[0], inc); break;
+    default: s = sine_i(v->ph[0]); break;
+    }
+    v->ph[0] += inc;
+    return s;
+}
+
+/* no line on this track (a build without DUBSIREN8 put it there): the siren dry (its own loop: the render's stays) */
+static __attribute__((noinline)) void ds_dry(voice_t *v, int32_t *out, uint32_t n, const vmod_t *m, uint32_t wave,
+                                             uint32_t inc, int32_t env)
+{
+    uint32_t i;
+    for (i = 0; i < n; i++)
+        out[i] += voice_amp(((ds_osc(wave, v, inc) >> 1) * env) >> 15, m, i) << 1;
+    v->s[0] = env;
+    v->s[2] = 0;
+}
+
+static void dubsiren_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+{
+    ds_echo_t *e = ds_of(t);
+    const int16_t *p = t->p;
+    uint32_t wave = (uint32_t)p[P_E0] & 3u, i, inc;
+    int32_t env, fb = p[P_E6] * 270, dry = 32767 - p[P_E7] * 128, wet = p[P_E7] * 258;
+    int32_t level = 0;
+    inc = ds_block(t, v, m, &env);
+    if (!v->gate && fb > 26000)                       /* (let go: the runaway settles, the tail ends in seconds) */
+        fb = 26000;
+    if (!e) {                                         /* (no line on this track: the siren dry) */
+        ds_dry(v, out, n, m, wave, inc, env);
+        return;
+    }
     e->d8 += (ds_target(t) - e->d8) >> 6;             /* TIME glides (the tape's pitch bend) */
     for (i = 0; i < n; i++) {
         int32_t s, rp, a, b, y, x;
         uint32_t r0;
-        switch (wave) {
-        case 0u: s = osc_pulse(v->ph[0], inc, 0x80000000u); break;
-        case 1u: s = osc_tri(v->ph[0]); break;
-        case 2u: s = osc_saw(v->ph[0], inc); break;
-        default: s = sine_i(v->ph[0]); break;
-        }
-        v->ph[0] += inc;
-        s = (s >> 1) * env >> 15;                     /* the dry siren, half scale */
+        s = (ds_osc(wave, v, inc) >> 1) * env >> 15;  /* the dry siren, half scale */
         /* the echo, read between its samples: (w + cnt / 4) - d samples back */
         rp = (int32_t)(e->w << 8) + (int32_t)(e->cnt << 6) - e->d8;
         r0 = (uint32_t)(rp + (int32_t)(DS_LEN << 8) * 2) >> 8;   /* (0 .. 3 lines: wrapped by compares) */
@@ -106,7 +139,6 @@ static void dubsiren_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, co
         out[i] += voice_amp(clamp(((s * dry) >> 15) + ((y * wet) >> 15), -32767, 32767), m, i) << 1;
     }
     v->s[0] = env;
-    v->s[1] = sw;
     v->s[2] = level;
 }
 
@@ -151,4 +183,5 @@ static const engine_t ENG_DUBSIREN = {
     .knob = {P_E1, P_E2, P_E5, P_E6},
     .ownenv = 1,
     .done = ds_done,
+    .last_track = 1,             /* (its echo: the last track's alone) */
 };

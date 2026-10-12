@@ -687,6 +687,11 @@ static void set_engine_of(track_t *t, uint32_t ei)
     const engine_t *e;
     uint32_t i;
     ei %= NENGINES;                                   /* (an index of this build: the stores map ids, engines.c) */
+    if (eng_for_track(t, ei) != ei) {                 /* (DUBSIREN off the last track: DUBSIREN8) */
+        if (t == TSEL)
+            ui_say(ENGINES[ei]->name, ": LAST TRACK ONLY");
+        ei = eng_for_track(t, ei);
+    }
     e = ENGINES[ei];
     load_begin(t);
     fm1_irq_off();

@@ -267,6 +267,7 @@ static int proj_read(pr_t *r, int apply)
         if (e == ENG_NO)                            /* (a retired or unknown id: the project is refused) */
             return 1;
         if (apply) {
+            e = eng_for_track(t, e);                /* (DUBSIREN off the last track: DUBSIREN8, the values as saved) */
             t->eng_req = (uint8_t)e;
             t->user = 0;
             t->preset = (uint8_t)(ENGINES[e]->npresets && !sub ? pre % ENGINES[e]->npresets : 0u);

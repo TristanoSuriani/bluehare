@@ -174,7 +174,7 @@ typedef struct {
 
 static void job_preset(const job_t *j)
 {
-    track_t *t = &trk[0];
+    track_t *t = &trk[ENGINES[j->e]->last_track ? NPART - 1u : 0u];   /* (DUBSIREN: the last track's alone) */
     host_tracks_init();
     host_preset(t, j->e, j->pi);
     phrase(t, 60);
@@ -1086,9 +1086,10 @@ checks_done:
             snprintf(name, sizeof name, "cpu/%s/%02u_%s", ENGINES[e]->name, pi, s);
             j = add(J_CPU, name);
             memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
-            cpu_parts[ncpu][0][0] = (uint8_t)e;
-            cpu_parts[ncpu][0][1] = (uint8_t)pi;
-            cpu_parts[ncpu][0][2] = 8;
+            uint32_t pt = ENGINES[e]->last_track ? NPART - 1u : 0u;   /* (DUBSIREN: the last track's alone) */
+            cpu_parts[ncpu][pt][0] = (uint8_t)e;
+            cpu_parts[ncpu][pt][1] = (uint8_t)pi;
+            cpu_parts[ncpu][pt][2] = 8;
             j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
             j->e = (uint8_t)e;
             j->pi = (uint8_t)pi;

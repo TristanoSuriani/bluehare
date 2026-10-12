@@ -431,7 +431,7 @@ static int up_load(uint32_t k)
     panic_req |= (uint8_t)(1u << song.sel);
     {
         fm1_irq_off();                                  /* the audio ISR must not see half a sound */
-        t->eng_req = (uint8_t)up_engine(k);
+        t->eng_req = (uint8_t)eng_for_track(t, up_engine(k));   /* (DUBSIREN off the last track: DUBSIREN8) */
         for (i = 0; i < P_COUNT; i++)
             if (!param_kept(i))
                 t->p[i] = v[i];
@@ -458,7 +458,7 @@ static void up_tk_sound(track_t *t, uint32_t k)
         return;
     r = up_rec(k);
     up_values(r, v);
-    t->eng_req = (uint8_t)up_engine(k);
+    t->eng_req = (uint8_t)eng_for_track(t, up_engine(k));   /* (DUBSIREN off the last track: DUBSIREN8) */
     for (i = 0; i < 8u; i++)
         t->p[P_E0 + i] = v[P_E0 + i];
     t->p[P_VOICE] = v[P_VOICE];

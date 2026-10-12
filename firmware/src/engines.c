@@ -26,6 +26,7 @@
 #include "eng_chaos.c"          /* CHAOS: chaotic systems as oscillators (1.5) */
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_dubsiren.c"       /* DUBSIREN: the sound-system siren, its own tape echo (1.5) */
+#include "eng_dubsiren8.c"      /* DUBSIREN8: its 8-bit cousin, every track (1.5) */
 #include "eng_fmkeys.c"         /* FMKEYS: FM electric pianos, bells, mallets (1.5) */
 #include "eng_acid.c"           /* ACID: the acid bass line (1.5) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
@@ -94,6 +95,19 @@ static uint32_t eng_load_id(uint32_t id, int *sub)
     if (sub)
         *sub = n != 0u;
     return n < EID_COUNT ? eng_of_id(id) : 0u;
+}
+
+/* (Fel-Tracker) engine e as track t may play it: one on the last track alone (engine_t.last_track: DUBSIREN) is its
+ * substitute anywhere else (DUBSIREN8: the same controls and preset order, so the sound carries over), or itself
+ * when the build has none (it then plays as it can: DUBSIREN dry). Every load goes through this: a pick, a preset, a
+ * project, an instrument, a user preset */
+static uint32_t eng_for_track(const track_t *t, uint32_t e)
+{
+    uint32_t s;
+    if (e >= NENGINES || !ENGINES[e]->last_track || t == &trk[NPART - 1])
+        return e;
+    s = eng_of_id(EID_SUB[ENGINES[e]->id]);
+    return s != ENG_NO ? s : e;
 }
 
 /* the engines one can pick (all of the build's), in display order: eng_ok(e), the n-th of them eng_vis(n), e's place
