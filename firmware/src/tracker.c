@@ -20,16 +20,31 @@
  * together. A track that is not POLY (the instrument's voice mode) plays the note alone.
  *
  * Patterns live in two places, so the song fits the RAM that the four project slots and the song chain of 1.4 held:
- * patterns 0..TK_LO-1 in .noinit (cleared at power-on, tk_defaults), the rest in .bss (tk_row). */
+ * patterns 0..TK_LO-1 in .noinit (cleared at power-on, tk_defaults), the rest in .bss (tk_row). With 8 tracks
+ * (Fel-Tracker: a distribution's TRACKS 8) a pattern is twice the size: 0..6 in .noinit (its 15.3 KB), 7..15 in .bss,
+ * 16..23 in the pool (TK_MID). */
+#if NTRK == 8
+#define TK_LO 7u
+#define TK_MID 16u
+#else
 #define TK_LO 15u
+#define TK_MID TK_PATS
+#endif
 static tk_cell_t tk_lo[TK_LO][TK_ROWS][NTRK] __attribute__((section(".noinit")));
-static tk_cell_t tk_hi[TK_PATS - TK_LO][TK_ROWS][NTRK];
+static tk_cell_t tk_hi[TK_MID - TK_LO][TK_ROWS][NTRK];
+#if TK_MID < TK_PATS
+static tk_cell_t tk_top[TK_PATS - TK_MID][TK_ROWS][NTRK] __attribute__((section(".pool")));
+#endif
 static tk_song_t tk;
 
 static tk_cell_t *tk_row(uint32_t p, uint32_t r)
 {
     p %= TK_PATS;
     r %= TK_ROWS;
+#if TK_MID < TK_PATS
+    if (p >= TK_MID)
+        return tk_top[p - TK_MID][r];
+#endif
     return p < TK_LO ? tk_lo[p][r] : tk_hi[p - TK_LO][r];
 }
 static tk_cell_t *tk_at(uint32_t p, uint32_t r, uint32_t k) { return &tk_row(p, r)[k % NTRK]; }
@@ -443,6 +458,9 @@ static void tk_defaults(void)
     uint32_t i;
     memset(tk_lo, 0, sizeof tk_lo);
     memset(tk_hi, 0, sizeof tk_hi);
+#if TK_MID < TK_PATS
+    memset(tk_top, 0, sizeof tk_top);
+#endif
     memset(&tk, 0, sizeof tk);
     tk.norder = 1;
     for (i = 0; i < TK_PATS; i++)

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* SLICER: a per-track insert, a tempo-synced 16-step gate / stutter. It works on the track's dry
  * mono signal after DIST and before LEVEL / PAN / the sends (fx.c mix_part), so the sends follow
  * the chopped sound.
@@ -45,7 +46,9 @@ static const uint16_t SL_PAT[SL_NPAT] = {
 };
 static const uint8_t SL_DEN[6] = {2, 4, 8, 3, 6, 12};   /* P_SLRATE (N_SLDIV): a step = 1 / DEN beats */
 
-static int16_t sl_buf[NTRK][SL_LEN] __attribute__((section(".pool")));
+#define SL_BUFS 4u                      /* (Fel-Tracker) recordings: tracks 1..4 STUT; on 5..8 (TRACKS 8) STUT plays live,
+                                         * GATE works on every track; perform.c's loop is these 4 (371 ms) */
+static int16_t sl_buf[SL_BUFS][SL_LEN] __attribute__((section(".pool")));
 typedef struct {
     uint32_t pos, len;           /* samples into the step, its length */
     uint32_t base;               /* the step without swing */
@@ -84,7 +87,7 @@ static void sl_enter(const track_t *t, sl_t *s)
     s->rp = 0;
     s->loop = 0;
     s->rec_on = 0;
-    if (mode != SL_STUT || sl_lent) {
+    if (mode != SL_STUT || sl_lent || (uint32_t)(t - trk) >= SL_BUFS) {   /* (5..8: no recording, STUT live) */
         s->rec = 0;                                 /* nothing old to repeat when STUT comes on */
     } else if (s->bit) {
         s->rec = 0;                                 /* a live step: record it */
@@ -169,7 +172,7 @@ static void slicer_track(const track_t *t, int32_t *b, uint32_t n)
         if (m > n - i)
             m = n - i;
         if (act)
-            sl_seg(t, s, sl_buf[k], b + i, 0, m);
+            sl_seg(t, s, sl_buf[k % SL_BUFS], b + i, 0, m);   /* (5..8: never recorded into, sl_enter) */
         s->pos += m;
         i += m;
     }
@@ -189,7 +192,7 @@ static __attribute__((noinline)) void slicer_track_sd(const track_t *t, int32_t 
         if (m > n - i)
             m = n - i;
         if (act)
-            sl_seg(t, s, sl_buf[k], b + i, sd + i, m);
+            sl_seg(t, s, sl_buf[k % SL_BUFS], b + i, sd + i, m);
         s->pos += m;
         i += m;
     }

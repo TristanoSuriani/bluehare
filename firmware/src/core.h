@@ -8,10 +8,23 @@
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
 
+#ifndef FELUCCA_DIST
+#define FELUCCA_DIST default
+#endif
+#define DIST_H2(f) #f
+#define DIST_H1(n) DIST_H2(dist_##n.h)
+#define DIST_H(n) DIST_H1(n)
+#include DIST_H(FELUCCA_DIST)    /* build/gen/dist_<name>.h (tools/gen_dist.py): FELUCCA_ENG_<NAME>, FELUCCA_DIST_ENGINES,
+                                  * FELUCCA_TRACKS */
+
 /* ------------------------------------------------------------ sizes --- */
 #define NVOICE 8                 /* voices per part, and the budget shared by all parts */
-#define NPART 4                  /* synth parts: tracks 1..4 */
+#ifndef FELUCCA_NTRK             /* (a test build may set it: tests/run_tests.sh's 8-track one) */
+#define FELUCCA_NTRK FELUCCA_TRACKS
+#endif
+#define NPART FELUCCA_NTRK       /* synth parts: tracks 1..4, or 1..8 (Fel-Tracker: a distribution's TRACKS) */
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
+typedef char ntrk_ok[NTRK == 4 || NTRK == 8 ? 1 : -1];
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
 /* ---- the engines. The tree holds every engine (engine_ids.h); a distribution (distributions/<name>.txt, at most 16) is
  * the set one build holds, FELUCCA_DIST=<name> (build.py; default: "default"). Two numbers name an engine:
@@ -30,13 +43,6 @@ enum {                           /* the ids */
 #define EID_COUNT 33u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 #define EID_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u)   /* DIGITAL SAMPLE GRAIN SLICE */
 #define ENG_ABSENT 0x100u        /* the ENGI_ of an engine the build leaves out: no uint8_t equals it */
-#ifndef FELUCCA_DIST
-#define FELUCCA_DIST default
-#endif
-#define DIST_H2(f) #f
-#define DIST_H1(n) DIST_H2(dist_##n.h)
-#define DIST_H(n) DIST_H1(n)
-#include DIST_H(FELUCCA_DIST)    /* build/gen/dist_<name>.h (tools/gen_dist.py): FELUCCA_ENG_<NAME>, FELUCCA_DIST_ENGINES */
 #define FELUCCA_VERSION_DIST FELUCCA_VERSION FELUCCA_DIST_TAG   /* "v1.5", "v1.5 IDM": the version as shown */
 enum {                           /* the indices: the distribution's engines in its order (engines.c ENGINES[]) */
 #define X(N) ENGI_##N,

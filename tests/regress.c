@@ -990,6 +990,7 @@ int main(int argc, char **argv)
     const char *gpath = argc > 1 ? argv[1] : "tests/golden.txt";
     const char *cpath = argc > 2 ? argv[2] : "tests/cpu_baseline.txt";
     int gupd = getenv("GOLDEN_UPDATE") != 0, cupd = getenv("BUDGET_UPDATE") != 0, verbose = getenv("VERBOSE") != 0;
+    int cinfo = getenv("CPU_INFO") != 0;          /* (an 8-track test build: the 4-track baselines for information only) */
     /* a distribution other than the default (FELUCCA_DIST): its presets' renders and costs only, against the same
      * files (the mixes and the checks are written for the default's engines); nothing there is "gone" */
     const int dist = FELUCCA_DIST_TAG[0] != 0;
@@ -1257,9 +1258,10 @@ mixes_done:
         if (!want)
             printf("regress: CPU %s: %.0f instructions / sample, no baseline (BUDGET_UPDATE=1 adds it)\n", j->name, ipc);
         else if (ipc > b * (1 + CPU_TOL) && ipc > b + CPU_SLACK) {
-            printf("regress: CPU OVER BUDGET  %s: %.0f instructions / sample%s, baseline %.0f (+%.0f %%, limit +%.0f %%)\n",
-                   j->name, ipc, own ? " over the idle mix" : "", b, (ipc / b - 1) * 100, CPU_TOL * 100);
-            c_fail++;
+            printf("regress: CPU %s  %s: %.0f instructions / sample%s, baseline %.0f (+%.0f %%, limit +%.0f %%)\n",
+                   cinfo ? "above the 4-track baseline (information)" : "OVER BUDGET", j->name, ipc,
+                   own ? " over the idle mix" : "", b, (ipc / b - 1) * 100, CPU_TOL * 100);
+            c_fail += !cinfo;
         } else if (ipc < b * (1 - CPU_TOL) && ipc < b - CPU_SLACK) {
             printf("regress: CPU note  %s: %.0f instructions / sample, baseline %.0f (%.0f %%): faster? "
                    "BUDGET_UPDATE=1 to keep it\n", j->name, ipc, b, (ipc / b - 1) * 100);
