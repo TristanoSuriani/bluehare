@@ -53,7 +53,7 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | DUBSIREN8, SIREN8 on the device (its 8-bit cousin) | `firmware/src/eng_dubsiren8.c` |
 | DUBCHORD (the dub-techno chord, a whole chord in one voice) | `firmware/src/eng_dubchord.c` |
 | FMKEYS (FM keyboards) | `firmware/src/eng_fmkeys.c` |
-| ACID (acid bass line) | `firmware/src/eng_acid.c` |
+| WASP (two oscillators, a gritty multimode filter) | `firmware/src/eng_wasp.c` |
 | KIT (an FM drum kit on one part) | `firmware/src/eng_kit.c` |
 | BREAKS (synthesized breakbeat player) | `firmware/src/eng_breaks.c` |
 | RISERS (build-ups and landings) | `firmware/src/eng_risers.c` |
@@ -67,7 +67,7 @@ All of these engines are original implementations of published techniques, with 
 - The Lorenz and Rössler systems, and the logistic and Hénon maps
 - FM, wavetable and bytebeat synthesis
 
-SID, ACID and DUBSIREN are written "in the manner of" the instruments they evoke; they contain no code or data from
+SID, WASP and DUBSIREN are written "in the manner of" the instruments they evoke; they contain no code or data from
 emulators of those instruments. SPEECH's phonemes come from standard phonetic formant values, and its vocabularies
 are Tristano Suriani's own. The breaks in BREAKS are his own patterns, written in the style of well-known breaks.
 

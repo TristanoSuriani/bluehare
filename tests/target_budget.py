@@ -30,7 +30,7 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "vosim_render",                                    # VOSIM (1.5: eng_vosim.c; IDM's)
          "particle_render", "chaos_render",                 # PARTICLE, CHAOS (1.5: eng_particle.c, eng_chaos.c; IDM's)
          "sid_render", "dubsiren_render",                   # SID, DUBSIREN (1.5: eng_sid.c, eng_dubsiren.c; IDM's)
-         "fmkeys_render", "acid_render",                    # FMKEYS, ACID (1.5: eng_fmkeys.c, eng_acid.c; IDM's)
+         "fmkeys_render",                                   # FMKEYS (1.5: eng_fmkeys.c; IDM's)
          "kit_render", "breaks_render", "risers_render",    # KIT, BREAKS, RISERS (1.5; IDM's)
          "fmp_run",                                         # FMPERC's voice (eng_fmperc.c), KIT's and BREAKS' too
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
@@ -42,7 +42,8 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "rev_room", "rev_spring", "rev_hall", "rev_side_mix",
          "dly_tape",
          "dubsiren8_render",
-         "dubchord_render"]                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)                                # DUBSIREN8 (Fel-Tracker 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Fel-Tracker 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
+         "dubchord_render",                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)
+         "wasp_render"]                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)                                # DUBSIREN8 (Fel-Tracker 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Fel-Tracker 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
@@ -55,7 +56,7 @@ ENGINE_OF = {"analog_render": "ANALOG", "phase_render": "PHASE", "lofi_render": 
              "vosim_render": "VOSIM",
              "particle_render": "PARTICLE", "chaos_render": "CHAOS",
              "sid_render": "SID", "dubsiren_render": "DUBSIREN",
-             "fmkeys_render": "FMKEYS", "acid_render": "ACID",
+             "fmkeys_render": "FMKEYS", "wasp_render": "WASP",
              "kit_render": "KIT", "breaks_render": "BREAKS", "risers_render": "RISERS",
              "fmp_run": "FMPERC"}
 ENGINE_OF.update({n: "FM6" for n in ("fm6_render", "fm6_op_run", "fm6_op_fb")})

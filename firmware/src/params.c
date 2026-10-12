@@ -47,7 +47,7 @@ static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", 
 static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE",
                                      "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"};
 static const char *const N_ENGNAME[EID_COUNT] = {   /* by id (G_ENGSEL); "-": a retired id or an engine left out */
-    [1] = "-", [4] = "-", [8] = "-", [13] = "-",
+    [1] = "-", [4] = "-", [8] = "-", [13] = "-", [27] = "-",   /* (27: ACID, Fel-Tracker) */
 #define ENGINE(N, id, sub) [EID_##N] = FELUCCA_ENG_##N ? #N : "-",
 #include "engine_ids.h"
 #undef ENGINE

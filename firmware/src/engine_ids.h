@@ -5,7 +5,7 @@
  * engines.c, params.c) and read by tools/gen_dist.py (a distribution names engines from here).
  *   NAME        its name (ENG_<NAME> in its eng_*.c file; the device and the editor show it)
  *   id          fixed for good: what the stores and the editor protocol use. Append-only; 1 DIGITAL, 4 SAMPLE, 8 GRAIN,
- *               13 SLICE are retired (removed in 1.5) and never given again. A new engine takes the next free id and
+ *               13 SLICE are retired (removed in 1.5), 27 ACID too (Fel-Tracker: WASP took its place), never given again. A new engine takes the next free id and
  *               raises core.h EID_COUNT
  *   substitute  the engine a sound of this one loads as in a distribution without it (and down that one's own, if it
  *               is missing too; at the end the distribution's first engine): engines.c eng_load_id */
@@ -32,9 +32,9 @@ ENGINE(CHAOS, 23, NOISE)
 ENGINE(SID, 24, ANALOG)
 ENGINE(DUBSIREN, 25, DUBSIREN8)
 ENGINE(FMKEYS, 26, FM6)
-ENGINE(ACID, 27, SID)
 ENGINE(KIT, 28, DRUM)
 ENGINE(BREAKS, 29, KIT)
 ENGINE(RISERS, 30, NOISE)
 ENGINE(DUBSIREN8, 31, HOOVER)
 ENGINE(DUBCHORD, 32, WAVE)
+ENGINE(WASP, 33, ANALOG)

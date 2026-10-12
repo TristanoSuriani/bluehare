@@ -13,7 +13,7 @@ What Fel-Tracker adds, all by Tristano Suriani:
   track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
   into its first four (BUILDING.md "Distributions").
 - **Nineteen new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
-  DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, ACID, KIT, BREAKS and RISERS.
+  DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, KIT, BREAKS and RISERS.
 
 Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
 Fel-Tracker's parts are marked *(Fel-Tracker)*.
@@ -358,7 +358,7 @@ way as from the menu, in the same tabs.
 Felucca's engines, by Leo Kuroshita: ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM.
 
 Fel-Tracker's engines, by Tristano Suriani, marked *(Fel-Tracker)* below: WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC,
-KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, ACID, KIT, BREAKS and RISERS.
+KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, KIT, BREAKS and RISERS.
 
 A build holds the engines of its distribution (BUILDING.md "Distributions"). In the order the device lists them:
 
@@ -433,9 +433,13 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   index falls over DECAY, harder notes brighter by VEL) and the tine (the metallic strike of the attack, TINE; DTUNE
   its beating against the body); KSCL softens the top of the keyboard. Electric pianos, bells, tubular bells, marimba,
   vibes, clav, organ, harpsichord, kalimba, celesta, music box
-- **ACID** *(Fel-Tracker; the IDM distribution)*: the acid bass line. SAW or SQR (SUB an octave down) into a four-pole low-pass (CUT,
-  RES up to its squeal, DRIV into its saturation), opened by ENV at each note and closed over DEC; notes played hard
-  are accents (ACC: louder, opened more, closed faster, building up over accents in a row). Slides: LEGATO with GLIDE
+- **WASP** *(Fel-Tracker; the IDM distribution)*: two oscillators into a gritty multimode filter, after the little
+  black-and-yellow synth of 1978. WAVE pairs them (SAW, SQR, a 25 % PUL, NOIS), OSC2 sits -24 .. +24 semitones away,
+  DTN detunes them (each voice drifts a little too), MIX balances them. A 12 dB state-variable filter (MODE LP, BP, HP,
+  NOTCH; CUT, the key half tracked) keeps its lows however hard RES is pushed (its passband stays put while the peak
+  rises: no thinning); from ~115 it sings by itself, past that a saturating, unsteady self-oscillation. GRIT drives
+  the filter and cuts its integrators to fewer bits (16 .. 8): steps, fizz and limit cycles as it rings. 30 presets:
+  leads, basses resonant and not, reeses, pads, keys, a clav, self-oscillating and gritty oddities
 - **KIT** *(Fel-Tracker; the IDM distribution)*: a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
   map (its lane LEVELs and the EDIT layer's lane MUTEs too). KIT: FM, METAL, BIT, GLITCH, DEEP; TUNE, DECAY, PUNCH, FM,
   SNAP, TONE move every lane; VARY gives every hit its own small differences. A closed hat chokes the open one
@@ -559,7 +563,8 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 
 - **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Fel-Tracker, meaning the tracker,
   the distributions and engine ids, the engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE,
-  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, ACID, KIT, BREAKS and RISERS, and the changes to Felucca listed in
+  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, KIT, BREAKS and RISERS, and the changes to
+  Felucca listed in
   [AUTHORS.md](AUTHORS.md)
 - **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):
   Felucca itself; the PHASE engine's waveforms (a C port of the oscillator of

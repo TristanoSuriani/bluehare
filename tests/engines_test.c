@@ -33,7 +33,7 @@ static void stream_rehash(void)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"SID", "ACID", "WAVE", "BREAKS", "WEST", "HOOVER", "DUBSIREN", "SIREN8",
+    static const char *const ORDER[] = {"SID", "WASP", "WAVE", "BREAKS", "WEST", "HOOVER", "DUBSIREN", "SIREN8",
                                         "DUBCHORD", "VOSIM", "PARTICLE", "CHAOS", "FMKEYS", "KIT", "SPEECH", "RISERS"};
     uint8_t a[16] = {0};
     int bad = 0, ok = 1, sub;
@@ -53,8 +53,10 @@ int main(void)
          eng_load_id(EID_VOICE, &sub) == ENGI_SPEECH && sub && eng_load_id(EID_TRIO, &sub) == ENGI_SID && sub &&
          eng_load_id(EID_ANALOG, &sub) == ENGI_SID && sub && eng_load_id(EID_PHYS, &sub) == ENGI_WEST && sub && eng_load_id(EID_KARPLUS, &sub) == ENGI_WEST && sub &&
          eng_load_id(EID_FMPERC, &sub) == ENGI_KIT && sub && ENGI_FMPERC == ENG_ABSENT &&
+         eng_load_id(27, &sub) == ENG_NO &&
+         eng_load_id(EID_WASP, &sub) == ENGI_WASP && !sub &&
          eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub && eng_load_id(13, &sub) == ENG_NO;
-    bad += check("  substitutes: WHEEL, FM6 -> WAVE; VOICE -> SPEECH; TRIO, ANALOG -> SID; PHYS, KARPLUS (gone) -> WEST; FMPERC (gone) -> KIT; retired: none", ok);
+    bad += check("  substitutes: WHEEL, FM6 -> WAVE; VOICE -> SPEECH; TRIO, ANALOG -> SID; PHYS, KARPLUS (gone) -> WEST; FMPERC (gone) -> KIT; retired: ACID (27)", ok);
 
     /* power-on */
     reset();                                            /* (tk_defaults: the instruments of the power-on parts) */

@@ -29,7 +29,7 @@
 #include "eng_dubsiren8.c"      /* DUBSIREN8: its 8-bit cousin, every track (1.5) */
 #include "eng_dubchord.c"       /* DUBCHORD: the dub-techno chord, a whole chord in one voice (1.5) */
 #include "eng_fmkeys.c"         /* FMKEYS: FM electric pianos, bells, mallets (1.5) */
-#include "eng_acid.c"           /* ACID: the acid bass line (1.5) */
+#include "eng_wasp.c"           /* WASP: two oscillators, a gritty multimode filter (1.5) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */
@@ -67,7 +67,7 @@ static inline uint32_t eng_idx(uint32_t e) { return e < NENGINES ? e : 0u; }
 #define ENG_NO 0xFFu
 #define EID_IDX(X) (FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : ENG_NO)
 static const uint8_t ENG_OF_ID[EID_COUNT] = {
-    [1] = ENG_NO, [4] = ENG_NO, [8] = ENG_NO, [13] = ENG_NO,   /* (retired) */
+    [1] = ENG_NO, [4] = ENG_NO, [8] = ENG_NO, [13] = ENG_NO, [27] = ENG_NO,   /* (retired; 27: ACID, Fel-Tracker) */
 #define ENGINE(N, id, sub) [EID_##N] = EID_IDX(N),
 #include "engine_ids.h"
 #undef ENGINE

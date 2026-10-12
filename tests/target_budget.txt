@@ -46,7 +46,6 @@ chaos_render 655
 sid_render 794
 dubsiren_render 299
 fmkeys_render 108
-acid_render 331
 kit_render 28
 breaks_render 190
 risers_render 510
@@ -69,3 +68,4 @@ rev_side_mix 9
 dly_tape 123
 dubsiren8_render 300
 dubchord_render 840
+wasp_render 578
