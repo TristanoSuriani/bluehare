@@ -377,7 +377,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   phase by FM (FDBK feeds the modulator back into itself, up to noise); FOLD folds the carrier over (the SHP routings
   move it), SYM shifts the fold off centre; the low-pass gate's cutoff follows the envelope through a vactrol-like lag,
   LPG of the way down from CUT, so a note darkens as it fades (the plucked, struck sound); TMBR opens FM and FOLD with
-  the same envelope. FM and FOLD ease off on high notes so they do not alias
+  the same envelope. FM and FOLD ease off on high notes so they do not alias. Its plucks (LPG HARP, NYLON GATE, KOTO
+  FOLD, THUMB WOOD, BUZZ PLUCK, PIZZ GATE, GLASS PLUCK, RUBBER PLUCK) take KARPLUS's place in the IDM distribution
 - **HOOVER** *(Fel-Tracker)*: the early-90s rave lead, after the Alpha Juno's patch. Two oscillators, each a saw plus the
   same saw PW of a cycle on (a pulse-width-modulated saw: sweeping PW moves notches through the spectrum), PWM sweeping
   PW with the voice's own LFO at RATE (the SHP routings move PW too), DTN detuning the second, SUB a square an octave

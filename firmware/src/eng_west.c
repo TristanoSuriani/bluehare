@@ -102,13 +102,22 @@ static const preset_t WEST_PRESETS[] = {
     {"FOLD MARIMBA", {6, 25, 0, 0, 80, 120, 100, 0}, {0, 50, 0, 45}, 0, 0, FX(0, 0, 25, 35)},
     {"GONG", {13, 60, 30, 10, 60, 60, 110, 20}, {0, 115, 0, 110}, 0, 0, FX(0, 20, 30, 70)},
     {"WOOD BASS", {1, 20, 20, 0, 60, 100, 70, 0}, {0, 60, 40, 30}, 0, 1, FX(0, 0, 10, 10)},
+    /* (Fel-Tracker, the 8-track plan) plucks, KARPLUS's place in IDM: struck bright (TMBR), the gate shutting (LPG high) */
+    {"LPG HARP", {3, 20, 5, 0, 60, 110, 115, 0}, {0, 105, 0, 95}, 0, 0, FX(0, 10, 30, 45)},
+    {"NYLON GATE", {1, 25, 15, 10, 50, 105, 110, 0}, {0, 98, 0, 85}, 0, 0, FX(0, 10, 20, 30)},
+    {"KOTO FOLD", {5, 35, 30, 20, 80, 115, 115, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 0, 30, 35)},
+    {"THUMB WOOD", {13, 20, 0, 0, 75, 118, 110, 0}, {0, 92, 0, 80}, 0, 0, FX(0, 0, 25, 35)},
+    {"BUZZ PLUCK", {2, 50, 60, 30, 90, 112, 120, 20}, {0, 100, 0, 90}, 0, 0, FX(0, 10, 30, 40)},
+    {"PIZZ GATE", {1, 10, 20, 0, 40, 100, 108, 0}, {0, 72, 0, 50}, 0, 0, FX(0, 0, 15, 30)},
+    {"GLASS PLUCK", {14, 30, 10, 0, 70, 110, 125, 0}, {0, 108, 0, 100}, 0, 0, FX(0, 20, 40, 55)},
+    {"RUBBER PLUCK", {0, 40, 40, -20, 85, 115, 105, 10}, {0, 90, 0, 75}, 0, 0, FX(0, 0, 25, 25)},
 };
 
 static const engine_t ENG_WEST = {
     .name = "WEST",
     .id = EID_WEST,
     .cc = 0x73,
-    .cats = "DDUBKLPDPPUKFB",
+    .cats = "DDUBKLPDPPUKFBUUUUUUUU",
     .page_title = {"OSC", "GATE"},
     .edit = {
         {"RATIO", F_ENUM, 0, 15, 1, N_WEST_RATIO, 0},

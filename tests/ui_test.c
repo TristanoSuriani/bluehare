@@ -941,11 +941,13 @@ static int test_categories(void)
         ok &= favorite_set(EID_HOOVER, 2, 1) && favorite_has(EID_HOOVER, 2) && !favorite_has(EID_HOOVER, 1);
         ok &= favorite_set(EID_HOOVER, 9, 1) && favorite_has(EID_HOOVER, 9) && !favorite_has(EID_HOOVER, 8);
         ok &= !favorite_set(EID_WEST, 64, 1) && !favorite_set(EID_COUNT + 1u, 0, 1) && favorites.factory[15][8] == 0xFFu &&
-              favorites.factory[15][9] == 4u && favorites.factory[12][25] == (uint8_t)((1u << (ENGINES[ENGI_WEST]->npresets - 8u)) - 1u) &&
+              favorites.factory[15][9] == 4u && favorites.factory[12][25] == 0xFFu &&
+              favorites.factory[12][26] == (uint8_t)((1u << (ENGINES[ENGI_WEST]->npresets - 16u)) - 1u) &&
               favorites.factory[14][25] == 2u;
         before.factory[15][8] = 0xFFu;
         before.factory[15][9] = 4u;
         before.factory[12][25] = favorites.factory[12][25];
+        before.factory[12][26] = favorites.factory[12][26];   /* (WEST's 16 .. 21: its 22 presets) */
         before.factory[14][25] = 2u;
         ok &= !memcmp(&before, &favorites, sizeof favorites);
         for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
