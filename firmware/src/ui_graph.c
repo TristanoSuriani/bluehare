@@ -149,12 +149,13 @@ static void graph_fx(const track_t *t, uint16_t c)
     }
 }
 /* SLICER page: the pattern's 16 steps, a 'x' step a full bar; a '.' step: GATE a bar as high as it stays
- * open (DEPTH), STUT hatched (it repeats the last 'x'); the step playing underlined. Grey when OFF. */
+ * open (DEPTH), STUT hatched (it repeats the last 'x'); the step playing underlined. Grey when OFF, and STUT on
+ * tracks 5 .. 8 (TRACKS 8: no recording there, it plays live: slicer.c SL_BUFS) */
 static void graph_slicer(const track_t *t, uint16_t c)
 {
     uint32_t i, pat = sl_pattern(t), mode = (uint32_t)t->p[P_SLCR], cur = sl[t - trk].idx;
     int32_t open = 70 - t->p[P_SLDEPTH] * 70 / 127;      /* px a closed GATE step keeps */
-    uint16_t col = mode == SL_OFF ? T_DIM : c;
+    uint16_t col = mode == SL_OFF || (mode == SL_STUT && (uint32_t)(t - trk) >= SL_BUFS) ? T_DIM : c;
     for (i = 0; i < 16u; i++) {
         int32_t x = bar_x(i), y;
         if ((pat >> i) & 1u) {

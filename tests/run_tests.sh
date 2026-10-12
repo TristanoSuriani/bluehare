@@ -131,7 +131,7 @@ OUT=build/host
 mkdir -p "$OUT"
 CC="${CC:-cc} -O1 -Wall -Wno-unused-function"
 fail=0
-run() { echo "== $1"; shift; "$@" || fail=1; }
+run() { name=$1; echo "== $1"; shift; "$@" || { fail=1; echo "== FAILED: $name"; }; }   # (the step named when it fails)
 
 $CC -o "$OUT/storage_test" tests/storage_test.c
 run "flash storage (A/B, torn writes)" "$OUT/storage_test"
@@ -228,11 +228,11 @@ if [ -f build/gen/felucca_tables.h ]; then
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/robust_test" tests/robust_test.c -lm
     run "robustness: engine ids, retained old projects, preset patterns, malformed requests" \
         "$OUT/robust_test"
+    $CC -w -DFELUCCA_DIST=idm -DFELUCCA_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test4" tests/engines_test.c -lm
+    run "the IDM distribution built with 4 tracks: the same checks, DUBSIREN on track 4; a version-2 song for the next" "$OUT/engines_test4"
     $CC -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm
-    run "the IDM distribution: its engines from 0, ids both ways, substitutes in projects / protocol / songs, user presets kept" \
+    run "the IDM distribution (8 tracks): its engines from 0, ids both ways, substitutes in projects / protocol / songs, user presets kept" \
         "$OUT/engines_test"
-    $CC -w -DFELUCCA_DIST=idm -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test8" tests/engines_test.c -lm
-    run "the IDM distribution built with 8 tracks (the 8-track plan, step 3a): the same checks, DUBSIREN on track 8" "$OUT/engines_test8"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/mod_test" tests/mod_test.c -lm
     mkdir -p build/mod_demo
     run "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" "$OUT/mod_test" build/mod_demo
@@ -255,8 +255,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
     $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm" tests/regress.c -lm
     run "regression, the IDM distribution: its presets' golden renders and CPU" "$OUT/regress_idm" tests/golden.txt tests/cpu_baseline.txt
-    $CC -O2 -w -DFELUCCA_DIST=idm -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm8" tests/regress.c -lm
-    run "regression, IDM built with 8 tracks (the 8-track plan, step 3a): the same renders; CPU for information" env CPU_INFO=1 "$OUT/regress_idm8" tests/golden.txt tests/cpu_baseline.txt
+    $CC -O2 -w -DFELUCCA_DIST=idm -DFELUCCA_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm4" tests/regress.c -lm
+    run "regression, IDM built with 4 tracks: the same renders and CPU" "$OUT/regress_idm4" tests/golden.txt tests/cpu_baseline.txt
     $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
     mkdir -p build/speech_demo
     run "SPEECH: every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo

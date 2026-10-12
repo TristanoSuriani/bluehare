@@ -3,7 +3,7 @@
 // Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
 // fm1backup.js against a simulated device: 7-bit packing, CRC, manifest checks, a full capture,
 // validation before the first write, restore order (live music last) and abort on a failed chunk.
-import { BACKUP_IDS, BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc, bkManifest, readBackup, captureBackup, restoreBackup } from "./fm1backup.js";
+import { BACKUP_IDS, BACKUP_IDS_8, BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc, bkManifest, readBackup, captureBackup, restoreBackup } from "./fm1backup.js";
 
 let fails = 0;
 const ok = (c, what) => { console.log(`${what.padEnd(72)} ${c ? "ok" : "FAIL"}`); if (!c) fails++; };
@@ -21,8 +21,9 @@ function device(objs, opt = {}) {
   const d = { objs: new Map(objs), log: [], staged: null };
   d.request = async ([cmd, a]) => {
     if (cmd === BACKUP_CMD.LIST) {
-      const out = [1, 0, BACKUP_IDS.length];
-      for (const id of BACKUP_IDS) { const v = d.objs.get(id) || new Uint8Array(0); out.push(id, ...bkU32(v.length), ...bkU32(v.length ? bkCrc(v) : 0)); }
+      const ids = opt.ids || BACKUP_IDS;
+      const out = [1, 0, ids.length];
+      for (const id of ids) { const v = d.objs.get(id) || new Uint8Array(0); out.push(id, ...bkU32(v.length), ...bkU32(v.length ? bkCrc(v) : 0)); }
       return out;
     }
     if (cmd === BACKUP_CMD.GET) {
@@ -66,6 +67,17 @@ await restoreBackup(target.request, file);
 const order = target.log.filter((x) => typeof x === "number");
 ok(order.at(-1) === 0 && order.at(-2) === 1 && order.indexOf(2) < order.indexOf(1), "backup: restore order: projects, banks, settings, live music last");
 ok([0, 1, 2, 6].every((id) => target.objs.get(id).every((v, i) => v === objs.find((o) => o[0] === id)[1][i])), "backup: restored objects equal the source");
+{   /* (Fel-Tracker, TRACKS 8) 25 objects: the song's chunks 4..15 as ids 10..21, restored after 2..5 in order */
+  const big = [[0, rnd(10, 9)], [1, rnd(1200, 3)], ...[2, 3, 4, 5, 10, 11].map((id, i) => [id, rnd(3840, 20 + i)])];
+  const d8 = device(big, { ids: BACKUP_IDS_8, maxId: 21 }), f8 = await captureBackup(d8.request, "TEST8");
+  const t8 = device([], { ids: BACKUP_IDS_8, maxId: 21 });
+  await restoreBackup(t8.request, f8);
+  const o8 = t8.log.filter((x) => typeof x === "number");
+  ok(f8.objects.length === 25 && readBackup(JSON.stringify(f8)).objects.length === 25 &&
+     [2, 3, 4, 5, 10, 11].every((id) => t8.objs.get(id).every((v, i) => v === big.find((o) => o[0] === id)[1][i])) &&
+     o8.indexOf(5) < o8.indexOf(10) && o8.indexOf(10) < o8.indexOf(11) && o8.at(-1) === 0,
+    "backup: 8 tracks: 25 objects, the song's chunks 4.. as ids 10..21, restored whole and in order");
+}
 {   /* the FM6 patch bank (id 8) and the archives of firmware before it (11 objects, no id 8) */
   ok(BACKUP_IDS.length === 13 && file.objects.some((o) => o.id === 8) && file.objects.some((o) => o.id === 9),
     "backup: 13 objects: id 8 (the retired FM6 bank, empty) and id 9 (the user presets' FM6 patches)");

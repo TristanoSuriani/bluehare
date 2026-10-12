@@ -8,11 +8,22 @@
  * patches into the user presets restored before it (ids 6, 7), as the first boot after the update does (up_fm6.c).
  * Id 9 is the user presets' FM6 patches (up_fm6.c), appended in 1.0.3.
  * 1.5 (the tracker): id 0, the music in RAM, is listed empty (a song is up to four storage objects: project.c); ids
- * 2..5 are the stored song's chunks as they are on the flash (project.c proj_good: the complete save's copies; a chunk
+ * 2..5 (and with 8 tracks 10..21: the song's chunks 4..15, Fel-Tracker) are the stored song's chunks as they are on the flash (project.c proj_good: the complete save's copies; a chunk
  * past its count, none stored: empty). A PUT of them writes each with a new generation, the same for the chunks of one
  * restore (ed_bk_rgen), so the restored song is the newest complete one; a project of 1.4 is refused.
  */
+#if NTRK == 8                                   /* (Fel-Tracker, TRACKS 8) ids 10 .. 21: the song's chunks 4 .. 15 */
+static const uint8_t ED_BK_IDS[25] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 32, 33, 34};
+#else
 static const uint8_t ED_BK_IDS[13] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34};
+#endif
+/* the song's chunk an id is (2 .. 5: 0 .. 3; with 8 tracks 10 .. 21: 4 .. 15), -1 none */
+static int ed_bk_song(uint32_t id)
+{
+    if (id >= 2u && id <= 5u)
+        return (int)id - 2;
+    return NTRK == 8 && id >= 10u && id <= 21u ? (int)id - 6 : -1;
+}
 #define ED_BK_N ((uint32_t)sizeof ED_BK_IDS)
 #define ED_BK_MAX ((uint32_t)sizeof proj_wire_u.raw)
 #define ED_BK_RAW (proj_wire_u.raw)  /* reuse the existing serialized main-loop scratch */
@@ -43,14 +54,14 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
     *len = 0;
     if (id == 0u) return ED_BK_RAW;                 /* (the music in RAM: not one object any more) */
     if (id == 1u) { *len = sizeof ed_bk_settings; return (const uint8_t *)&ed_bk_settings; }
-    if (id >= 2u && id <= 5u) {
+    if (ed_bk_song(id) >= 0) {
 #if FELUCCA_FLASH
-        uint32_t i = id - 2u;
+        uint32_t i = (uint32_t)ed_bk_song(id);
         st_hdr_t h;
         if (ed_bk_chunk != i || ed_bk_gen != proj_wire_gen) {   /* the chunk into the staging RAM */
             ed_bk_chunk = 0xFFu;
             if (!proj_find() || i >= proj_good.count ||
-                st_head(OBJ_PROJECT0 + i, proj_good.copy[i], &h) || st_body(OBJ_PROJECT0 + i, proj_good.copy[i], &h))
+                st_head(proj_obj(i), proj_good.copy[i], &h) || st_body(proj_obj(i), proj_good.copy[i], &h))
                 return ED_BK_RAW;
             memcpy(ED_BK_RAW, st_buf, h.len);
             ed_bk_gen = ++proj_wire_gen;
@@ -110,19 +121,20 @@ static uint32_t ed_bk_commit(void)
     if (ed_bk_pos != ed_bk_len || st_crc32(raw, ed_bk_len) != ed_bk_crc) return 2;
     if (ed_bk_id == 0u) {
         return ed_bk_len ? 2u : 0u;                 /* (an archive's music in RAM: a project of 1.4) */
-    } else if (ed_bk_id >= 2u && ed_bk_id <= 5u) {  /* a chunk of the song (project.c); none: nothing to write (an */
+    } else if (ed_bk_song(ed_bk_id) >= 0) {         /* a chunk of the song (project.c); none: nothing to write (an */
         proj_hdr_t h;                                /* archive of no song at all, id 2 empty: none stored after it) */
+        uint32_t ci = (uint32_t)ed_bk_song(ed_bk_id);
         if (!ed_bk_len) {
             if (ed_bk_id == 2u && proj_store_clear()) return 4;
             proj_cur = ed_bk_id == 2u ? PROJ_NO_SLOT : proj_cur;
             return 0;
         }
         memcpy(&h, raw, sizeof h);
-        if (ed_bk_len < PROJ_HDR || h.magic != PROJ_MAGIC || h.index != ed_bk_id - 2u || !h.count ||
+        if (ed_bk_len < PROJ_HDR || h.magic != PROJ_MAGIC || h.index != ci || !h.count ||
             h.count > PROJ_CHUNKS || h.len != ed_bk_len - PROJ_HDR) return 2;
 #if FELUCCA_FLASH
         if (!flash_ok) return 4;
-        if (ed_bk_id == 2u || !ed_bk_rgen) {        /* the first chunk of a restore: past every stored save */
+        if (!ci || !ed_bk_rgen) {                   /* the first chunk of a restore: past every stored save */
             proj_find();
             ed_bk_rgen = proj_good.gen + 1u;
             memset(proj_wr_copy, 0, sizeof proj_wr_copy);
@@ -131,7 +143,7 @@ static uint32_t ed_bk_commit(void)
         }
         h.gen = ed_bk_rgen;
         memcpy(raw, &h, sizeof h);
-        if (st_save_to(OBJ_PROJECT0 + ed_bk_id - 2u, raw, ed_bk_len, proj_wr_copy[ed_bk_id - 2u])) return 4;
+        if (st_save_to(proj_obj(ci), raw, ed_bk_len, proj_wr_copy[ci])) return 4;
         if (h.index + 1u == h.count) {              /* the last chunk: the restored song is the stored one */
             ed_bk_rgen = 0;
             proj_find();
@@ -197,7 +209,7 @@ static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
         uint32_t len = ed_bk_r32(a + 2);
         if (len > ED_BK_MAX || (a[1] == 0u && len) ||
             (a[1] == 1u && len != sizeof(persist_t)) ||
-            (a[1] >= 2u && a[1] <= 5u && len && !proj_store_len(len)) ||
+            (ed_bk_song(a[1]) >= 0 && len && !proj_store_len(len)) ||
             ((a[1] == 6u || a[1] == 7u) && len && len != sizeof(up_bank_t)) ||
             (a[1] == 8u && len && len != sizeof(fm6_bank_t)) || (a[1] == 9u && len && len != sizeof(upf_t))) return 1;
         if (ed_flash_stop()) return 3;

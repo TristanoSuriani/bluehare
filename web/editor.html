@@ -627,7 +627,8 @@ const parse = {
       case TK.STATUS: case TK.PLAY: status(); break;
       case TK.PATTERN:
         o.pat = r.b(); o.len = r.b(); o.row = r.b(); o.count = r.b();
-        o.rows = Array.from({ length: o.count }, () => [cell(), cell(), cell(), cell()]);
+        o.ntrk = o.count ? Math.floor((a.length - r.i) / 6 / o.count) : 4;   /* (the cells a row: 4, or 8 with TRACKS 8) */
+        o.rows = Array.from({ length: o.count }, () => Array.from({ length: o.ntrk }, cell));
         break;
       case TK.CELLS: o.pat = r.b(); o.row = r.b(); o.col = r.b(); o.count = r.b(); break;
       case TK.LENGTH: o.pat = r.b(); o.len = r.b(); break;
@@ -636,7 +637,7 @@ const parse = {
         o.first = r.b(); o.count = r.b();
         o.instr = Array.from({ length: o.count }, () => ({ kind: r.b(), a: r.b(), b: r.b() }));
         break;
-      case TK.FILTER: o.filter = Array.from({ length: 4 }, () => ({ cut: r.v(), res: r.v() })); break;
+      case TK.FILTER: o.filter = Array.from({ length: Math.floor((a.length - r.i) / 4) }, () => ({ cut: r.v(), res: r.v() })); break;
       case TK.CLEAR: o.pat = r.b(); break;
     }
     return o;
@@ -3431,10 +3432,12 @@ async function tkReadPattern(p, d = dev) {
   assertSession(d);
   const rows = [];
   let len = 64;
-  for (let r0 = 0; r0 < 64; r0 += TK.ROWS_MAX) {
+  for (let r0 = 0; r0 < 64;) {                     /* (the rows the reply holds: 8 a reply with 8 tracks) */
     const r = await tkRq(d, req.tkPattern(p, r0, TK.ROWS_MAX));
     len = r.len;
     rows.push(...r.rows);
+    if (!r.count) break;
+    r0 += r.count;
   }
   d.tk.cells[p] = rows;
   d.tk.len[p] = len;
@@ -3447,7 +3450,7 @@ async function tkReadSong(d = dev) {
 }
 async function tkReadParams(d = dev) {             /* the SETTINGS page's track parameters (TRACK_PARAM, v4) */
   assertSession(d);
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < tkTracks(d); k++) {
     d.tk.params[k] = [];
     for (const [id] of TK.SETTINGS) d.tk.params[k][id] = parse[CMD.TRACK_PARAM](await sessionRequest(d, req.trackParam(k, id))).value;
   }
@@ -3484,19 +3487,21 @@ function renderTracker() {
   renderTkStatus();
 }
 const tkCellKey = (r, k) => `${r}:${k}`;
+const tkTracks = (d = dev) => d.info.ntrk || 4;      /* (INFO: 4, or 8 with TRACKS 8; firmware before it: 4) */
+const tkCols = (d = dev) => Array.from({ length: tkTracks(d) }, (_, k) => k);
 function renderTkGrid() {
   const d = dev, p = tkUI.pat, rows = d.tk.cells[p];
   if (!rows) return;
   const len = d.tk.len[p] || 64, grid = $("tkgrid");
   $("tkpat").value = String(p);
   if (document.activeElement !== $("tklen")) $("tklen").value = String(len);
-  const shape = `${p}:${len}:${lang}`;
+  const shape = `${p}:${len}:${lang}:${tkTracks(d)}`;
   if (grid.dataset.shape !== shape) {
     grid.dataset.shape = shape;
-    const head = el("tr", {}, el("th"), ...[0, 1, 2, 3].map((k) => el("th", { text: `${t("tkTrack")} ${k + 1}` })));
+    const head = el("tr", {}, el("th"), ...tkCols(d).map((k) => el("th", { text: `${t("tkTrack")} ${k + 1}` })));
     const body = Array.from({ length: len }, (_, r) => {
       const tr = el("tr", { "data-r": r, class: r % 4 === 0 ? "beat" : "" }, el("th", { class: "r", text: TK.hex2(r) }));
-      for (let k = 0; k < 4; k++) {
+      for (let k = 0; k < tkTracks(d); k++) {
         const inp = el("input", { type: "text", spellcheck: "false", autocomplete: "off", "data-k": k, "aria-label": `${TK.hex2(r)} ${t("tkTrack")} ${k + 1}` });
         inp.addEventListener("change", () => tkWriteCell(p, r, k, inp));
         inp.addEventListener("keydown", (e) => tkKey(e, r, k));
@@ -3618,8 +3623,8 @@ async function tkSetInstr(i, e) {
 function renderTkSettings() {
   const d = dev, box = $("tkset");
   if (box.contains(document.activeElement) || !d.tk.filter.length) return;
-  const rows = [["CUTOFF", "cut"], ["RESO", "res"]].map(([label, f]) => el("tr", {}, el("th", { text: label }), ...[0, 1, 2, 3].map((k) => {
-    const v = d.tk.filter[k][f], inp = el("input", { type: "number", min: 0, max: 127, placeholder: t("tkInst"), value: v < 0 ? "" : v,
+  const rows = [["CUTOFF", "cut"], ["RESO", "res"]].map(([label, f]) => el("tr", {}, el("th", { text: label }), ...tkCols(d).map((k) => {
+    const v = d.tk.filter[k]?.[f] ?? -1, inp = el("input", { type: "number", min: 0, max: 127, placeholder: t("tkInst"), value: v < 0 ? "" : v,
       "aria-label": `${label} ${t("tkTrack")} ${k + 1}` });
     inp.addEventListener("change", () => {
       const x = inp.value === "" ? -1 : Math.max(0, Math.min(127, Math.round(+inp.value)));
@@ -3630,7 +3635,7 @@ function renderTkSettings() {
   })));
   for (const [id, label] of TK.SETTINGS) {
     const desc = d.pdesc[id];
-    rows.push(el("tr", {}, el("th", { text: label }), ...[0, 1, 2, 3].map((k) => {
+    rows.push(el("tr", {}, el("th", { text: label }), ...tkCols(d).map((k) => {
       const inp = el("input", { type: "number", min: desc?.min ?? 0, max: desc?.max ?? 127, value: d.tk.params[k]?.[id] ?? "",
         "aria-label": `${label} ${t("tkTrack")} ${k + 1}` });
       inp.addEventListener("change", () => op(async () => {
@@ -3641,7 +3646,7 @@ function renderTkSettings() {
       return el("td", {}, inp);
     })));
   }
-  box.replaceChildren(el("tr", {}, el("th"), ...[0, 1, 2, 3].map((k) => el("th", { text: `${t("tkTrack")} ${k + 1}` }))), ...rows);
+  box.replaceChildren(el("tr", {}, el("th"), ...tkCols(d).map((k) => el("th", { text: `${t("tkTrack")} ${k + 1}` }))), ...rows);
 }
 async function tkSetFilter(k, cut, res) {
   const d = dev;

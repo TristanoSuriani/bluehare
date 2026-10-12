@@ -1253,8 +1253,8 @@ mixes_done:
             heavy_ns[j->e] = j->r.ns;
             heavy_p[j->e] = j->pi;
         }
-        if (!j->r.ipc || cupd)
-            continue;
+        if (!j->r.ipc || cupd || (dist && !strncmp(j->name, "cpu/mix/", 8)))
+            continue;                               /* (the mixes' baselines: the default distribution's 4 tracks) */
         if (!want)
             printf("regress: CPU %s: %.0f instructions / sample, no baseline (BUDGET_UPDATE=1 adds it)\n", j->name, ipc);
         else if (ipc > b * (1 + CPU_TOL) && ipc > b + CPU_SLACK) {

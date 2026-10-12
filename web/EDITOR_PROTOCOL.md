@@ -737,6 +737,11 @@ the settings record's size for id 1, 3840, 3648, 3584, 3388 or 0 (empty the slot
 version and slot count checked; 0 clears the patches). FUN9, FUN8, FUN7 and FUN6 become FUN10 (1.2; firmware before
 1.2 refuses a 3840-byte project at begin, rc 1).
 An archive without id 8 (written before FM6) still restores; the web editor reads all three kinds (11, 12, 13 objects).
+Fel-Tracker, a build of 8 tracks (a distribution's `TRACKS 8`): the list has 25 objects, ids 10..21 the stored song's
+chunks 4..15 (as 2..5 its 0..3); the web editor reads that kind too, and sends 10..21 after 2..5. `INFO`'s track count
+(after P_E0's v3 byte) is 8 there: `TRACK`, `TRACK_DUMP`, `TRACK_MIX`, `TRACK_PARAM` take tracks 0..7, the tracker's
+`PATTERN` reply holds 8 cells a row and at most 8 rows (its count says how many: ask again from there), `FILTER` 8
+pairs.
 Since 1.0.3 an id 8 with data (an archive of 1.0..1.0.2) is not stored: like the first boot after the update, every FM6
 user preset whose stored SLOT is a B slot (8..34) and has no patch yet gets that bank slot's patch, and id 9 is written.
 So restore ids 6 and 7 before 8 (the web editor does); an empty id 8 is taken and ignored (rc 0). Old archives

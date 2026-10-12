@@ -1,6 +1,7 @@
 # Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # IDM: the engines in display order, one a line (names: firmware/src/engine_ids.h; at most 16). Planned engines that
-# are not written yet stay commented out until they are
+# are not written yet stay commented out until they are. TRACKS: the build's track count (4 without the line)
+TRACKS 8
 SID
 ACID
 WAVE

@@ -8,8 +8,10 @@ Felucca release.
 What Fel-Tracker adds, all by Tristano Suriani:
 
 - **The tracker**, in place of the step sequencer.
-- **Distributions:** builds of any set of up to 16 engines, with stable engine ids. The **IDM** distribution is the
-  default.
+- **Distributions:** builds of any set of up to 16 engines, with stable engine ids, on 4 or 8 tracks. The **IDM**
+  distribution is the default, with **8 tracks**: the tracker, the MIXER and the quick layers show the selected
+  track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
+  into its first four (BUILDING.md "Distributions").
 - **Nineteen new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
   DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, ACID, KIT, BREAKS and RISERS.
 

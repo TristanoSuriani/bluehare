@@ -99,6 +99,8 @@ static int ed_tracker_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
         if (na != 3u || a[0] >= TK_PATS || a[1] >= TK_ROWS || !a[2] || a[2] > EDT_ROWS_MAX)
             return 0;
         p = a[0]; r0 = a[1]; n = a[2];
+        if (n > EDT_ROWS_MAX * 4u / NTRK)
+            n = EDT_ROWS_MAX * 4u / NTRK;           /* (8 tracks: 8 rows a reply, the reply's count says so) */
         if (r0 + n > TK_ROWS)
             n = TK_ROWS - r0;
         ed_b(op); ed_b(0); ed_b(p); ed_b(tk_len(p)); ed_b(r0); ed_b(n);
