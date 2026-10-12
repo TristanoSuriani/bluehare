@@ -43,7 +43,7 @@ karplus_render 94
 vosim_render 180
 particle_render 654
 chaos_render 655
-sid_render 316
+sid_render 794
 dubsiren_render 299
 fmkeys_render 108
 acid_render 331
