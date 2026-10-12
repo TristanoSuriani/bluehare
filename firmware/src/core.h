@@ -69,7 +69,9 @@ typedef struct {
 enum {                          /* per-track parameters */
     P_LEVEL,
     P_ATK, P_DEC, P_SUS, P_REL,
-    P_ED_FLT, P_ED_PIT, P_ED_SHP, P_ED_FX,     /* P_ED_FX: unused, kept for the formats / protocol */
+    P_ED_FLT, P_ED_PIT, P_ED_SHP, P_OCT,       /* P_OCT (Fel-Tracker): the sound's octave, -4 .. 4 (VOICE 3; a preset sets it,
+                                                * voice.c adds it to the pitch). Was P_ED_FX, never read: a stored value
+                                                * outside -4 .. 4 (ENV DEST FX in the web editor) loads as 0 (param_oct) */
     P_LRATE, P_LWAVE, P_LPHASE, P_LFADE,
     P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP,
     P_AMODE, P_ARATE, P_AOCT, P_AGATE,
@@ -179,6 +181,7 @@ typedef struct {
     uint8_t mono;                /* 1 = MONO (bass / lead), 0 = POLY */
     /* the rest of the patch; each value is stored + 1, 0 = the default */
     uint8_t fx[4];               /* DIST, CHORUS, DELAY, REVERB sends (the arp is the track's: a preset does not set it) */
+    int8_t oct;                  /* (Fel-Tracker) OCT, the sound's octave (P_OCT; 0, the default, for most) */
 } preset_t;
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}
 

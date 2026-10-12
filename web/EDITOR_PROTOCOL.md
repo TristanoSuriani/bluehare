@@ -662,7 +662,10 @@ in 1/16 of a step) after the locks tag (`4C 01 1`). Firmware without them: 64 re
   and no MIDI CC sets them. 95 `SPRD` (0..127, PCT, default 0: every voice on PAN, as before): a POLY / UNISON
   track's voices alternate left and right of PAN by SPRD / 2 (127: hard left / right); MONO and LEGATO ignore it. It is
   the sound's (a factory preset sets 0, user presets store it) and can be recorded as motion. The engine parameters are
-  96..103. ANALOG's `WAVE` (E0) gained 5 SYNC (OSC 2 hard-synced to OSC 1, DTN its interval, the SHP routings sweep it)
+  96..103. Fel-Tracker 1.5: id 8, the ENV DEST page's `FX` (read by nothing, on no device page), is `OCT` (-4..4,
+  INT, default 0): the sound's octave, added to every voice's pitch (keys, tracker cells and MIDI alike); on VOICE 3
+  beside SPRD. A factory preset sets it (FMPERC's six kicks -3, every other preset 0), user presets store it, a
+  tracker instrument carries it; a stored value outside -4..4 (an old ENV DEST FX set in the editor) loads as 0. ANALOG's `WAVE` (E0) gained 5 SYNC (OSC 2 hard-synced to OSC 1, DTN its interval, the SHP routings sweep it)
   and 6 SUB (OSC 2 a square an octave below, MIX its level); `DESC` keeps DTN / MIX's labels (the device relabels them).
 - **Nudge:** the byte after the ratchet in `STEP_GET` / `STEP_SET` / `TRACK_STEP` (a change on the device pushes
   `STEP_CHANGED`), nudge + 8 (0..15:

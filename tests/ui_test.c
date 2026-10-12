@@ -2273,6 +2273,9 @@ static int test_layer(void)
                  ok && song.g[G_RTYPE] == 1);
     /* DLY 2 > TYPE (Fel-Tracker): CLEAN (power-on) / TAPE / WORN on KNOB 1, kept by a project */
     ui_power_on();
+    go_title("VOICE 3");                                /* (Fel-Tracker) OCT beside SPREAD */
+    bad += check("  VOICE 3 page: SPRD, OCT (-4 .. 4, the sound's octave)", cur_page()->id[0] == P_SPRD && cur_page()->id[1] == P_OCT &&
+                 TP[P_OCT].min == -4 && TP[P_OCT].max == 4);
     go_title("DLY 2");
     ok = cur_page()->fam == FAM_FX && cur_page()->id[0] == G_DTYPE && cur_page()->id[1] == 0xFFu && song.g[G_DTYPE] == 0 &&
          str_eq(GP[G_DTYPE].names[0], "CLEAN");

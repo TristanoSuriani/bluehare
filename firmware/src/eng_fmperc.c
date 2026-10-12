@@ -122,13 +122,14 @@ static void fmperc_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
 /* {RATIO, INDEX, FDEC, SWEEP, NTYP, FDBK, NOISE, TONE}; ADSR {ATK DEC SUS REL}: SUS 0 for a hit; FX: DIST CHO DLY REV.
  * RATIO: 0 1/2, 1 1, 2 3/2, 3 2, 11 1.41, 12 1.73, 13 2.76, 14 3.55, 15 4.61. NTYP 0 SNAP, 1 CLAP, 2 HISS */
 static const preset_t FMPERC_PRESETS[] = {
-    /* kicks: the sweep makes the punch; the deep ones dark and long, the hard ones bright, fed back and driven */
-    {"FM KICK", {1, 30, 22, 36, 0, 0, 10, -10}, {0, 70, 0, 50}, 0, 0, FX(15, 0, 0, 5)},
-    {"DEEP KICK", {1, 16, 34, 30, 0, 0, 6, -30}, {0, 84, 0, 70}, 0, 0, FX(8, 0, 0, 0)},
-    {"SUB KICK", {1, 6, 42, 18, 0, 0, 0, -44}, {0, 96, 0, 85}, 0, 0, FX(0, 0, 0, 0)},
-    {"HARD KICK", {1, 64, 18, 42, 0, 24, 34, 0}, {0, 68, 0, 45}, 0, 0, FX(70, 0, 0, 5)},
-    {"DIST KICK", {1, 92, 24, 36, 0, 44, 20, -24}, {0, 74, 0, 55}, 0, 0, FX(110, 0, 0, 5)},
-    {"PUNCH KICK", {0, 42, 14, 26, 0, 10, 24, -12}, {0, 64, 0, 45}, 0, 0, FX(35, 0, 0, 5)},
+    /* kicks: the sweep makes the punch; the deep ones dark and long, the hard ones bright, fed back and driven. OCT -3:
+     * 3 octaves under the note (C4 a C1 kick, ~33 Hz), where a kick sits */
+    {"FM KICK", {1, 30, 22, 36, 0, 0, 10, -10}, {0, 70, 0, 50}, 0, 0, FX(15, 0, 0, 5), .oct = -3},
+    {"DEEP KICK", {1, 16, 34, 30, 0, 0, 6, -30}, {0, 84, 0, 70}, 0, 0, FX(8, 0, 0, 0), .oct = -3},
+    {"SUB KICK", {1, 6, 42, 18, 0, 0, 0, -44}, {0, 96, 0, 85}, 0, 0, FX(0, 0, 0, 0), .oct = -3},
+    {"HARD KICK", {1, 64, 18, 42, 0, 24, 34, 0}, {0, 68, 0, 45}, 0, 0, FX(70, 0, 0, 5), .oct = -3},
+    {"DIST KICK", {1, 92, 24, 36, 0, 44, 20, -24}, {0, 74, 0, 55}, 0, 0, FX(110, 0, 0, 5), .oct = -3},
+    {"PUNCH KICK", {0, 42, 14, 26, 0, 10, 24, -12}, {0, 64, 0, 45}, 0, 0, FX(35, 0, 0, 5), .oct = -3},
     /* snares, claps, rims */
     {"FM SNARE", {11, 60, 20, 12, 0, 40, 76, 6}, {0, 52, 0, 45}, 0, 0, FX(10, 0, 10, 25)},
     {"FM CLAP", {13, 26, 10, 0, 1, 20, 124, 8}, {0, 62, 0, 52}, 0, 0, FX(0, 0, 10, 30)},

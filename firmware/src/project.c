@@ -280,7 +280,7 @@ static int proj_read(pr_t *r, int apply)
             if (id >= np)
                 return 1;
             if (apply && id < P_COUNT)
-                t->p[id] = (int16_t)param_fit(param_desc_of(e, id), v);
+                t->p[id] = (int16_t)param_fit(param_desc_of(e, id), param_oct(id, v));
         }
         if (apply && sub)                           /* a substitute: its first preset's engine values (the rest of the
                                                      * sound as saved) */

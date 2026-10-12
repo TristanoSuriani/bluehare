@@ -124,6 +124,7 @@ static __attribute__((noinline)) void tk_inst_apply(track_t *t, uint32_t i)
             for (k = 0; k < 8u; k++)
                 t->p[P_E0 + k] = (int16_t)e->presets[pi].e[k];
             t->p[P_VOICE] = e->presets[pi].mono ? V_LEGATO : V_POLY;
+            t->p[P_OCT] = e->presets[pi].oct;            /* (the sound's octave goes with it) */
         } else {
             for (k = 0; k < 8u; k++)
                 t->p[P_E0 + k] = e->edit[k].def;

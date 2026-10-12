@@ -78,7 +78,7 @@ static const preset_t HOOVER_PRESETS[] = {
     {"HOOV PAD", {50, 60, 20, 20, 20, 0, 0, 90}, {60, 90, 110, 90}, 0, 0, FX(0, 110, 30, 70)},
     {"SIREN", {64, 100, 90, 50, 0, 12, 90, 120}, {0, 90, 120, 70}, 0, 1, FX(0, 80, 50, 40)},
     /* (Fel-Tracker, the IDM review) warm pads, strings: slow PWM, a little detune, the chorus */
-    {"WARM PAD", {50, 40, 20, 15, 30, 0, 0, 70}, {90, 90, 115, 100}, 0, 0, FX(0, 100, 25, 80)},
+    {"WARM SAWS", {50, 40, 20, 15, 30, 0, 0, 70}, {90, 90, 115, 100}, 0, 0, FX(0, 100, 25, 80)},
     {"STRINGS", {64, 50, 30, 25, 0, 0, 0, 85}, {70, 80, 120, 90}, 0, 0, FX(0, 120, 20, 70)},
     /* more of the rave: the detuned bass, brass, a wilder lead, the dive, a soft one */
     {"REESE BASS", {64, 0, 0, 20, 40, 0, 0, 60}, {0, 0, 127, 20}, 0, 1, FX(20, 60, 0, 5)},

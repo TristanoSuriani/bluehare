@@ -85,6 +85,72 @@ int main(void)
     ok &= host_wire[5] == EID_TRIO && host_wire[6] == 0;
     bad += check("  G_ENGSEL WHEEL: WAVE; PRESET TRIO 3: SID's first preset (replies its id); NAMES TRIO: none", ok);
 
+    /* OCT (Fel-Tracker): FMPERC's 6 kicks load OCT -3, the next preset 0; a tracker instrument carries it; a song keeps
+     * it; a stored value outside -4 .. 4 (ENV DEST FX, which it was) loads as 0 */
+    reset();
+    set_engine_of(&trk[0], ENGI_FMPERC);
+    for (i = 0, ok = 1, off = 0; i < ENGINES[ENGI_FMPERC]->npresets; i++) {
+        int kick = strstr(ENGINES[ENGI_FMPERC]->presets[i].name, "KICK") != 0;
+        apply_preset_to(&trk[0], i);
+        off += (uint32_t)kick;
+        ok &= trk[0].p[P_OCT] == (kick ? -3 : 0);
+    }
+    apply_preset_to(&trk[0], 0);
+    apply_preset_to(&trk[0], 6);                        /* FM SNARE after FM KICK: back to 0 */
+    ok &= trk[0].p[P_OCT] == 0 && off == 6u;
+    tk.instr[0].src = EID_FMPERC;
+    tk.instr[0].preset = 1;                             /* DEEP KICK as an instrument */
+    tk_inst_apply(&trk[0], 1);
+    ok &= trk[0].p[P_OCT] == -3;
+    tk.instr[0].preset = 10;                            /* CLOSED HAT */
+    tk_inst_apply(&trk[0], 1);
+    ok &= trk[0].p[P_OCT] == 0;
+    bad += check("OCT: FMPERC's 6 KICK presets load -3 (the next preset 0), as a tracker instrument too", ok);
+    apply_preset_to(&trk[0], 0);
+    project_save(0);
+    project_new();
+    project_load(0);
+    ok = trk[0].p[P_OCT] == -3 && param_oct(P_OCT, 30) == 0 && param_oct(P_OCT, -65) == 0 && param_oct(P_OCT, -2) == -2 &&
+         param_oct(P_DIST, 30) == 30 && TP[P_OCT].min == -4 && TP[P_OCT].max == 4 && str_eq(TP[P_OCT].label, "OCT");
+    bad += check("  a song keeps OCT -3; an old ENV DEST FX value outside -4 .. 4 loads as 0 (not clamped to 4 octaves)", ok);
+    {   /* the sound: a kick's body 3 octaves down (its strongest line 60 .. 400 ms after the hit, OCT 0 against -3) */
+        static int16_t rec[FS / 2u];
+        char dbg[200];
+        double bf[2];
+        int32_t o[2 * CTL];
+        uint32_t f, k, m;
+        for (m = 0; m < 2u; m++) {
+            double best = 0, fr;
+            host_tracks_init();
+            for (f = 0; f < FS / 10u; f += CTL)
+                mix_block(o, CTL);
+            host_preset(&trk[0], ENGI_FMPERC, 0);
+            trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = trk[0].p[P_DIST] = 0;
+            trk[0].p[P_OCT] = m ? -3 : 0;
+            trk_note_on(&trk[0], 60, 110);
+            for (f = 0, k = 0; f < FS / 2u; f += CTL) {
+                mix_block(o, CTL);
+                for (i = 0; i < CTL && k < FS / 2u; i++)
+                    rec[k++] = (int16_t)clamp(o[2 * i], -32768, 32767);
+            }
+            for (bf[m] = 0, fr = 20; fr < 600; fr += 0.5) {
+                double re = 0, im = 0;
+                for (k = 2646; k < 17640; k++) {
+                    double w = 0.5 - 0.5 * cos(2 * M_PI * (k - 2646) / 14994.0), x = rec[k] * w;
+                    re += x * cos(2 * M_PI * fr * k / FS);
+                    im += x * sin(2 * M_PI * fr * k / FS);
+                }
+                if (re * re + im * im > best) {
+                    best = re * re + im * im;
+                    bf[m] = fr;
+                }
+            }
+        }
+        snprintf(dbg, sizeof dbg, "  FM KICK at C4: its body %.1f Hz, OCT -3 %.1f Hz (x %.2f: 3 octaves down, 30 .. 60 Hz)",
+                 bf[0], bf[1], bf[1] > 0 ? bf[0] / bf[1] : 0);
+        bad += check(dbg, bf[1] > 0 && bf[0] / bf[1] > 7.5 && bf[0] / bf[1] < 8.5 && bf[1] >= 30 && bf[1] <= 60);
+    }
+
     /* projects: track 1 of a stored song re-stamped TRIO (as a full build saves it) */
     reset();
     set_engine_of(&trk[0], ENGI_WAVE);

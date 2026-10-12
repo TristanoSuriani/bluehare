@@ -255,7 +255,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* mapped and clamped for
     if (r->ver == 1u && r->engine == EID_PHYS)   /* (before 1.0: MODEL 2 was DUST) */
         phys_legacy(&v[P_E0]);
     for (i = 0; i < P_COUNT; i++)
-        v[i] = (int16_t)param_fit(up_desc(r->engine, i), v[i]);   /* (a retired KIT: the kit it plays) */
+        v[i] = (int16_t)param_fit(up_desc(r->engine, i), param_oct(i, v[i]));   /* (a retired KIT: the kit it plays) */
 }
 
 #include "up_fm6.c"                            /* the FM6 user presets' patches: the same kind of store */
@@ -462,6 +462,7 @@ static void up_tk_sound(track_t *t, uint32_t k)
     for (i = 0; i < 8u; i++)
         t->p[P_E0 + i] = v[P_E0 + i];
     t->p[P_VOICE] = v[P_VOICE];
+    t->p[P_OCT] = v[P_OCT];                             /* (the sound's octave goes with it) */
     t->preset = 0;
     t->user = (uint8_t)(k + 1u);
     upf_track_load(t, k);                               /* FM6: the preset's own patch (up_fm6.c) */
