@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
      Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-     The page follows X0X's browser page, web/emu/index.html of charlesvestal/fm1-x0x (GPL-3.0), a Felucca fork. -->
+     The page follows X0X's browser page, web/emu/index.html of charlesvestal/fm1-x0x (GPL-3.0), a Felucca fork.
+     Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -67,6 +68,10 @@ a { color: inherit; }
 .keys span { white-space: nowrap; margin: 0 8px; }
 kbd { font: 600 11px ui-monospace, Menlo, monospace; border: 1px solid var(--rule); padding: 0 4px; color: var(--fg); }
 footer { margin-top: 12px; font-size: 12px; }
+.midi { margin: 8px 0 0; color: var(--dim); text-align: center; }
+.midi .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%;
+             background: var(--rule); vertical-align: 0; transition: background .15s; }
+.midi .dot.on { background: var(--green); transition: none; }
 footer nav a { margin: 0 6px; }
 footer small { font-size: 11px; opacity: .8; }
 </style>
@@ -87,6 +92,7 @@ footer small { font-size: 11px; opacity: .8; }
   <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
   <span><kbd>Shift</kbd>-click holds a button</span>
 </p>
+<p class="midi" id="midi"><span class="dot" id="midi-dot"></span><span id="midi-text">MIDI in: connects when switched on</span></p>
 
 <footer>
   <small class="version">@VERSION@@PREVIEW@</small><br>
@@ -424,21 +430,43 @@ function saveFlash(sectors) {
 }
 
 // ------------------------------------------------------------------ Web MIDI in (channel messages)
+// (Fel-Tracker) the line under the keys names the inputs and blinks on what they send; it says why when none can be
+// used. Channel 1 plays track 1 (MENU > MIDI > MIDI IN: CH1-8 ..), SEL the selected track.
+const midiText = document.getElementById("midi-text"), midiDot = document.getElementById("midi-dot");
+let midiBlink = 0;
+const midiSay = (t) => { midiText.textContent = "MIDI in: " + t; };
+function midiSeen() {
+  midiDot.classList.add("on");
+  clearTimeout(midiBlink);
+  midiBlink = setTimeout(() => midiDot.classList.remove("on"), 80);
+}
 async function midiOn() {
-  if (!navigator.requestMIDIAccess) return;
+  if (!window.isSecureContext) return midiSay("needs the page on https or localhost");
+  if (!navigator.requestMIDIAccess) return midiSay("this browser has no Web MIDI (Chrome, Edge and Firefox have it; Safari does not)");
+  midiSay("asking the browser…");
   try {
     const access = await navigator.requestMIDIAccess();
     const bind = () => {
+      const names = [];
       for (const input of access.inputs.values()) {
+        if (input.state === "disconnected") continue;
+        names.push(input.name || "an input");
         input.onmidimessage = (e) => {
           const d = e.data;
-          if (d.length >= 2 && d[0] >= 0x80 && d[0] < 0xF0) send({ type: "midi", data: [d[0], d[1], d[2] || 0] });
+          if (d.length >= 2 && d[0] >= 0x80 && d[0] < 0xF0) {
+            send({ type: "midi", data: [d[0], d[1], d[2] || 0] });
+            midiSeen();
+          }
         };
       }
+      midiSay(names.length ? names.join(", ") + " (channel 1 plays track 1; MENU > MIDI > MIDI IN: SEL, the selected track)"
+                           : "no device: plug one in, it is found as it appears");
     };
     access.onstatechange = bind;
     bind();
-  } catch { /* no permission: the panel only */ }
+  } catch {
+    midiSay("not allowed: the browser's site settings, MIDI devices");
+  }
 }
 
 // ------------------------------------------------------------------ switching on

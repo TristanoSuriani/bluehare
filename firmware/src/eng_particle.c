@@ -5,7 +5,8 @@
  * random times, DENS a second on average (~1 .. 400), each SIZE long (~2 .. 200 ms), at the note give or take SCAT
  * semitones (random; QNT snaps the offset to FREE, SEMI semitones, OCT octaves, 5TH fifths and octaves), gliding CHIRP
  * over its length (up: bubbles, down: drips). Each grain is a WAVE (SINE, TRI, FM a bright bell-ish sine, NOIS a
- * crackle) under SHAPE (PERC a hit, HANN a swell, REV backwards); TONE a low-pass over the cloud. The ADSR shapes the
+ * crackle) under SHAPE (PERC a hit, HANN a swell, REV backwards: its last 64 samples faded, Fel-Tracker); TONE a
+ * low-pass over the cloud. The ADSR shapes the
  * cloud. Up to PT_NG grains at once a voice (the rest are dropped); the level follows how many overlap.
  * Voice state: the grains pt_g[track][voice][] (in the pool), s[0] samples to the next grain, s[1] the random
  * generator, s[2] the low-pass, s[3] the DC blocker, s[4] its last input. */
@@ -127,6 +128,8 @@ static void particle_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, co
             e = shape == 0u ? ((65536u - x) * (65536u - x)) >> 17       /* PERC */
               : shape == 1u ? (uint32_t)((32767 - sine_i((x << 16) + 0x40000000u)) >> 1)   /* HANN */
               : (x * x) >> 17;                                          /* REV */
+            if (shape == 2u && q->len - q->age < 64)  /* (REV: the last 1.3 ms faded, not a click a grain) */
+                e = e * (uint32_t)(q->len - q->age) >> 6;
             switch (wave) {
             case 0u: w = sine_i(q->ph); break;
             case 1u: w = (int32_t)(q->ph >> 16); w = (w < 32768 ? w : 65535 - w) * 2 - 32767; break;

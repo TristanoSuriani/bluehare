@@ -119,6 +119,11 @@ python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 `FELUCCA_DIST=default web/emu/build.sh` another one into `build/emu-default/` (serve that folder instead). The page
 shows the distribution after the version.
 
+MIDI in: a keyboard plugged into the computer plays the emulator (Web MIDI: Chrome, Edge or Firefox, not Safari; the
+page on localhost or https). Once switched on, the line under the key hints names the inputs found and blinks on what
+they send. MIDI channel 1 plays track 1, 2 track 2 .. (MENU > MIDI > MIDI IN: CH1-8); SEL plays the selected track
+from any channel, CH9-16 takes channels 9 .. 16 (a controller's pads, often on 10, then play track 2).
+
 `web/emu/felucca_web.c` builds the firmware's sources as the host tests do, against a simulated FM-1, and
 Emscripten compiles it to WebAssembly (`build/emu/felucca.wasm`, with `index.html`, `worklet.js` and the font in `fonts/`). The page
 keeps the flash's storage sectors (projects, user presets, settings) in the browser. Not emulated: USB (audio,

@@ -10,8 +10,12 @@
  * flows a low-pass); FOLD folds it (a sine folder); SINE mixes in a sine at the note (a pitch to hold on to); SEED
  * NOTE starts every note from the same place (the same attack each time), FREE from somewhere new; TONE a low-pass.
  * Fixed point: Q16 states, 64-bit products; clamped (a state flung out starts again).
- * Voice state: ph[0] the period (the maps, the sine), ph[1] the DC blocker's last input, s[0..2] x y z (Q16), s[3] /
- * s[4] the maps' last two outputs (Q15), s[5] SMTH's filter, s[6] TONE's, s[7] the DC blocker. */
+ * (Fel-Tracker) A map's new value is a step (SMTH short of 127): band-limited, a polyBLEP over the samples either side
+ * of the period's start, where between samples it fell (the maps' signal runs a sample late, so both are corrected
+ * when the period starts); unsmoothed the steps aliased, a grain between the harmonics.
+ * Voice state: ph[0] the period (the maps, the sine), ph[1] the DC blocker's last input, ph[2] the maps' sample not
+ * yet out, s[0..2] x y z (Q16), s[3] / s[4] the maps' last two outputs (Q15), s[5] SMTH's filter, s[6] TONE's, s[7]
+ * the DC blocker. */
 static const char *const N_CH_MODEL[] = {"LRNZ", "ROSS", "LOGI", "HENO", 0};
 static const char *const N_CH_SEED[] = {"NOTE", "FREE", 0};
 
@@ -28,7 +32,7 @@ static void chaos_note_on(track_t *t, voice_t *v)
 {
     chaos_seed(t, v);
     v->ph[0] = 0xFFFFFFFFu;                           /* (the first sample: a new period) */
-    v->ph[1] = 0;
+    v->ph[1] = v->ph[2] = 0;
     v->s[3] = v->s[4] = v->s[5] = v->s[6] = v->s[7] = 0;
 }
 
@@ -110,17 +114,29 @@ static void chaos_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
                 c = o < 64 ? ox + (((oy - ox) * o) >> 6) : oy + (((oz - oy) * (o - 64)) >> 6);
             }
         } else {                                      /* the maps: a new value a period, SMTH from steps to lines */
+            int32_t late = (int32_t)v->ph[2], bl = 0;
             if (v->ph[0] < o0) {
+                int32_t h;
+                uint32_t tq, u;
                 v->s[4] = v->s[3];
                 v->s[0] = x;
                 v->s[1] = y;
                 v->s[3] = ch_map(t, v, model, chaos, o * 2 > 127 ? 127 : o * 2);
                 x = v->s[0];
                 y = v->s[1];
+                /* the step: the old value (the line's end) to the line's start, (old - new) (1 - SMTH); t the time
+                 * since it (Q8): the sample after raised by h / 2 (1 - t)^2, the one before lowered by h / 2 t^2 */
+                h = ((v->s[4] - v->s[3]) * (128 - sm)) >> 7;
+                tq = (v->ph[0] >> 8 << 8) / (m->inc >> 8 | 1u);
+                tq = tq > 256u ? 256u : tq;
+                u = 256u - tq;
+                bl = (h * (int32_t)(u * u >> 2)) >> 15;
+                late -= (h * (int32_t)(tq * tq >> 2)) >> 15;
             }
             {
                 int32_t lin = v->s[4] + (int32_t)(((int64_t)(v->s[3] - v->s[4]) * (v->ph[0] >> 16)) >> 16);
-                c = v->s[3] + (((lin - v->s[3]) * sm) >> 7);
+                v->ph[2] = (uint32_t)(v->s[3] + (((lin - v->s[3]) * sm) >> 7) + bl);
+                c = late;                             /* (a sample late: the polyBLEP's before-sample) */
             }
         }
         c = clamp(c, -32767, 32767);
