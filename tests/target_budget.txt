@@ -40,7 +40,7 @@ hoover_render 380
 speech_render 217
 fmperc_render 20
 karplus_render 94
-vosim_render 139
+vosim_render 180
 particle_render 654
 chaos_render 655
 sid_render 316

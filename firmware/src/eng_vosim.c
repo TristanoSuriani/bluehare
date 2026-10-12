@@ -7,9 +7,14 @@
  * a horn), unless KTRK makes it follow the note; SWEEP moves both formants at each note and lets them glide back
  * (~200 ms: a wah, a brass swell, a "yow"); BAL mixes F1 and F2; BRTH adds breath (noise shaped by the pulses).
  * The pulses are one-signed: a DC blocker takes the offset out. Formants are held below ~7 kHz.
+ * (Fel-Tracker) A train still sounding when the next period starts is cut there: a step in the wave, which would alias
+ * (the period is no whole number of samples: the aliases fall between the harmonics, a grainy noise floor). The step
+ * is band-limited (a polyBLEP over the samples either side of it, its height the train's value at the cut: the output
+ * runs a sample late, so both are corrected when the period starts), and each train starts where between samples its
+ * period began.
  * Voice state: ph[0] the period, ph[1] / ph[2] the formants' pulse phases, s[0] / s[1] their pulse amplitudes (Q15),
- * s[2] / s[3] their pulses so far, s[4] the sweep (Q15, 1 at the note), s[5] the DC blocker, s[6] its last input,
- * s[7] the noise generator. */
+ * s[2] their pulses so far (F1 | F2 << 8), s[3] the sample not yet out (the polyBLEP's), s[4] the sweep (Q15, 1
+ * at the note), s[5] the DC blocker, s[6] its last input, s[7] the noise generator. */
 #define VS_TOP 1872              /* the formants' highest pitch, 1/16 semitone (note 117, ~7 kHz) */
 
 static void vosim_note_on(track_t *t, voice_t *v)
@@ -33,49 +38,63 @@ static void vosim_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 {
     const int16_t *p = t->p;
     int32_t sw = v->s[4], sweep16, b = 16384 + p[P_E4] * 129, bal = p[P_E2], brth = p[P_E7], npul = p[P_E3];
-    int32_t a1 = v->s[0], a2 = v->s[1], c1 = v->s[2], c2 = v->s[3], dc = v->s[5], dc1 = v->s[6];
-    uint32_t i, f1, f2, nz = (uint32_t)v->s[7];
+    int32_t a1 = v->s[0], a2 = v->s[1], c1 = v->s[2] & 255, c2 = v->s[2] >> 8, pe = v->s[3], dc = v->s[5], dc1 = v->s[6];
+    uint32_t i, f1, f2, nz = (uint32_t)v->s[7], inc = m->inc | 1u, ph0 = v->ph[0], ph1 = v->ph[1], ph2 = v->ph[2];
     sw -= sw / 200 + (sw > 0);                        /* the sweep glides back (~200 ms) */
     sweep16 = (p[P_E6] * 12 * sw) >> 15;              /* SWEEP: +-48 semitones at most, 3/4 st a step */
     f1 = vs_form(p[P_E0], m->pitch16, p[P_E5], sweep16);
     f2 = vs_form(p[P_E1], m->pitch16, p[P_E5], sweep16);
     for (i = 0; i < n; i++) {
-        uint32_t o0 = v->ph[0], o1 = v->ph[1], o2 = v->ph[2];
-        int32_t x, y, e;
-        v->ph[0] += m->inc;
-        if (v->ph[0] < o0) {                          /* a new period: the trains start again */
-            v->ph[1] = v->ph[2] = 0;
+        uint32_t o1 = ph1, o2 = ph2, w;
+        int32_t x, y, e, bl = 0;
+        ph0 += inc;
+        if (ph0 < inc) {                              /* a new period: the trains start again, where between samples
+                                                       * the period began (its phase past the wrap / inc of a sample):
+                                                       * whole samples would jitter each train by up to half one */
+            w = (ph0 >> 8 << 8) / (inc >> 8 | 1u);    /* (the time since it, Q8: a 32-bit divide a period) */
+            w = w > 256u ? 256u : w;
+            ph1 = (f1 >> 8) * w;
+            ph2 = (f2 >> 8) * w;
             a1 = a2 = 32767;
             c1 = c2 = 0;
+            /* the cut's polyBLEP: its height the trains' last value (pe), the sample after it raised by pe / 2 (1 - t)^2
+             * and the one before (pe itself: the output runs a sample late) lowered by pe / 2 t^2, t the time since it */
+            bl = (pe * (int32_t)((256u - w) * (256u - w) >> 1)) >> 16;
+            pe -= (pe * (int32_t)(w * w >> 1)) >> 16;
         } else {
-            v->ph[1] += f1;
-            v->ph[2] += f2;
-            if (v->ph[1] < o1 && ++c1 >= npul)        /* a pulse over: the next one DECAY times it, or the train's end */
+            ph1 += f1;
+            ph2 += f2;
+            if (ph1 < o1 && ++c1 >= npul)             /* a pulse over: the next one DECAY times it, or the train's end */
                 a1 = 0;
-            else if (v->ph[1] < o1)
+            else if (ph1 < o1)
                 a1 = a1 * b >> 15;
-            if (v->ph[2] < o2 && ++c2 >= npul)
+            if (ph2 < o2 && ++c2 >= npul)
                 a2 = 0;
-            else if (v->ph[2] < o2)
+            else if (ph2 < o2)
                 a2 = a2 * b >> 15;
         }
         /* sin^2: (1 - cos) / 2 a pulse */
-        x = (a1 * ((32767 - sine_i(v->ph[1] + 0x40000000u)) >> 1)) >> 15;
-        y = (a2 * ((32767 - sine_i(v->ph[2] + 0x40000000u)) >> 1)) >> 15;
+        x = (a1 * ((32767 - sine_i(ph1 + 0x40000000u)) >> 1)) >> 15;
+        y = (a2 * ((32767 - sine_i(ph2 + 0x40000000u)) >> 1)) >> 15;
         e = (x * (128 - bal) + y * bal) >> 7;
+        e += bl;
         nz ^= nz << 13;
         nz ^= nz >> 17;
         nz ^= nz << 5;
         e += ((((int32_t)(int16_t)nz * brth) >> 7) * ((a1 + a2) >> 1)) >> 16;   /* BRTH: noise in the pulses */
-        x = e - dc1 + dc - (dc >> 8);                 /* (the DC blocker: the pulses are one-signed) */
-        dc1 = e;
+        x = pe - dc1 + dc - (dc >> 8);                /* (the DC blocker: the pulses are one-signed) */
+        dc1 = pe;
         dc = x;
+        pe = e;
         out[i] += voice_amp(clamp(x, -32767, 32767), m, i) << 1;
     }
+    v->ph[0] = ph0;
+    v->ph[1] = ph1;
+    v->ph[2] = ph2;
     v->s[0] = a1;
     v->s[1] = a2;
-    v->s[2] = c1;
-    v->s[3] = c2;
+    v->s[2] = c1 | c2 << 8;
+    v->s[3] = pe;
     v->s[4] = sw;
     v->s[5] = dc;
     v->s[6] = dc1;
