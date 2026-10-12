@@ -452,8 +452,10 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   rise), DOWN (a downlifter), BOOM (an impact, a sub drop); BUILD gates it faster and faster, NOISE mixes noise in
 - **SPEECH** *(Fel-Tracker; the IDM distribution)*: words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
-  are phonemes (`tools/speech/`). BANK: English numbers, English machine words, German, Dutch, single phonemes; WORD
-  picks one. MODE TONE plays WORD at the keys' pitch, WORDS makes every key a word; RATE, INTN (the intonation, 0
+  are phonemes (`tools/speech/`). BANK: NUM (the numbers 0 .. 10), TECH (machines and technology, the Latin-rooted
+  words of the control room: IGNITION, REACTOR, OVERRIDE ..), COSMOS (the planets, the bright stars, NEBULA, QUASAR,
+  SUPERNOVA ..), FEEL (feelings: EUPHORIA, RAPTURE, DESPAIR, PARANOIA ..), DARK (darkness, intense events, overwhelm and
+  mystery: ABYSS, EXPLOSION, CATACLYSM, ENIGMA, OVERWHELM ..), PHON (single phonemes); WORD picks one. MODE TONE plays WORD at the keys' pitch, WORDS makes every key a word; RATE, INTN (the intonation, 0
   monotone), BUZZ (to a whisper), FORM (the filter's clock: every formant up or down), END (STOP, HOLD the last vowel
   while held, LOOP)
 - **PHASE**: phase distortion (ported from CrispyZebra)

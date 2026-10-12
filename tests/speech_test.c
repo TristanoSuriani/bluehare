@@ -145,14 +145,13 @@ int main(int argc, char **argv)
     host_tracks_init();
     render(FS / 10u);                                   /* (past the output's fade-in) */
     for (b = 0; b < SP_NBANK; b++) {                    /* every word: speaks, ends, no clipping; the demos */
-        snprintf(path, sizeof path, "%s/%s.wav", dir, N_SP_BANK[b][0] == 'E' && N_SP_BANK[b][2] == '#' ? "en_num" :
-                 N_SP_BANK[b]);
+        snprintf(path, sizeof path, "%s/%s.wav", dir, N_SP_BANK[b]);
         for (char *c = path + strlen(dir) + 1; *c; c++)
             *c = (char)(*c >= 'A' && *c <= 'Z' ? *c + 32 : *c);
         W = fopen(path, "wb");
         if (W)
             wav_begin(W);
-        for (w = 0; w < SP_WORDS; w++) {
+        for (w = 0; w < SP_BANK_N[b]; w++) {
             sound(b, w, 0, 64, 0, 0);
             ms = speak(48, &pk);
             quiet += pk < 1000;
@@ -168,15 +167,15 @@ int main(int argc, char **argv)
     }
     printf("speech: %u words, %u .. %u ms\n", n, minms, maxms);
     check("every word of every bank speaks (peak over -30 dBFS), ends within 2 s, never clips",
-          n == SP_NBANK * SP_WORDS && !quiet && !loud && !long_);
+          n == (uint32_t)NELEM(SP_WORD) && !quiet && !loud && !long_);
 
     {   /* a vowel at C3 and C4: twice the frequency */
         double f1, f2;
-        sound(4, 0, 0, 64, 0, 1);                       /* PHON AA, HOLD */
+        sound(SP_NBANK - 1u, 0, 0, 64, 0, 1);                       /* PHON AA, HOLD */
         rec_n = 0;
         trk_note_on(T, 48, 100); render(FS / 2u); trk_note_off(T, 48); render(FS / 5u);
         f1 = f0_of(rec + FS / 5u, 4096);
-        sound(4, 0, 0, 64, 0, 1);
+        sound(SP_NBANK - 1u, 0, 0, 64, 0, 1);
         rec_n = 0;
         trk_note_on(T, 60, 100); render(FS / 2u); trk_note_off(T, 60); render(FS / 5u);
         f2 = f0_of(rec + FS / 5u, 4096);
@@ -188,12 +187,12 @@ int main(int argc, char **argv)
         double c1, c2;
         sound(1, 0, 0, 64, 0, 0); m1 = speak(48, &pk);
         sound(1, 0, 0, 127, 0, 0); m2 = speak(48, &pk);
-        printf("speech: ROBOT at RATE 64 %u ms, at 127 %u ms\n", m1, m2);
+        printf("speech: SYSTEM at RATE 64 %u ms, at 127 %u ms\n", m1, m2);
         check("RATE 127 (double speed): about half as long", m2 * 2u > m1 * 8u / 10u && m2 * 2u < m1 * 12u / 10u);
-        sound(4, 0, 0, 64, -60, 1); rec_n = 0;
+        sound(SP_NBANK - 1u, 0, 0, 64, -60, 1); rec_n = 0;
         trk_note_on(T, 48, 100); render(FS / 2u); trk_note_off(T, 48); render(FS / 10u);
         c1 = centroid(rec + FS / 5u, 2048);
-        sound(4, 0, 0, 64, 60, 1); rec_n = 0;
+        sound(SP_NBANK - 1u, 0, 0, 64, 60, 1); rec_n = 0;
         trk_note_on(T, 48, 100); render(FS / 2u); trk_note_off(T, 48); render(FS / 10u);
         c2 = centroid(rec + FS / 5u, 2048);
         printf("speech: AA's centroid at FORM -60 %.0f Hz, at +60 %.0f Hz\n", c1, c2);
@@ -202,15 +201,15 @@ int main(int argc, char **argv)
     {   /* HOLD sustains while held; STOP ends; LOOP starts again */
         sp_voice_t *s;
         int held, stopped, looped;
-        sound(1, 16, 0, 64, 0, 1);                      /* NO, HOLD */
+        sound(1, 31, 0, 64, 0, 1);                      /* ENERGY, HOLD */
         trk_note_on(T, 48, 100); render(FS * 2u);
         held = (s = sp_first()) && !s->done;
         trk_note_off(T, 48); render(FS);
-        sound(1, 16, 0, 64, 0, 0);                      /* STOP */
+        sound(1, 31, 0, 64, 0, 0);                      /* STOP */
         trk_note_on(T, 48, 100); render(FS * 2u);
         stopped = (s = sp_first()) && s->done;
         trk_note_off(T, 48); render(FS / 2u);
-        sound(1, 16, 0, 64, 0, 2);                      /* LOOP: the segment index comes back to the start */
+        sound(1, 31, 0, 64, 0, 2);                      /* LOOP: the segment index comes back to the start */
         trk_note_on(T, 48, 100); render(FS * 2u);
         looped = (s = sp_first()) && !s->done;
         trk_note_off(T, 48); render(FS / 2u);
@@ -222,7 +221,7 @@ int main(int argc, char **argv)
         sound(0, 3, 1, 64, 0, 0);
         ok &= speech_keys(T, 0) >= 0;
         trk_note_on(T, 36 + 2, 100); render(CTL * 2u);
-        ok &= (s = sp_first()) && s->word == 0u * SP_WORDS + 5u;   /* EN#: THREE + 2 = FIVE */
+        ok &= (s = sp_first()) && s->word == SP_BANK_FIRST[0] + 5u;   /* NUM: THREE + 2 = FIVE */
         trk_note_off(T, 38); render(FS / 2u);
         check("WORDS: the keys from C2 are the words from WORD (C2 + 2 with WORD THREE: FIVE); TONE: no key map", ok);
     }

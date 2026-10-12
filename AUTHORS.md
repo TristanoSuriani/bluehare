@@ -42,7 +42,7 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | BYTE (bytebeat) | `firmware/src/eng_byte.c` |
 | WEST (west coast) | `firmware/src/eng_west.c` |
 | HOOVER (rave lead) | `firmware/src/eng_hoover.c` |
-| SPEECH (LPC words in English, German and Dutch) | `firmware/src/eng_speech.c`, `tools/gen_speech.py`, `tools/speech/` |
+| SPEECH (LPC words in English) | `firmware/src/eng_speech.c`, `tools/gen_speech.py`, `tools/speech/` |
 | FMPERC (FM percussion) | `firmware/src/eng_fmperc.c` |
 | KARPLUS (plucked string) | `firmware/src/eng_karplus.c` |
 | VOSIM (formant pulse trains) | `firmware/src/eng_vosim.c` |

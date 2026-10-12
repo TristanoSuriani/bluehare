@@ -5,13 +5,15 @@
  *
  * A buzz (a glottal pulse each period) or a hiss (noise) through a 10-pole lattice filter running at 8820 Hz; the
  * filter's reflection coefficients glide from sound to sound, word by word. There are no recordings: the words are
- * phonemes (the text files in tools/speech, English, German, Dutch), turned at build time into sounds (each one's coefficients and
+ * phonemes (the text files in tools/speech, English), turned at build time into sounds (each one's coefficients and
  * gains) and segments (the sound, its length, how long the glide to it takes, the pitch: stress and the fall across the
  * word) by tools/gen_speech.py.
  *
- * WORD picks the word of BANK (EN# numbers, EN machine words, DE, NL, PHON single phonemes). MODE TONE: the keys play
- * WORD at their pitch; WORDS: the keys are the words (WORD + the key from C2, the pitch fixed at C3, as DRUM maps its
- * lanes). RATE: how fast it speaks (half .. double); INTN: how much the pitch follows the word's stress and fall (0:
+ * WORD picks the word of BANK (NUM the numbers 0 .. 10; TECH machines and technology, the Latin-rooted words of the
+ * control room; COSMOS planets and stars; FEEL feelings; DARK darkness, intense events, overwhelm and mystery; PHON
+ * single phonemes: 32 words a bank, NUM's 11). MODE TONE: the keys play
+ * WORD at their pitch; WORDS: the keys are the words (WORD + the key from C2, round the bank's words, the pitch fixed at
+ * C3, as DRUM maps its lanes). RATE: how fast it speaks (half .. double); INTN: how much the pitch follows the word's stress and fall (0:
  * monotone); BUZZ: the voice (127) to a whisper (0: the voiced sounds hiss); FORM: the filter's clock, 0.7 .. 1.4 times
  * (every formant shifts with it, as a bent chip's clock); END: when the word is over, STOP (silence), HOLD (its last
  * voiced sound sustains while the key is held, the rest follows on release) or LOOP (it starts again while held).
@@ -25,7 +27,7 @@ static const char *const N_SP_END[] = {"STOP", "HOLD", "LOOP", 0};
 #define SP_CLK 13107u            /* the filter's samples per output sample, Q16: 8820 / 44100 */
 #define SP_MS 1486u              /* an output sample in ms, Q16 (1000 / 44100) */
 #define SP_NCHIRP ((uint32_t)NELEM(SP_CHIRP))
-typedef char sp_words_fit[SP_WORDS == 32 && SP_NBANK == 5 ? 1 : -1];   /* (WORD 0..31; SP_WORD_DESC below) */
+typedef char sp_words_fit[SP_WORDS == 32 && SP_NBANK == 6 ? 1 : -1];   /* (WORD 0 .. a bank's count - 1; SP_WORD_DESC) */
 
 typedef struct {
     uint16_t word;               /* SP_WORD index */
@@ -52,13 +54,15 @@ static sp_voice_t *sp_of(track_t *t, voice_t *v)
     return i < SP_POLY ? &sp_v[t - trk][i] : 0;
 }
 
-/* the word the voice speaks: WORD of BANK, or in WORDS mode the one under its key */
+/* the word the voice speaks: WORD of BANK (past the bank's last: its last, as shown), or in WORDS mode the one under
+ * its key (round the bank's words) */
 static uint32_t sp_word_of(const track_t *t, const voice_t *v)
 {
-    uint32_t w = (uint32_t)t->p[P_E0];
+    uint32_t b = (uint32_t)t->p[P_E1] % SP_NBANK;
+    int32_t n = SP_BANK_N[b], w = clamp(t->p[P_E0], 0, n - 1);
     if (t->p[P_E2] == 1)
-        w += (uint32_t)((int32_t)v->note - 36);
-    return ((uint32_t)t->p[P_E1] % SP_NBANK) * SP_WORDS + (w & (SP_WORDS - 1u));
+        w = ((w + (int32_t)v->note - 36) % n + n) % n;
+    return SP_BANK_FIRST[b] + (uint32_t)w;
 }
 
 /* 2^(x / 192) in Q16 (x in 1/16 semitones, -1024 .. 1023): a ratio of the pitch table (32-bit divides only: the
@@ -197,45 +201,52 @@ static int32_t speech_keys(const track_t *t, uint32_t k)
 }
 
 /* WORD's names: the bank's words */
-#define SP_WD(i) {"WORD", F_ENUM, 0, SP_WORDS - 1, 0, SP_NAMES_##i, 0}
-static const param_desc_t SP_WORD_DESC[SP_NBANK] = {SP_WD(0), SP_WD(1), SP_WD(2), SP_WD(3), SP_WD(4)};
+#define SP_WD(i) {"WORD", F_ENUM, 0, SP_N_##i - 1, 0, SP_NAMES_##i, 0}
+static const param_desc_t SP_WORD_DESC[SP_NBANK] = {SP_WD_ALL};
 static const param_desc_t *speech_desc(const track_t *t, uint32_t k)
 {
     return k == 0u ? &SP_WORD_DESC[(uint32_t)t->p[P_E1] % SP_NBANK] : 0;
 }
 
-/* {WORD, BANK, MODE, RATE, INTN, BUZZ, FORM, END} */
+/* {WORD, BANK, MODE, RATE, INTN, BUZZ, FORM, END}; BANK 0 NUM 1 TECH 2 COSMOS 3 FEEL 4 DARK 5 PHON */
 static const preset_t SPEECH_PRESETS[] = {
-    {"ROBOT", {0, 1, 0, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 20)},
+    {"ROBOT", {2, 1, 0, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 20)},
     {"COUNT", {0, 0, 1, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 25, 15)},
     {"SPELL", {1, 0, 0, 58, 110, 127, 12, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 25)},
-    {"WHISPER", {2, 1, 0, 60, 40, 0, 0, 0}, {0, 0, 127, 30}, 0, 1, FX(0, 0, 40, 40)},
-    {"ROBOTER", {15, 2, 0, 64, 50, 127, -24, 0}, {0, 0, 127, 20}, 0, 1, FX(10, 0, 30, 20)},
-    {"STEM", {30, 3, 0, 70, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 20)},
-    {"MONOTONE", {1, 1, 0, 52, 0, 127, -8, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 35, 20)},
-    {"VOWEL PAD", {0, 4, 0, 64, 0, 127, 0, 1}, {60, 90, 120, 90}, 0, 0, FX(0, 60, 30, 60)},
-    /* ELECTRO into the delay; ERROR slowed down an octave of formants (a giant); HELLO sped up and squeezed */
-    {"ELECTRO", {7, 1, 0, 64, 80, 127, 0, 0}, {0, 0, 127, 25}, 0, 1, FX(10, 0, 60, 25)},
-    {"GIANT", {3, 1, 0, 40, 30, 127, -60, 0}, {0, 0, 127, 50}, 0, 1, FX(20, 0, 30, 50)},
-    {"CHIPMUNK", {17, 1, 0, 96, 110, 127, 50, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 25)},
-    /* GO, looped while held, fast: a rhythm of syllables */
-    {"STUTTER", {14, 1, 0, 110, 64, 127, 0, 2}, {0, 0, 127, 10}, 0, 1, FX(0, 0, 40, 15)},
-    /* the keys count: in German from NULL, in Dutch from NUL */
-    {"ZAHLEN", {0, 2, 1, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 25, 15)},
-    {"TELLEN", {0, 3, 1, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 25, 15)},
-    /* OO held, low and steady under the chorus; SH, short: a hi-hat */
-    {"VOX DRONE", {13, 4, 0, 64, 0, 100, -20, 1}, {80, 90, 127, 100}, 0, 0, FX(0, 80, 20, 70)},
-    {"SH HAT", {24, 4, 0, 127, 0, 127, 0, 0}, {0, 60, 0, 30}, 0, 0, FX(0, 0, 20, 10)},
+    {"WHISPER", {0, 4, 0, 60, 40, 0, 0, 0}, {0, 0, 127, 30}, 0, 1, FX(0, 0, 40, 40)},
+    /* IGNITION, deep and slow; the keys are the planets */
+    {"IGNITION", {10, 1, 0, 58, 50, 127, -24, 0}, {0, 0, 127, 20}, 0, 1, FX(10, 0, 40, 25)},
+    {"PLANETS", {0, 2, 1, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 30, 30)},
+    {"MONOTONE", {0, 1, 0, 52, 0, 127, -8, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 35, 20)},
+    {"VOWEL PAD", {0, 5, 0, 64, 0, 127, 0, 1}, {60, 90, 120, 90}, 0, 0, FX(0, 60, 30, 60)},
+    /* ELECTRIC into the delay; ERROR slowed down an octave of formants (a giant); ACTIVATE sped up and squeezed */
+    {"ELECTRIC", {21, 1, 0, 64, 80, 127, 0, 0}, {0, 0, 127, 25}, 0, 1, FX(10, 0, 60, 25)},
+    {"GIANT", {4, 1, 0, 40, 30, 127, -60, 0}, {0, 0, 127, 50}, 0, 1, FX(20, 0, 30, 50)},
+    {"CHIPMUNK", {16, 1, 0, 96, 110, 127, 50, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 25)},
+    /* DATA, looped while held, fast: a rhythm of syllables */
+    {"STUTTER", {5, 1, 0, 110, 64, 127, 0, 2}, {0, 0, 127, 10}, 0, 1, FX(0, 0, 40, 15)},
+    /* the keys are the feelings; the dark words */
+    {"FEELINGS", {0, 3, 1, 64, 80, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 30, 35)},
+    {"DARK KEYS", {0, 4, 1, 56, 50, 110, -16, 0}, {0, 0, 127, 30}, 0, 0, FX(0, 20, 35, 50)},
+    /* UW held, low and steady under the chorus; SH, short: a hi-hat */
+    {"VOX DRONE", {9, 5, 0, 64, 0, 100, -20, 1}, {80, 90, 127, 100}, 0, 0, FX(0, 80, 20, 70)},
+    {"SH HAT", {23, 5, 0, 127, 0, 127, 0, 0}, {0, 60, 0, 30}, 0, 0, FX(0, 0, 20, 10)},
+    /* EXPLOSION slowed and distorted; MYSTERY half whispered in the hall; SUPERNOVA rising; OVERWHELM looping, deep */
+    {"EXPLOSION", {7, 4, 0, 46, 90, 127, -30, 0}, {0, 0, 127, 40}, 0, 1, FX(40, 0, 40, 45)},
+    {"MYSTERY", {16, 4, 0, 54, 30, 50, -10, 0}, {0, 0, 127, 60}, 0, 1, FX(0, 30, 40, 80)},
+    {"SUPERNOVA", {31, 2, 0, 60, 110, 127, 20, 0}, {0, 0, 127, 40}, 0, 1, FX(10, 20, 50, 50)},
+    {"EUPHORIA", {1, 3, 0, 64, 100, 127, 10, 0}, {0, 0, 127, 30}, 0, 1, FX(0, 30, 40, 50)},
+    {"OVERWHELM", {26, 4, 0, 50, 64, 127, -40, 2}, {0, 0, 127, 40}, 0, 1, FX(30, 20, 40, 60)},
 };
 
 static const engine_t ENG_SPEECH = {
     .name = "SPEECH",
     .id = EID_SPEECH,
     .cc = 0x75,                  /* CC74 FORM, CC71 INTN */
-    .cats = "FFFFFFFPFFFFFFPD",
+    .cats = "FFFFFFFPFFFFFFPDFFFFF",
     .page_title = {"WORD", "VOICE"},
     .edit = {
-        {"WORD", F_ENUM, 0, SP_WORDS - 1, 0, SP_NAMES_1, 0},
+        {"WORD", F_ENUM, 0, SP_N_1 - 1, 0, SP_NAMES_1, 0},
         {"BANK", F_ENUM, 0, SP_NBANK - 1, 1, N_SP_BANK, 0},
         {"MODE", F_ENUM, 0, 1, 0, N_SP_MODE, 0},
         {"RATE", F_PCT, 0, 127, 64, 0, 0},

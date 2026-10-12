@@ -13,8 +13,8 @@ filter's coefficients (the polynomial of the 5 resonances, stepped down to refle
 how long it lasts, how long it takes to get there from the one before, the pitch (stress and the fall across the
 word, in quarter semitones, the primary stress on the key's pitch). Stops become a closure, a burst and (unvoiced) an aspiration; diphthongs two vowels.
 Phonemes: ARPAbet's (IY IH EH AE AA AO AH UH UW ER AX AY AW OY EY OW, P B T D K G F V TH DH S Z SH ZH HH CH JH M N NG
-L R W Y) and for German and Dutch UE (u umlaut, uu) OE (o umlaut, eu) EE OO (long e, o) EI (ij) UI (ui) AU EU OU, X
-(ach, Dutch g) C (ich) GH (voiced g) RR (the r) TS PF. The stress digit follows a vowel: 1 primary, 2 secondary, 0 none.
+L R W Y), and a few more the sounds below still know (UE OE EE OO EI UI AU EU OU X C GH RR TS PF: the German and Dutch
+banks', gone since). The stress digit follows a vowel: 1 primary, 2 secondary, 0 none. A bank holds 1 .. 32 words.
   gen_speech.py OUT.h"""
 import math
 import random
@@ -24,8 +24,9 @@ from pathlib import Path
 FS = 8820.0                     # the filter's rate (44100 / 5)
 P = 10                          # poles
 HERE = Path(__file__).resolve().parent / "speech"
-BANKS = [("EN#", "en_num.txt"), ("EN", "en.txt"), ("DE", "de.txt"), ("NL", "nl.txt")]   # then PHON
-WORDS = 32
+BANKS = [("NUM", "num.txt"), ("TECH", "tech.txt"), ("COSMOS", "cosmos.txt"), ("FEEL", "feel.txt"),
+         ("DARK", "dark.txt")]   # then PHON
+WORDS = 32                      # a bank's most
 F45 = [(3300, 250), (3850, 300)]   # the upper resonances of a voiced sound
 
 # ---- the sounds: (F1, F2, F3, B1, B2, B3, voice 0..1, noise 0..1), or 5 resonances for the noisy ones
@@ -70,8 +71,8 @@ STOPS = {"P": ("P_B", False), "T": ("T_B", False), "K": ("K_B", False), "B": ("P
 AFFR = {"CH": ("T_B", "SH", False), "JH": ("T_B", "ZH", True), "TS": ("T_B", "S", False), "PF": ("P_B", "F", False)}
 DUR = {"W": 60, "Y": 55, "L": 65, "R": 65, "RR": 60, "M": 70, "N": 65, "NG": 70, "S": 110, "SH": 110, "F": 100,
        "TH": 90, "X": 100, "C": 100, "Z": 90, "ZH": 90, "V": 70, "DH": 50, "GH": 80, "HH": 60}
-PHON = ["AA", "AE", "AH", "AO", "EH", "ER", "IH", "IY", "UH", "UW", "OE", "UE", "EE", "OO", "AY", "OW", "M", "N", "NG",
-        "L", "R", "W", "Y", "S", "SH", "F", "TH", "X", "C", "Z", "V", "HH"]
+PHON = ["AA", "AE", "AH", "AO", "EH", "ER", "IH", "IY", "UH", "UW", "AY", "OW", "AW", "OY", "EY", "M", "N", "NG", "L",
+        "R", "W", "Y", "S", "SH", "F", "TH", "Z", "ZH", "V", "DH", "CH", "HH"]
 
 
 # ---- the filter: resonances -> polynomial -> reflection coefficients; checked against a direct form
@@ -225,8 +226,8 @@ def read(path):
         if line:
             name, phones = line.split(None, 1)
             out.append((name.upper()[:8], phones.upper()))
-    if len(out) != WORDS:
-        raise SystemExit(f"gen_speech: {path}: {len(out)} words ({WORDS} wanted)")
+    if not 1 <= len(out) <= WORDS:
+        raise SystemExit(f"gen_speech: {path}: {len(out)} words (1 .. {WORDS})")
     return out
 
 
@@ -238,6 +239,8 @@ def main(path):
         raise SystemExit("gen_speech: the lattice does not match its polynomial")
     g = Gen()
     banks = [(b, read(HERE / f)) for b, f in BANKS] + [("PHON", [(p, p + ("1" if p in VOWELS else "")) for p in PHON])]
+    if len(PHON) > WORDS:
+        raise SystemExit("gen_speech: PHON: more than 32 sounds")
     words = []
     for _, ws in banks:
         for _, ph in ws:
@@ -259,12 +262,20 @@ def main(path):
         lines.append("    " + " ".join("{%d, %d, %d, %d}," % s for s in g.segs[i:i + 6]))
     lines.append("};")
     lines.append("typedef struct { uint16_t first; uint8_t n, hold; } sp_word_t;   /* hold: the last voiced segment */")
-    lines.append(f"static const sp_word_t SP_WORD[SP_NBANK * SP_WORDS] = {{")
+    lines.append(f"static const sp_word_t SP_WORD[{len(words)}] = {{")
     for i in range(0, len(words), 6):
         lines.append("    " + " ".join("{%d, %d, %d}," % w for w in words[i:i + 6]))
     lines.append("};")
+    lines.append("/* each bank's words: SP_WORD[SP_BANK_FIRST[b] ..], SP_N_<b> of them (1 .. SP_WORDS) */")
     for bi, (b, ws) in enumerate(banks):
-        lines.append(f"static const char *const SP_NAMES_{bi}[SP_WORDS + 1] = {{" + ", ".join(f'"{nm}"' for nm, _ in ws)
+        lines.append(f"#define SP_N_{bi} {len(ws)}")
+    lines.append("static const uint16_t SP_BANK_FIRST[SP_NBANK] = {" +
+                 ", ".join(str(sum(len(w) for _, w in banks[:i])) for i in range(len(banks))) + "};")
+    lines.append("static const uint8_t SP_BANK_N[SP_NBANK] = {" + ", ".join(f"SP_N_{i}" for i in range(len(banks))) + "};")
+    lines.append("#define SP_WD_ALL " + ", ".join(f"SP_WD({i})" for i in range(len(banks))) +
+                 "   /* (eng_speech.c SP_WD: a bank's WORD) */")
+    for bi, (b, ws) in enumerate(banks):
+        lines.append(f"static const char *const SP_NAMES_{bi}[SP_N_{bi} + 1] = {{" + ", ".join(f'"{nm}"' for nm, _ in ws)
                      + ", 0};")
     lines.append("static const char *const *const SP_NAMES[SP_NBANK] = {" +
                  ", ".join(f"SP_NAMES_{i}" for i in range(len(banks))) + "};")
