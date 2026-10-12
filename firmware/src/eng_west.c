@@ -11,15 +11,16 @@
  * cutoff follows the envelope through a vactrol-like lag (quick to open, slower to close), LPG of the way from CUT
  * down to closed, so a note darkens as it fades: the plucked, struck sound of the form. TMBR opens FM and FOLD with
  * the same lagged envelope (a hit is brighter at its start). FM and FOLD give way on high notes so the spectrum stays
- * below ~14 kHz (no aliasing): high notes are plainer.
+ * below ~16 kHz (no audible aliasing): high notes are plainer.
  * Voice state: ph[0] the carrier, ph[1] the modulator, s[0] s[1] the filter, s[2] the vactrol (Q15), s[3] the
  * modulator's last output (feedback), s[4] s[5] the DC blocker's last in / out. */
 static const char *const N_WEST_RATIO[] = {"1/2", "1", "3/2", "2", "5/2", "3", "4", "5", "6", "7", "8", "1.41", "1.73",
                                           "2.76", "3.55", "4.61", 0};
 static const uint16_t WEST_RATIO[16] = {128, 256, 384, 512, 640, 768, 1024, 1280, 1536, 1792, 2048, 361, 443, 707, 909,
                                         1180};   /* Q8 */
-#define WEST_BW 1363500000u     /* 14 kHz as a phase increment (14000 x 2^32 / 44100): the spectrum's top; / (inc >> 8):
-                                 * that in notes, Q8 */
+#define WEST_BW 1558264779u     /* 16 kHz as a phase increment (16000 x 2^32 / 44100): the spectrum's top; / (inc >> 8):
+                                 * that in notes, Q8. (Fel-Tracker: was 14 kHz; 16 keeps the aliasing ~-43 dB or less
+                                 * up to C7, measured against 8x: high notes keep more of their FM and fold) */
 
 static void west_note_on(track_t *t, voice_t *v)
 {

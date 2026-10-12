@@ -7,8 +7,8 @@
  * TBL picks the bank, POS the place between its frames (the two neighbours crossfaded): the SHP routings move it
  * (ENV DEST / LFO DEST SHP, the matrix's SHP: a step of shape is a step of POS), so an envelope or an LFO scans the
  * table. Every frame is stored 7 times, band-limited to 64, 32, .. 2 harmonics and the fundamental alone (512 .. 8
- * samples): each block plays the fullest copy whose harmonics stay below ~20 kHz at the voice's pitch, read with
- * linear interpolation (no aliasing on high notes, the same loudness on every copy).
+ * samples): each block plays the fullest copy whose harmonics alias no lower than ~20 kHz at the voice's pitch,
+ * read with linear interpolation (no aliasing on high notes, the same loudness on every copy).
  * SYNC (0 = off) reads the frame faster than the voice's cycle, 1x .. 8x (at most ~18 kHz: high notes sync less),
  * restarting it every cycle; a half-sine
  * window over the cycle takes the restart's step out (windowed sync: a formant-like sweep, no click); the restart
@@ -20,14 +20,18 @@
 #include "felucca_wavetables.h"
 static const char *const N_WT_BANK[] = {WT_BANK_NAMES_INIT, 0};
 static const uint16_t WT_LVL_OFF[7] = {0, 512, 768, 896, 960, 992, 1008};   /* each mip level's start in a frame */
-#define WT_LIM 30434000u        /* phase increment of 344 Hz: 64 harmonics reach 20 kHz (0.4535 x 2^32 / 64) */
+#define WT_LIM 36521831u        /* phase increment of 413 Hz: 64 harmonics reach 24 kHz (0.5442 x 2^32 / 64), past
+                                 * Nyquist but folding back above 20 kHz (Fel-Tracker: was 20 kHz, a copy switched to
+                                 * half its harmonics ~20 % lower) */
+#define WT_LIM_SYNC 30434000u   /* SYNC's: 344 Hz, 64 harmonics reach 20 kHz (its window spreads each harmonic: the
+                                 * ones past Nyquist would fold below 20 kHz) */
 #define WT_RMAX 1750000000u     /* the fastest a synced frame is read: ~18 kHz */
 
-/* the mip level for phase increment inc: harmonics (64 >> l) x the pitch below WT_LIM x 64 */
-static inline uint32_t wt_level(uint32_t inc)
+/* the mip level for phase increment inc: harmonics (64 >> l) x the pitch below lim x 64 */
+static inline uint32_t wt_level(uint32_t inc, uint32_t lim)
 {
     uint32_t l = 0;
-    while (l < 6u && inc >= (WT_LIM << l))
+    while (l < 6u && inc >= (lim << l))
         l++;
     return l;
 }
@@ -73,7 +77,8 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     uint32_t rinc1 = sync ? wt_speed(inc1, ratio) : inc1, rinc2 = sync ? wt_speed(inc2, ratio) : inc2;
     uint32_t er1 = sync ? rinc1 / ((inc1 >> 8) | 1u) : 0u, er2 = sync && det ? rinc2 / ((inc2 >> 8) | 1u) : 0u;   /* (as
                                                        * read: WT_RMAX may have slowed it), Q8 */
-    uint32_t l1 = wt_level(rinc1), l2 = wt_level(rinc2), o1 = WT_LVL_OFF[l1], o2 = WT_LVL_OFF[l2];
+    uint32_t lim = sync ? WT_LIM_SYNC : WT_LIM, l1 = wt_level(rinc1, lim), l2 = wt_level(rinc2, lim);
+    uint32_t o1 = WT_LVL_OFF[l1], o2 = WT_LVL_OFF[l2];
     int32_t cut = (p[P_E4] << 8) + m->cutoff + (v->pitch16 - 60 * 16) * 4;
     int32_t drv = p[P_E6], drive = 32768 + drv * 512, crsh = p[P_E7];
     int32_t hold = 1 + (crsh >> 3), mask = ~((1 << (crsh >> 3)) - 1);
