@@ -106,23 +106,37 @@ int main(void)
     /* the user presets' FM6 patches (1.0.3) in the two sectors of the retired FM6 bank: 0x9F000 (after the projects)
      * and 0xFE000 (after the settings); the two objects share them, told apart by the commit record's type */
     bad += check("FM6 user preset patches (and the retired bank) in the sectors 0x9F000 / 0xFE000",
-                 OBJ_UPFM6 == OBJ_COUNT - 2 && OBJ_FM6BANK == OBJ_UPFM6 - 1 && st_sector(OBJ_UPFM6, 0) == 0x9F000u &&
+                 OBJ_UPFM6 == OBJ_PROJECT4 - 2 && OBJ_FM6BANK == OBJ_UPFM6 - 1 && st_sector(OBJ_UPFM6, 0) == 0x9F000u &&
                      st_sector(OBJ_PROJECT0 + 3, 1) + 4096 == 0x9F000u && st_sector(OBJ_UPFM6, 1) == 0xFE000u &&
                      st_sector(OBJ_FM6BANK, 0) == 0x9F000u && st_sector(OBJ_FM6BANK, 1) == 0xFE000u &&
                      st_sector(OBJ_SETTINGS, 1) + 4096 == 0xFE000u);
     /* the autosave (1.2, project.c): its own pair 0xE5000 / 0xE6000, above the OTA staging, apart from every other
      * object; a save there touches no other object */
     {
-        uint32_t o, c, ok = OBJ_AUTOSAVE == OBJ_COUNT - 1 && st_sector(OBJ_AUTOSAVE, 0) == 0xE5000u &&
+        uint32_t o, c, ok = OBJ_AUTOSAVE == OBJ_PROJECT4 - 1 && st_sector(OBJ_AUTOSAVE, 0) == 0xE5000u &&
                                st_sector(OBJ_AUTOSAVE, 1) == 0xE6000u;
         static uint8_t snap[0x100000];
-        for (o = 0; o < OBJ_AUTOSAVE; o++)
-            for (c = 0; c < 2u; c++)
+        for (o = 0; o < OBJ_COUNT; o++)
+            for (c = 0; o != OBJ_AUTOSAVE && c < 2u; c++)
                 ok &= st_sector(o, c) + 4096u <= 0xE5000u || st_sector(o, c) >= 0xE7000u;
         memcpy(snap, nor, sizeof nor);
         ok &= st_save(OBJ_AUTOSAVE, a, sizeof a) == 0 && st_load(OBJ_AUTOSAVE, got, sizeof got) == (int)sizeof a &&
               !memcmp(got, a, sizeof a) && !memcmp(snap, nor, 0xE5000u) && !memcmp(snap + 0xE7000u, nor + 0xE7000u, 0x19000u);
         bad += check("the autosave in its own sectors 0xE5000 / 0xE6000, nothing else touched", ok);
+    }
+    {   /* (Fel-Tracker, 8 tracks) the song's chunks 4 .. 15: A/B pairs from 0xA0000 to 0xB7FFF, each sector its own (no
+         * other object's, none of each other's), past every object of before */
+        uint32_t o, c, o2, c2, ok = OBJ_COUNT == OBJ_PROJECT4 + 12u && OBJ_PROJECT4 == OBJ_AUTOSAVE + 1u;
+        for (o = OBJ_PROJECT4; o < OBJ_COUNT; o++)
+            for (c = 0; c < 2u; c++) {
+                uint32_t a0 = st_sector(o, c);
+                ok &= a0 >= 0xA0000u && a0 + 4096u <= 0xB8000u;
+                for (o2 = 0; o2 < OBJ_COUNT; o2++)
+                    for (c2 = 0; c2 < 2u; c2++)
+                        if ((o2 != o || c2 != c) && !((o2 == OBJ_FM6BANK && o == OBJ_UPFM6) || (o == OBJ_FM6BANK && o2 == OBJ_UPFM6)))
+                            ok &= st_sector(o2, c2) != a0;
+            }
+        bad += check("the song's chunks 4 .. 15 (8 tracks) in 0xA0000 .. 0xB7FFF, every sector their own", ok);
     }
     {
         static uint8_t bank[3472], back[3728], tab[3728];

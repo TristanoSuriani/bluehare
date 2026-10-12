@@ -177,7 +177,7 @@ int main(void)
     apply_preset_to(&trk[0], 4);
     trk[0].p[P_E1] = 99;
     project_save(0);
-    off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN;    /* track 1's engine byte */
+    off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + (PROJ_VER >= 3u);   /* (v3: the track count first) */    /* track 1's engine byte */
     proj_ram[0][off] = EID_DUBSIREN;                    /* (a song with DUBSIREN on track 1, as before this rule) */
     stream_rehash();
     project_new();
@@ -220,7 +220,7 @@ int main(void)
     trk[0].p[P_ATK] = 33;
     *tk_at(0, 0, 0) = tk_pack(60, 0, 0, 0);
     project_save(0);
-    off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN;    /* track 1's engine byte */
+    off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + (PROJ_VER >= 3u);   /* (v3: the track count first) */    /* track 1's engine byte */
     ok = proj_ram[0][off] == EID_WAVE;
     proj_ram[0][off] = EID_TRIO;
     stream_rehash();
@@ -272,6 +272,88 @@ int main(void)
             }
         bad += check("every engine left renders every preset (not silent)", loud == n && n > 40u);
     }
+    /* the song format (Fel-Tracker step 3b): an 8-track build writes version 3 (a cell's place 2 bytes, the track count
+     * after the name), a 4-track one version 2; a song of more tracks than the build is refused, one of fewer fills its
+     * first tracks. build/host/song_v2.bin carries a 4-track song from this test's 4-track run to its 8-track one */
+    {
+        static const char V2[] = "build/host/song_v2.bin";
+        uint32_t c, k;
+        reset();
+        set_engine_of(&trk[1], ENGI_WEST);
+        apply_preset_to(&trk[1], 3);
+        trk[1].p[P_E1] = 77;
+        *tk_at(0, 63, NTRK - 1u) = tk_pack(60, 1, 0, 0);       /* the last place: past 255 at 8 tracks */
+        *tk_at(TK_PATS - 3u, 40, 0) = tk_pack_ch(48, 2, 0, 0, 0x37);   /* pattern 22 (the pool's at 8), a chord */
+        project_save(0);
+        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == (NTRK == 8 ? 3u : 2u);
+        project_new();
+        project_load(0);
+        ok &= tk_note(tk_at(0, 63, NTRK - 1u)) == 60u && tk_chord(tk_at(TK_PATS - 3u, 40, 0)) == 0x37u &&
+              trk[1].eng_req == ENGI_WEST && trk[1].p[P_E1] == 77;
+        snprintf(dbg2, sizeof dbg2, "song: version %u at %u tracks, the last place (row 64, track %u) and a chord in pattern 22 kept",
+                 PROJ_VER, NTRK, NTRK);
+        bad += check(dbg2, ok);
+        reset();                                        /* a big song: past 4 chunks at 8 tracks, refused at 4 */
+        for (c = 0, k = 0; c < TK_PATS * TK_ROWS * NTRK && k < 4200u; c++, k++)
+            *tk_at(c / (TK_ROWS * NTRK), (c / NTRK) % TK_ROWS, c % NTRK) = tk_pack(36 + c % 48u, 1 + c % 9u, 0, 0);
+        snprintf(dbg2, sizeof dbg2, "  4,200 cells: %s", NTRK == 8 ? "saved in more than 4 chunks, loaded the same" : "SONG TOO BIG (4 chunks)");
+        if (NTRK == 8) {
+            ok = !project_save(0) && proj_good.count > 4u && proj_good.count <= PROJ_CHUNKS;
+            project_new();
+            project_load(0);
+            ok &= tk_note(tk_at(0, 0, 0)) == 36u && tk_note(tk_at(4199u / (TK_ROWS * NTRK), (4199u / NTRK) % TK_ROWS, 4199u % NTRK)) == 36u + 4199u % 48u;
+        } else {
+            ok = project_save(0) != 0;
+        }
+        bad += check(dbg2, ok);
+        if (NTRK == 4) {                                /* a version-3 song of 8 tracks: refused, the music as it was */
+            FILE *f;
+            reset();
+            set_engine_of(&trk[1], ENGI_WEST);
+            *tk_at(5, 10, 2) = tk_pack(64, 1, 0, 0);
+            project_save(0);
+            if ((f = fopen(V2, "wb"))) {                /* (for the 8-track run: a 4-track song) */
+                for (k = 0; k < PROJ_CHUNKS; k++) {
+                    uint16_t n = proj_ram_len[k];
+                    fwrite(&n, 2, 1, f);
+                    fwrite(proj_ram[k], 1, n, f);
+                }
+                fclose(f);
+            }
+            off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN;   /* (where version 3 has the track count) */
+            proj_ram[0][PROJ_HDR] = 3;
+            proj_ram[0][off] = 8;
+            set_engine_of(&trk[2], ENGI_SID);
+            project_load(0);
+            bad += check("  a version-3 song of 8 tracks on a 4-track build: SONG HAS 8 TRACKS, the music as it was",
+                         !strcmp(ui.msg, "SONG HAS 8 TRACKS") && trk[2].eng_req == ENGI_SID);
+        } else {                                        /* a 4-track song (version 2) on 8 tracks */
+            FILE *f = fopen(V2, "rb");
+            if (!f) {
+                printf("editor:   (no %s: run the 4-track engines test first; the version-2 load is not checked)\n", V2);
+            } else {
+                reset();
+                memset(proj_ram_len, 0, sizeof proj_ram_len);
+                for (k = 0; k < PROJ_CHUNKS; k++) {
+                    uint16_t n = 0;
+                    if (fread(&n, 2, 1, f) != 1)
+                        break;
+                    proj_ram_len[k] = n;
+                    if (fread(proj_ram[k], 1, n, f) != n)
+                        break;
+                }
+                fclose(f);
+                set_engine_of(&trk[5], ENGI_HOOVER);    /* (track 6 before: back to its power-on sound) */
+                trk[5].p[P_E1] = 99;
+                project_new();
+                project_load(0);
+                ok = trk[1].eng_req == ENGI_WEST && tk_note(tk_at(5, 10, 2)) == 64u && !tk_note(tk_at(5, 10, 6)) &&
+                     trk[5].eng_req == eng_for_track(&trk[5], TRK_DEF[5][0]) && trk[5].p[P_E1] != 99;
+                bad += check("  a 4-track song (version 2) on 8 tracks: tracks 1 .. 4 as saved, 5 .. 8 as at power-on", ok);
+            }
+        }
+    }
+
     printf("%s\n", bad ? "ENGINES TEST FAILED" : "engines test passed");
     return bad != 0;
 }

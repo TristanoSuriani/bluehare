@@ -24,12 +24,21 @@
  *   u8 norder, norder x u8 order; TK_PATS x u8 len; TK_INSTS x (u8 src, u8 preset); NTRK x u8 cut; NTRK x u8 res
  *   per pattern: u16 n, n x (u8 row * NTRK + track, 3 bytes the cell), in ascending place; then u16 m, m x (u8 place,
  *   u8 the chord) for its cells with a chord, in ascending place
- *   u32 FNV-1a of everything before it but the name */
+ *   u32 FNV-1a of everything before it but the name
+ * Version 3 (Fel-Tracker, 8 tracks; a 4-track build writes 2): the same, with u8 the track count after the name (the
+ * tracks' records, cut and res that many) and a cell's place (row * tracks + track) as an i16. Both load in every
+ * build; a song of more tracks than the build has is refused (SONG HAS 8 TRACKS), one of fewer fills its first tracks
+ * (the rest as at power-on). */
 #define PROJ_NAME_LEN 12u                      /* the name: upper-case ASCII 32..126, 0-padded; "" = none */
 #define PROJ_NO_SLOT 0xFFu
+#if NTRK == 8
+#define PROJ_CHUNKS 16u                        /* storage objects OBJ_PROJECT0 .. +3, OBJ_PROJECT4 .. +11 (proj_obj) */
+#else
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
+#endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER 2u
+#define PROJ_VER (NTRK == 8 ? 3u : 2u)        /* (Fel-Tracker) 3: the track count after the name, a cell's place 2 bytes;
+                                                * a 4-track build writes 2 as before (older firmware reads it) */
 #define PROJ_HDR 16u
 #if !FELUCCA_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
 #define ST_PAYLOAD_MAX 3840u
@@ -134,6 +143,8 @@ static void proj_write(pw_t *w, const char *name)
     memset(nm, 0, sizeof nm);
     memcpy(nm, name, str_len(name) < PROJ_NAME_LEN ? str_len(name) : PROJ_NAME_LEN);
     pw_put(w, nm, sizeof nm);
+    if (PROJ_VER >= 3u)
+        pw_u8(w, NTRK);                                 /* (version 3: the track count) */
     for (k = 0; k < NTRK; k++) {
         const track_t *t = &trk[k];
         uint32_t e = eng_idx(t->eng_req);
@@ -174,7 +185,10 @@ static void proj_write(pw_t *w, const char *name)
         for (r = 0; r < TK_ROWS; r++)
             for (k = 0; k < NTRK; k++)
                 if (!tk_empty(tk_at(p, r, k))) {
-                    pw_u8(w, r * NTRK + k);
+                    if (PROJ_VER >= 3u)
+                        pw_i16(w, (int32_t)(r * NTRK + k));
+                    else
+                        pw_u8(w, r * NTRK + k);
                     pw_bytes(w, tk_at(p, r, k)->b, 3);
                 }
         for (r = n = 0; r < TK_ROWS; r++)          /* the chords */
@@ -184,7 +198,10 @@ static void proj_write(pw_t *w, const char *name)
         for (r = 0; r < TK_ROWS; r++)
             for (k = 0; k < NTRK; k++)
                 if (tk_chord(tk_at(p, r, k))) {
-                    pw_u8(w, r * NTRK + k);
+                    if (PROJ_VER >= 3u)
+                        pw_i16(w, (int32_t)(r * NTRK + k));
+                    else
+                        pw_u8(w, r * NTRK + k);
                     pw_u8(w, tk_chord(tk_at(p, r, k)));
                 }
     }
@@ -242,11 +259,30 @@ static int32_t pr_i16(pr_t *r) { uint8_t b[2]; pr_bytes(r, b, 2); return (int16_
 
 /* the stream into the music: `apply` 0 checks it only (every field inside its range, the hash), 1 makes it the music
  * (main loop, the transport stopped and the audio ISR held off by the caller). 0 = good */
+/* (version 3 on an 8-track build) track k, which a song of fewer tracks does not hold: as at power-on, its engine and
+ * preset with the engine's values */
+static void proj_track_default(uint32_t k)
+{
+    track_t *t = &trk[k];
+    uint32_t e = eng_for_track(t, TRK_DEF[k][0]), i;
+    t->eng_req = (uint8_t)e;
+    t->user = 0;
+    t->preset = (uint8_t)(ENGINES[e]->npresets ? TRK_DEF[k][1] % ENGINES[e]->npresets : 0u);
+    for (i = 0; i < P_COUNT; i++)
+        t->p[i] = param_desc_of(e, i)->def;
+    for (i = 0; ENGINES[e]->npresets && i < 8u; i++)
+        t->p[P_E0 + i] = ENGINES[e]->presets[t->preset].e[i];
+    if (e == ENGI_FM6)
+        fm6_track_loaded(t);
+}
+
+/* 0 = good, 1 = bad, 2 = a song of more tracks than this build has (8 on a 4-track one) */
 static int proj_read(pr_t *r, int apply)
 {
-    uint32_t i, k, p, n, np, ng, at, prev;
+    uint32_t i, k, p, n, np, ng, at, prev, ver, ntr = 4u;
     uint8_t nm[PROJ_NAME_LEN], b[3];
-    if (pr_u8(r) != PROJ_VER)
+    ver = pr_u8(r);
+    if (ver != 2u && ver != 3u)
         return 1;
     np = pr_u8(r);
     ng = pr_u8(r);
@@ -259,7 +295,16 @@ static int proj_read(pr_t *r, int apply)
     if (apply)
         song.sel = (uint8_t)(b[0] < NTRK ? b[0] : 0u);
     pr_get(r, nm, sizeof nm, 0);
-    for (k = 0; k < NTRK; k++) {
+    if (ver >= 3u) {                                /* the track count (version 2: 4) */
+        ntr = pr_u8(r);
+        if (ntr != 4u && ntr != 8u)
+            return 1;
+    }
+    if (ntr > NTRK)
+        return 2;
+    for (k = ntr; apply && k < NTRK; k++)           /* (a 4-track song on 8 tracks: 5 .. 8 as at power-on) */
+        proj_track_default(k);
+    for (k = 0; k < ntr; k++) {
         track_t *t = &trk[k];
         uint32_t e = pr_u8(r), pre = pr_u8(r);
         int sub;
@@ -325,37 +370,37 @@ static int proj_read(pr_t *r, int apply)
             tk.instr[i].preset = (uint8_t)pre;
         }
     }
-    for (i = 0; i < 2u * NTRK; i++) {
+    for (i = 0; i < 2u * ntr; i++) {
         uint32_t v = pr_u8(r);
         if (apply)
-            (i < NTRK ? tk.cut : tk.res)[i % NTRK] = (uint8_t)v;
+            (i < ntr ? tk.cut : tk.res)[i % ntr] = (uint8_t)v;
     }
     for (p = 0; p < TK_PATS; p++) {
         n = (uint32_t)pr_i16(r) & 0xFFFFu;
-        if (n > TK_ROWS * NTRK)
+        if (n > TK_ROWS * ntr)
             return 1;
         for (i = 0, prev = 0; i < n; i++) {
             tk_cell_t c = {{0, 0, 0, 0}};
-            at = pr_u8(r);
+            at = ver >= 3u ? (uint32_t)pr_i16(r) & 0xFFFFu : pr_u8(r);   /* (the place: row * tracks + track) */
             pr_bytes(r, c.b, 3);
-            if ((i && at <= prev) || tk_cmd(&c) >= TKC_N)
+            if ((i && at <= prev) || at >= TK_ROWS * ntr || tk_cmd(&c) >= TKC_N)
                 return 1;
             prev = at;
             if (apply)
-                *tk_at(p, at / NTRK, at % NTRK) = c;
+                *tk_at(p, at / ntr, at % ntr) = c;
         }
         n = (uint32_t)pr_i16(r) & 0xFFFFu;          /* the chords */
-        if (n > TK_ROWS * NTRK)
+        if (n > TK_ROWS * ntr)
             return 1;
         for (i = 0, prev = 0; i < n; i++) {
             uint32_t ch;
-            at = pr_u8(r);
+            at = ver >= 3u ? (uint32_t)pr_i16(r) & 0xFFFFu : pr_u8(r);
             ch = pr_u8(r);
-            if ((i && at <= prev) || !ch)
+            if ((i && at <= prev) || at >= TK_ROWS * ntr || !ch)
                 return 1;
             prev = at;
             if (apply)
-                tk_at(p, at / NTRK, at % NTRK)->b[3] = (uint8_t)ch;
+                tk_at(p, at / ntr, at % ntr)->b[3] = (uint8_t)ch;
         }
     }
     {
@@ -378,16 +423,18 @@ static int proj_read(pr_t *r, int apply)
 /* ------------------------------------------------------- the song store --- */
 /* chunk i's copy c (A 0, B 1) into st_buf: its length, -1 none. Without flash one copy each, in RAM */
 #if FELUCCA_FLASH
+/* chunk i's storage object: 0 .. 3 OBJ_PROJECT0 + i, 4 .. 15 (8 tracks) OBJ_PROJECT4 + i - 4 (storage.c) */
+static uint32_t proj_obj(uint32_t i) { return i < 4u ? OBJ_PROJECT0 + i : OBJ_PROJECT4 + i - 4u; }
 static int proj_store_get(uint32_t i, uint32_t c)
 {
     st_hdr_t h;
-    if (i >= PROJ_CHUNKS || st_head(OBJ_PROJECT0 + i, c, &h) || st_body(OBJ_PROJECT0 + i, c, &h))
+    if (i >= PROJ_CHUNKS || st_head(proj_obj(i), c, &h) || st_body(proj_obj(i), c, &h))
         return -1;
     return (int)h.len;
 }
 static int proj_store_put(uint32_t i, uint32_t c, const uint8_t *b, uint32_t len)
 {
-    return i >= PROJ_CHUNKS || !flash_ok || st_save_to(OBJ_PROJECT0 + i, b, len, (int)c) != 0;
+    return i >= PROJ_CHUNKS || !flash_ok || st_save_to(proj_obj(i), b, len, (int)c) != 0;
 }
 #else
 static uint8_t proj_ram[PROJ_CHUNKS][ST_PAYLOAD_MAX];
@@ -597,8 +644,10 @@ static int project_restore(int (*get)(uint32_t), uint32_t count)
     pr_t r;
     int bad;
     pr_open(&r, get, count);
-    if (pr_next(&r) || proj_read(&r, 0))
+    if (pr_next(&r))
         return 1;
+    if ((bad = proj_read(&r, 0)) != 0)
+        return bad;                               /* (2: more tracks than this build's) */
     mom_back(0);                                  /* (ui_input.c MOMENTARY: the values as they were, then the load) */
     memset(drum_mute, 0, sizeof drum_mute);       /* (1.4.1: the DRUM lanes' mutes, performance state) */
     transport_req = 2;
@@ -627,9 +676,10 @@ static void project_load(uint32_t slot)
         return;
     }
     proj_wire_gen++;
-    if (project_restore(proj_get, proj_good.count)) {
-        ui_message("LOAD ERROR");
-        return;
+    switch (project_restore(proj_get, proj_good.count)) {
+    case 0: break;
+    case 2: ui_message("SONG HAS 8 TRACKS"); return;   /* (a song of an 8-track build: never cut to 4) */
+    default: ui_message("LOAD ERROR"); return;
     }
     proj_cur = 0;
     ui_message("LOADED");
