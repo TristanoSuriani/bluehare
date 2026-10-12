@@ -911,6 +911,11 @@ static void track_select(uint32_t i)
     ui.force = 1;
 }
 
+/* (Fel-Tracker, 8 tracks) the 4 tracks the 4-wide places show (the tracker's columns, MIXER, GLO's cards and keys, the
+ * FX layer's mutes): the selected track's four, 1 .. 4 or 5 .. 8 (selecting a track there brings its four in) */
+#define VIEW_N 4u
+static uint32_t trk_view(void) { return NTRK > VIEW_N ? song.sel / VIEW_N * VIEW_N : 0u; }
+
 /* ---------------------------------------------------- action pages --- */
 /* Pages whose purpose is an action (SAVE > USER, PROJECT, TOOLS): the knobs pick,
  * OCT+ does it, OCT- cancels the picked action or goes HOME (ui_input.c). There OCT- / OCT+ do not

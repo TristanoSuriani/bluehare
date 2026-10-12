@@ -102,6 +102,7 @@ static struct {
     int16_t v[9];                      /* the values when it opened: GLO mutes, levels, BPM; SCL ROOT..TRN, CHRD VOIC;
                                         * SEQ LEN DIV SWING GATE; REC the settings (ui_rec_prefs) */
     uint32_t solo;                     /* GLO: the keys held that solo */
+    int16_t glo_mute[NTRK], glo_lvl[NTRK];   /* GLO: the mutes and levels when it opened (8 tracks: not in v[]) */
     uint32_t tap[4];                   /* GLO TAP: the last taps (fm1_ms) */
     uint8_t ntap;
     uint8_t quiet;                     /* #39: a layer closed after it opened: KNOB 1..4 do nothing until quiet_t + */
@@ -245,8 +246,11 @@ static void layer_opened(uint32_t l)
             lys.v[k] = (int16_t)(k == 0u ? tk_pl.loop_pat : k == 1u ? tk.len[tk_pl.loop_pat % TK_PATS] :
                                  k == 2u ? tku.step : 0);
         } else if (l == LAYER_GLO) {
-            lys.v[k] = trk[k].p[P_MUTE];
-            lys.v[4u + k] = trk[k].p[P_LEVEL];
+            uint32_t t;
+            for (t = k; t < NTRK; t += 4u) {            /* (every track: 8 with TRACKS 8) */
+                lys.glo_mute[t] = trk[t].p[P_MUTE];
+                lys.glo_lvl[t] = trk[t].p[P_LEVEL];
+            }
         } else {
             lys.v[k] = TSEL->p[P_ROOT + k];
             lys.v[4u + k] = k < 2u ? TSEL->p[P_CHRD + k] : 0;
@@ -591,9 +595,9 @@ static void layer_key(uint32_t l, uint32_t k)
             lys.fxk = (uint8_t)(k + 1u);                /* (PRESETS assigns it while held) */
     } else if (l == LAYER_GLO) {
         if (key_black(k)) {
-            if (p < NTRK)
+            if (p < NTRK)                               /* (8 tracks: 8 black keys, F#3 .. A#4) */
                 trk[p].p[P_MUTE] = (int16_t)!trk[p].p[P_MUTE];
-        } else if (p < NTRK) {
+        } else if (p < VIEW_N) {                        /* F3 .. B3: the view's four */
             lys.solo |= 1u << k;                        /* (layer_masks: perf_solo while held) */
         } else if (p == 4u) {
             for (i = 0; i < NTRK; i++)
@@ -635,7 +639,7 @@ static void layer_keys(uint32_t keys)
     lys.solo &= kb_layer;
     for (k = 0; k < 27u; k++)
         if ((lys.solo >> k) & 1u)
-            s |= 1u << key_place(k);
+            s |= 1u << (trk_view() + key_place(k));    /* (the view's track) */
     perf_solo = (uint8_t)s;
 }
 
@@ -647,8 +651,8 @@ static void layer_knob(uint32_t k, int32_t s)
         if (k == 3u && !perf_harm_on())
             s = -s;                                     /* DEPTH (100 - perf_k[3]) rises to the right (#40: it fell) */
         perf_k[k] = (int8_t)clamp(perf_k[k] + accel(EN_K1 + k, s, k ? 100 : 200), k ? 0 : -100, 100);   /* (#126) */
-    } else if (l == LAYER_GLO) {                        /* T1..T4 LEVEL, as on MIXER */
-        int16_t *vp = &trk[k].p[P_LEVEL];
+    } else if (l == LAYER_GLO) {                        /* T1..T4 LEVEL, as on MIXER (8 tracks: the view's four) */
+        int16_t *vp = &trk[(trk_view() + k) % NTRK].p[P_LEVEL];
         *vp = (int16_t)clamp(*vp + accel(EN_K1 + k, s, TP[P_LEVEL].max - TP[P_LEVEL].min), TP[P_LEVEL].min,
                              TP[P_LEVEL].max);
     } else if (l == LAYER_EDIT) {                       /* ENG, No., FAV */
@@ -745,8 +749,8 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
             ui_message(lys.l == LAYER_REC ? "REC PUT BACK" : "PATTERN PUT BACK");
         } else if (lys.l == LAYER_GLO) {
             for (k = 0; k < NTRK; k++) {
-                trk[k].p[P_MUTE] = lys.v[k];
-                trk[k].p[P_LEVEL] = lys.v[4u + k];
+                trk[k].p[P_MUTE] = lys.glo_mute[k];
+                trk[k].p[P_LEVEL] = lys.glo_lvl[k];
             }
             song.g[G_BPM] = lys.v[8];
             ui_message("MIX PUT BACK");
@@ -779,8 +783,8 @@ static uint32_t layer_leds(uint32_t *br)
             can = e < PF_N && ((ok >> e) & 1u);
             on = can && ((held >> e) & 1u);
         } else if (l == LAYER_GLO) {                    /* sounding lit; SOLO held lit, the others, C4, F4 breathe */
-            on = b ? p < NTRK && glo_sounding(p) : p < NTRK && ((lys.solo >> k) & 1u);
-            can = !b && (p < NTRK || p == 4u || (p == 7u && !song.g[G_CLOCK]));
+            on = b ? p < NTRK && glo_sounding(p) : p < VIEW_N && ((lys.solo >> k) & 1u);
+            can = !b && (p < VIEW_N || p == 4u || (p == 7u && !song.g[G_CLOCK]));
         } else if (l == LAYER_SCL) {                    /* the root lit, the scale's notes breathe */
             e = (k + 5u + 12u - root) % 12u;
             on = e == 0u;
@@ -813,7 +817,7 @@ static uint32_t layer_leds(uint32_t *br)
  * short name, 4 a row); the footer the keycaps. A cell: RAISE
  * (can be pressed), the selection's fill (the value now, SET), the accent (held, HOLD), DIM (cannot now: pressing
  * it says why), KEY (a muted track, as the MUTE badge); HOLD cells in a SET layer: a corner triangle */
-static const char B_NOTE[NTRK] = {'F', 'G', 'A', 'C'};  /* black keys 1..4: F# G# A# C# */
+static const char B_NOTE[8] = {'F', 'G', 'A', 'C', 'D', 'F', 'G', 'A'};   /* black keys 1..8: F#3 G#3 A#3 C#4 .. A#4 */
 #define LC_X(c) (6 + 58 * (int32_t)(c))                 /* cell column c: 54 px wide, 4 px apart */
 #define LC_W 54
 #define LC_H 42                                          /* the big cells: rows at y 4 and 50 */
@@ -913,26 +917,28 @@ static void layer_fx(void)
         n[0] = W_NOTE[p];
         lcell(LC_X(p % 4u), 4 + (LF_H + 4) * (int32_t)(p / 4u), LF_H, n, 0, 0, e < PF_NFX ? PF_CELL[e] : "", st, 0);
     }
-    for (e = 0; e < NTRK; e++) {                        /* the mutes of the black keys 1..4 */
-        bnote(n, e);
-        lcell(LC_X(e), LM_Y, LM_H, n, ICON_MUTE, trk_icon(e, 0), 0, (held >> (PF_M1 + e)) & 1u ? LS_MUTE : LS_OFF, 0);
+    for (e = 0; e < VIEW_N; e++) {                      /* the mutes of the black keys 1..4 (8 tracks: the view's) */
+        uint32_t t = trk_view() + e;
+        bnote(n, t);
+        lcell(LC_X(e), LM_Y, LM_H, n, ICON_MUTE, trk_icon(t, 0), 0, (held >> (PF_M1 + t)) & 1u ? LS_MUTE : LS_OFF, 0);
     }
 }
 static void layer_glo(void)
 {
     uint32_t e;
     char n[3] = {0, 0, 0};
-    for (e = 0; e < NTRK; e++) {                        /* F3 .. B3: SOLO while held */
+    for (e = 0; e < VIEW_N; e++) {                      /* F3 .. B3: SOLO while held (8 tracks: the view's) */
         n[0] = W_NOTE[e];
-        lcell(LC_X(e), 4, LC_H, n, trk_icon(e, 0), 0, "SOLO", (perf_solo >> e) & 1u ? LS_HELD : LS_OFF, 1);
+        lcell(LC_X(e), 4, LC_H, n, trk_icon(trk_view() + e, 0), 0, "SOLO", (perf_solo >> (trk_view() + e)) & 1u ? LS_HELD : LS_OFF, 1);
     }
     n[0] = 'C';
     lcell(LC_X(0), 50, LC_H, n, ICON_MUTE, 0, "ALL", LS_OFF, 0);   /* (unmute all) */
     n[0] = 'F';
     lcell(LC_X(3), 50, LC_H, n, ICON_TEMPO, 0, "TAP", song.g[G_CLOCK] ? LS_DIM : LS_OFF, 0);
-    for (e = 0; e < NTRK; e++) {                        /* the black keys 1..4: MUTE, latched */
-        bnote(n, e);
-        lcell(LC_X(e), LM_Y, LM_H, n, ICON_MUTE, trk_icon(e, 0), 0, trk[e].p[P_MUTE] ? LS_MUTE : LS_OFF, 0);
+    for (e = 0; e < VIEW_N; e++) {                      /* the black keys 1..4: MUTE, latched (8 tracks: the view's) */
+        uint32_t t = trk_view() + e;
+        bnote(n, t);
+        lcell(LC_X(e), LM_Y, LM_H, n, ICON_MUTE, trk_icon(t, 0), 0, trk[t].p[P_MUTE] ? LS_MUTE : LS_OFF, 0);
     }
 }
 static void layer_scl(void)                             /* KNOB 2's scales, 4 x 4, the one now selected */
@@ -1068,10 +1074,11 @@ static void layer_cards(uint32_t l)
             draw_column(3, "DEPTH", val, "%", VAL(3u), (100 - perf_k[3]) * 10, ICON_MIX);
         }
     } else if (l == LAYER_GLO) {                        /* T1..T4 LEVEL (the track's icon; muted: dim) */
-        for (c = 0; c < NTRK; c++) {
-            param_format(&TP[P_LEVEL], trk[c].p[P_LEVEL], val, &unit);
-            draw_column(c, "LEVEL", val, unit, glo_sounding(c) ? VAL(c) : T_DIM, RATIO(&TP[P_LEVEL], trk[c].p[P_LEVEL]),
-                        trk_icon(c, 1));
+        for (c = 0; c < VIEW_N; c++) {                  /* (8 tracks: the view's four) */
+            uint32_t t = trk_view() + c;
+            param_format(&TP[P_LEVEL], trk[t].p[P_LEVEL], val, &unit);
+            draw_column(c, "LEVEL", val, unit, glo_sounding(t) ? VAL(c) : T_DIM, RATIO(&TP[P_LEVEL], trk[t].p[P_LEVEL]),
+                        trk_icon(t, 1));
         }
     } else if (l == LAYER_EDIT) {
         engine_columns();

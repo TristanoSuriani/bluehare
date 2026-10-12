@@ -435,17 +435,20 @@ static void tk_info(void)
 static int tk_silent(uint32_t k) { return trk[k].p[P_MUTE] || (perf_solo && !((perf_solo >> k) & 1u)); }
 static void tk_heads(void)
 {
-    uint32_t k, sig = song.sel * 7u + 1u;
+    uint32_t k, j, v = trk_view(), sig = song.sel * 7u + 1u;
     for (k = 0; k < NTRK; k++)
         sig = ((sig * 31u + trk[k].eng_req) * 131u + tk_track_inst(k)) * 3u + (uint32_t)tk_silent(k);
     if (!ui.force && sig == tku.sig[1])
         return;
     tku.sig[1] = sig;
     cv_begin(240, TK_H_HEAD, T_BG);
-    for (k = 0; k < NTRK; k++) {                    /* (the grid font: "1 01 ANLG" in the 54 px of a column) */
+    for (j = 0; j < VIEW_N; j++) {                  /* (the grid font: "1 01 ANLG" in the 54 px of a column) */
         char b[8];
-        uint32_t i = tk_track_inst(k), off = (uint32_t)tk_silent(k);
-        int32_t x = TK_COL_X(k) + 1;
+        uint32_t i, off;
+        int32_t x = TK_COL_X(j) + 1;
+        k = v + j;                                  /* (8 tracks: the view's four, 1 .. 4 or 5 .. 8) */
+        i = tk_track_inst(k);
+        off = (uint32_t)tk_silent(k);
         uint16_t fg = off ? T_DIM : k == song.sel ? T_ACCENT : T_MID;
         b[0] = off ? 'M' : (char)('1' + k);
         b[1] = 0;
@@ -481,14 +484,14 @@ static void tk_grid_row(uint32_t i, uint32_t p, uint32_t r)
         return;
     }
     cv_rect(3, 0, 234, TK_ROW_H, bg);
-    for (k = 0; k < NTRK; k++)                      /* (a 1 px line of BG left of each column) */
+    for (k = 0; k < VIEW_N; k++)                    /* (a 1 px line of BG left of each column) */
         cv_rect(TK_COL_X(k) - 1, 0, 1, TK_ROW_H, T_BG);
     fg = play ? T_INK : T_TEXT;
     tk_hex2(b, r);
     tkf_text(5, 4, b, play ? T_INK : (r % 4u) ? T_MID : T_THEME);
-    for (k = 0; k < NTRK; k++) {
+    for (k = trk_view(); k < trk_view() + VIEW_N; k++) {   /* (8 tracks: the view's four) */
         const tk_cell_t *c = tk_at(p, r, k);
-        int32_t x = TK_COL_X(k) + 1;
+        int32_t x = TK_COL_X(k - trk_view()) + 1;
         uint32_t n = tk_note(c), f;
         char s[3][4];
         int32_t fx[3] = {x, x + 21, x + 36}, fw[3] = {17, 11, 17};   /* (3 px between the fields) */
@@ -606,10 +609,10 @@ static void tk_draw_settings(void)
     uint32_t i, k, top = tku.srow / TK_VIEW * TK_VIEW;
     for (i = 0; i < TK_VIEW; i++) {
         uint32_t q = top + i, sel = q == tku.srow, sig = 0x5E7u ^ q * 0x100u ^ (uint32_t)sel << 16 ^ (uint32_t)song.sel << 17;
-        char val[NTRK][8];
+        char val[VIEW_N][8];
         if (q < TK_NSET)
-            for (k = 0; k < NTRK; k++) {
-                tk_set_value(q, k, val[k]);
+            for (k = 0; k < VIEW_N; k++) {          /* (8 tracks: the view's four) */
+                tk_set_value(q, trk_view() + k, val[k]);
                 sig = str_hash(sig, val[k]);
             }
         sig ^= (uint32_t)(ui.hot_t != 0) * (ui.hot_col + 1u) * 0x1000000u;
@@ -623,8 +626,8 @@ static void tk_draw_settings(void)
         }
         tk_list_begin(sel, 0);
         cv_text_fit(10, 1, &AF_S, TK_SET[q].label, sel ? T_INK : T_MID, cv_bg, 60);
-        for (k = 0; k < NTRK; k++) {
-            uint16_t fg = sel ? T_INK : k == song.sel ? T_ACCENT : T_TEXT;
+        for (k = 0; k < VIEW_N; k++) {
+            uint16_t fg = sel ? T_INK : trk_view() + k == song.sel ? T_ACCENT : T_TEXT;
             cv_text_fit(72 + 41 * (int32_t)k, 1, &AF_S, val[k], fg, cv_bg, 39);
         }
         cv_blit(0, (uint32_t)(TK_Y_ROWS + (int32_t)i * TK_ROW_H));
@@ -634,10 +637,10 @@ static void tk_draw_settings(void)
         if (ui.force || sig != tku.sig[1]) {
             tku.sig[1] = sig;
             cv_begin(240, TK_H_HEAD, T_BG);
-            for (k = 0; k < NTRK; k++) {
+            for (k = 0; k < VIEW_N; k++) {
                 char b[8] = "TRACK 1";
-                b[6] = (char)('1' + k);
-                cv_text_fit(72 + 41 * (int32_t)k, 1, &AF_S, b + 6, k == song.sel ? T_ACCENT : T_MID, T_BG, 39);
+                b[6] = (char)('1' + trk_view() + k);
+                cv_text_fit(72 + 41 * (int32_t)k, 1, &AF_S, b + 6, trk_view() + k == song.sel ? T_ACCENT : T_MID, T_BG, 39);
             }
             cv_blit(0, TK_Y_HEAD);
         }

@@ -116,7 +116,7 @@ static struct {
     uint32_t cn;
     int32_t td;                        /* THROW: the share of the dry mix sent, Q15 */
     int32_t mg[NTRK];                  /* mute gains, Q15 (32768 = open) */
-} pf = {.src = PF_N, .next = PF_N, .lc = PF_TOP, .mg = {32768, 32768, 32768, 32768}};
+} pf = {.src = PF_N, .next = PF_N, .lc = PF_TOP, .mg = {[0 ... NTRK - 1] = 32768}};
 
 /* the key map in the settings (ui_layer.c: favorites.factory[15][14..23]): white key p's code in 5 bits from bit 5p
  * of b: 0 its default (PF_DEF), 1 none, 2 + e effect e (an unknown code, a later firmware's effect or a retired one,

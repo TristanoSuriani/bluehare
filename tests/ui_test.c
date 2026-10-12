@@ -274,7 +274,7 @@ static void stop_transport(void) { transport_req = 0; song.playing = 0; }
 static int16_t stored_param(uint32_t slot, uint32_t track, uint32_t id)
 {
     pr_t r;
-    uint32_t i, k, ng, e = 0, n;
+    uint32_t i, k, ng, e = 0, n, ver;
     int16_t v = -32768;
     (void)slot;
     if (!proj_find())
@@ -282,7 +282,7 @@ static int16_t stored_param(uint32_t slot, uint32_t track, uint32_t id)
     pr_open(&r, proj_get, proj_good.count);
     if (pr_next(&r))
         return -32768;
-    (void)pr_u8(&r);
+    ver = pr_u8(&r);
     (void)pr_u8(&r);
     ng = pr_u8(&r);
     for (i = 0; i < ng; i++)
@@ -290,6 +290,8 @@ static int16_t stored_param(uint32_t slot, uint32_t track, uint32_t id)
     (void)pr_u8(&r);
     for (i = 0; i < PROJ_NAME_LEN; i++)
         (void)pr_u8(&r);
+    if (ver >= 3u)
+        (void)pr_u8(&r);                                /* (version 3: the track count) */
     for (k = 0; k <= track; k++) {
         e = pr_u8(&r);
         (void)pr_u8(&r);
@@ -1363,9 +1365,13 @@ static int test_menu_project_rows(void)
     turn(EN_K4, -31); ok &= song.g[G_TUNE] == 19;
     bad += check("MENU > AUDIO > TUNE: the project's G_TUNE, -50 .. +50 cents (OCT one, a knob as far as it turned)", ok);
     ui.menu_sel = MI_MIDIIN;
-    ok = menu_tab() == MTAB_MIDI && song.g[G_ROUTE] == 0 && str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "CH1-4");
+    ok = menu_tab() == MTAB_MIDI && song.g[G_ROUTE] == 0 && str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), NTRK == 8 ? "CH1-8" : "CH1-4");
     press(B_OCTUP); ok &= song.g[G_ROUTE] == 1;
-    turn(EN_K1, 1); turn(EN_K1, 1); ok &= song.g[G_ROUTE] == 3 && str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "CH9-12");
+    if (NTRK == 8) {                                    /* (TRACKS 8: blocks of 8, CH1-8 SEL CH9-16) */
+        turn(EN_K1, 1); turn(EN_K1, 1); ok &= song.g[G_ROUTE] == 2 && str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "CH9-16");
+    } else {
+        turn(EN_K1, 1); turn(EN_K1, 1); ok &= song.g[G_ROUTE] == 3 && str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "CH9-12");
+    }
     bad += check("MENU > MIDI > MIDI IN: the project's G_ROUTE (ROUT), its names", ok);
     menu_close();
     settings_export(&p1);
@@ -1374,13 +1380,14 @@ static int test_menu_project_rows(void)
     project_save(2);                                     /* (PROJECT C) */
     song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
     project_load(2);
-    ok = song.g[G_TUNE] == 19 && song.g[G_ROUTE] == 3 && menu_get(MI_TUNE) == 69u && menu_get(MI_MIDIIN) == 3u;
-    song.g[G_TUNE] = -7; song.g[G_ROUTE] = 4;            /* (another song's values: the rows follow the load) */
+    ok = song.g[G_TUNE] == 19 && song.g[G_ROUTE] == (NTRK == 8 ? 2 : 3) && menu_get(MI_TUNE) == 69u &&
+         menu_get(MI_MIDIIN) == (NTRK == 8 ? 2u : 3u);
+    song.g[G_TUNE] = -7; song.g[G_ROUTE] = NTRK == 8 ? 2 : 4;   /* (another song's values: the rows follow the load) */
     project_save(0);
     song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
     project_load(0);
-    ok &= song.g[G_TUNE] == -7 && song.g[G_ROUTE] == 4 && str_eq(menu_vname(MI_TUNE, menu_get(MI_TUNE)), "-7") &&
-          str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "CH13-16");
+    ok &= song.g[G_TUNE] == -7 && song.g[G_ROUTE] == (NTRK == 8 ? 2 : 4) && str_eq(menu_vname(MI_TUNE, menu_get(MI_TUNE)), "-7") &&
+          str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), NTRK == 8 ? "CH9-16" : "CH13-16");
     bad += check("TUNE / MIDI IN: saved with the song and loaded back (round trip; saved again, the new values)", ok);
     ui_power_on();
     return bad;
@@ -2397,7 +2404,7 @@ static int test_layer(void)
             ok &= i == 1u || ((a ^ b2) >> white(i)) & 1u;
         for (i = 10; i < 16u; i++)                                    /* B4 .. G5: no effect, dark */
             ok &= !((a | b2) >> white(i) & 1u);
-        ok &= ((a ^ b2) >> key_at(1, 0)) & 1u && !((a | b2) >> key_at(1, 4) & 1u);   /* a mute breathes, a spare black dark */
+        ok &= ((a ^ b2) >> key_at(1, 0)) & 1u && !((a | b2) >> key_at(1, NTRK) & 1u);   /* a mute breathes, a spare black dark */
         song.g[G_BPM] = 72;
         a = leds_at(0); b2 = leds_at(250);
         ok &= !((a | b2) >> white(0) & 1u) && !((a | b2) >> white(3) & 1u);   /* 1/8, REVERSE: too long at 72 */
@@ -6560,15 +6567,15 @@ static int test_tracker_pages(void)
     /* INSTR */
     ui_power_on();
     go_page(GR_TKINST); frame();
-    turn(EN_K1, 6);                                     /* slot 07 */
-    ok = tku.slot == 6u && tk_cur_inst == 7u && tk.instr[6].src == TK_SRC_NONE;
+    turn(EN_K1, (int32_t)NTRK + 2);                     /* slot 07 (8 tracks: 11, past the power-on sounds' 1 .. 8) */
+    ok = tku.slot == NTRK + 2u && tk_cur_inst == NTRK + 3u && tk.instr[NTRK + 2u].src == TK_SRC_NONE;
     turn(EN_K2, 1);                                     /* the first engine */
-    src = tk.instr[6].src;
+    src = tk.instr[NTRK + 2u].src;
     ok &= src == eng_vis(0) && TSEL->eng_req == src;
     turn(EN_K3, 1);
-    ok &= tk.instr[6].preset == 1u && TSEL->preset == 1u;
+    ok &= tk.instr[NTRK + 2u].preset == 1u && TSEL->preset == 1u;
     press(B_EDIT);
-    ok &= tk.instr[6].src == TK_SRC_NONE;
+    ok &= tk.instr[NTRK + 2u].src == TK_SRC_NONE;
     bad += check("INSTR: KNOB 1 the slot, 2 its engine, 3 its preset: the track plays it at once; EDIT empties it", ok);
     return bad;
 }
@@ -7162,6 +7169,58 @@ static int test_edit_quick_actions(void)
     return bad;
 }
 
+#if NTRK == 8
+/* (Fel-Tracker, TRACKS 8) the view: the 4-wide places show the selected track's four (1 .. 4 or 5 .. 8); GLO's knobs, SOLO
+ * keys and cards follow it, its 8 black keys mute every track; FX's 8 black keys too; MIDI IN in blocks of 8; tracks 5 .. 8
+ * at power-on */
+static int test_eight_tracks(void)
+{
+    int bad = 0, ok;
+    uint32_t k;
+    int16_t l4;
+    ui_power_on();
+    for (k = 4, ok = 1; k < NTRK; k++)
+        ok &= trk[k].eng_req == eng_for_track(&trk[k], TRK_DEF[k][0]) && tk.instr[k].src == eng_id(TRK_DEF[k][0]);
+    bad += check("8 tracks: power-on, tracks 5 .. 8 their sounds (and their instruments)", ok);
+    ok = trk_view() == 0u;
+    track_select(5);
+    frame();
+    ok &= song.sel == 5u && trk_view() == 4u;
+    track_select(3);
+    ok &= trk_view() == 0u;
+    track_select(4);
+    ok &= trk_view() == 4u;
+    bad += check("  the view: track 6 selected shows 5 .. 8, track 4 1 .. 4, track 5 5 .. 8", ok);
+    l4 = trk[4].p[P_LEVEL];
+    btn_down(B_GLO); frame();
+    turn(EN_K1, -10);
+    ok = trk[4].p[P_LEVEL] == l4 - 10 && trk[0].p[P_LEVEL] != l4 - 10 && ui.layer == LAYER_GLO;
+    key_down(black(5)); frame(); key_up(black(5)); frame();
+    ok &= trk[5].p[P_MUTE] == 1 && !trk[1].p[P_MUTE];
+    key_down(white(0)); frame();
+    perf_begin(CTL);
+    ok &= perf_solo == 1u << 4;                         /* F3: the view's first, track 5 */
+    key_up(white(0)); frame();
+    oct_back();
+    ok &= trk[4].p[P_LEVEL] == l4 && !trk[5].p[P_MUTE];   /* OCT-: all 8 tracks' levels and mutes as it opened */
+    btn_up(B_GLO); frame();
+    bad += check("  GLO with track 5 selected: KNOB 1 T5 LEVEL, black key 6 T6 MUTE, F3 SOLO T5; OCT- puts the 8 back", ok);
+    btn_down(B_FX); frame();                            /* (the layer open, then the key) */
+    key_down(black(4)); frame();
+    ok = (perf_held >> (PF_M1 + 4u)) & 1u;
+    key_up(black(4)); btn_up(B_FX); frame();
+    bad += check("  FX + black key 5 (D#4): T5 muted while held", ok && !((perf_held >> (PF_M1 + 4u)) & 1u));
+    song.g[G_ROUTE] = 0;
+    ok = midi_track(5) == &trk[5] && midi_track(7) == &trk[7] && midi_track(8) == TSEL;
+    song.g[G_ROUTE] = 2;
+    ok &= midi_track(13) == &trk[5] && midi_track(5) == TSEL && trk_midi_ch(5) == 13u;
+    song.g[G_ROUTE] = 0;
+    bad += check("  MIDI IN CH1-8: channel 6 plays track 6, 9 the selected; CH9-16: channel 14 track 6", ok &&
+                 str_eq(N_ROUTE[0], "CH1-8") && str_eq(N_ROUTE[2], "CH9-16") && GP[G_ROUTE].max == 2);
+    return bad;
+}
+#endif
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -7231,6 +7290,9 @@ int main(void)
     bad += test_tracker_heads();
     bad += test_tracker_tools();
     bad += test_retired_engines();
+#if NTRK == 8
+    bad += test_eight_tracks();
+#endif
 
     printf(bad ? "ui: %d FAILED\n" : "ui: all passed\n", bad);
     return bad ? 1 : 0;

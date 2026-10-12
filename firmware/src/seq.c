@@ -53,7 +53,7 @@ static uint32_t trk_index(const track_t *t) { return (uint32_t)(t - trk); }
 static int32_t midi_base(void)
 {
     uint32_t r = (uint32_t)song.g[G_ROUTE];
-    return r == 1u ? -1 : r ? (int32_t)(r - 1u) * 4 : 0;
+    return r == 1u ? -1 : r ? (int32_t)(r - 1u) * NPART : 0;   /* (a block a track count wide: 4, or 8 with TRACKS 8) */
 }
 /* MIDI channel 0..15 of track i (keys -> MIDI out): its channel in ROUT's block (SEL, CH1-4: 1..4) */
 static uint32_t trk_midi_ch(uint32_t i) { return (midi_base() > 0 ? (uint32_t)midi_base() : 0u) + i % NTRK; }

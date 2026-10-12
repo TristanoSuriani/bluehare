@@ -130,5 +130,10 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
     {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : 0u}
 static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(ANALOG, 4, SID, 0), TRK_PICK2(FM6, 4, VOSIM, 13), TRK_PICK2(LOFI, 0, SID, 2),
-                                          TRK_PICK2(DRUM, 0, KIT, 0)};
+                                          TRK_PICK2(DRUM, 0, KIT, 0)
+#if NPART == 8                                  /* (Fel-Tracker, TRACKS 8) 5 .. 8: chords, a pluck, a break, the siren */
+                                          , TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK2(BREAKS, 0, DRUM, 0),
+                                          TRK_PICK2(DUBSIREN, 0, HOOVER, 5)   /* (no siren engine: HOOVER's SIREN) */
+#endif
+};
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

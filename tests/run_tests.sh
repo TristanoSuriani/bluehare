@@ -205,6 +205,11 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "UI renders: layout lint (every screen and palette, every page, engine and column value), GREY gray, MONO neutral, alignment by ink (1 px fails), draw cost" \
         "$OUT/ui_render" build/ui_new build/ui_slot
     if python3 -c "import PIL" 2>/dev/null; then python3 tests/ui_render.py build/ui_new build/ui_slot; fi
+    $CC -w -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test8" tests/ui_test.c -lm
+    run "UI built with 8 tracks (step 3c): every check above, the view 1..4 / 5..8, GLO / FX on 8 tracks, MIDI IN blocks of 8" "$OUT/ui_test8"
+    $CC -O1 -w "-DFELUCCA_VERSION=\"$FV\"" -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/ui_render8" tests/ui_render.c -lm
+    mkdir -p build/ui_8/ppm build/ui_8slot
+    run "UI renders built with 8 tracks (step 3c): the layout lint on every screen, the tracker on tracks 5..8" "$OUT/ui_render8" build/ui_8 build/ui_8slot
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/audio_test" tests/audio_test.c -lm
     run "audio: overload protection, bounded fades and DMA diagnostics" "$OUT/audio_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/click_test" tests/click_test.c -lm

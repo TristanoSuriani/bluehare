@@ -694,6 +694,10 @@ static void tk_scene(int s)
     song.playing = 0;
     tk_defaults();
     tk.instr[3].src = ENGI_DRUM;
+#if NTRK == 8                                           /* (TRACKS 8: notes on 5 .. 8; track 6 selected below) */
+    for (r = 0; r < TK_ROWS; r += 3u)
+        *tk_at(0, r, 4u + r % 4u) = tk_pack(48 + r % 24u, 5 + r % 3u, r % 2u ? TKC_PAN : 0, r);
+#endif
     for (r = 0; r < TK_ROWS; r++) {
         if (r % 4u == 0u) *tk_at(0, r, 3) = tk_pack(36, 4, 0, 0);
         else if (r % 2u == 0u) *tk_at(0, r, 3) = tk_pack(42, 4, TKC_LEVEL, 0x50);
@@ -706,7 +710,7 @@ static void tk_scene(int s)
     *tk_at(1, 0, 0) = tk_pack(48, 0, 0, 0);
     tk.order[1] = 1; tk.order[2] = 0; tk.order[3] = 2; tk.norder = 4; tk.len[1] = 32;
     for (r = 0; r < 3u; r++) tk_inst_apply(&trk[r], r + 1u);                       /* (heads: "1 01 ANLG"; 4 none) */
-    song.sel = 2;
+    song.sel = NTRK == 8 ? 5 : 2;                      /* (TRACKS 8: track 6, the view 5 .. 8) */
     tku.row = 3; tku.field = s == S_TK_PATTERN_FX ? 2 : 0;
     if (s <= S_TK_PATTERN_CUED || s == S_TK_SEQ_LAYER) go_page(GR_TKPAT);
     if (s == S_TK_PATTERN_PLAY || s == S_TK_PATTERN_CUED) {

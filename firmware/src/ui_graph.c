@@ -816,7 +816,7 @@ static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b hol
  * the output meter under it (MID); a muted track DIM */
 #define TSS_GY 40                                    /* the LEVEL gauge, 3 px */
 #define TSS_MY 48                                    /* the meter, 3 px */
-static void track_strip(uint32_t c, uint32_t sel, uint32_t st, uint32_t mute, uint32_t arm, uint32_t hot, uint32_t lvl,
+static void track_strip(uint32_t c, uint32_t pos, uint32_t sel, uint32_t st, uint32_t mute, uint32_t arm, uint32_t hot, uint32_t lvl,
                         const char *b)
 {
     int32_t gw = CARD_W - 10, m = ts.meter[c] * gw / (TS_MH - 2), fx = (int32_t)lvl * gw / 127;
@@ -842,7 +842,7 @@ static void track_strip(uint32_t c, uint32_t sel, uint32_t st, uint32_t mute, ui
     cv_rrect(5, TSS_MY, gw, 3, 1, T_RAISE, T_SURF);
     if (m)
         cv_rrect(5, TSS_MY, m < 3 ? 3 : m, 3, 1, T_MID, T_RAISE);
-    cv_blit((uint32_t)CARD_X(c), LG_Y_GRAPH);
+    cv_blit((uint32_t)CARD_X(pos), LG_Y_GRAPH);     /* (pos: its place, the view's 0 .. 3) */
 }
 static void draw_tracks(void)
 {
@@ -853,9 +853,9 @@ static void draw_tracks(void)
         for (c = 0; c < NTRK; c++)
             ts.meter[c] = 0;
     }
-    for (c = 0; c < NTRK; c++) {
+    for (c = trk_view(); c < trk_view() + VIEW_N; c++) {   /* (8 tracks: the view's four) */
         track_t *t = &trk[c];
-        uint32_t sel = c == song.sel, lvl = trk_level(c), mute = t->p[P_MUTE] != 0;
+        uint32_t sel = c == song.sel, lvl = trk_level(c), mute = t->p[P_MUTE] != 0, pos = c - trk_view();
         uint32_t arm = (song.rec >> c) & 1u, st = arm ? (song.playing ? 1u : 2u) : mute ? 3u : 0u, sig;
         uint32_t hot = sel && ui.hot_t ? ui.hot_col + 1u : 0u;   /* the knob just turned (hot_col + 1): 1 LEVEL, 2 PAN,
                                                                 * 3 REV, 4 MUTE (its badge) */
@@ -870,11 +870,11 @@ static void draw_tracks(void)
         ts.meter[c] = (uint8_t)(m < 0 ? 0 : m);
         sig = str_hash(1u + sel + st * 2u + (mute && arm) * 16u + hot * 32u, b) + lvl * 7919u +
               ts.meter[c] * 131u + (uint32_t)(pan + 128) * 104729u + (uint32_t)rv * 1299709u + mute * 3u + sk * 0x9E37u;
-        if (!ui.force && sig == ts.col[c])
+        if (!ui.force && sig == ts.col[pos])
             continue;
-        ts.col[c] = sig;
+        ts.col[pos] = sig;
         if (sk) {
-            track_strip(c, sel, st, mute, arm, hot, lvl, b);
+            track_strip(c, pos, sel, st, mute, arm, hot, lvl, b);
             continue;
         }
         cv_begin(CARD_W, H_GRAPH, T_BG);
@@ -928,7 +928,7 @@ static void draw_tracks(void)
             GFX_HOOK_ALIGN(42 - KNOB_SMALL_R, 0, 42 + KNOB_SMALL_R, 0, AL_H, "mixer value under its knob");
             cv_text_in(42 - KNOB_SMALL_R, KS_Y + 17, 2 * KNOB_SMALL_R, &AF_S, v, rc, T_SURF);
         }
-        cv_blit((uint32_t)CARD_X(c), Y_GRAPH);
+        cv_blit((uint32_t)CARD_X(pos), Y_GRAPH);
     }
 }
 /* HOME > TRACKS (1.3, Discussions #112 / #134: MENU > DISPLAY > HOME TRACKS): the four tracks as rows in the panel, one
@@ -956,7 +956,7 @@ static void home_track_row(uint32_t c)
 {
     track_t *t = &trk[c];
     uint32_t sel = c == song.sel, mute = t->p[P_MUTE] != 0, large = (ui_prefs & PREF_LARGE) != 0u, sig;
-    int32_t y = Y_GRAPH + (int32_t)c * TR_PITCH, m, x, xr = 222, ch = large ? AF_M_CAP_H : AF_S_CAP_H;
+    int32_t y = Y_GRAPH + (int32_t)(c - trk_view()) * TR_PITCH, m, x, xr = 222, ch = large ? AF_M_CAP_H : AF_S_CAP_H;
     uint16_t bg = sel ? T_THEME : T_SURF, cs = sel ? ux_mix(T_THEME, T_INK, 35) : T_RAISE;   /* the meter's slot */
     char b[16];
     trk_short_name(c, b);
@@ -1005,7 +1005,7 @@ static void draw_home_tracks(void)
         lcd_fill(3 + TR_W, Y_GRAPH, 240 - 3 - TR_W, H_GRAPH, T_BG);
         for (c = 0; c < NTRK; c++)
             ts.meter[c] = 0;
-        for (c = 1; c < NTRK; c++) {                 /* the 2 rows between two rows; LINE: a rule on the first */
+        for (c = 1; c < VIEW_N; c++) {               /* the 2 rows between two rows; LINE: a rule on the first */
             uint32_t y = (uint32_t)(Y_GRAPH + (int32_t)c * TR_PITCH - 2);
             if (ux.style) {
                 lcd_fill(3, y, TR_W, 1, T_RULE);
@@ -1014,7 +1014,7 @@ static void draw_home_tracks(void)
             lcd_fill(3, ux.style ? y + 1u : y, TR_W, ux.style ? 1u : 2u, T_BG);
         }
     }
-    for (c = 0; c < NTRK; c++)
+    for (c = trk_view(); c < trk_view() + VIEW_N; c++)   /* (8 tracks: the view's four) */
         home_track_row(c);
 }
 /* oscilloscope of the output, triggered on a rising zero crossing: a RAISE centre line, the trace 2 px (in silence
