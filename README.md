@@ -85,8 +85,11 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   the whole sound up or down by octaves (a preset can set it: FMPERC's kicks play 3 octaves under the note)
 - **Effects:** distortion and the SLICER per track; chorus, delay and reverb sends (the reverb as
   **HALL**, ROOM or SPRING; HALL is a smooth stereo reverb, the default on a fresh start; the delay **CLEAN**,
-  **TAPE** or **WORN** on DLY 2: a tape echo with wow and flutter, repeats that darken and saturate and run away
-  into a howl past FDBK ~95); master limiter
+  **TAPE**, **WORN** or **PING** on DLY 2: TAPE and WORN a tape echo with wow and flutter, repeats that darken and
+  saturate and run away into a howl past FDBK ~95; PING echoes left, then right, and so on, up to 0.74 s); master
+  limiter. *(Fel-Tracker)* The chorus and ROOM are stereo (the chorus's two sides sweep in opposition; SPRING and the
+  tape echoes stay mono, as the real ones are), and the delay's and the reverb's sends lose their lows below about
+  220 Hz first, so the bass and the kick stay dry and the tails stay clear
 - **FX layer:** hold FX for repeat, reverse, filter sweeps, tape stop, freeze, a harmonizer
   (OCT UP / OCT DN with shimmer), and mutes on the black keys;
   any white key can hold any effect (hold the key in the layer and turn PRESETS); MENU > FX LATCH makes them toggle,

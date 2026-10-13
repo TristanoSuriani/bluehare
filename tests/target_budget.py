@@ -29,6 +29,7 @@ FUNCS = ["slicer_track",
          "fmp_run",                                         # FMPERC's voice (eng_fmperc.c), KIT's and BREAKS' too
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
          # (Fel-Tracker: the IDM build has 8 tracks since step 3d: the ISR's loops over the parts twice as long, 37502 -> 67431)
+         # (Fel-Tracker, the stereo buses: the chorus's second read, the sends' low cut, ROOM's side: 68734 -> 77039)
          "uac_tap48",                                       # the USB audio input at 48 kHz: the 44.1 -> 48 resampler (usb.c)
          "click_render",                                    # the metronome's click (click.c), while it sounds
          "mod_begin", "mod_voice", "mod_end",                 # the modulation matrix (mod.c), called when active

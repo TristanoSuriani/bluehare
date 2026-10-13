@@ -37,7 +37,8 @@ static const char *const N_ROUTE[] = {"CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-1
 static const char *const N_NOTE[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const N_DASH[] = {"--"};
 static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL"};   /* G_RTYPE: the reverb bus's model (fx.c) */
-static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN"};    /* G_DTYPE: the delay bus's (fx.c dly_tape) */
+static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING"};   /* G_DTYPE: the delay bus's (fx.c dly_tape;
+                                                                   * PING: Fel-Tracker's, left and right in turn) */
 static const char *const N_GO[] = {"--", "GO"};
 static const char *const N_SLCR[] = {"OFF", "GATE", "STUT"};             /* SL_OFF .. SL_STUT (slicer.c) */
 static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"};   /* SL_DEN */

@@ -40,6 +40,7 @@
  * 90, 127. */
 #define main hostsim_main
 #include "hostsim.c"
+static int32_t room_sd[1u << 16];                   /* (Fel-Tracker: ROOM's side, not looked at here) */
 #undef main
 #ifdef __APPLE__
 #include <libproc.h>
@@ -78,7 +79,10 @@ static struct {
     uint16_t comb_i[4], ap_i[2];
     int32_t comb_lp[4];
 } rf;
-static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet, uint32_t n)
+/* (Fel-Tracker: the stereo buses) wet the left side, wr the right: the chorus's left read as the mono one always was, its
+ * right one half a sweep away; ROOM's combs signed in turn its side, + left, - right */
+static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet, int32_t *wr,
+                      uint32_t n)
 {
     uint32_t i, k, dl = delay_samples();
     int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
@@ -87,15 +91,23 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
     int32_t cdepth = song.g[G_CDEPTH] * 6;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL;
     for (i = 0; i < n; i++) {
-        int32_t y = 0, x, r, a;
+        int32_t y = 0, x, r, a, yr = 0, sd = 0, sw;
         ref_cho[rf.cho_w & (CHO_LEN - 1u)] = (int16_t)clamp(cho_in[i] >> 1, -32768, 32767);
         rf.cho_ph += cinc;
-        r = (400 << 8) + ((osc_sine(rf.cho_ph) + 32768) * cdepth >> 8);
+        sw = osc_sine(rf.cho_ph);
+        r = (400 << 8) + ((sw + 32768) * cdepth >> 8);
         {
             uint32_t ri = (uint32_t)r >> 8;
             int32_t f = r & 255, c0 = ref_cho[(rf.cho_w - ri) & (CHO_LEN - 1u)];
             int32_t c1 = ref_cho[(rf.cho_w - ri - 1u) & (CHO_LEN - 1u)];
             y += (c0 + (((c1 - c0) * f) >> 8)) << 1;
+        }
+        r = (400 << 8) + ((32768 - sw) * cdepth >> 8);
+        {
+            uint32_t ri = (uint32_t)r >> 8;
+            int32_t f = r & 255, c0 = ref_cho[(rf.cho_w - ri) & (CHO_LEN - 1u)];
+            int32_t c1 = ref_cho[(rf.cho_w - ri - 1u) & (CHO_LEN - 1u)];
+            yr += (c0 + (((c1 - c0) * f) >> 8)) << 1;
         }
         rf.cho_w++;
         x = ref_dly[(rf.dly_w - dl) & (DLY_LEN - 1u)];
@@ -103,6 +115,7 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
         ref_dly[rf.dly_w & (DLY_LEN - 1u)] = (int16_t)clamp((dly_in[i] >> 1) + mulq15(rf.dly_lp, fb), -32768, 32767);
         rf.dly_w++;
         y += mulq15(x << 1, dmix);
+        yr += mulq15(x << 1, dmix);
         a = 0;
         {
             int16_t *c = ref_comb;
@@ -114,6 +127,7 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
                 if (++rf.comb_i[k] >= REV_COMB[k])
                     rf.comb_i[k] = 0;
                 a += o;
+                sd += k & 1u ? -o : o;
                 c += REV_COMB[k];
             }
             c = ref_ap;
@@ -127,14 +141,15 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
                 c += REV_AP[k];
             }
         }
-        y += a;
-        wet[i] = y;
+        sd = mulq15(sd, 22000);
+        wet[i] = y + a + sd;
+        wr[i] = yr + a - sd;
     }
 }
 
 static void test_room_identical(void)
 {
-    static int32_t c[CTL], d[CTL], r[CTL], w0[CTL], w1[CTL];
+    static int32_t c[CTL], d[CTL], r[CTL], w0[CTL], w1[CTL], w2[CTL];
     uint32_t b, i, diff = 0, nb = 30u * FS / CTL;
     host_tracks_init();
     song.g[G_RTYPE] = 0;                                        /* (HALL is the default since 1.2) */
@@ -153,11 +168,64 @@ static void test_room_identical(void)
             r[i] = on ? noise(b % 2000u < 1000u ? 90000 : 4000) : 0;
         }
         fx_buses(c, d, r, w0, CTL);
-        ref_buses(c, d, r, w1, CTL);
-        for (i = 0; i < CTL; i++)
-            diff += w0[i] != w1[i];
+        ref_buses(c, d, r, w1, w2, CTL);
+        for (i = 0; i < CTL; i++)                               /* (left: mid + side; right: mid - side) */
+            diff += w0[i] + wside[i] != w1[i] || w0[i] - wside[i] != w2[i];
     }
-    check("ROOM: the buses bit for bit as before SPRING (30 s of noise sends, settings changing)", !diff && !fx.rtype);
+    check("ROOM: the buses bit for bit, the left as before SPRING plus ROOM's side, the right the chorus's opposite read "
+          "(30 s of noise sends, settings changing)", !diff && !fx.rtype);
+}
+
+/* (Fel-Tracker) DELAY TYPE PING: a click echoes left at the time, right at twice it, left at three times it, each
+ * FDBK's share of the one before (COLR open: the loop's low-pass barely there), the other side silent then */
+static void test_ping(void)
+{
+    static int32_t z[CTL], d[CTL], w[CTL];
+    static int32_t L[3u * FS], R[3u * FS];
+    uint32_t b, i, dl, t = 0, nb = 3u * FS / CTL;
+    int32_t pl[3] = {0}, pr[3] = {0}, side0 = 0;
+    host_tracks_init();
+    rev_clear();
+    memset(dly_buf, 0, sizeof dly_buf);
+    fx.dly_w = 0;
+    fx.dly_lp = 0;
+    song.g[G_DTYPE] = 3;
+    song.g[G_DTIME] = 1;                                        /* (1/8 at 120: 11025 samples) */
+    song.g[G_DFDBK] = 80;
+    song.g[G_DCOLOR] = 127;
+    song.g[G_DMIX] = 127;
+    song.g[G_RTYPE] = 0;
+    song.g[G_RSIZE] = 0;
+    dl = delay_samples();
+    for (b = 0; b < nb; b++) {
+        for (i = 0; i < CTL; i++) {
+            z[i] = 0;
+            d[i] = b == 0 && i == 0 ? 30000 : 0;
+        }
+        fx_buses(z, d, z, w, CTL);
+        for (i = 0; i < CTL; i++, t++) {
+            L[t] = w[i] + wside[i];
+            R[t] = w[i] - wside[i];
+        }
+    }
+    for (i = 0; i < 3u; i++) {
+        uint32_t k, at = (i + 1u) * dl;
+        for (k = at - 2u; k <= at + 2u && k < 3u * FS; k++) {
+            pl[i] = abs(L[k]) > pl[i] ? abs(L[k]) : pl[i];
+            pr[i] = abs(R[k]) > pr[i] ? abs(R[k]) : pr[i];
+        }
+    }
+    for (i = 0; i < dl - 4u; i++)
+        side0 |= L[i] | R[i];
+    {
+        char what[200];
+        double r1 = (double)pr[1] / pl[0], r2 = (double)pl[2] / pr[1], f = 80 * 230 / 32768.0;
+        snprintf(what, sizeof what, "PING: L %d at the time, R %d at twice it, L %d at three times (x%.2f, x%.2f; FDBK %.2f), "
+                 "the other side silent", pl[0], pr[1], pl[2], r1, r2, f);
+        check(what, !side0 && pl[0] > 4000 && pr[0] < pl[0] / 50 && pl[1] < pr[1] / 50 && pr[2] < pl[2] / 50 &&
+              fabs(r1 - f) < 0.08 && fabs(r2 - f) < 0.08);
+    }
+    song.g[G_DTYPE] = 0;
 }
 
 /* ------------------------------------------------------------- SPRING --- */
@@ -290,7 +358,7 @@ static void test_spring(void)
                 if (m)
                     rev_spring(in, o, CTL);
                 else
-                    rev_room(in, o, CTL);
+                    rev_room(in, o, room_sd, CTL);
                 for (i = 0; i < CTL; i++)
                     *(m ? &es : &er) += (double)o[i] * o[i];
             }
@@ -404,7 +472,7 @@ static void model_block(int m, const int32_t *in, int32_t *out, int32_t *side, u
     else if (m == M_COMB8)
         comb8(in, out, n);
     else
-        rev_room(in, out, n);
+        rev_room(in, out, room_sd, n);
     for (i = 0; i < n; i++)
         side[i] = hl.side ? rev_side[i] : 0;
 }
@@ -814,7 +882,7 @@ static double cost_of(int m, int bus)        /* model m alone (rev_room, rev_spr
         else if (m == M_SPRING)
             rev_spring(r, w, CTL);
         else
-            rev_room(r, w, CTL);
+            rev_room(r, w, room_sd, CTL);
     }
     return i0 ? (double)(instr_now() - i0) / (nb * CTL) : 0;
 }
@@ -1143,6 +1211,7 @@ static void demo2(const char *dir, int src, int m, int size)
 int main(int argc, char **argv)
 {
     test_room_identical();
+    test_ping();
     test_spring();
     test_spring_identical();
     test_hall();

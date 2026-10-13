@@ -2,7 +2,13 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Effects: per-track DIST insert, then sends into three
- * shared buses (chorus, tempo delay, reverb). Mono buses, stereo dry mix.
+ * shared buses (chorus, tempo delay, reverb), stereo dry mix. (Fel-Tracker) The buses give a mid (wet: to both sides)
+ * and a side (wside: + to the left, - to the right): the chorus reads its line twice, half a sweep apart (the left
+ * one as it always was, the right one opposite); DELAY TYPE PING echoes left, then right, and so on (one line: the
+ * left at the time, the right at twice it, the loop round both; FDBK an echo's share of the one before, as CLEAN's;
+ * up to 0.74 s); ROOM's combs signed in turn give its side; TAPE, WORN and SPRING stay mono, HALL has its own
+ * (rev_side). The delay's and the reverb's sends lose their lows first (12 dB/oct ~220 Hz: send_lowcut), so the bass
+ * stays dry and out of the tails.
  * DELAY TYPE (G_DTYPE, Fel-Tracker 1.5): CLEAN the delay as it always was; TAPE and WORN a tape echo in the same line
  * (dly_tape): the read wobbles (wow ~0.5 Hz, flutter ~6 Hz, read between samples), the time glides (TIME turned, the
  * tempo changed: the echoes bend in pitch), the loop low-passed (COLR) and high-passed (thinner each pass) and
@@ -161,6 +167,7 @@ static inline int32_t dc_block(int32_t x, int32_t *dc, int32_t *err)
 }
 
 static int32_t lce[4];
+static int32_t slc[4];                   /* (Fel-Tracker) send_lowcut's states: delay, reverb; two poles each */
 static inline int32_t lowcut1(int32_t x, int32_t *lc, int32_t *err, uint32_t sh)   /* x minus its one-pole low-pass */
 {
     int32_t e = x - *lc + *err, d = e >> sh;
@@ -246,13 +253,14 @@ static uint32_t delay_samples(void)
     return s < 16u ? 16u : s >= DLY_LEN ? DLY_LEN - 1u : s;
 }
 
-/* ROOM (G_RTYPE 0): 4 damped combs + 2 allpasses (Freeverb-like, mono), added to out */
-static __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *out, uint32_t n)
+/* ROOM (G_RTYPE 0): 4 damped combs + 2 allpasses (Freeverb-like), added to out; (Fel-Tracker) the combs signed in turn,
+ * + - + -, its side (to side: uncorrelated with their sum, the room's width) */
+static __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *out, int32_t *side, uint32_t n)
 {
     uint32_t i, k;
     int32_t size = 25000 + song.g[G_RSIZE] * 50, damp = 32767 - song.g[G_RDAMP] * 200;
     for (i = 0; i < n; i++) {
-        int32_t a = 0;
+        int32_t a = 0, sd = 0;
         int16_t *c = rev_comb;
         int32_t in = mulq15(rev_in[i], 2580);           /* 1/8 at -4 dB: level as before the allpass fix */
         for (k = 0; k < 4u; k++) {
@@ -262,6 +270,7 @@ static __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *o
             if (++fx.comb_i[k] >= REV_COMB[k])
                 fx.comb_i[k] = 0;
             a += o;
+            sd += k & 1u ? -o : o;
             c += REV_COMB[k];
         }
         c = rev_ap;
@@ -275,6 +284,7 @@ static __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *o
             c += REV_AP[k];
         }
         out[i] += a;
+        side[i] += mulq15(sd, 22000);                 /* (x 0.67: as wide as it can be without the combs ringing) */
     }
 }
 
@@ -515,20 +525,23 @@ static int32_t part_buf[CTL];                            /* a part's block (mix_
 
 /* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are
  * cleared, the new one starts from silence */
+static int32_t wside[CTL];               /* (Fel-Tracker) the buses' side: + left, - right (mix_block) */
 static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t *wet, uint32_t n, int32_t rt)
 {
+    static int32_t ts[CTL];                         /* (ROOM's side, faded with it) */
     int32_t *t = part_buf, g = 65536, d = 65536 / (int32_t)n;
     uint32_t i;
     for (i = 0; i < n; i++)
-        t[i] = 0;
+        t[i] = ts[i] = 0;
     if (fx.rtype == 2u)
         rev_hall(rev_in, t, n);
     else if (fx.rtype)
         rev_spring(rev_in, t, n);
     else
-        rev_room(rev_in, t, n);
+        rev_room(rev_in, t, ts, n);
     for (i = 0; i < n; i++, g -= d) {
         wet[i] += mulq16(t[i], (uint32_t)g);
+        wside[i] += mulq16(ts[i], (uint32_t)g);
         rev_side[i] = mulq16(rev_side[i], (uint32_t)g);   /* (HALL only: hl.side set) */
     }
     rev_clear();
@@ -586,16 +599,20 @@ static __attribute__((noinline)) void dly_tape(const int32_t *dly_in, int32_t *w
     }
 }
 
-/* process the three buses for one block; sends in, wet stereo-equal out */
+/* process the three buses for one block; sends in, the mid (wet: to both sides) and the side (wside) out */
 static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet,
                      uint32_t n)
 {
-    uint32_t i, dl = delay_samples(), dt = (uint32_t)song.g[G_DTYPE];
-    int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
+    uint32_t i, dl = delay_samples(), dt = (uint32_t)song.g[G_DTYPE], ping = dt == 3u, dl2;
+    int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240, fb2;
     int32_t dmix = song.g[G_DMIX] * 258;
     int32_t cdepth = song.g[G_CDEPTH] * 6, rt;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL;
-    dt = dt <= 2u ? dt : 0u;
+    dt = dt <= 2u ? dt : 0u;                          /* (PING: CLEAN's loop, two reads) */
+    if (ping && dl > (DLY_LEN - 4u) / 2u)
+        dl = (DLY_LEN - 4u) / 2u;                     /* (the right one at twice the time: 0.74 s at most) */
+    dl2 = dl * 2u;
+    fb2 = mulq15(fb, fb);                             /* PING's loop: a pair of echoes a pass */
     if (dt && !fx.dtype) {                            /* CLEAN -> TAPE / WORN: the read starts where CLEAN's is */
         fx.tp_d8 = (int32_t)(dl << 8);
         fx.tp_hp8 = fx.dly_lp << 8;
@@ -613,20 +630,44 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             fx.dtype = fx.tp_out = 0;
     }
     for (i = 0; i < n; i++) {
-        int32_t y = 0, x, r;
-        /* chorus: modulated short delay, 5..15 ms */
+        int32_t y = 0, x, r, ca, cb, sd, sw;
+        /* chorus: modulated short delay, 5..15 ms; the left read, and the right one half a sweep away */
         cho_buf[fx.cho_w & (CHO_LEN - 1u)] = (int16_t)clamp(cho_in[i] >> 1, -32768, 32767);
         fx.cho_ph += cinc;
-        r = (400 << 8) + ((osc_sine(fx.cho_ph) + 32768) * cdepth >> 8);   /* Q8 delay: read between samples */
+        sw = osc_sine(fx.cho_ph);
+        r = (400 << 8) + ((sw + 32768) * cdepth >> 8);   /* Q8 delay: read between samples */
         {
             uint32_t ri = (uint32_t)r >> 8;
             int32_t f = r & 255, c0 = cho_buf[(fx.cho_w - ri) & (CHO_LEN - 1u)];
             int32_t c1 = cho_buf[(fx.cho_w - ri - 1u) & (CHO_LEN - 1u)];
-            y += (c0 + (((c1 - c0) * f) >> 8)) << 1;
+            ca = c0 + (((c1 - c0) * f) >> 8);
         }
+        r = (400 << 8) + ((32768 - sw) * cdepth >> 8);    /* (half a sweep away: the sine's other half) */
+        {
+            uint32_t ri = (uint32_t)r >> 8;
+            int32_t f = r & 255, c0 = cho_buf[(fx.cho_w - ri) & (CHO_LEN - 1u)];
+            int32_t c1 = cho_buf[(fx.cho_w - ri - 1u) & (CHO_LEN - 1u)];
+            cb = c0 + (((c1 - c0) * f) >> 8);
+        }
+        y += ca + cb;                                 /* (left 2 ca, right 2 cb: each as loud as the mono one was) */
+        sd = ca - cb;
         fx.cho_w++;
         if (fx.dtype) {                               /* TAPE, WORN: dly_tape after the loop (the same line) */
             wet[i] = y;
+            wside[i] = sd;
+            continue;
+        }
+        if (ping) {                                   /* PING: left at dl, right at 2 dl (FDBK's share), round */
+            int32_t xl = dly_buf[(fx.dly_w - dl) & (DLY_LEN - 1u)], xr = dly_buf[(fx.dly_w - dl2) & (DLY_LEN - 1u)];
+            int32_t el, er;
+            fx.dly_lp += mulq15(xr - fx.dly_lp, col);
+            dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
+                (int16_t)clamp((dly_in[i] >> 1) + mulq15(fx.dly_lp, fb2), -32768, 32767);
+            fx.dly_w++;
+            el = mulq15(xl << 1, dmix);
+            er = mulq15(mulq15(xr, fb) << 1, dmix);
+            wet[i] = y + ((el + er) >> 1);
+            wside[i] = sd + ((el - er) >> 1);
             continue;
         }
         /* delay with a low-passed feedback */
@@ -637,6 +678,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         fx.dly_w++;
         y += mulq15(x << 1, dmix);
         wet[i] = y;
+        wside[i] = sd;
     }
     if (fx.dtype)
         dly_tape(dly_in, wet, n, dl, fb, col, dmix);
@@ -650,7 +692,30 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     else if (rt)
         rev_spring(rev_in, wet, n);
     else
-        rev_room(rev_in, wet, n);
+        rev_room(rev_in, wet, wside, n);
+}
+
+/* (Fel-Tracker) the delay's and the reverb's sends without their lows: two one-pole high-passes each (~220 Hz, 12
+ * dB/oct), so the bass stays in the dry mix and out of the tails. A step is the difference / 32, floored, and at least
+ * 1 up when the difference is 1 .. 31 (sl_step): the state reaches its input exactly (silence in, silence out: a
+ * floored step alone would stop up to 31 below it, an offset into the tails), cheaper than master_out's error feedback */
+static inline int32_t sl_step(int32_t e) { return (e >> 5) + ((uint32_t)(e - 1) < 31u); }
+static __attribute__((noinline)) void send_lowcut(int32_t *d, int32_t *r, uint32_t n)
+{
+    uint32_t i;
+    int32_t a = slc[0], b = slc[1], c = slc[2], e = slc[3];
+    for (i = 0; i < n; i++) {
+        int32_t x = d[i], y = r[i];
+        a += sl_step(x - a);
+        x -= a;
+        b += sl_step(x - b);
+        d[i] = x - b;
+        c += sl_step(y - c);
+        y -= c;
+        e += sl_step(y - e);
+        r[i] = y - e;
+    }
+    slc[0] = a; slc[1] = b; slc[2] = c; slc[3] = e;
 }
 
 /* after the buses: HALL's stereo difference to the left and from the right of the dry mix (the wet bus adds the
@@ -773,7 +838,7 @@ static __attribute__((noinline)) void scope_take_mix(uint32_t n)
 {
     uint32_t i;
     for (i = 1; i < n; i += 2u)                         /* (((x >> 2) * MASTER_FULL) >> 10 is x) */
-        scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)clamp(mix_l[i] + wet[i], -32767, 32767);
+        scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)clamp(mix_l[i] + wet[i] + wside[i], -32767, 32767);
 }
 
 /* the master with the FX layer's effects between its level and master_out (perform.c) */
@@ -782,8 +847,8 @@ static __attribute__((noinline)) void perf_master(int32_t *out, uint32_t n)
     uint32_t i;
     int32_t mg = fx_usb_fixed ? MASTER_FULL : (int32_t)song.master_q12;   /* (USB LEVEL FIXED: MASTER after) */
     for (i = 0; i < n; i++) {
-        mix_l[i] = (((mix_l[i] + wet[i]) >> 2) * mg) >> 10;
-        mix_r[i] = (((mix_r[i] + wet[i]) >> 2) * mg) >> 10;
+        mix_l[i] = (((mix_l[i] + wet[i] + wside[i]) >> 2) * mg) >> 10;
+        mix_r[i] = (((mix_r[i] + wet[i] - wside[i]) >> 2) * mg) >> 10;
     }
     perf_block(mix_l, mix_r, n);
     for (i = 0; i < n; i++) {
@@ -807,6 +872,7 @@ static void mix_block(int32_t *out, uint32_t n)
         mix_part(&trk[i], n);
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);
+    send_lowcut(send_d, send_r, n);                     /* (Fel-Tracker) */
     fx_buses(send_c, send_d, send_r, wet, n);
     if (hl.side)
         rev_side_mix(mix_l, mix_r, n);                  /* HALL: stereo */
@@ -817,8 +883,8 @@ static void mix_block(int32_t *out, uint32_t n)
         return;
     }
     for (i = 0; i < n; i++) {
-        int32_t l = (((mix_l[i] + wet[i]) >> 2) * mg) >> 10;
-        int32_t r = (((mix_r[i] + wet[i]) >> 2) * mg) >> 10;
+        int32_t l = (((mix_l[i] + wet[i] + wside[i]) >> 2) * mg) >> 10;
+        int32_t r = (((mix_r[i] + wet[i] - wside[i]) >> 2) * mg) >> 10;
         master_out(&l, &r);
         out[2u * i] = l;
         out[2u * i + 1u] = r;

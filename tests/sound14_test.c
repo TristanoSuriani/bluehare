@@ -411,6 +411,10 @@ static lr_t spread_run(int32_t sp, int32_t pan, uint32_t mode, const uint8_t *no
     uint32_t k, i;
     fresh(EA, preset_by_name(EA, "WASP PAD"));
     dry(t);
+    memset(cho_buf, 0, sizeof cho_buf);                   /* (Fel-Tracker: no tail of a render before: the buses are */
+    memset(dly_buf, 0, sizeof dly_buf);                   /* stereo now, and a tail L != R) */
+    memset(wside, 0, sizeof wside);
+    rev_clear();
     song.master_q12 = 1024;                               /* below the limiter: the levels as mixed */
     t->p[P_VOICE] = (int16_t)mode;
     t->p[P_SPRD] = (int16_t)sp;
