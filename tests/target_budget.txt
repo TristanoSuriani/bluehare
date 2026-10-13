@@ -71,3 +71,5 @@ dubchord_render 840
 wasp_render 578
 modal_render 425
 vector_render 195
+echoes_render 4520
+glitch_render 642

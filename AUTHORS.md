@@ -56,6 +56,8 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | WASP (two oscillators, a gritty multimode filter) | `firmware/src/eng_wasp.c` |
 | MODAL (a modal resonator; its resonators PHYS's, DaisySP's) | `firmware/src/eng_modal.c` |
 | VECTOR (vector synthesis over WAVE's frames) | `firmware/src/eng_vector.c` |
+| ECHOES (a note and its repeats, each played anew) | `firmware/src/eng_echoes.c` |
+| GLITCH (a kit of micro-sounds) | `firmware/src/eng_glitch.c` |
 | KIT (an FM drum kit on one part) | `firmware/src/eng_kit.c` |
 | BREAKS (synthesized breakbeat player) | `firmware/src/eng_breaks.c` |
 | RISERS (build-ups and landings) | `firmware/src/eng_risers.c` |

@@ -12,8 +12,8 @@ What Fel-Tracker adds, all by Tristano Suriani:
   distribution is the default, with **8 tracks**: the tracker, the MIXER and the quick layers show the selected
   track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
   into its first four (BUILDING.md "Distributions").
-- **Twenty-one new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
-  DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, KIT, BREAKS and RISERS.
+- **Twenty-three new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
+  DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, ECHOES, GLITCH, KIT, BREAKS and RISERS.
 
 Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
 Fel-Tracker's parts are marked *(Fel-Tracker)*.
@@ -358,8 +358,8 @@ way as from the menu, in the same tabs.
 Felucca's engines, by Leo Kuroshita: ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM.
 
 Fel-Tracker's engines, by Tristano Suriani, marked *(Fel-Tracker)* below: WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC,
-KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, KIT, BREAKS
-and RISERS.
+KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, ECHOES,
+GLITCH, KIT, BREAKS and RISERS.
 
 A build holds the engines of its distribution (BUILDING.md "Distributions"). In the order the device lists them:
 
@@ -430,7 +430,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   through one resonant low-pass, so a chord costs one voice of the budget. VOIC CLOSE, OPEN, SPREAD; WAVE SAW, SQR, SINE,
   ORGAN; DTN detunes the notes in turn; CUT, RES, and the filter's ENV and DEC (the stab's opening). Its presets send
   plenty to the delay (TAPE suits it) and the reverb; up to 4 chords a track
-- **FMKEYS** *(Fel-Tracker; the IDM distribution)*: FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
+- **FMKEYS** *(Fel-Tracker; in no distribution since IDM gave its slot to ECHOES: a stored FMKEYS sound loads as
+  FM6 where there is one, else WAVE)*: FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
   index falls over DECAY, harder notes brighter by VEL) and the tine (the metallic strike of the attack, TINE; DTUNE
   its beating against the body); KSCL softens the top of the keyboard. Electric pianos, bells, tubular bells, marimba,
   vibes, clav, organ, harpsichord, kalimba, celesta, music box
@@ -451,6 +452,14 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   (SET: VOXSTR, GLASS, ORGAN, DIGI, AIR, METAL, CHOIR, SYNTH), a point moving over it: PATH HOLD (at X, Y), ENV (each
   note round the corners, then to X, Y), LOOP, CIRCLE, EIGHT, RANDOM, RATE ~0.02 .. 5 Hz; the SHP routings move X too.
   DTN detunes A, C against B, D; CUT, RES. Presets: evolving pads, morphing choirs and organs, keys, a moving bass
+- **ECHOES** *(Fel-Tracker; the IDM distribution)*: a note and its echoes as one instrument; every repeat is played
+  anew, so each can differ. SRC (BLIP, PLUCK, STAB, NOISE, FM), then COUNT repeats at the tempo: TIME (1/4 .. 1/64,
+  dotted, triplets), SHAPE (EVEN, BOUNCE: each shorter, SLOW, SWING, RANDOM), DECAY (what each keeps), PITCH (semitones
+  a repeat), TONE (each darker or thinner), SCAT (chance in time and pitch). The echoes go on after the key is let go
+- **GLITCH** *(Fel-Tracker; the IDM distribution)*: a kit of micro-sounds, a key each from C2 (as DRUM): CLICK, POP,
+  TICK, ZAP, BITERR, DATA, DROP, FAX, MODEM, CRACKL, SPARK, BLIP, SHARD, BUZZ, SKIP, PING (the octave above: the same,
+  an octave up). KIT CLEAN, HARSH, LOFI, BROKEN; PITCH, DECAY, ROLL (a ratchet at the tempo while held, 1/32 ..
+  1/128), CRUSH, VARY (each hit different), DENS (extra micro-hits), TONE
 - **KIT** *(Fel-Tracker; the IDM distribution)*: a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
   map (its lane LEVELs and the EDIT layer's lane MUTEs too). KIT: FM, METAL, BIT, GLITCH, DEEP; TUNE, DECAY, PUNCH, FM,
   SNAP, TONE move every lane; VARY gives every hit its own small differences. A closed hat chokes the open one
@@ -458,7 +467,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   (FUNKY, CLASSIC, THINK, HALFTIME, BOOM BAP, JUNGLE, TWO STEP, SHUFFLE, BUSY, DRILL, SPARSE, GALLOP), looping while
   held; SLICE the 16th it starts from (chops), RATE (half .. double time), SWING, STUTR (rolls into 32nds and 64ths),
   SHUF (jumps to other 16ths), TUNE, DECAY, CRUSH
-- **RISERS** *(Fel-Tracker; the IDM distribution)*: build-ups and landings timed to the song: LEN beats (1 .. 32) of a climb RANGE
+- **RISERS** *(Fel-Tracker; in no distribution since IDM gave its slot to GLITCH: a stored RISERS sound loads as
+  NOISE where there is one, else SID)*: build-ups and landings timed to the song: LEN beats (1 .. 32) of a climb RANGE
   semitones along CURVE. NOIS (a resonant noise sweep), SAW (a detuned stack, SPRD), SINE, SHEP (an endless Shepard
   rise), DOWN (a downlifter), BOOM (an impact, a sub drop); BUILD gates it faster and faster, NOISE mixes noise in
 - **SPEECH** *(Fel-Tracker; the IDM distribution)*: words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
@@ -577,8 +587,8 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 
 - **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Fel-Tracker, meaning the tracker,
   the distributions and engine ids, the engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE,
-  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, KIT, BREAKS and RISERS, and the
-  changes to
+  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, ECHOES, GLITCH, KIT, BREAKS and RISERS,
+  and the changes to
   Felucca listed in
   [AUTHORS.md](AUTHORS.md)
 - **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):

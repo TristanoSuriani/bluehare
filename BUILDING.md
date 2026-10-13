@@ -83,7 +83,7 @@ FELUCCA_DIST=default ./build.sh    # another one (build/felucca-default.fwsc)
 | Distribution | Tracks | Engines |
 | --- | --- | --- |
 | `default` | 4 | ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM |
-| `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS FMKEYS KIT SPEECH RISERS (16) |
+| `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH (16) |
 
 With 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an

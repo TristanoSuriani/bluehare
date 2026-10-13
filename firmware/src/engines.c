@@ -32,6 +32,8 @@
 #include "eng_wasp.c"           /* WASP: two oscillators, a gritty multimode filter (1.5) */
 #include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
 #include "eng_vector.c"         /* VECTOR: four sources, a point moving among them (1.5) */
+#include "eng_echoes.c"         /* ECHOES: a note and its repeats, each played anew (1.5) */
+#include "eng_glitch.c"         /* GLITCH: a kit of micro-sounds (1.5) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */

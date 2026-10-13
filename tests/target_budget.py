@@ -45,7 +45,8 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
          "dubchord_render",                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)
          "wasp_render",
          "modal_render",                                    # MODAL (Fel-Tracker 1.5: eng_modal.c; IDM's)
-         "vector_render"]                                   # VECTOR (Fel-Tracker 1.5: eng_vector.c; IDM's)                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)                                # DUBSIREN8 (Fel-Tracker 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Fel-Tracker 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
+         "vector_render",                                   # VECTOR (Fel-Tracker 1.5: eng_vector.c; IDM's)
+         "echoes_render", "glitch_render"]                  # ECHOES, GLITCH (Fel-Tracker 1.5; IDM's)                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)                                # DUBSIREN8 (Fel-Tracker 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Fel-Tracker 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
@@ -59,7 +60,8 @@ ENGINE_OF = {"analog_render": "ANALOG", "phase_render": "PHASE", "lofi_render": 
              "particle_render": "PARTICLE", "chaos_render": "CHAOS",
              "sid_render": "SID", "dubsiren_render": "DUBSIREN",
              "fmkeys_render": "FMKEYS", "wasp_render": "WASP", "modal_render": "MODAL",
-             "vector_render": "VECTOR", "dubsiren8_render": "DUBSIREN8", "dubchord_render": "DUBCHORD",
+             "vector_render": "VECTOR", "echoes_render": "ECHOES", "glitch_render": "GLITCH",
+             "risers_render": "RISERS", "dubsiren8_render": "DUBSIREN8", "dubchord_render": "DUBCHORD",
              "kit_render": "KIT", "breaks_render": "BREAKS", "risers_render": "RISERS",
              "fmp_run": "FMPERC"}
 ENGINE_OF.update({n: "FM6" for n in ("fm6_render", "fm6_op_run", "fm6_op_fb")})

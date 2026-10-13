@@ -40,7 +40,7 @@ static const menu_credit_t MENU_CREDITS[] = {
     {"FEL-TRACKER", MC_TITLE},              /* Fel-Tracker: this fork of Felucca (AUTHORS.md) */
     {"Tristano Suriani", MC_TEXT},
     {"The tracker, the distributions, the engines WAVE BYTE WEST HOOVER SPEECH FMPERC KARPLUS VOSIM PARTICLE CHAOS SID "
-     "DUBSIREN SIREN8 DUBCHORD FMKEYS WASP MODAL VECTOR KIT BREAKS RISERS: GPL-3.0", MC_TEXT},
+     "DUBSIREN SIREN8 DUBCHORD FMKEYS WASP MODAL VECTOR ECHOES GLITCH KIT BREAKS RISERS: GPL-3.0", MC_TEXT},
     {"https://github.com/TristanoSuriani/fel-tracker", MC_URL},
     {"", MC_TEXT},
     {"H\xFCgelton Instruments", MC_TITLE},  /* Felucca's own: above; these are ours too */

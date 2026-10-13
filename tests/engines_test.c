@@ -34,7 +34,7 @@ static void stream_rehash(void)
 int main(void)
 {
     static const char *const ORDER[] = {"SID", "WASP", "WAVE", "BREAKS", "WEST", "VECTOR", "DUBSIREN", "MODAL",
-                                        "DUBCHORD", "VOSIM", "PARTICLE", "CHAOS", "FMKEYS", "KIT", "SPEECH", "RISERS"};
+                                        "DUBCHORD", "VOSIM", "PARTICLE", "CHAOS", "ECHOES", "KIT", "SPEECH", "GLITCH"};
     uint8_t a[16] = {0};
     int bad = 0, ok = 1, sub;
     uint32_t i, e, off;
@@ -43,15 +43,18 @@ int main(void)
     /* the table */
     ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_VOICE && !FELUCCA_ENG_TRIO && !FELUCCA_ENG_WHEEL && !FELUCCA_ENG_FM6 && !FELUCCA_ENG_ANALOG &&
          !FELUCCA_ENG_PHYS && !FELUCCA_ENG_PHASE && !FELUCCA_ENG_NOISE && !FELUCCA_ENG_HOOVER && !FELUCCA_ENG_DUBSIREN8 &&
-         FELUCCA_ENG_MODAL && FELUCCA_ENG_VECTOR;
+         !FELUCCA_ENG_FMKEYS && !FELUCCA_ENG_RISERS && FELUCCA_ENG_MODAL && FELUCCA_ENG_VECTOR && FELUCCA_ENG_ECHOES &&
+         FELUCCA_ENG_GLITCH;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
     ok &= eng_of_id(EID_TRIO) == ENG_NO && eng_of_id(EID_WHEEL) == ENG_NO && eng_of_id(EID_VOICE) == ENG_NO &&
           ENGI_TRIO == ENG_ABSENT && str_eq(N_ENGNAME[EID_TRIO], "-") && eng_by_id(EID_WHEEL) == &ENG_NONE;
-    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 ANALOG PHYS PHASE NOISE HOOVER SIREN8 none", ok);
+    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 ANALOG PHYS PHASE NOISE HOOVER SIREN8 FMKEYS RISERS none", ok);
     ok = eng_load_id(EID_HOOVER, &sub) == ENGI_SID && sub && ENGI_HOOVER == ENG_ABSENT && eng_load_id(EID_WHEEL, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_DUBSIREN8, &sub) == ENGI_SID && sub && ENGI_DUBSIREN8 == ENG_ABSENT &&
          eng_load_id(EID_MODAL, &sub) == ENGI_MODAL && !sub && eng_load_id(EID_VECTOR, &sub) == ENGI_VECTOR && !sub &&
+         eng_load_id(EID_FMKEYS, &sub) == ENGI_WAVE && sub && eng_load_id(EID_RISERS, &sub) == ENGI_SID && sub &&
+         eng_load_id(EID_ECHOES, &sub) == ENGI_ECHOES && !sub && eng_load_id(EID_GLITCH, &sub) == ENGI_GLITCH && !sub &&
          eng_load_id(EID_FM6, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_VOICE, &sub) == ENGI_SPEECH && sub && eng_load_id(EID_TRIO, &sub) == ENGI_SID && sub &&
          eng_load_id(EID_ANALOG, &sub) == ENGI_SID && sub && eng_load_id(EID_PHYS, &sub) == ENGI_WEST && sub && eng_load_id(EID_KARPLUS, &sub) == ENGI_WEST && sub &&
@@ -59,7 +62,7 @@ int main(void)
          eng_load_id(27, &sub) == ENG_NO &&
          eng_load_id(EID_WASP, &sub) == ENGI_WASP && !sub &&
          eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub && eng_load_id(13, &sub) == ENG_NO;
-    bad += check("  substitutes: WHEEL, FM6 -> WAVE; VOICE -> SPEECH; TRIO, ANALOG -> SID; PHYS, KARPLUS (gone) -> WEST; FMPERC (gone) -> KIT; HOOVER, DUBSIREN8 (gone) -> SID; retired: ACID (27)", ok);
+    bad += check("  substitutes: WHEEL, FM6 -> WAVE; VOICE -> SPEECH; TRIO, ANALOG -> SID; PHYS, KARPLUS (gone) -> WEST; FMPERC (gone) -> KIT; HOOVER, DUBSIREN8 (gone) -> SID; FMKEYS -> WAVE; RISERS -> SID; retired: ACID (27)", ok);
 
     /* power-on */
     reset();                                            /* (tk_defaults: the instruments of the power-on parts) */
