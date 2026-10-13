@@ -32,7 +32,8 @@ static void stream_rehash(void)
 static int projects(void)
 {
     int bad = 0;
-    uint32_t e0, off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN, refused = 1;   /* track 1's engine byte */
+    uint32_t e0, off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + (PROJ_VER >= 3u), refused = 1;   /* track 1's engine
+                                                       * byte (version 3 on: after the track count) */
     uint8_t keep;
     reset();
     *tk_at(0, 0, 0) = tk_pack(60, 0, 0, 0);

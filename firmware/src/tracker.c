@@ -37,6 +37,41 @@ static tk_cell_t tk_top[TK_PATS - TK_MID][TK_ROWS][NTRK] __attribute__((section(
 #endif
 static tk_song_t tk;
 
+/* (Fel-Tracker) variations: a pattern played under its own tempo, mutes, chance and the tracks' sends and SLICER, so one
+ * pattern carries several sections of a song. Every pattern has variation A (its default) and up to TK_VARS - 1 more,
+ * B .. D (tk_nvar: how many it has). An order entry names a pattern and one of its variations (TK_OPAT, TK_OVAR: the
+ * pattern in bits 0..4, the variation in 5..6; a song of before has A everywhere). A variation's values are over the
+ * track's own while it plays (core.h trk_vo, tempo_ovr: the audio path reads them; the track's own stay as they are):
+ *   bpm      0: the song's tempo (SONG), else 40..240
+ *   mute     bit k: track k plays no notes
+ *   chance   per track, 0..100 %: each note of the track's cells plays with that chance (100: always)
+ *   vo       per track, the sends DIST CHO DLY REV and the SLICER's mode, pattern, rate: 0 the track's own (KEEP), else the
+ *            value + 1 (core.h VO_*)
+ * A new one starts as everything as the tracks have it (tk_var_default): adding it changes nothing until it is edited */
+#define TK_VARS 4u
+#define TK_OPAT(o) ((uint32_t)(o) & 31u)
+#define TK_OVAR(o) ((uint32_t)(o) >> 5 & 3u)
+#define TK_OENT(p, v) ((uint8_t)((p) % TK_PATS | ((v) % TK_VARS) << 5))
+typedef struct {
+    uint8_t bpm, mute;
+    uint8_t chance[NTRK];
+    uint8_t vo[NTRK][VO_N];
+} tk_var_t;
+static tk_var_t tk_var[TK_PATS][TK_VARS] __attribute__((section(".pool")));
+static uint8_t tk_nvar[TK_PATS];         /* the variations each pattern has, 1 .. TK_VARS (A always) */
+static void tk_var_default(tk_var_t *v)
+{
+    memset(v, 0, sizeof *v);
+    memset(v->chance, 100, sizeof v->chance);
+}
+static int tk_var_is_default(const tk_var_t *v)
+{
+    tk_var_t d;
+    tk_var_default(&d);
+    return !memcmp(v, &d, sizeof d);
+}
+static const char TK_VLET[TK_VARS] = {'A', 'B', 'C', 'D'};
+
 static tk_cell_t *tk_row(uint32_t p, uint32_t r)
 {
     p %= TK_PATS;
@@ -190,6 +225,10 @@ static struct {
     int16_t ovr_v[NTRK];         /* .. the track's own value, back on its next row */
     uint8_t skip[NTRK];          /* live recording: the row (+ 1) whose note sounds already (it does not play again) */
     uint8_t rec_row[NTRK], rec_note[NTRK];   /* live recording: the row (+ 1) and the note recorded last (its OFF) */
+    volatile uint8_t var;        /* the variation playing now (of tk_pl.pat) */
+    volatile uint8_t loop_var;   /* LOOP: the variation the UI edits (the pattern plays under it) */
+    uint8_t vmute;               /* .. its mutes */
+    uint32_t rnd;                /* the chance's random numbers (from the same seed at every PLAY: renders repeat) */
 } tk_pl;
 static volatile uint8_t tk_cur_inst;   /* the instrument the keys record with (the UI's last one), 0 none */
 static volatile uint32_t tk_ext_gen;   /* writes not by hand: live recording, the editor (they end an undo's turn) */
@@ -234,6 +273,7 @@ static uint32_t tk_row_notes(const track_t *t, const tk_cell_t *c, uint8_t *out)
     return n;
 }
 
+static int tk_var_plays(uint32_t k);
 /* the row tk_pl.row of tk_pl.pat starts: each column's FX ends, its instrument, its FX, its note (not inlined: out
  * of the audio ISR's loop over the blocks) */
 static __attribute__((noinline)) void tk_play_row(void)
@@ -252,6 +292,8 @@ static __attribute__((noinline)) void tk_play_row(void)
             t->p[id] = tk_scale(t, id, tk_val(&c));
         }
         n = tk_note(&c);
+        if (n && n != TK_OFF && !tk_var_plays(k))
+            n = 0;                                  /* (the variation: muted, or its chance said no: as an empty row) */
         if (tk_pl.skip[k] == tk_pl.row + 1u) {      /* (live recording: it sounds from the keys already) */
             tk_pl.skip[k] = 0;
             if (n && n != TK_OFF) {
@@ -284,6 +326,42 @@ static __attribute__((noinline)) void tk_play_row(void)
     tk_pl.rows++;
 }
 
+/* variation v of pattern p starts playing (an order entry, LOOP's pattern): its tempo, mutes, sends and SLICER over the
+ * tracks; a track it mutes lets go of its notes */
+static void tk_var_enter(uint32_t p, uint32_t v)
+{
+    const tk_var_t *x = &tk_var[p % TK_PATS][v % TK_VARS];
+    uint32_t k;
+    tk_pl.var = (uint8_t)(v % TK_VARS);
+    tempo_ovr = x->bpm;
+    memcpy(trk_vo, x->vo, sizeof trk_vo);
+    tk_pl.vmute = x->mute;
+    for (k = 0; k < NTRK; k++)
+        if ((x->mute >> k) & 1u)
+            tk_release(k);
+}
+/* .. and none plays any more (STOP): the tracks as they are */
+static void tk_var_leave(void)
+{
+    tempo_ovr = 0;
+    memset(trk_vo, 0, sizeof trk_vo);
+    tk_pl.vmute = 0;
+    tk_pl.var = 0;
+}
+/* a note of track k on this row plays: not muted by the variation, and its chance */
+static int tk_var_plays(uint32_t k)
+{
+    uint32_t c = tk_var[tk_pl.pat % TK_PATS][tk_pl.var % TK_VARS].chance[k % NTRK];
+    if ((tk_pl.vmute >> k) & 1u)
+        return 0;
+    if (c >= 100u)
+        return 1;
+    tk_pl.rnd ^= tk_pl.rnd << 13;
+    tk_pl.rnd ^= tk_pl.rnd >> 17;
+    tk_pl.rnd ^= tk_pl.rnd << 5;
+    return tk_pl.rnd % 100u < c;
+}
+
 /* PLAY (seq.c seq_start, the audio ISR): LOOP from row 0 of the pattern edited, SONG from the position picked */
 static void tk_start(void)
 {
@@ -295,10 +373,13 @@ static void tk_start(void)
     }
     if (tk_pl.mode == TK_SONG) {
         tk_pl.pos = (uint8_t)(tk_pl.start_pos < tk.norder ? tk_pl.start_pos : 0u);
-        tk_pl.pat = (uint8_t)(tk.order[tk_pl.pos] % TK_PATS);
+        tk_pl.pat = (uint8_t)(TK_OPAT(tk.order[tk_pl.pos]) % TK_PATS);
+        tk_var_enter(tk_pl.pat, TK_OVAR(tk.order[tk_pl.pos]));
     } else {
         tk_pl.pat = (uint8_t)(tk_pl.loop_pat % TK_PATS);
+        tk_var_enter(tk_pl.pat, tk_pl.loop_var);
     }
+    tk_pl.rnd = 0x2545F491u;
     tk_pl.row = (uint8_t)(tk_pl.mode == TK_LOOP && tk_pl.start_row < tk_len(tk_pl.pat) ? tk_pl.start_row : 0u);
     tk_pl.start_row = 0;
     tk_pl.row_pos = 0;
@@ -316,6 +397,7 @@ static void tk_stop(void)
         tk_pl.skip[k] = tk_pl.rec_row[k] = 0;
     }
     tk_pl.fresh = 0;
+    tk_var_leave();
 }
 
 /* the pattern after the one that ended: LOOP the one the UI edits now, SONG the next position (round) */
@@ -323,9 +405,11 @@ static void tk_next_pattern(void)
 {
     if (tk_pl.mode == TK_SONG) {
         tk_pl.pos = (uint8_t)(tk_pl.pos + 1u < tk.norder ? tk_pl.pos + 1u : 0u);
-        tk_pl.pat = (uint8_t)(tk.order[tk_pl.pos] % TK_PATS);
+        tk_pl.pat = (uint8_t)(TK_OPAT(tk.order[tk_pl.pos]) % TK_PATS);
+        tk_var_enter(tk_pl.pat, TK_OVAR(tk.order[tk_pl.pos]));
     } else {
         tk_pl.pat = (uint8_t)(tk_pl.loop_pat % TK_PATS);
+        tk_var_enter(tk_pl.pat, tk_pl.loop_var);
     }
 }
 
@@ -466,6 +550,12 @@ static void tk_defaults(void)
         tk.len[i] = TK_ROWS;
     for (i = 0; i < TK_INSTS; i++)
         tk.instr[i].src = TK_SRC_NONE;
+    for (i = 0; i < TK_PATS; i++) {
+        uint32_t v;
+        for (v = 0; v < TK_VARS; v++)
+            tk_var_default(&tk_var[i][v]);
+        tk_nvar[i] = 1;
+    }
     for (i = 0; i < NPART; i++) {
         tk.instr[i].src = (uint8_t)eng_id(TRK_DEF[i][0]);   /* (an instrument names its engine by id) */
         tk.instr[i].preset = TRK_DEF[i][1];
@@ -483,8 +573,30 @@ static void tk_bound(void)
     uint32_t i;
     if (!tk.norder || tk.norder > TK_ORDER)
         tk.norder = 1;
-    for (i = 0; i < TK_ORDER; i++)
-        tk.order[i] %= TK_PATS;
+    for (i = 0; i < TK_PATS; i++)
+        tk_nvar[i] = (uint8_t)clamp(tk_nvar[i], 1, TK_VARS);
+    for (i = 0; i < TK_ORDER; i++) {
+        uint32_t p = TK_OPAT(tk.order[i]) % TK_PATS, v = TK_OVAR(tk.order[i]);
+        if (v >= tk_nvar[p])                        /* (an entry of a variation the pattern lacks: it has it now) */
+            tk_nvar[p] = (uint8_t)(v + 1u);
+        tk.order[i] = TK_OENT(p, v);
+    }
+    for (i = 0; i < TK_PATS; i++) {                 /* (a variation's values inside their fields) */
+        uint32_t v, k, j;
+        for (v = 0; v < TK_VARS; v++) {
+            tk_var_t *x = &tk_var[i][v];
+            static const uint8_t VMAX[VO_N] = {127, 127, 127, 127, 2, 16, 5};
+            if (x->bpm && (x->bpm < 40u || x->bpm > 240u))
+                x->bpm = 0;
+            for (k = 0; k < NTRK; k++) {
+                if (x->chance[k] > 100u)
+                    x->chance[k] = 100;
+                for (j = 0; j < VO_N; j++)
+                    if (x->vo[k][j] > VMAX[j] + 1u || (j == VO_SLPAT && x->vo[k][j] == 1u))
+                        x->vo[k][j] = 0;
+            }
+        }
+    }
     for (i = 0; i < TK_PATS; i++)
         if (!tk.len[i] || tk.len[i] > TK_ROWS)
             tk.len[i] = TK_ROWS;

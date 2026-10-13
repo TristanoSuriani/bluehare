@@ -361,6 +361,21 @@ static track_t trk[NTRK];        /* the instrument: four parts */
 static song_t song;
 #define TSEL (&trk[song.sel])    /* the selected track */
 
+/* (Fel-Tracker) a variation's layer over the tracks (tracker.c: set as an order entry with its variation starts, cleared
+ * at STOP): what it gives a track's sends and SLICER while it plays, read by the audio path through tp_vo (the track's
+ * own values, what the pages and the stores hold, never written), and the tempo it plays at (song_bpm) */
+enum { VO_DIST, VO_CHOR, VO_DLY, VO_REV, VO_SLCR, VO_SLPAT, VO_SLRATE, VO_N };
+static uint8_t trk_vo[NTRK][VO_N];      /* 0: the track's own; else the value + 1 */
+static uint8_t tempo_ovr;               /* 0: the song's BPM (G_BPM); else the BPM the variation playing has */
+static const uint8_t VO_PARAM[VO_N] = {P_DIST, P_CHOR, P_DLY, P_REV, P_SLCR, P_SLPAT, P_SLRATE};
+/* track t's parameter id (one of VO_PARAM: vo) as it plays now */
+static inline int32_t tp_vo(const track_t *t, uint32_t vo)
+{
+    uint32_t k = (uint32_t)(t - trk);
+    return k < NTRK && trk_vo[k][vo] ? (int32_t)trk_vo[k][vo] - 1 : t->p[VO_PARAM[vo]];
+}
+static inline uint32_t song_bpm(void) { return tempo_ovr ? tempo_ovr : (uint32_t)song.g[G_BPM]; }
+
 /* SWING of a track's step clock (#31): CLOCK's SWING, at most 100. 1.5: the tracker's rows (tracker.c tk_row_len) and
  * the SLICER (slicer.c sl_enter) both swing by it, so the SLICER stays on the rows; a track's own SWG (P_SSWING, the
  * step sequencer's, up to 1.4) is not read any more. At 100 the even steps are 1.4 x the straight length and the odd

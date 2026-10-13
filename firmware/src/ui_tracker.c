@@ -15,9 +15,14 @@
  * the 8 that hold it, the next 8 once it gets there. SEQ held: KNOB 1 the pattern edited (LOOP plays it from the end
  * of the one playing), 2 its length, 3 EDIT STEP, 4 the cell's chord; the white keys the tools (tk_tool), PLAY from
  * the cursor's row. SAVE held: the last pattern edit undone / redone (tk_undo_swap).
- * SONG (PLAY here plays the song from the position picked): the order list. KNOB 1 the position (past the last:
- * + ADD), 2 its pattern (on + ADD: a new position), 3 that pattern's length, 4 right: a copy of the position after
- * it, left: the position deleted (EDIT too).
+ * SONG (PLAY here plays the song from the position picked): the order list, each position a pattern and its variation
+ * ("03B"). KNOB 1 the position (past the last: + ADD), 2 its pattern (on + ADD: a new position), 3 its variation, 4
+ * right: a copy of the position after it, left: the position deleted (EDIT too). (A pattern's length: SEQ held, KNOB 2.)
+ * VARIATION (Fel-Tracker): the variation of the SONG page's position (stopped there: of the pattern LOOP plays), its
+ * rows like SETTINGS': TEMPO (SONG or a BPM), MUTE, CHANCE, the sends and the SLICER (each KEEP: the track's own),
+ * PRESETS the row, KNOB 1..4 the view's tracks (TEMPO: KNOB 1), EDIT the selected track's value back to KEEP (TEMPO:
+ * SONG); PLAY here plays its pattern under it (LOOP). On SONG KNOB 3 picks a position's variation A .. D (past the
+ * last one the pattern has: a new one, a copy of A).
  * SETTINGS: each track's ENV, filter and FX: a row a setting, a column a track; PRESETS the row, KNOB 1..4 tracks
  * 1..4. CUT and RES hold the engine's filter over every instrument (INST: the instrument's own; EDIT puts INST back).
  * INSTR: the instruments 01..3F, each a factory preset of an engine or a user preset. KNOB 1 (or PRESETS) the slot,
@@ -45,6 +50,7 @@ static struct {
     uint8_t step;                /* EDIT STEP: rows the cursor moves after a key's note (0..16) */
     uint8_t pos;                 /* SONG: the position picked (tk.norder: + ADD) */
     uint8_t srow;                /* SETTINGS: the setting picked */
+    uint8_t vrow;                /* VARIATION: the row picked */
     uint8_t slot;                /* INSTR: the instrument picked (0..TK_INSTS-1) */
     uint8_t note;                /* the note KNOB 2 starts an empty cell from: the last one entered */
     uint8_t cmd;                 /* the FX command PRESETS starts an empty FX from: the last one picked */
@@ -53,8 +59,9 @@ static struct {
     int8_t mv_dir;               /* tk_slow: the direction of the turn moving the cursor, */
     uint8_t mv_acc;              /* .. its detents since the cursor last moved */
     uint32_t mv_t;               /* .. fm1_ms of its last detent */
-} tku = {0, 0, 1, 0, 0, 0, 60, TKC_LEVEL, 0, 0, {0}};
+} tku = {0, 0, 1, 0, 0, 0, 0, 60, TKC_LEVEL, 0, 0, {0}};
 
+static void tk_vtarget(uint32_t *p, uint32_t *v);   /* (VARIATION's variation, below) */
 static uint32_t tk_graph(void) { return ui.home ? GR_NONE : PAGES[ui.page % NPAGES].graph; }
 static int tk_page(void) { uint32_t g = tk_graph(); return g >= GR_TKPAT && g <= GR_TKINST; }
 /* the pattern the PATTERN page shows: the one playing while SONG plays, else the one LOOP plays (and edits) */
@@ -273,6 +280,12 @@ static void tk_play_mode(void)
         tk_pl.start_pos = (uint8_t)(tku.pos < tk.norder ? tku.pos : 0u);
     } else if (tk_graph() == GR_TKPAT) {
         tk_pl.mode = TK_LOOP;
+    } else if (tk_graph() == GR_TKVAR) {             /* its pattern, under it */
+        uint32_t p, v;
+        tk_vtarget(&p, &v);
+        tk_pl.mode = TK_LOOP;
+        tk_pl.loop_pat = (uint8_t)p;
+        tk_pl.loop_var = (uint8_t)v;
     }
 }
 
@@ -407,6 +420,20 @@ static void tk_info(void)
         fmt_int(b, tk.norder);
         str_cpy(b + str_len(b), tk.norder == 1u ? " POSITION" : " POSITIONS", sizeof b - str_len(b));
         str_cpy(c, song.playing && tk_pl.mode == TK_SONG ? "PLAYING" : "", sizeof c);
+    } else if (g == GR_TKVAR) {
+        uint32_t vp, vv;
+        tk_vtarget(&vp, &vv);
+        str_cpy(a, "VARIATION ", sizeof a);
+        tk_hex2(h, vp);
+        str_cpy(a + str_len(a), h, sizeof a - str_len(a));
+        a[str_len(a) + 1u] = 0;
+        a[str_len(a)] = TK_VLET[vv];
+        str_cpy(b, tku.pos < tk.norder ? "POS " : "LOOP", sizeof b);
+        if (tku.pos < tk.norder) {
+            tk_hex2(h, tku.pos);
+            str_cpy(b + str_len(b), h, sizeof b - str_len(b));
+        }
+        str_cpy(c, song.playing && tk_pl.pat == vp && tk_pl.var == vv ? "PLAYING" : "[PRESETS] ROW", sizeof c);
     } else if (g == GR_TKSET) {
         str_cpy(a, "TRACK SETTINGS", sizeof a);
         str_cpy(c, "[PRESETS] ROW", sizeof c);
@@ -543,7 +570,7 @@ static void tk_draw_song(void)
         char b[24], h[3];
         sig = 0x9E37u ^ (q << 4) ^ sel * 0x100000u ^ play * 0x200000u ^ (q < tk.norder ? tk.order[q] * 0x1000u : 0x7F000u);
         if (q < tk.norder)
-            sig ^= tk_len(tk.order[q]) * 0x1000000u;
+            sig ^= tk_len(TK_OPAT(tk.order[q])) * 0x1000000u;
         if (q == tk.norder)
             sig ^= 0xADD00000u;
         if (!ui.force && sig == tku.sig[2u + i])
@@ -562,16 +589,18 @@ static void tk_draw_song(void)
             tk_hex2(h, q);
             cv_text(10, 1, &AF_S, h, sel ? T_INK : T_MID);
             str_cpy(b, "PATTERN ", sizeof b);
-            tk_hex2(h, tk.order[q]);
+            tk_hex2(h, TK_OPAT(tk.order[q]));
             str_cpy(b + 8, h, sizeof b - 8);
+            b[10] = TK_VLET[TK_OVAR(tk.order[q])];       /* (Fel-Tracker: its variation, "03B") */
+            b[11] = 0;
             cv_text(40, 1, &AF_S, b, fg);
             str_cpy(b, "LEN ", sizeof b);
-            tk_hex2(h, tk_len(tk.order[q]));
+            tk_hex2(h, tk_len(TK_OPAT(tk.order[q])));
             str_cpy(b + 4, h, sizeof b - 4);
             cv_text(130, 1, &AF_S, b, sel ? T_INK : T_MID);
             if (play)
                 cv_text_r(230, 1, &AF_S, "PLAY", sel ? T_INK : T_ACCENT, cv_bg);
-            else if (tk_pat_empty(tk.order[q]))
+            else if (tk_pat_empty(TK_OPAT(tk.order[q])))
                 cv_text_r(230, 1, &AF_S, "EMPTY", sel ? T_INK : T_DIM, cv_bg);
         }
         cv_blit(0, (uint32_t)(TK_Y_ROWS + (int32_t)i * TK_ROW_H));
@@ -645,6 +674,130 @@ static void tk_draw_settings(void)
             cv_blit(0, TK_Y_HEAD);
         }
     }
+}
+
+/* ------------------------------------------------------------ VARIATION --- */
+/* the variation the page edits: the SONG page's position's (past the last: the one LOOP plays) */
+static void tk_vtarget(uint32_t *p, uint32_t *v)
+{
+    if (tku.pos < tk.norder) {
+        *p = TK_OPAT(tk.order[tku.pos]) % TK_PATS;
+        *v = TK_OVAR(tk.order[tku.pos]);
+    } else {
+        *p = tk_pl.loop_pat % TK_PATS;
+        *v = tk_pl.loop_var % TK_VARS;
+    }
+}
+enum { TV_TEMPO, TV_MUTE, TV_CHANCE, TV_VO };   /* the rows: then one a VO_* (the sends, the SLICER) */
+#define TK_NVROW (TV_VO + VO_N)
+static const char *const TV_LABEL[TK_NVROW] = {"TEMPO", "MUTE", "CHANCE", "DIST", "CHORUS", "DELAY", "REVERB",
+                                               "SLICER", "SL PAT", "SL RATE"};
+static void tk_var_value(const tk_var_t *x, uint32_t row, uint32_t k, char *val)   /* (val: 8) */
+{
+    uint32_t v;
+    const char *unit;
+    if (row == TV_TEMPO) {
+        if (x->bpm)
+            fmt_int(val, x->bpm);
+        else
+            str_cpy(val, "SONG", 8);
+    } else if (row == TV_MUTE) {
+        str_cpy(val, (x->mute >> k) & 1u ? "MUTE" : "PLAY", 8);
+    } else if (row == TV_CHANCE) {
+        fmt_int(val, x->chance[k % NTRK]);
+        str_cpy(val + str_len(val), "%", 8 - str_len(val));
+    } else if (!(v = x->vo[k % NTRK][row - TV_VO])) {
+        str_cpy(val, "KEEP", 8);
+    } else {
+        param_format(&TP[VO_PARAM[row - TV_VO]], (int32_t)v - 1, val, &unit);
+    }
+}
+static void tk_draw_var(void)
+{
+    uint32_t i, k, p, v, top = tku.vrow / TK_VIEW * TK_VIEW;
+    const tk_var_t *x;
+    tk_vtarget(&p, &v);
+    x = &tk_var[p][v];
+    for (i = 0; i < TK_VIEW; i++) {
+        uint32_t q = top + i, sel = q == tku.vrow, sig = 0xA7u ^ q * 0x100u ^ (uint32_t)sel << 16 ^ (uint32_t)song.sel << 17 ^ p << 20 ^ v << 26;
+        char val[VIEW_N][8];
+        if (q < TK_NVROW)
+            for (k = 0; k < VIEW_N; k++) {          /* (8 tracks: the view's four; TEMPO: one) */
+                if (q == TV_TEMPO && k)
+                    val[k][0] = 0;
+                else
+                    tk_var_value(x, q, trk_view() + k, val[k]);
+                sig = str_hash(sig, val[k]);
+            }
+        if (!ui.force && sig == tku.sig[2u + i])
+            continue;
+        tku.sig[2u + i] = sig;
+        if (q >= TK_NVROW) {
+            cv_begin(240, TK_ROW_H, T_BG);
+            cv_blit(0, (uint32_t)(TK_Y_ROWS + (int32_t)i * TK_ROW_H));
+            continue;
+        }
+        tk_list_begin(sel, 0);
+        cv_text_fit(10, 1, &AF_S, TV_LABEL[q], sel ? T_INK : T_MID, cv_bg, 60);
+        for (k = 0; k < VIEW_N; k++) {
+            uint16_t fg = sel ? T_INK : q != TV_TEMPO && trk_view() + k == song.sel ? T_ACCENT : T_TEXT;
+            cv_text_fit(72 + 41 * (int32_t)k, 1, &AF_S, val[k], fg, cv_bg, 39);
+        }
+        cv_blit(0, (uint32_t)(TK_Y_ROWS + (int32_t)i * TK_ROW_H));
+    }
+    {   /* the heads: the four tracks over their columns */
+        uint32_t sig = 0xA7E7u + song.sel;
+        if (ui.force || sig != tku.sig[1]) {
+            tku.sig[1] = sig;
+            cv_begin(240, TK_H_HEAD, T_BG);
+            for (k = 0; k < VIEW_N; k++) {
+                char b[2] = {(char)('1' + trk_view() + k), 0};
+                cv_text_fit(72 + 41 * (int32_t)k, 1, &AF_S, b, trk_view() + k == song.sel ? T_ACCENT : T_MID, T_BG, 39);
+            }
+            cv_blit(0, TK_Y_HEAD);
+        }
+    }
+}
+/* a variation edited: if it is the one playing, its values now (the audio ISR's) */
+static void tk_var_live(uint32_t p, uint32_t v)
+{
+    if (!song.playing || tk_pl.pat != p || tk_pl.var != v)
+        return;
+    fm1_irq_off();
+    tk_var_enter(p, v);
+    fm1_irq_on();
+}
+static void tk_knob_var(uint32_t k, int32_t s)
+{
+    uint32_t p, v, t = trk_view() + k, row = tku.vrow % TK_NVROW;
+    tk_var_t *x;
+    tk_vtarget(&p, &v);
+    x = &tk_var[p][v];
+    if (row == TV_TEMPO) {                          /* SONG, then 40 .. 240 (from the song's tempo) */
+        int32_t b = x->bpm ? (int32_t)x->bpm + accel(EN_K1 + k, s, 200) : s > 0 ? song.g[G_BPM] : 0;
+        if (k)
+            return;
+        x->bpm = (uint8_t)(b < 40 ? 0 : b > 240 ? 240 : b);
+    } else if (t >= NTRK) {
+        return;
+    } else if (row == TV_MUTE) {
+        if (s > 0)
+            x->mute = (uint8_t)(x->mute | 1u << t);
+        else
+            x->mute = (uint8_t)(x->mute & ~(1u << t));
+    } else if (row == TV_CHANCE) {
+        x->chance[t] = (uint8_t)clamp((int32_t)x->chance[t] + accel(EN_K1 + k, s, 100), 0, 100);
+    } else {                                        /* KEEP, then the parameter's range */
+        const param_desc_t *d = &TP[VO_PARAM[row - TV_VO]];
+        uint8_t *c = &x->vo[t][row - TV_VO];
+        int32_t nv;
+        if (!*c)
+            nv = s > 0 ? trk[t].p[VO_PARAM[row - TV_VO]] : d->min - 1;   /* (from KEEP: the track's own value) */
+        else
+            nv = (int32_t)*c - 1 + accel(EN_K1 + k, s, d->fmt == F_ENUM ? 0 : d->max - d->min);
+        *c = (uint8_t)(nv < d->min ? 0 : (nv > d->max ? d->max : nv) + 1);
+    }
+    tk_var_live(p, v);
 }
 
 /* an instrument's names: its source (an engine's, USER, "--") and its preset's (16 bytes each) */
@@ -723,6 +876,8 @@ static void tk_draw(void)
         tk_draw_pattern();
     else if (g == GR_TKSONG)
         tk_draw_song();
+    else if (g == GR_TKVAR)
+        tk_draw_var();
     else if (g == GR_TKSET)
         tk_draw_settings();
     else
@@ -788,7 +943,9 @@ static void tk_foot(char *b, uint32_t n)
             str_cpy(b + str_len(b), h, n - str_len(b));
         }
     } else if (g == GR_TKSONG) {
-        str_cpy(b, "K2 PATTERN  K3 LEN  K4 INS/DEL", n);
+        str_cpy(b, "K2 PATTERN  K3 VARIATION  K4 INS/DEL", n);
+    } else if (g == GR_TKVAR) {
+        str_cpy(b, tku.vrow == TV_TEMPO ? "K1 TEMPO  EDIT SONG" : "K1-K4 TRACKS  EDIT KEEP", n);
     } else if (g == GR_TKSET) {
         str_cpy(b, "K1-K4 TRACK 1-4  EDIT INST", n);
     } else {
@@ -878,7 +1035,7 @@ static void tk_knob_pattern(uint32_t k, int32_t s)
     }
 }
 
-static void tk_order_insert(uint32_t at, uint32_t pat)   /* a position before position at */
+static void tk_order_insert(uint32_t at, uint32_t ent)   /* a position before position at (ent: an order entry) */
 {
     uint32_t i;
     if (tk.norder >= TK_ORDER)
@@ -886,7 +1043,7 @@ static void tk_order_insert(uint32_t at, uint32_t pat)   /* a position before po
     fm1_irq_off();
     for (i = tk.norder; i > at; i--)
         tk.order[i] = tk.order[i - 1u];
-    tk.order[at] = (uint8_t)(pat % TK_PATS);
+    tk.order[at] = TK_OENT(TK_OPAT(ent), TK_OVAR(ent));
     tk.norder++;
     if (tk_pl.pos >= at && song.playing && tk_pl.mode == TK_SONG && tk_pl.pos + 1u < tk.norder)
         tk_pl.pos++;                                /* (the position playing stays the one playing) */
@@ -920,10 +1077,22 @@ static void tk_knob_song(uint32_t k, int32_t s)
             tk_order_insert(q, q ? tk.order[q - 1u] : 0u);
             return;
         }
-        tk.order[q] = (uint8_t)clamp((int32_t)tk.order[q] + s, 0, TK_PATS - 1);
-    } else if (k == 2u && q < tk.norder) {          /* that pattern's length */
-        uint32_t p = tk.order[q];
-        tk_edit_len(p, (uint32_t)clamp((int32_t)tk.len[p] + accel(EN_K3, s, TK_ROWS), 1, TK_ROWS));
+        {
+            uint32_t p = (uint32_t)clamp((int32_t)TK_OPAT(tk.order[q]) + s, 0, TK_PATS - 1), v = TK_OVAR(tk.order[q]);
+            tk.order[q] = TK_OENT(p, v < tk_nvar[p] ? v : 0u);   /* (its variation if the pattern has it, else A) */
+        }
+    } else if (k == 2u && q < tk.norder) {          /* its variation (past the pattern's last: a new one, A's copy) */
+        uint32_t p = TK_OPAT(tk.order[q]), v = TK_OVAR(tk.order[q]);
+        int32_t nv = clamp((int32_t)v + (s > 0 ? 1 : -1), 0, TK_VARS - 1);
+        if ((uint32_t)nv >= tk_nvar[p]) {
+            nv = tk_nvar[p];
+            if ((uint32_t)nv >= TK_VARS)
+                return;
+            tk_var[p][nv] = tk_var[p][0];
+            tk_nvar[p] = (uint8_t)(nv + 1);
+            ui_message("NEW VARIATION");
+        }
+        tk.order[q] = TK_OENT(p, (uint32_t)nv);
     } else if (k == 3u && q < tk.norder) {          /* right: a copy after it; left: it goes */
         if (s > 0) {
             tk_order_insert(q + 1u, tk.order[q]);
@@ -1034,6 +1203,8 @@ static void tk_knob(uint32_t k, int32_t s)
         tk_knob_pattern(k, s);
     else if (g == GR_TKSONG)
         tk_knob_song(k, s);
+    else if (g == GR_TKVAR)
+        tk_knob_var(k, s);
     else if (g == GR_TKSET)
         tk_knob_set(k, s);
     else if (g == GR_TKINST)
@@ -1064,6 +1235,8 @@ static int tk_presets(int32_t s)
         tk_cell_set(TKU_CMD, tk_note(&c), tk_inst(&c), cmd, v);
     } else if (g == GR_TKSONG) {
         tk_knob_song(0, s);
+    } else if (g == GR_TKVAR) {
+        tku.vrow = (uint8_t)clamp((int32_t)tku.vrow + s, 0, TK_NVROW - 1);
     } else if (g == GR_TKSET) {
         tku.srow = (uint8_t)clamp((int32_t)tku.srow + s, 0, TK_NSET - 1);
     } else {
@@ -1089,6 +1262,20 @@ static int tk_edit_tap(void)
             tk_order_delete(tku.pos);
             ui_message("POSITION DELETED");
         }
+    } else if (g == GR_TKVAR) {
+        uint32_t p, v, row = tku.vrow % TK_NVROW;
+        tk_var_t *x;
+        tk_vtarget(&p, &v);
+        x = &tk_var[p][v];
+        if (row == TV_TEMPO)
+            x->bpm = 0;
+        else if (row == TV_MUTE)
+            x->mute = (uint8_t)(x->mute & ~(1u << song.sel));
+        else if (row == TV_CHANCE)
+            x->chance[song.sel] = 100;
+        else
+            x->vo[song.sel][row - TV_VO] = 0;
+        tk_var_live(p, v);
     } else if (g == GR_TKSET) {
         uint32_t id = TK_SET[tku.srow % TK_NSET].id;
         if (id == TKS_CUT || id == TKS_RES)

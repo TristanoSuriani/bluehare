@@ -28,7 +28,11 @@
  * Version 3 (Fel-Tracker, 8 tracks; a 4-track build writes 2): the same, with u8 the track count after the name (the
  * tracks' records, cut and res that many) and a cell's place (row * tracks + track) as an i16. Both load in every
  * build; a song of more tracks than the build has is refused (SONG HAS 8 TRACKS), one of fewer fills its first tracks
- * (the rest as at power-on). */
+ * (the rest as at power-on).
+ * Version 4 (Fel-Tracker, the variations; every build writes it): version 3, an order entry's bits 5..6 its variation
+ * (tracker.c TK_OVAR), and before the hash the variations: u8 n, n x (u8 pattern | variation << 5, u8 bpm, u8 mute,
+ * tracks x u8 chance, tracks x VO_N x u8 the sends and SLICER), every one but A in a pattern's count (tk_nvar) and an A
+ * that is not as the tracks have it. Versions 2 and 3 load with every entry on A. */
 #define PROJ_NAME_LEN 12u                      /* the name: upper-case ASCII 32..126, 0-padded; "" = none */
 #define PROJ_NO_SLOT 0xFFu
 #if NTRK == 8
@@ -37,8 +41,8 @@
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
 #endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER (NTRK == 8 ? 3u : 2u)        /* (Fel-Tracker) 3: the track count after the name, a cell's place 2 bytes;
-                                                * a 4-track build writes 2 as before (older firmware reads it) */
+#define PROJ_VER 4u                            /* (Fel-Tracker) 3: the track count after the name, a cell's place 2 bytes;
+                                                * 4: the variations (above) */
 #define PROJ_HDR 16u
 #if !FELUCCA_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
 #define ST_PAYLOAD_MAX 3840u
@@ -200,6 +204,20 @@ static void proj_write(pw_t *w, const char *name)
                     pw_u8(w, tk_chord(tk_at(p, r, k)));
                 }
     }
+    for (p = n = 0; p < TK_PATS; p++)                  /* the variations (version 4) */
+        for (r = 0; r < TK_VARS; r++)
+            n += (r && r < tk_nvar[p]) || !tk_var_is_default(&tk_var[p][r]);
+    pw_u8(w, n);
+    for (p = 0; p < TK_PATS; p++)
+        for (r = 0; r < TK_VARS; r++)
+            if ((r && r < tk_nvar[p]) || !tk_var_is_default(&tk_var[p][r])) {
+                const tk_var_t *x = &tk_var[p][r];
+                pw_u8(w, TK_OENT(p, r));
+                pw_u8(w, x->bpm);
+                pw_u8(w, x->mute);
+                pw_bytes(w, x->chance, NTRK);
+                pw_bytes(w, &x->vo[0][0], NTRK * VO_N);
+            }
     {
         uint32_t h = w->h;
         uint8_t b[4] = {(uint8_t)h, (uint8_t)(h >> 8), (uint8_t)(h >> 16), (uint8_t)(h >> 24)};
@@ -275,7 +293,7 @@ static int proj_read(pr_t *r, int apply)
     uint32_t i, k, p, n, np, ng, at, prev, ver, ntr = 4u;
     uint8_t nm[PROJ_NAME_LEN], b[3];
     ver = pr_u8(r);
-    if (ver != 2u && ver != 3u)
+    if (ver < 2u || ver > 4u)
         return 1;
     np = pr_u8(r);
     ng = pr_u8(r);
@@ -335,7 +353,7 @@ static int proj_read(pr_t *r, int apply)
         tk.norder = (uint8_t)n;
     for (i = 0; i < n; i++) {
         p = pr_u8(r);
-        if (p >= TK_PATS)
+        if ((ver >= 4u ? TK_OPAT(p) : p) >= TK_PATS || p > 127u)   /* (version 4: the variation in bits 5..6) */
             return 1;
         if (apply)
             tk.order[i] = (uint8_t)p;
@@ -385,6 +403,34 @@ static int proj_read(pr_t *r, int apply)
             prev = at;
             if (apply)
                 tk_at(p, at / ntr, at % ntr)->b[3] = (uint8_t)ch;
+        }
+    }
+    if (ver >= 4u) {                                /* the variations */
+        n = pr_u8(r);
+        if (n > TK_PATS * TK_VARS)
+            return 1;
+        for (i = 0; i < n; i++) {
+            uint32_t e = pr_u8(r), v = TK_OVAR(e);
+            uint8_t ch[8], vo[8][VO_N], bpm, mute;
+            p = TK_OPAT(e);
+            if (p >= TK_PATS || e > 127u)
+                return 1;
+            bpm = (uint8_t)pr_u8(r);
+            mute = (uint8_t)pr_u8(r);
+            pr_bytes(r, ch, ntr);
+            pr_bytes(r, &vo[0][0], ntr * VO_N);
+            if (apply) {
+                tk_var_t *x = &tk_var[p][v];
+                tk_var_default(x);
+                x->bpm = bpm;
+                x->mute = (uint8_t)(mute & ((1u << NTRK) - 1u));
+                for (k = 0; k < ntr; k++) {
+                    x->chance[k] = ch[k];
+                    memcpy(x->vo[k], vo[k], VO_N);
+                }
+                if (v >= tk_nvar[p])
+                    tk_nvar[p] = (uint8_t)(v + 1u);
+            }
         }
     }
     {
@@ -646,7 +692,8 @@ static int project_restore(int (*get)(uint32_t), uint32_t count)
         tk_defaults();
     fm1_irq_on();
     undo.trk = 0;                                 /* (ui.c) the undo copy belongs to the old music */
-    tk_pl.loop_pat = tk.order[0];
+    tk_pl.loop_pat = (uint8_t)TK_OPAT(tk.order[0]);
+    tk_pl.loop_var = 0;
     sync_reload = 1;
     ui.force = 1;
     return bad;

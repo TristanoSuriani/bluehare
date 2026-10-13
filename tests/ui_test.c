@@ -1849,6 +1849,8 @@ static int test_presets_knob(void)
                 sel_ok &= tku.pos == 1u && same_snd && ui.page == i;
             } else if (g == GR_TKSET) {
                 sel_ok &= tku.srow == 1u && same_snd && ui.page == i;
+            } else if (g == GR_TKVAR) {
+                sel_ok &= tku.vrow == 1u && same_snd && ui.page == i;
             } else if (g == GR_TKINST) {
                 sel_ok &= tku.slot == 1u && same_snd && ui.page == i;
             } else if (g == GR_TOOLS) {
@@ -1863,7 +1865,7 @@ static int test_presets_knob(void)
         }
     }
     bad += check("PRESETS on PATTERN: the FX command of the cursor's cell (the last used); the sound stays", cur_ok && n_cur == 1u);
-    bad += check("#94 PRESETS on USER, PROJECT, SONG, SETTINGS, INSTR: the selection; nothing loaded", sel_ok);
+    bad += check("#94 PRESETS on USER, PROJECT, SONG, VARIATION, SETTINGS, INSTR: the selection; nothing loaded", sel_ok);
     bad += check("#94 PRESETS on TOOLS does nothing", tools_ok);
     bad += check("#94 PRESETS elsewhere (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, GLOBAL, ...): the next sound",
                  snd_ok && n_snd >= 15u);
@@ -1931,7 +1933,7 @@ static int test_page_cycles(void)
     ui.fam_last[FAM_SAVE] = 200u;
     ui.fam_last[FAM_ENV] = 250u;
     open_family(FAM_GLO); ok = str_eq(cur_page()->title, "SONG") && cur_page()->fam == FAM_SEQ;
-    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TKSET;   /* (the SONG is SEQ's: SEQ goes on round its pages) */
+    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TKVAR;   /* (the SONG is SEQ's: SEQ goes on round its pages) */
     go_home();
     open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TKPAT;   /* (1.5: SEQ from elsewhere: PATTERN, always) */
     open_family(FAM_ENV); ok &= str_eq(cur_page()->title, "ENV");
@@ -4591,7 +4593,7 @@ static int test_layer_lock(void)
     btn_down(B_SEQ); frames(500);
     ok &= ui.layer == LAYER_SEQ && !ui.lock;
     btn_up(B_SEQ); frame();
-    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "SETTINGS");
+    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "VARIATION");
     press(B_GLO); frames(400);
     ok &= str_eq(cur_page()->title, "SONG") && !ui.lock;
     press(B_GLO);
@@ -6215,8 +6217,10 @@ static int test_tracker_pages(void)
     ok &= tk.norder == 2u && tk.order[1] == 0u;
     turn(EN_K2, 5);
     ok &= tk.order[1] == 5u;
-    turn(EN_K3, -16);                                   /* that pattern's length */
-    ok &= tk.len[5] == 48u;
+    turn(EN_K3, 1);                                     /* its variation: B, new (a copy of A) */
+    ok &= tk.order[1] == TK_OENT(5, 1) && tk_nvar[5] == 2u;
+    turn(EN_K3, -1);                                    /* .. back to A */
+    ok &= tk.order[1] == TK_OENT(5, 0) && tk_nvar[5] == 2u;
     turn(EN_K4, 1);                                     /* a copy after it */
     ok &= tk.norder == 3u && tk.order[2] == 5u && tku.pos == 2u;
     turn(EN_K4, -1);                                    /* deleted */
@@ -6225,8 +6229,55 @@ static int test_tracker_pages(void)
     ok &= tk.norder == 1u && tk.order[0] == 0u;
     press(B_EDIT);
     ok &= tk.norder == 1u;                              /* (the last one stays) */
-    bad += check("SONG: KNOB 1 the position (+ ADD), 2 its pattern (adds one), 3 the length, 4 copy / delete; EDIT deletes",
+    bad += check("SONG: KNOB 1 the position (+ ADD), 2 its pattern (adds one), 3 its variation (a new one), 4 copy / delete; EDIT deletes",
                  ok);
+
+    /* VARIATION (Fel-Tracker): the SONG position's variation, edited row by row */
+    ui_power_on();
+    go_page(GR_TKSONG); frame();
+    turn(EN_K3, 1);                                     /* position 00: 00B, a new one */
+    go_page(GR_TKVAR); frame();
+    ok = tk.order[0] == TK_OENT(0, 1) && tk_nvar[0] == 2u && tku.vrow == 0u;
+    turn(EN_K1, 1);                                     /* TEMPO: from SONG to the song's BPM, then up */
+    ok &= tk_var[0][1].bpm == (uint8_t)song.g[G_BPM];
+    turn(EN_K1, 3);
+    ok &= tk_var[0][1].bpm == (uint8_t)(song.g[G_BPM] + 3);
+    turn(EN_K2, 5);                                     /* (TEMPO: KNOB 1 alone) */
+    ok &= tk_var[0][1].bpm == (uint8_t)(song.g[G_BPM] + 3);
+    press(B_EDIT);
+    ok &= !tk_var[0][1].bpm;
+    turn(EN_PRESET, 1);                                 /* MUTE */
+    turn(EN_K2, 1);
+    ok &= tku.vrow == 1u && tk_var[0][1].mute == 2u;
+    turn(EN_PRESET, 1);                                 /* CHANCE */
+    turn(EN_K1, -30);
+    ok &= tk_var[0][1].chance[0] < 100u;
+    turn(EN_PRESET, 4);                                 /* REVERB: from KEEP, the track's own value; below it KEEP */
+    trk[0].p[P_REV] = 40;
+    turn(EN_K1, 1);
+    ok &= tku.vrow == 6u && tk_var[0][1].vo[0][VO_REV] == 41u;
+    turn(EN_K1, -127);
+    ok &= tk_var[0][1].vo[0][VO_REV] == 0u;
+    turn(EN_K1, 1);
+    press(B_EDIT);                                      /* EDIT: the selected track's back to KEEP */
+    ok &= tk_var[0][1].vo[0][VO_REV] == 0u && trk[0].p[P_REV] == 40;
+    bad += check("VARIATION: 00B from SONG's KNOB 3; TEMPO SONG / BPM on KNOB 1, MUTE, CHANCE, REVERB KEEP / a value; "
+                 "EDIT: SONG / KEEP; the tracks' own values untouched", ok);
+    {   /* PLAY on VARIATION: its pattern under it (LOOP); an edit while it plays reaches the sound now */
+        tk_var[0][1].mute = 0;
+        press(B_PLAY);                                  /* (the audio starts it: here the request) */
+        ok = transport_req == 1u && tk_pl.mode == TK_LOOP && tk_pl.loop_pat == 0u && tk_pl.loop_var == 1u;
+        transport_req = 0;
+        song.playing = 1;                               /* (as the audio ISR has it then) */
+        tk_var_enter(0, 1);
+        turn(EN_PRESET, -10);                           /* TEMPO */
+        turn(EN_K1, 1);
+        ok &= tku.vrow == 0u && tk_var[0][1].bpm && tempo_ovr == tk_var[0][1].bpm && song_bpm() == tk_var[0][1].bpm;
+        song.playing = 0;
+        tk_var_leave();
+        ok &= !tempo_ovr;
+        bad += check("  PLAY there: LOOP of 00 under B; its TEMPO turned while it plays: at once; STOP: the song's", ok);
+    }
 
     /* SETTINGS */
     ui_power_on();

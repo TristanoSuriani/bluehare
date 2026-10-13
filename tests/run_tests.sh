@@ -203,6 +203,10 @@ if [ -f build/gen/felucca_tables.h ]; then
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/robust_test" tests/robust_test.c -lm
     run "robustness: engine ids, retained old projects, preset patterns, malformed requests" \
         "$OUT/robust_test"
+    for n in 4 8; do
+        $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/variation_test$n" tests/variation_test.c -lm
+        run "variations ($n tracks): tempo, mutes, chance, sends and SLICER over the tracks', STOP, the store, bounds" "$OUT/variation_test$n"
+    done
     $CC -w -DFELUCCA_DIST=idm -DFELUCCA_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test4" tests/engines_test.c -lm
     run "the IDM distribution built with 4 tracks: the same checks, DUBSIREN on track 4; a version-2 song for the next" "$OUT/engines_test4"
     $CC -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm

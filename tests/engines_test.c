@@ -268,7 +268,7 @@ int main(void)
         bad += check("every engine left renders every preset (not silent)", loud == n && n > 40u);
     }
     /* the song format (Fel-Tracker step 3b): an 8-track build writes version 3 (a cell's place 2 bytes, the track count
-     * after the name), a 4-track one version 2; a song of more tracks than the build is refused, one of fewer fills its
+     * after the name; every build version 4 now, the variations); a song of more tracks than the build is refused, one of fewer fills its
      * first tracks. build/host/song_v2.bin carries a 4-track song from this test's 4-track run to its 8-track one */
     {
         static const char V2[] = "build/host/song_v2.bin";
@@ -280,7 +280,7 @@ int main(void)
         *tk_at(0, 63, NTRK - 1u) = tk_pack(60, 1, 0, 0);       /* the last place: past 255 at 8 tracks */
         *tk_at(TK_PATS - 3u, 40, 0) = tk_pack_ch(48, 2, 0, 0, 0x37);   /* pattern 22 (the pool's at 8), a chord */
         project_save(0);
-        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == (NTRK == 8 ? 3u : 2u);
+        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 4u;   /* (every build: the variations' version) */
         project_new();
         project_load(0);
         ok &= tk_note(tk_at(0, 63, NTRK - 1u)) == 60u && tk_chord(tk_at(TK_PATS - 3u, 40, 0)) == 0x37u &&

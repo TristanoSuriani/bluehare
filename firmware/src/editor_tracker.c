@@ -155,12 +155,15 @@ static int ed_tracker_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
             if (!n || n > TK_ORDER || na != 2u + n)
                 return 0;
             for (i = 0; i < n; i++)
-                if (a[2 + i] >= TK_PATS)
+                if (TK_OPAT(a[2 + i]) >= TK_PATS)       /* (an entry: the pattern, its variation in bits 5..6) */
                     rc = 1;
             if (!rc) {
                 fm1_irq_off();
                 memcpy(tk.order, a + 2, n);
                 tk.norder = (uint8_t)n;
+                for (i = 0; i < n; i++)                 /* (a variation the pattern lacks: it has it now) */
+                    if (TK_OVAR(a[2 + i]) >= tk_nvar[TK_OPAT(a[2 + i])])
+                        tk_nvar[TK_OPAT(a[2 + i])] = (uint8_t)(TK_OVAR(a[2 + i]) + 1u);
                 if (tk_pl.pos >= n)
                     tk_pl.pos = 0;
                 fm1_irq_on();
