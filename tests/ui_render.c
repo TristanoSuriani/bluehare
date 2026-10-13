@@ -223,8 +223,6 @@ static void hk_ink(uint16_t ink, uint16_t bg);
 #define GFX_HOOK_INK(ink, bg) hk_ink(ink, bg)
 #define GFX_HOOK_PIXELS(n) (px_visited += (n))
 #define UI_FILL_HOOK(x, y, w, h) hk_fill(x, y, w, h)
-static void fm6_hook(uint32_t kind, uint32_t a, uint32_t b);
-#define FM6_CHART_HOOK(kind, a, b) fm6_hook(kind, a, b)
 /* MENU > LARGE: the tall cards' values by the face they got (ui_draw.c LARGE_HOOK), the characters L lacked */
 static uint64_t lg_n[4];
 static char lg_miss[96], lg_wide[16][12], lg_small[16][12];
@@ -311,104 +309,6 @@ static void hk_icon(int32_t x, int32_t y, uint32_t size, uint32_t id)
     al_item(x + x0, y + y0, x + x1, y + y1, 1, "icon");
 }
 
-/* the FM6 chart lint: each part of a chart (FMH_*) drawn alone onto a canvas of SENT, its pixels kept in fmp_mask
- * (bit: the part), then the canvas as drawn restored with the part on it; at FMH_END the parts are checked */
-#define FMP_MAX 48u
-#define FMP_SENT 0x0861u
-static uint64_t fmp_mask[CV_MAX];
-static uint16_t fmp_save[CV_MAX];
-static uint8_t fmp_kind[FMP_MAX], fmp_a[FMP_MAX], fmp_b[FMP_MAX];
-static uint32_t fmp_n, fmp_charts;
-static void finding(const char *what, const rbox_t *b, const rbox_t *o);
-static void fmp_find(uint32_t alg, const char *what, uint32_t i, int32_t x, int32_t y, uint32_t j)
-{
-    static const char *const KIND[] = {"box", "route", "carrier", "bus", "loop", "label"};
-    rbox_t b = {(int16_t)x, (int16_t)y, (int16_t)x, (int16_t)y, 0, {0}}, o = b;
-    snprintf(b.s, sizeof b.s, "ALG %u %s %u>%u", alg + 1u, KIND[fmp_kind[i]], fmp_a[i] + 1u, fmp_b[i] + 1u);
-    snprintf(o.s, sizeof o.s, "%s %u>%u", j < FMP_MAX ? KIND[fmp_kind[j]] : "panel", j < FMP_MAX ? fmp_a[j] + 1u : 0u,
-             j < FMP_MAX ? fmp_b[j] + 1u : 0u);
-    finding(what, &b, &o);
-}
-static void fmp_check(uint32_t alg)
-{
-    int32_t bx0[FMP_MAX], by0[FMP_MAX], bx1[FMP_MAX], by1[FMP_MAX], x, y, dx, dy;
-    uint32_t net[FMP_MAX], par[12], i, j, w = cv_w, h = cv_h;
-    for (i = 0; i < 12u; i++) par[i] = i;               /* the routes' nets: an operator as source (0..5), as destination (6..11) */
-    #define FMP_ROOT(v) ({ uint32_t r_ = (v); while (par[r_] != r_) r_ = par[r_]; r_; })
-    for (i = 0; i < fmp_n; i++)
-        if (fmp_kind[i] == FMH_ROUTE) par[FMP_ROOT(fmp_a[i])] = FMP_ROOT(6u + fmp_b[i]);
-    for (i = 0; i < fmp_n; i++) {
-        net[i] = fmp_kind[i] == FMH_ROUTE ? FMP_ROOT(6u + fmp_b[i]) : fmp_kind[i] == FMH_CAR || fmp_kind[i] == FMH_BUS ? 20u
-                 : 21u + fmp_kind[i];
-        bx0[i] = by0[i] = 9999; bx1[i] = by1[i] = -1;
-    }
-    #undef FMP_ROOT
-    for (y = 0; y < (int32_t)h; y++)                     /* each part's extent */
-        for (x = 0; x < (int32_t)w; x++)
-            for (i = 0; i < fmp_n; i++)
-                if (fmp_mask[y * w + x] >> i & 1u) {
-                    if (x < bx0[i]) bx0[i] = x;
-                    if (y < by0[i]) by0[i] = y;
-                    if (x > bx1[i]) bx1[i] = x;
-                    if (y > by1[i]) by1[i] = y;
-                }
-    for (i = 0; i < fmp_n; i++)                          /* boxes: apart, by a pixel at least */
-        for (j = 0; j < i; j++)
-            if (fmp_kind[i] == FMH_BOX && fmp_kind[j] == FMH_BOX && bx0[i] <= bx1[j] + 1 && bx0[j] <= bx1[i] + 1 &&
-                by0[i] <= by1[j] + 1 && by0[j] <= by1[i] + 1)
-                fmp_find(alg, "FM6 boxes overlap", i, bx0[i], by0[i], j);
-    for (y = 0; y < (int32_t)h; y++)
-        for (x = 0; x < (int32_t)w; x++) {
-            uint64_t mk = fmp_mask[y * w + x];
-            if (!mk) continue;
-            for (i = 0; i < fmp_n; i++) {
-                if (!(mk >> i & 1u) || fmp_kind[i] == FMH_BOX) continue;
-                if (x < 6 || x > 233 || y < 2 || y > 119)
-                    fmp_find(alg, "FM6 part off the panel", i, x, y, FMP_MAX);
-                for (j = 0; j < fmp_n; j++) {
-                    if (fmp_kind[j] != FMH_BOX) continue;
-                    if (x >= bx0[j] && x <= bx1[j] && y >= by0[j] && y <= by1[j])
-                        fmp_find(alg, "FM6 part through a box", i, x, y, j);
-                    else if (x >= bx0[j] - 1 && x <= bx1[j] + 1 && y >= by0[j] - 1 && y <= by1[j] + 1 &&
-                             !((fmp_kind[i] == FMH_ROUTE && (fmp_a[i] == fmp_a[j] || fmp_b[i] == fmp_a[j])) ||
-                               ((fmp_kind[i] == FMH_CAR || fmp_kind[i] == FMH_FB) && fmp_a[i] == fmp_a[j])))
-                        fmp_find(alg, "FM6 part touches a box", i, x, y, j);
-                }
-                for (dy = -1; dy <= 1; dy++)              /* another net on this pixel or next to it */
-                    for (dx = -1; dx <= 1; dx++) {
-                        int32_t nx = x + dx, ny = y + dy;
-                        uint64_t mn;
-                        if (nx < 0 || ny < 0 || nx >= (int32_t)w || ny >= (int32_t)h) continue;
-                        mn = fmp_mask[ny * w + nx];
-                        for (j = 0; j < fmp_n; j++)
-                            if (mn >> j & 1u && fmp_kind[j] != FMH_BOX && net[j] != net[i])
-                                fmp_find(alg, "FM6 nets cross or touch", i, x, y, j);
-                    }
-            }
-        }
-    fmp_charts++;
-}
-static void fm6_hook(uint32_t kind, uint32_t a, uint32_t b)
-{
-    uint32_t i, n = cv_w * cv_h;
-    if (fmp_n) {                                         /* the part just drawn: its pixels */
-        for (i = 0; i < n; i++)
-            if (cv_px[i] != FMP_SENT) fmp_mask[i] |= (uint64_t)1u << (fmp_n - 1u);
-            else cv_px[i] = fmp_save[i];
-    } else {
-        memset(fmp_mask, 0, n * sizeof fmp_mask[0]);
-    }
-    if (kind == FMH_END) {
-        fmp_check(a);
-        fmp_n = 0;
-        return;
-    }
-    if (fmp_n >= FMP_MAX) { fprintf(stderr, "ui_render: an FM6 chart of more than %u parts\n", FMP_MAX); exit(1); }
-    memcpy(fmp_save, cv_px, n * sizeof cv_px[0]);
-    for (i = 0; i < n; i++) cv_px[i] = FMP_SENT;
-    fmp_kind[fmp_n] = (uint8_t)kind; fmp_a[fmp_n] = (uint8_t)a; fmp_b[fmp_n] = (uint8_t)b;
-    fmp_n++;
-}
 
 static void finding(const char *what, const rbox_t *b, const rbox_t *o)
 {
@@ -649,8 +549,7 @@ static void eng(uint32_t e) { set_engine_of(TSEL, e); }
 enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESETS, S_PRESETS_NOFAV, S_USER, S_PROJECT,
        S_TOOLS, S_MIXER, S_MIXER_HOME, S_MIXER_PAN, S_ENV, S_ENVDEST, S_LFO, S_MOD, S_FX, S_SLICER, S_DLY, S_SCL,
        S_CHORD, S_CHORD_WIDE, S_CHORD_OFF, S_CHORD_KIT, S_ARP, S_VOICE, S_CLOCK, S_MENU_MIDI, S_EDIT_ANALOG,
-       S_EDIT_FM6, S_EDIT_WHEEL, S_EDIT_WAVE_2, S_EDIT_BYTE_2, S_EDIT_PHYS, S_FM6_ALG1, S_FM6_ALG5, S_FM6_ALG22, S_FM6_ALG32, S_FM6_OP,
-       S_FM6_OP_FIXED, S_FM6_OP2, S_FM6_OP_ENV, S_FM6_OP_ENV_REL, S_CONFIRM_SEQ, S_CONFIRM_PROJ, S_CONFIRM_USER,
+       S_EDIT_FM6, S_EDIT_WHEEL, S_EDIT_WAVE_2, S_EDIT_BYTE_2, S_EDIT_PHYS, S_CONFIRM_SEQ, S_CONFIRM_PROJ, S_CONFIRM_USER,
        S_CONFIRM_ERASE, S_MENU, S_MENU_SPEAKER, S_ABOUT, S_ABOUT_REC, S_ABOUT_CREDITS, S_ABOUT_END, S_UBOOT,
        S_CALIBRATION, S_SPLASH, S_BATT0, S_BATT1, S_BATT2, S_BATT3, S_BATT_USB, S_FX_PEEK, S_FX_HELD, S_FX_WAIT,
        S_FX_HARM, S_FX_ASSIGN, S_MENU_HOLD, S_MENU_LEDS, S_MENU_END, S_MENU_SYSTEM, S_MENU_SLIDE, S_REVERB, S_DLY2,
@@ -666,9 +565,8 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
        "mod", "fx", "slicer", "dly", "scl", "chord", "chord_wide", "chord_off", "chord_kit", "arp", "voice", "clock",
-       "menu_midi", "edit_analog", "edit_fm6", "edit_wheel", "edit_wave_2", "edit_byte_2", "edit_phys",
-       "fm6_alg_01", "fm6_alg_05", "fm6_alg_22", "fm6_alg_32", "fm6_op", "fm6_op_fixed", "fm6_op2", "fm6_op_env",
-       "fm6_op_env_rel", "confirm_seq", "confirm_project", "confirm_user", "confirm_erase", "menu", "menu_speaker",
+       "menu_midi", "edit_sid", "edit_vector", "edit_dubchord", "edit_wave_2", "edit_byte_2", "edit_modal",
+       "confirm_seq", "confirm_project", "confirm_user", "confirm_erase", "menu", "menu_speaker",
        "about", "about_rec", "about_credits", "about_end", "uboot", "calibration", "splash", "batt_0", "batt_1",
        "batt_2", "batt_3", "batt_usb", "perform_peek", "perform_held", "perform_wait", "perform_harm",
        "perform_assign", "menu_hold", "menu_leds", "menu_end", "menu_system", "menu_slide", "reverb_spring", "dly_2_tape",
@@ -693,7 +591,7 @@ static void tk_scene(int s)
     uint32_t r;
     song.playing = 0;
     tk_defaults();
-    tk.instr[3].src = ENGI_DRUM;
+    tk.instr[3].src = ENGI_KIT;
 #if NTRK == 8                                           /* (TRACKS 8: notes on 5 .. 8; track 6 selected below) */
     for (r = 0; r < TK_ROWS; r += 3u)
         *tk_at(0, r, 4u + r % 4u) = tk_pack(48 + r % 24u, 5 + r % 3u, r % 2u ? TKC_PAN : 0, r);
@@ -797,7 +695,7 @@ static void setup(int s)
         break;
     }
     case S_CHORD_OFF: go_title("CHORD"); break;
-    case S_CHORD_KIT: eng(ENGI_DRUM); TSEL->p[P_CHRD] = CH_DIA3; go_title("CHORD"); break;
+    case S_CHORD_KIT: eng(ENGI_KIT); TSEL->p[P_CHRD] = CH_DIA3; go_title("CHORD"); break;
     case S_ARP: go_title("ARP"); break;
     case S_VOICE: go_title("VOICE"); break;
     case S_CLOCK: go_title("CLOCK"); break;          /* (1.2: HOME > MIXER > CLOCK; up to 1.1.5 GLO > GLOBAL) */
@@ -813,8 +711,8 @@ static void setup(int s)
         info.t = fm1_ms - INFO_CPU_MS;
         break;
     case S_EDIT_ANALOG: go_title("EDIT 1"); break;
-    case S_EDIT_FM6: eng(ENGI_FM6); go_title("EDIT 1"); break;
-    case S_EDIT_WHEEL: eng(ENGI_WHEEL); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
+    case S_EDIT_FM6: eng(ENGI_VECTOR); go_title("EDIT 1"); break;
+    case S_EDIT_WHEEL: eng(ENGI_DUBCHORD); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_WAVE_2: eng(ENGI_WAVE); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;
     case S_EDIT_BYTE_2: eng(ENGI_BYTE); go_title("EDIT 2"); break;
     case S_EDIT_WAVE: eng(ENGI_WAVE); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
@@ -823,31 +721,7 @@ static void setup(int s)
     case S_EDIT_WEST_2: eng(ENGI_WEST); go_title("EDIT 2"); break;
     case S_EDIT_HOOVER: eng(ENGI_HOOVER); go_title("EDIT 1"); break;
     case S_EDIT_HOOVER_2: eng(ENGI_HOOVER); TSEL->p[P_E5] = -12; go_title("EDIT 2"); break;
-    case S_EDIT_PHYS: eng(ENGI_PHYS); go_title("EDIT 1"); break;
-    /* FM6's algorithm charts: 1 as it is; 5 with FB +3 just turned; 22 on EDIT 2, DTUN just turned (the carriers);
-     * 32 with operator 6 at output level 0, MLVL just turned (no routes: nothing in ACCENT but nothing either) */
-    case S_FM6_ALG1: eng(ENGI_FM6); TSEL->p[P_E0] = 1; go_title("EDIT 1"); break;
-    case S_FM6_ALG5: eng(ENGI_FM6); TSEL->p[P_E0] = 5; TSEL->p[P_E1] = 3; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
-    case S_FM6_ALG22: eng(ENGI_FM6); TSEL->p[P_E0] = 22; TSEL->p[P_E6] = 40; go_title("EDIT 2"); ui.hot_col = 2; ui.hot_t = 30; break;
-    case S_FM6_ALG32:
-        eng(ENGI_FM6); TSEL->p[P_E0] = 32; fm6_patch[song.sel][FP_OL] = 0; fm6_pgen[song.sel]++;   /* (op 6: the patch's first) */
-        go_title("EDIT 1"); ui.hot_col = 2; ui.hot_t = 30;
-        break;
-    /* FM6's operator pages (ui_fm6op.c): OPERATOR on TINE EP's OP 3, LEVEL just turned; OP 5 FIXED (277 HZ), COARSE just
-     * turned; OPERATOR 2 on OP 2 with DTUN -3 just turned; OP ENV: OP 1's DEC stage, its RATE just turned; OP 6's REL */
-    case S_FM6_OP: eng(ENGI_FM6); fop_op = 2; go_title("OPERATOR"); ui.hot_col = 3; ui.hot_t = 30; break;
-    case S_FM6_OP_FIXED:
-        eng(ENGI_FM6); fop_op = 4;
-        fm6_patch[song.sel][FP_OP + FP_MODE] = 1; fm6_patch[song.sel][FP_OP + FP_FC] = 2; fm6_patch[song.sel][FP_OP + FP_FF] = 44;
-        fm6_pgen[song.sel]++;
-        go_title("OPERATOR"); ui.hot_col = 1; ui.hot_t = 30;
-        break;
-    case S_FM6_OP2:
-        eng(ENGI_FM6); fop_op = 1; fm6_patch[song.sel][4u * FP_OP + FP_DET] = 4; fm6_pgen[song.sel]++;
-        go_title("OPERATOR 2"); ui.hot_col = 2; ui.hot_t = 30;
-        break;
-    case S_FM6_OP_ENV: eng(ENGI_FM6); fop_op = 0; fop_stg = 1; go_title("OP ENV"); ui.hot_col = 2; ui.hot_t = 30; break;
-    case S_FM6_OP_ENV_REL: eng(ENGI_FM6); fop_op = 5; fop_stg = 3; go_title("OP ENV"); break;
+    case S_EDIT_PHYS: eng(ENGI_MODAL); go_title("EDIT 1"); break;
     case S_CONFIRM_SEQ: ui.confirm = CF_CLEAR_SEQ; ui.confirm_trk = 2; break;
     case S_CONFIRM_PROJ: ui.confirm = CF_OVR_PROJ; ui.confirm_trk = 0; break;
     case S_CONFIRM_USER: song.playing = 0; up_store(6, "A VERY LONG SOUND NAME"); ui.confirm = CF_OVR_USER; ui.confirm_trk = 6; break;
@@ -930,9 +804,9 @@ static void setup(int s)
     case S_SCL_PEEK: go_title("ENV"); ui.layer = LAYER_SCL; break;
     case S_SCL_ACTIVE: go_home(); ui.layer = LAYER_SCL; TSEL->p[P_ROOT] = 3; TSEL->p[P_SCALE] = 2; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_PEEK: go_title("EDIT 1"); ui.layer = LAYER_EDIT; break;
-    case S_EDIT_ACTIVE: eng(ENGI_FM6); apply_preset_to(TSEL, 2); favorite_set(EID_FM6, 2, 1); go_home(); ui.layer = LAYER_EDIT;
+    case S_EDIT_ACTIVE: eng(ENGI_VECTOR); apply_preset_to(TSEL, 2); favorite_set(EID_VECTOR, 2, 1); go_home(); ui.layer = LAYER_EDIT;
         ui.hot_col = 0; ui.hot_t = 30; break;
-    case S_EDIT_USER: song.playing = 0; eng(ENGI_TRIO); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(EID_COUNT, 6, 1);
+    case S_EDIT_USER: song.playing = 0; eng(ENGI_WASP); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(EID_COUNT, 6, 1);
         go_home(); ui.layer = LAYER_EDIT; break;
     case S_LAYER_HINT: go_page(GR_TRK); ui.msg_t = 0; layer_tap(LAYER_GLO); break;
     /* #83: locked open by a double tap (the lock after the header's name): EDIT and FX */
@@ -997,7 +871,7 @@ static void draw(int s)
     }
     if (s == S_SPLASH) {                          /* the power-on splash (main.c, before the UI): its lines, the version
                                                    * shown FELUCCA_VERSION (run_tests.sh: src/felucca.c's) */
-        static const char WANT[] = "Fel-Tracker|" FELUCCA_VERSION "|Tristano Suriani|after Felucca";
+        static const char WANT[] = "Fel-Tracker|" FELUCCA_VERSION_DIST "|Tristano Suriani|after Felucca";   /* (with its distribution: "v0.10.0 IDM") */
         splash_seen[0] = 0;
         in_splash = 1;
         draw_splash();
@@ -1032,7 +906,7 @@ static void draw(int s)
             nfind++;
         } else {
             static uint8_t said;
-            if (!said++) printf("ui_render: the splash shows the version " FELUCCA_VERSION " (FELUCCA_VERSION) and its lines\n");
+            if (!said++) printf("ui_render: the splash shows the version " FELUCCA_VERSION_DIST " (FELUCCA_VERSION_DIST) and its lines\n");
         }
         return;
     }
@@ -1092,39 +966,6 @@ static void sweep_columns(void)
         cur_name = name;
         draw(-1);
         lint();
-    }
-    {   /* FM6's operator pages (ui_fm6op.c): every operator, stage and value of each byte KNOB 2..4 edit (COARSE in both
-         * modes), then the page with its chart / envelope */
-        static const char *const PG[3] = {"OPERATOR", "OPERATOR 2", "OP ENV"};
-        uint32_t g, k, o, st, m;
-        for (g = 0; g < 3u; g++) {
-            state(); pal(UI_GREY_INDEX); eng(ENGI_FM6); go_title(PG[g]);
-            cur_name = large_on ? "LARGE FM6 operator sweep" : "FM6 operator sweep";
-            for (o = 0; o < 6u; o++)
-                for (st = 0; st < (g == 2u ? 4u : 1u); st++)
-                    for (m = 0; m < 2u; m++)
-                        for (k = 1; k < 4u; k++) {
-                            uint32_t f, b, v, v0, mb;
-                            fop_op = (uint8_t)o; fop_stg = (uint8_t)st;
-                            f = fop_field(k);
-                            if (f == FO_STG) continue;
-                            b = fop_byte(f); mb = (5u - o) * FP_OP + FP_MODE;
-                            fm6_patch[song.sel][mb] = (uint8_t)m;
-                            v0 = fm6_patch[song.sel][b];
-                            for (v = 0; v <= fm6_max(b); v++) {
-                                fm6_patch[song.sel][b] = (uint8_t)v;
-                                nscr = npend = 0;
-                                ui.force = 1;
-                                draw_columns();
-                                lint();
-                                nsweep++;
-                            }
-                            fm6_patch[song.sel][b] = (uint8_t)v0;
-                            fm6_pgen[song.sel]++;
-                            draw(-1);
-                            lint();
-                        }
-        }
     }
     for (e = 0; e < 4u; e++) {                           /* the MOD page: every source and destination */
         int32_t v;
@@ -1587,43 +1428,6 @@ int main(int argc, char **argv)
         for (s = 0; s < lg_nsmall; s++) fprintf(rep, " '%s'", lg_small[s]);
         fprintf(rep, "\n");
     }
-    {   /* every FM6 chart (the lint above, fmp_check, runs on each), in GREY: gray */
-        uint32_t a, c0 = fmp_charts;
-        for (a = 1; a <= 32u; a++) {
-            char name[32];
-            snprintf(name, sizeof name, "FM6 ALG %u", a);
-            cur_name = name;
-            state(); pal(UI_GREY_INDEX); eng(ENGI_FM6); TSEL->p[P_E0] = (int16_t)a; go_title("EDIT 1");
-            draw(-1);
-            lint();
-            mono_check();
-        }
-        if (fmp_charts - c0 != 32u) { fprintf(stderr, "ui_render: %u FM6 charts drawn of 32\n", fmp_charts - c0); return 1; }
-    }
-    {   /* every FM6 chart again on OPERATOR, each operator picked in turn, its frequency at its widest ("x61.69", every
-         * operator FIXED: "9.77 KHZ") top right: the same chart lint (the text is part of the label's net), in GREY */
-        uint32_t a, o, w, k, c0 = fmp_charts;
-        for (w = 0; w < 2u; w++)
-            for (a = 1; a <= 32u; a++)
-                for (o = 0; o < 6u; o++) {
-                    char name[40];
-                    snprintf(name, sizeof name, "FM6 ALG %u OP %u %s", a, o + 1u, w ? "FIXED" : "RATIO");
-                    cur_name = name;
-                    state(); pal(UI_GREY_INDEX); eng(ENGI_FM6); TSEL->p[P_E0] = (int16_t)a;
-                    for (k = 0; k < 6u; k++) {
-                        fm6_patch[song.sel][k * FP_OP + FP_MODE] = (uint8_t)w;
-                        fm6_patch[song.sel][k * FP_OP + FP_FC] = w ? 3u : 31u;
-                        fm6_patch[song.sel][k * FP_OP + FP_FF] = 99u;
-                    }
-                    fm6_pgen[song.sel]++;
-                    fop_op = (uint8_t)o;
-                    go_title("OPERATOR");
-                    draw(-1);
-                    lint();
-                    mono_check();
-                }
-        if (fmp_charts - c0 != 384u) { fprintf(stderr, "ui_render: %u FM6 operator charts drawn of 384\n", fmp_charts - c0); return 1; }
-    }
     sweep_columns();
     roll_frames(argc > 2 ? argv[2] : 0);
     al_off = 1;                                     /* (the alignment check is not timed) */
@@ -1739,8 +1543,8 @@ int main(int argc, char **argv)
         fprintf(rep, "\n");
     }
     fprintf(rep, "\n%u lint findings, %u inks on their own colour, %u ellipsised free texts, %u GREY / MONO pixels off gray / "
-            "neutral; %u column values swept; %u FM6 charts linted\n", nfind, nink, nfree, mono_bad,
-            nsweep, fmp_charts);
+            "neutral; %u column values swept\n", nfind, nink, nfree, mono_bad,
+            nsweep);
     fclose(rep);
     printf("ui_render: %u screens x %u palettes + the page/value sweep; %u lint findings, %u ellipsised free texts (%u distinct), "
            "%u inks on their own colour, %u GREY / MONO pixels off gray / neutral; report %s\n",

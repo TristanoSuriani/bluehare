@@ -14,7 +14,7 @@
 #define ED_HDR1 0x46
 #define ED_HDR2 0x4C
 /* 1.5: 6 STEP_GET, 7 STEP_SET, 26 STEP_CHANGED, 30 TRACK_STEP and 64 MOTION (the step sequencer and its automation)
- * are gone: no reply */
+ * are gone: no reply. Fel-Tracker: 68..71 (FM6's patches) and 74..77 (its voice bank) with FM6: no reply */
 enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_PRESET = 8, ED_PROJECT, ED_NAMES,
        ED_SMP_BEGIN, ED_SMP_WRITE, ED_SMP_END, ED_SMP_ERASE, ED_SMP_INFO,
        ED_UP_LIST, ED_UP_GET, ED_UP_PUT, ED_UP_STORE, ED_UP_LOAD, ED_UP_ERASE,   /* v2: user presets */
@@ -292,7 +292,6 @@ static int ed_flash_stop(void)
 
 #include "editor_preferences.c"
 #include "editor_backup.c"
-#include "editor_fm6.c"
 #include "editor_menu.c"
 #include "editor_tracker.c"
 
@@ -334,13 +333,11 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     const param_desc_t *d;
     if (!ed_args_ok(cmd, a, na))
         return;
-    if ((cmd >= ED_SMP_BEGIN && cmd <= ED_SMP_INFO) || (cmd >= ED_BACKUP_LIST && cmd <= ED_BACKUP_PUT) ||
-        (cmd >= ED_FM6B_BEGIN && cmd <= ED_FM6B_END))
+    if ((cmd >= ED_SMP_BEGIN && cmd <= ED_SMP_INFO) || (cmd >= ED_BACKUP_LIST && cmd <= ED_BACKUP_PUT))
         autosave_hold();                                /* (a transfer: no autosave meanwhile, project.c) */
     ed_begin(cmd);
     if (ed_ui_handle(cmd, a, na)) { ed_send(); return; }
     if (ed_backup_handle(cmd, a, na)) { ed_send(); return; }
-    if (ed_fm6_handle(cmd, a, na)) { ed_send(); return; }
     if (ed_menu_handle(cmd, a, na)) { ed_send(); return; }
     if (ed_tracker_handle(cmd, a, na)) { ed_send(); return; }
     switch (cmd) {
@@ -360,15 +357,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x4d); ed_b(1); ed_b(64); ed_b(1);   /* motion + chance v1 (1.5: none, MOTION gets no reply; kept as it was:
                                                    * editors find the tags after it by position) */
         ed_b(0x42); ed_b(1); ed_b(3); /* bounded full-backup read + restore */
-        ed_b(0x46); ed_b(1); ed_b(FM6_NFACTORY); ed_b(0);   /* FM6 patches: cmds 68..71 (no bank since 1.0.3) */
         ed_b(0x53); ed_b(1); ed_b(3);   /* live sync: bit 0 WATCH while on keeps the shadow, bit 1 no RELOAD echo */
-        ed_b(0x50); ed_b(1); ed_b(3);   /* FM6 patches v2: bit 0 no bank (SLOT F1..F8, 8 OWN), bit 1 user preset
-                                         * patches (FM6 target 3, backup id 9) */
         ed_b(0x4E); ed_b(1); ed_b(ED_MENU_N);   /* MENU settings: cmds 72, 73; the items MENU_DESC offers */
         /* (1.5: no 52 01 / 4C 01 / 41 01 / 54 01, the steps' ratchet, locks, motion, nudge; no 57 01, the A..D song) */
-        if (FELUCCA_ENG_FM6) {          /* 1.4.1: FM6's voice bank (cmds 74..77; SLOT 9..40 = B1..B32); Fel-Tracker: */
-            ed_b(0x56); ed_b(1); ed_b(FM6_NBANK);   /* only in a distribution with FM6 (fm6_vbank.c) */
-        }
         ed_b(0x58); ed_b(2); ed_b(TK_PATS); ed_b(TK_ROWS); ed_b(TK_INSTS); ed_b(TKC_N);   /* 1.5: the tracker (78, 79) */
         ed_b(TK_ORDER); ed_b(TK_ORDER >> 7);
         break;
@@ -384,7 +375,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
                 set_engine(ed_engine_of((uint32_t)clamp(ed_rv(a + 2), 0, EID_COUNT - 1), &sub));
                 ed_load_after(&b);
             } else if (d->max > d->min) {
-                *vp = (int16_t)enum_orig(d, clamp(ed_rv(a + 2), d->min, d->max));
+                *vp = (int16_t)clamp(ed_rv(a + 2), d->min, d->max);
                 if (a[0] == 0)
                     load_extend(TSEL);                      /* (ui.c undo: an audition's values after G_ENGSEL) */
             }
@@ -657,7 +648,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         d = ed_tdesc(t, a[1]);
         if (na >= 4u) {
             if (d->max > d->min)                           /* as SET: clamped; a fixed value stays */
-                t->p[a[1]] = (int16_t)enum_orig(d, clamp(ed_rv(a + 2), d->min, d->max));
+                t->p[a[1]] = (int16_t)clamp(ed_rv(a + 2), d->min, d->max);
             ed_known(a[0], a[1]);
             ui.force = 1;
         }

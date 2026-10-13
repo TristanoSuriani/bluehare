@@ -91,11 +91,11 @@ static int user_presets(void)
     memset(bk, 0, sizeof *bk);
     bk->magic = UP_BANK_MAGIC; bk->rsize = sizeof(up_rec_t); bk->nslot = UP_PER_BANK;
     r = &bk->r[0];                                          /* a note pattern with a note > 127 and stray flags */
-    r->used = UP_USED; r->ver = 2; r->engine = 0; r->np = 8; r->name[0] = 'A';
+    r->used = UP_USED; r->ver = 2; r->engine = EID_SID; r->np = 8; r->name[0] = 'A';
     r->note[3] = 200; r->flags[3] = 0x43;
     r->note[4] = 0; r->flags[4] = 0x03;                     /* a rest with flags */
     r = &bk->r[1];                                          /* a drum grid: accents where there is no hit */
-    r->used = UP_USED; r->ver = UP_VER_GRID; r->engine = EID_DRUM; r->np = 8; r->name[0] = 'G';
+    r->used = UP_USED; r->ver = UP_VER_GRID; r->engine = EID_KIT; r->np = 8; r->name[0] = 'G';
     r->note[0] = 0x05; r->flags[0] = 0xFF;
     up_bank_check(0, sizeof *bk);
     bad += check("a bank from flash: a note pattern's note inside 0..127, its flags inside their fields",

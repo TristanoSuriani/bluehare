@@ -74,16 +74,15 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `c
 The tree holds every engine (`firmware/src/engine_ids.h`); a **distribution** is the set one build holds, at most 16,
 in the order the device lists them: `distributions/<name>.txt`, one engine a line, and optionally `TRACKS 4` or
 `TRACKS 8`, the build's track count (4 without the line), and `PALETTE <name>`, the palette a device starts with
-(tools/gen_ui_palettes.py: IDM's IDM, the default's SIGNAL; GREY without the line).
+(tools/gen_ui_palettes.py: IDM's IDM, FOUNDRY's FOUNDRY; GREY without the line).
 
 ```
 ./build.sh                         # the distribution distributions/BUILD names: IDM (build/felucca.fwsc, "v0.10.0 IDM")
-FELUCCA_DIST=default ./build.sh    # another one (build/felucca-default.fwsc)
+FELUCCA_DIST=foundry ./build.sh    # another one (build/felucca-foundry.fwsc)
 ```
 
 | Distribution | Tracks | Engines |
 | --- | --- | --- |
-| `default` | 4 | ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM |
 | `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH (16) |
 | `foundry` | 8 | SCREAM DARK HONKS WAR SCRATCH FLUIDS RAZOR GUTS RUST ANVIL DRILL SLAG VENOM CHOKE ABYSS SHRED |
 
@@ -91,6 +90,11 @@ With 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's row
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an
 8-track song; an 8-track build loads both); the song store and the autosave hold 16 chunks; the SLICER's STUT records
 on tracks 1 .. 4 only; DUBSIREN's echo is the last track's, 8 (elsewhere it plays dry); MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).
+
+Felucca's own engines (ANALOG FM6 PHASE LOFI VOICE TRIO WHEEL PHYS NOISE DRUM) and its default distribution are gone
+from Fel-Tracker: their ids are retired (`core.h` `EID_RETIRED`), what other engines used of them lives in
+`firmware/src/shared/` (PHYS's resonators for MODAL and ANVIL, DRUM's lanes and GM map for KIT, WAR and GLITCH). The
+host tests build the primary distribution (`distributions/BUILD`: IDM) with 4 tracks unless they name one.
 
 The engines a distribution leaves out are not linked. A build numbers its engines 0, 1, .. in the distribution's
 order (`core.h` `ENGI_*`, `engines.c` `ENGINES[]`), but everything stored and the editor protocol name an engine by its
@@ -101,13 +105,14 @@ fixed id (`EID_*`), so a project, a user preset, a song or a backup moves betwee
   distribution's first engine;
 - a user preset of such an engine is kept as it is but listed nowhere and loads nothing (the editor still reads and
   writes it);
-- the power-on parts (ANALOG ACID, FM6 PAD, LOFI PULSE LD, DRUM KIT) whose engine is missing start as the first engine;
+- the power-on parts (SID BASS, VOSIM FORMANT PAD, SID SYNC LEAD, KIT FM KIT) whose engine is missing start as the first engine;
 - the editor sees the missing engines as "-" (`INFO`), as it does the retired ids.
 
 A new engine: its `eng_<name>.c` (an `ENG_<NAME>` with `.id`), a line in `engine_ids.h` (the next free id, its
 substitute; raise `core.h` `EID_COUNT`), an include in `engines.c`, and its name in the distributions that hold it.
-The favourites have rows for ids up to 21 (`favorites.c`). The EDIT layer has 15 white keys for engines (INIT on the
-next): a distribution of 16 reaches its last engine on KNOB 1 only.
+The favourites have rows for ids up to 21 (`favorites.c`). The EDIT layer has 16 white keys for engines; INIT is the
+white key after them, or with 16 engines the last black key. Then `tools/gen_editor_mock.py build/host/desc.json
+web/editor.html` (after the host tests) brings the editor's mock device up to date.
 
 ## Browser emulator
 
@@ -118,7 +123,7 @@ python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 ```
 
 `web/emu/build.sh` builds the distribution `distributions/BUILD` names (IDM) into `build/emu/`;
-`FELUCCA_DIST=default web/emu/build.sh` another one into `build/emu-default/` (serve that folder instead). The page
+`FELUCCA_DIST=foundry web/emu/build.sh` another one into `build/emu-foundry/` (serve that folder instead). The page
 shows the distribution after the version.
 
 The computer's keyboard: the bottom rows play the keys, the number row the buttons, [ ] OCT, ↑ ↓ KNOB 1 (with Shift
@@ -149,9 +154,8 @@ Runs the host tests and, with Node.js, the web page tests (and, with Emscripten 
 user presets, projects of every format, backup, the keys and knobs, MIDI (USB, TRS, clock,
 control), USB audio, the update entry and loader, the command-line installer, the UI (the real
 drawing code against stubs: every screen in every palette is rendered and checked for clipped or
-overlapping text; PNGs land in `build/ui_new/`), every engine (DRUM, NOISE, PHYS, FM6, ...), the chord keys, the modulation matrix, the FX layer, the reverbs, the SLICER
-and swing. With `DAISYSP` pointing at a DaisySP checkout, the PHYS models are also compared with
-their floating-point originals; without it that test is skipped.
+overlapping text; PNGs land in `build/ui_new/`), every engine (SPEECH, the regression renders of each preset), the chord keys, the modulation matrix, the FX layer, the reverbs, the SLICER
+and swing.
 
 The regression suite (`tests/regress.c`) renders every engine and preset and compares a
 hash of each render with `tests/golden.txt`; it also checks levels, voices and the CPU

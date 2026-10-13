@@ -113,14 +113,7 @@ int main(void)
     printf("],\n\"TRK_DEF\":[");
     for (k = 0; k < NPART; k++)
         printf("%s[%d,%d]", k ? "," : "", (int)eng_id(TRK_DEF[k][0]), TRK_DEF[k][1]);   /* (by id) */
-    printf("],\n\"FM6\":{\"bank\":0,\"own\":%u,\"init\":", (unsigned)FM6_OWN);   /* FM6: the packed patches (no bank since 1.0.3) */
-    for (i = 0; i < FM6_PACKED; i++)
-        printf("%s%d", i ? "," : "[", FM6_INIT[i]);
-    printf("],\"factory\":[");
-    for (k = 0; k < FM6_NFACTORY; k++)
-        for (i = 0; i < FM6_PACKED; i++)
-            printf("%s%d%s", i ? "," : k ? ",[" : "[", FM6_FACTORY[k][i], i == FM6_PACKED - 1u ? "]" : "");
-    printf("]}");
+    printf("]");
     printf(",\n\"LANE_OF\":\"");
     for (k = 35; k <= 81; k++)
         printf("%u", (unsigned)drum_lane(k));

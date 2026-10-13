@@ -3,7 +3,7 @@
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Host test of the user preset record (firmware/src/upreset.c, -DUP_HOST part):
  * UP_PUT parsing, a bank round trip through storage.c on a simulated NOR,
- * bank / record version checks, map-by-count, pattern <-> steps, PHYS MODEL DRUM records -> the DRUM engine,
+ * bank / record version checks, map-by-count, pattern <-> steps,
  * drum grid records (version 3: UP_PUT's kind 1 and its high bits, a round trip). */
 #include <stdint.h>
 #include <stdio.h>
@@ -61,9 +61,9 @@ int main(void)
     int16_t v[P_COUNT], def[P_COUNT];
     memset(nor, 0xFF, sizeof nor);
 
-    n = put_frame(a, 5, 2, "Bass One", -40);
+    n = put_frame(a, 5, EID_SID, "Bass One", -40);
     bad += check("UP_PUT frame < 640 bytes", 5u + n + 1u < 640u);
-    bad += check("UP_PUT parses", up_parse(a, n, &r, &slot) == 0 && slot == 5u && r.engine == 2u &&
+    bad += check("UP_PUT parses", up_parse(a, n, &r, &slot) == 0 && slot == 5u && r.engine == EID_SID &&
                                       up_valid(&r) && !memcmp(r.name, "Bass One", 8) && !r.name[8]);
     ok = 1;
     for (i = 0; i < P_COUNT; i++)
@@ -83,7 +83,7 @@ int main(void)
         bad += check("short optional tail rejected", up_parse(a, n + 1u, &r, &slot) == 1 &&
                                                        !memcmp(&r, &keep, sizeof r));
     }
-    n = put_frame(a, 32, 0, "X", 0);
+    n = put_frame(a, 32, EID_SID, "X", 0);
     bad += check("UP_PUT slot 32 -> args", up_parse(a, n, &r, &slot) == 1);
     n = put_frame(a, 0, EID_COUNT, "X", 0);
     bad += check("UP_PUT bad engine -> args", up_parse(a, n, &r, &slot) == 1);
@@ -96,11 +96,11 @@ int main(void)
             }
         bad += check("UP_PUT of a retired engine (1 4 8 13) -> args", ok);
     }
-    n = put_frame(a, 0, 0, "", 0);
+    n = put_frame(a, 0, EID_SID, "", 0);
     bad += check("UP_PUT empty name -> args", up_parse(a, n, &r, &slot) == 1);
-    n = put_frame(a, 0, 0, "THIRTEEN CHRS", 0);
+    n = put_frame(a, 0, EID_SID, "THIRTEEN CHRS", 0);
     bad += check("UP_PUT 13-char name -> args", up_parse(a, n, &r, &slot) == 1);
-    n = put_frame(a, 0, 0, "TWELVE CHARS", 0);
+    n = put_frame(a, 0, EID_SID, "TWELVE CHARS", 0);
     bad += check("UP_PUT 12-char name ok", up_parse(a, n, &r, &slot) == 0 && !memcmp(r.name, "TWELVE CHARS", 12));
     {
         char nm[13];
@@ -111,7 +111,7 @@ int main(void)
     }
 
     /* bank round trip through storage.c */
-    n = put_frame(a, 17, 3, "Keys", 7);
+    n = put_frame(a, 17, EID_WAVE, "Keys", 7);
     up_parse(a, n, &r, &slot);
     up_bank[1].magic = UP_BANK_MAGIC;
     up_bank[1].rsize = sizeof(up_rec_t);
@@ -146,7 +146,7 @@ int main(void)
     /* a drum grid by UP_PUT: kind 1, then bit 7 of each step's hits (bit 0) and accents (bit 1) */
     {
         uint8_t g[640];
-        uint32_t k, m = put_frame(g, 9, EID_DRUM, "My Beat", 0), at = m - 32u;
+        uint32_t k, m = put_frame(g, 9, EID_KIT, "My Beat", 0), at = m - 32u;
         for (k = 0; k < 16u; k++) {
             g[at + 2u * k] = (uint8_t)(k % 4u ? 0x08u : 0x09u);    /* HAT CL, the kick on the beats */
             g[at + 2u * k + 1u] = (uint8_t)(k == 0u ? 0x7Fu : 0u);  /* step 1: every lane's accent (one too many) */
@@ -157,7 +157,7 @@ int main(void)
         ok = up_parse(g, m, &got, &slot) == 0 && slot == 9u && got.ver == UP_VER_GRID && up_valid(&got) &&
              got.note[0] == 0x09u && got.flags[0] == 0x09u && got.note[1] == 0x08u && !got.flags[1] &&
              got.note[2] == 0x88u && got.flags[2] == 0x80u && got.note[5] == 0x08u && !got.flags[5] &&
-             got.engine == EID_DRUM;
+             got.engine == EID_KIT;
         bad += check("UP_PUT kind 1: a grid record, accents only on hits", ok);
         g[m - 17u] = 0;                                     /* kind 0: the notes and flags as before */
         ok = up_parse(g, m, &got, &slot) == 0 && got.ver == UP_VER && got.note[2] == 0x08u && got.flags[0] == 4u;   /* (flags 0x7F: a tie) */
@@ -185,43 +185,6 @@ int main(void)
         bad += check("a grid record: bank round trip", up_used(20) && !memcmp(up_rec(20), &got, sizeof got));
     }
 
-    /* PHYS MODEL DRUM (before 1.0) -> the DRUM engine: from flash (a record of an older layout too), by UP_PUT */
-    {
-        static const int16_t OLD[8] = {4, 70, 80, 60, 50, 110, 100, 70}, NEW[8] = {2, 70, 80, 60, 50, 110, 1, 0};
-        up_rec_t d = r, m = r, o = r;
-        uint32_t k;
-        d.engine = EID_PHYS;
-        m.engine = EID_PHYS;                               /* MEMB: stays PHYS */
-        o.engine = EID_PHYS;
-        o.np = P_COUNT - 2u;                                /* an older layout: E0 at np - 8 */
-        for (k = 0; k < 8u; k++) {
-            up_set_value(&d, P_E0 + k, OLD[k]);
-            up_set_value(&m, P_E0 + k, (int16_t)(k ? 9 : 2));
-            up_set_value(&o, o.np - 8u + k, OLD[k]);
-        }
-        *up_rec(16) = d;
-        *up_rec(17) = m;
-        *up_rec(18) = o;
-        st_save(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]);
-        memset(up_bank, 0, sizeof up_bank);
-        up_bank_check(1, st_load(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]));
-        ok = up_used(16) && up_rec(16)->engine == EID_DRUM && up_used(17) && up_rec(17)->engine == EID_PHYS &&
-             !memcmp(up_rec(17)->p, m.p, sizeof m.p) && up_used(18) && up_rec(18)->engine == EID_DRUM &&
-             up_rec(16)->ver == UP_VER;
-        for (k = 0; k < 8u; k++)
-            ok &= up_value(up_rec(16), P_E0 + k) == NEW[k] && up_value(up_rec(18), o.np - 8u + k) == NEW[k];
-        bad += check("bank load: PHYS DRUM -> DRUM engine, MEMB kept", ok);
-        n = put_frame(a, 3, EID_PHYS, "Old kit", 0);
-        for (k = 0; k < 8u; k++) {                          /* E0..E7 of the frame: OLD */
-            uint32_t at = 3u + 7u + 1u + 2u * (P_E0 + k), u = (uint32_t)(OLD[k] + 8192);
-            a[at - 1u] = u & 127u;
-            a[at] = (u >> 7) & 127u;
-        }
-        ok = up_parse(a, n, &got, &slot) == 0 && got.engine == EID_DRUM;
-        for (k = 0; k < 8u; k++)
-            ok &= up_value(&got, P_E0 + k) == NEW[k];
-        bad += check("UP_PUT of PHYS DRUM -> DRUM engine", ok);
-    }
 
     /* map by count: a record from a build with 2 parameters fewer */
     for (i = 0; i < P_COUNT; i++)
@@ -279,7 +242,7 @@ int main(void)
                 uint32_t np = NPS[b];
                 up_rec_t o;
                 memset(&o, 0, sizeof o);
-                o.used = UP_USED; o.ver = VERS[a]; o.engine = 0; o.np = (uint8_t)np;
+                o.used = UP_USED; o.ver = VERS[a]; o.engine = EID_SID; o.np = (uint8_t)np;
                 memcpy(o.name, "OLD", 3);
                 for (i = 0; i < np; i++)
                     up_set_value(&o, i, (int16_t)(i % 100u - 30));
@@ -306,14 +269,14 @@ int main(void)
 
     {   /* 1.2 (Discussion #90): the category, the record's last byte (UP_CAT_AT), outside its values; UP_PUT's optional
          * last byte; through a bank's flash round trip; a record of before reads its engine's; versions 2 / 3 converted */
-        n = put_frame(a, 17, 0, "CAT", 0);
+        n = put_frame(a, 17, EID_SID, "CAT", 0);
         a[n++] = 0;
         for (i = 0; i < 16u; i++) a[n++] = 0;
         a[n++] = CAT_KEYS;
         ok = !up_parse(a, n, &r, &slot) && up_cat_of(&r) == CAT_KEYS && UP_CAT_AT >= P_COUNT && r.np == P_COUNT;
         a[n - 1u] = CAT_N;
         ok &= up_parse(a, n, &got, &slot) == 1;
-        n = put_frame(a, 17, EID_DRUM, "KIT", 0);
+        n = put_frame(a, 17, EID_KIT, "KIT", 0);
         ok &= !up_parse(a, n, &got, &slot) && up_cat_of(&got) == CAT_DRUM && !got.packed[UP_CAT_AT];
         bad += check("category: UP_PUT's last byte, none = the engine's", ok);
         memset(&up_bank[1], 0, sizeof up_bank[1]);
@@ -324,7 +287,7 @@ int main(void)
         up_bank_check(1, st_load(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]));
         bad += check("category: kept through the bank on flash", up_used(17) && up_cat_of(up_rec(17)) == CAT_KEYS);
         memset(&r, 0, sizeof r);
-        r.used = UP_USED; r.ver = 3; r.engine = EID_DRUM; r.np = 60;
+        r.used = UP_USED; r.ver = 3; r.engine = EID_KIT; r.np = 60;
         memcpy(r.name, "GRID", 4);
         for (i = 0; i < 60u; i++) r.p[i] = (int16_t)(i * 3u) - 64;
         r.note[0] = 0x81; r.flags[0] = 0x80;

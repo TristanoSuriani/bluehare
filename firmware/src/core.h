@@ -8,8 +8,13 @@
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
 
-#ifndef FELUCCA_DIST
-#define FELUCCA_DIST default
+#ifndef FELUCCA_DIST             /* (not given: a host test's build, the primary distribution with 4 tracks, the shape
+                                  * the shared tests were written for: their 8-track builds set FELUCCA_NTRK; every
+                                  * image and the emulator name their distribution) */
+#define FELUCCA_DIST idm
+#ifndef FELUCCA_NTRK
+#define FELUCCA_NTRK 4
+#endif
 #endif
 #define DIST_H2(f) #f
 #define DIST_H1(n) DIST_H2(dist_##n.h)
@@ -45,8 +50,10 @@ enum {                           /* the ids */
 #undef ENGINE
 };
 #define EID_COUNT 54u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
-#define EID_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u || (e) == 27u)   /* DIGITAL SAMPLE GRAIN SLICE
-                                                                                         * ACID (Fel-Tracker) */
+/* retired: 1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE (Felucca 1.5), 27 ACID; 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO,
+ * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Fel-Tracker removed them): ids 0 .. 13 but 14,
+ * and 27 */
+#define EID_RETIRED(e) ((e) <= 13u || (e) == 27u)
 #define ENG_ABSENT 0x100u        /* the ENGI_ of an engine the build leaves out: no uint8_t equals it */
 #define FELUCCA_VERSION_DIST FELUCCA_VERSION FELUCCA_DIST_TAG   /* "v1.5", "v1.5 IDM": the version as shown */
 enum {                           /* the indices: the distribution's engines in its order (engines.c ENGINES[]) */
@@ -102,7 +109,7 @@ enum {                          /* per-track parameters */
     P_FM3_ATK, P_FM3_DEC, P_FM3_SUS, P_FM3_REL, P_FM3_LEVEL,
     P_FM4_ATK, P_FM4_DEC, P_FM4_SUS, P_FM4_REL, P_FM4_LEVEL,
     P_CHRD, P_VOIC,                            /* chord keys (chord.c): one key plays a chord; its voicing */
-    P_LN0, P_LN1, P_LN2, P_LN3, P_LN4, P_LN5, P_LN6, P_LN7,   /* DRUM lane levels (eng_drum.c, #97): KICK .. BELL */
+    P_LN0, P_LN1, P_LN2, P_LN3, P_LN4, P_LN5, P_LN6, P_LN7,   /* DRUM lane levels (KIT; once DRUM, #97): KICK .. BELL */
     P_LSYNC, P_LTRIG, P_LPOL,                  /* 1.2 (#154): LFO SYNC (OFF, a note value), TRIG (NOTE, FREE), POL (BI, UNI) */
     P_SQNT,                                    /* 1.2 (#162): QUANTIZE, the steps' recorded / nudged timing (ON: none) */
     P_SPRD,                                    /* (#148): SPREAD, the voices of a POLY / UNISON track around PAN (fx.c) */
@@ -141,19 +148,6 @@ static void params_by_count(int16_t *out, const int16_t *in, uint32_t np, const 
         out[i] = i < nc ? in[i] : def[i];
     for (i = 0; i < 8u; i++)
         out[P_E0 + i] = in[nc + i];
-}
-
-/* PHYS MODEL DRUM (MODEL 4, before 1.0) -> the DRUM engine, its E values in place: {MODEL, TUNE, TONE, DECY,
- * SNAP, ACC, KICK 0..127, PERC 0..127} -> {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK 0..1, DRV 0}. 1 = it was one
- * (its engine is EID_DRUM now); projects (project.c) and user presets (upreset.c): ids */
-static int drum_from_phys(uint32_t engine, int16_t *e)
-{
-    if (engine != EID_PHYS || e[0] != 4)
-        return 0;
-    e[0] = (int16_t)((e[7] < 0 ? 0 : e[7] > 127 ? 127 : e[7]) >> 5);   /* PERC -> KIT: STD HAND CYM H+CYM */
-    e[6] = (int16_t)(e[6] >= 64);                                       /* KICK: PUNCH, ROUND */
-    e[7] = 0;
-    return 1;
 }
 
 /* ------------------------------------------------- voices, engines --- */
@@ -215,7 +209,7 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
     uint8_t sampled;             /* 1 = plays recorded material (a position, not a phase): voice.c keeps
                                   * no phases over a retrigger, spreads none for UNISON, renders at SUS 0 */
     uint8_t keep;                /* bit k: s[k] is kept when a sounding voice is retriggered (filters) */
-    uint8_t oneshot;             /* 1 = hits (DRUM): always POLY, no glide; amp ends its voices (eng_drum.c) */
+    uint8_t oneshot;             /* 1 = hits (KIT, WAR): always POLY, no glide; amp ends its voices (KIT, WAR) */
     void (*note_on)(struct track *t, voice_t *v);
     void (*render)(struct track *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m);
     /* optional (0 = none): the voice amplitude instead of the ADSR curve, once per control tick;
@@ -240,7 +234,7 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
 } engine_t;
 
 /* ------------------------------------------------- tracks, the song --- */
-#define NLANE 8                  /* the DRUM engine's lanes (eng_drum.c DRUM_LANE_NOTE) */
+#define NLANE 8                  /* the DRUM engine's lanes (shared/drum_map.c) */
 
 /* The tracker (tracker.c): the song is TK_PATS patterns of up to TK_ROWS rows, a cell per track and row, and an order
  * list of TK_ORDER positions naming the pattern each plays. A cell is 4 bytes: 24 bits of the note (bits 0..6: 0 none,

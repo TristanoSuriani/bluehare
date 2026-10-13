@@ -4,16 +4,8 @@
 /* Engine table (this build's engines in display order: the indices; their ids: core.h) and the parts' sounds at
  * power-on. */
 #include "dsp.c"
-#include "eng_analog.c"
-#include "eng_phase.c"
-#include "eng_lofi.c"
-#include "eng_formant.c"
-#include "eng_trio.c"
-#include "eng_wheel.c"
-#include "eng_phys.c"           /* PHYS: DaisySP physical models (phys_dsp.c, MIT) */
-#include "eng_drum.c"           /* DRUM: the 8-lane kit (drum_voice.c) */
-#include "eng_noise.c"
-#include "eng_fm6.c"            /* FM6: 6-operator FM, msfa ported (fm6_core.c, Apache-2.0) */
+#include "shared/phys_dsp.c"   /* the resonators MODAL and ANVIL play (PHYS's, DaisySP's: MIT) */
+#include "shared/drum_map.c"   /* the drum lanes and GM map KIT, WAR and GLITCH play */
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_byte.c"           /* BYTE: bytebeat formulas (1.5) */
 #include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
@@ -87,7 +79,8 @@ static inline uint32_t eng_idx(uint32_t e) { return e < NENGINES ? e : 0u; }
 #define ENG_NO 0xFFu
 #define EID_IDX(X) (FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : ENG_NO)
 static const uint8_t ENG_OF_ID[EID_COUNT] = {
-    [1] = ENG_NO, [4] = ENG_NO, [8] = ENG_NO, [13] = ENG_NO, [27] = ENG_NO,   /* (retired; 27: ACID, Fel-Tracker) */
+    [0] = ENG_NO, [1] = ENG_NO, [2] = ENG_NO, [3] = ENG_NO, [4] = ENG_NO, [5] = ENG_NO, [6] = ENG_NO, [7] = ENG_NO,
+    [8] = ENG_NO, [9] = ENG_NO, [10] = ENG_NO, [11] = ENG_NO, [12] = ENG_NO, [13] = ENG_NO, [27] = ENG_NO,   /* (retired) */
 #define ENGINE(N, id, sub) [EID_##N] = EID_IDX(N),
 #include "engine_ids.h"
 #undef ENGINE
@@ -142,17 +135,15 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
     return (eng_rank(e) + (dir > 0 ? 1u : NENGINES - 1u)) % NENGINES;
 }
 
-/* the parts at power-on (engine index, preset): bass, pad, lead, drums (ANALOG ACID, FM6 PAD, LOFI PULSE LD, DRUM
- * KIT; without ANALOG the bass is SID BASS, without FM6 the pad VOSIM's FORMANT PAD, without LOFI the lead SID SYNC
- * LEAD, without DRUM the drums KIT's FM KIT); an engine the build leaves out: its first engine, preset 0 */
+/* the parts at power-on (engine index, preset): bass, pad, lead, drums (SID BASS, VOSIM's FORMANT PAD, SID SYNC LEAD,
+ * KIT's FM KIT); an engine the build leaves out: its first engine, preset 0 */
 #define TRK_PICK(X, p) {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : 0u, FELUCCA_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
     {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : 0u}
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(ANALOG, 4, SID, 0), TRK_PICK2(FM6, 4, VOSIM, 13), TRK_PICK2(LOFI, 0, SID, 2),
-                                          TRK_PICK2(DRUM, 0, KIT, 0)
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(VOSIM, 13), TRK_PICK(SID, 2), TRK_PICK(KIT, 0)
 #if NPART == 8                                  /* (Fel-Tracker, TRACKS 8) 5 .. 8: chords, a pluck, a break, the siren */
-                                          , TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK2(BREAKS, 0, DRUM, 0),
+                                          , TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK2(BREAKS, 0, KIT, 0),
                                           TRK_PICK2(DUBSIREN, 0, HOOVER, 5)   /* (no siren engine: HOOVER's SIREN) */
 #endif
 };

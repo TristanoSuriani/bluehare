@@ -181,8 +181,8 @@ static void song_setup(void)
     memset(sl, 0, sizeof sl);
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, ENGI_FM6, 4);
-    host_preset(t3, ENGI_LOFI, 0);
+    host_preset(t2, ENGI_VECTOR, 4);
+    host_preset(t3, ENGI_WASP, 0);
     host_drums(td);                                /* DRUM KIT (SAMPLE PERC until 1.0.2) */
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i];

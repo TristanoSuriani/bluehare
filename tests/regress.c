@@ -207,13 +207,13 @@ static void job_sends(const job_t *j)           /* arg: 0 dry, 1 chorus, 2 delay
     phrase(t, 60);
 }
 
-static void job_drums(const job_t *j)           /* every GM note through DRUM on part 4, a roll; arg: KIT (0: STD) */
+static void job_drums(const job_t *j)           /* every GM note through KIT on part 4, a roll */
 {
     track_t *t = &trk[3];
     uint32_t n, k = 0;
     host_tracks_init();
+    (void)j;
     host_drums(t);
-    t->p[P_E0] = j->arg;
     for (n = 35; n <= 81u; n++, k++) {
         input_on(t, n, 60u + (n * 7u) % 60u);
         run_to(at(0.06 * (k + 1)));
@@ -266,7 +266,7 @@ static void job_song(const job_t *j)
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
     host_preset(t2, TRK_DEF[1][0], TRK_DEF[1][1]);
-    host_preset(t3, ENGI_LOFI, 0);
+    host_preset(t3, ENGI_WASP, 0);
     host_drums(td);
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i];
@@ -334,8 +334,6 @@ static void job_cpu(const job_t *j)
     host_tracks_init();
     for (p = 0; p < NPART; p++) {
         host_preset(&trk[p], parts[p][0], parts[p][1]);
-        if (j->arg && ENGINES[parts[p][0]] == &ENG_DRUM)
-            trk[p].p[P_E0] = j->arg;                    /* DRUM: a KIT (the model kits) */
         if (parts[p][2] == DRUM_HITS)
             continue;
         trk[p].p[P_VOICE] = V_POLY;
@@ -473,7 +471,7 @@ static void midi_pkt(uint32_t st, uint32_t d1, uint32_t d2)   /* as usb.c: the q
  * fades within its one block), the VOICE part at most 4; then all off: every voice free */
 static int chk_budget(char *msg, uint32_t n)
 {
-    static const uint8_t E[NPART][2] = {{0, 1}, {ENGI_FM6, 1}, {ENGI_VOICE, 1}, {ENGI_WAVE, 0}};
+    static const uint8_t E[NPART][2] = {{0, 1}, {ENGI_VECTOR, 1}, {ENGI_DUBCHORD, 1}, {ENGI_WAVE, 0}};
     uint8_t held[NPART][128] = {{0}};
     uint32_t p, k, worst = 0, vworst = 0, fading = 0, kills0 = voice_kills;
     host_tracks_init();
@@ -622,7 +620,7 @@ static int chk_cap_mode_budget(char *msg, uint32_t n)
         trk[0].p[P_VOICE] = MODE[round];
         if (round == 2u) {
             /* A lower cap must not protect old upper slots while the lower extras fade. */
-            host_preset(&trk[0], ENGI_VOICE, 0);
+            host_preset(&trk[0], ENGI_DUBCHORD, 0);
             trk[0].p[P_VOICE] = V_UNISON;
             for (i = 1; i < trk_nvoice(&trk[0]); i++)
                 voice_kill(&trk[0].v[i]);
@@ -826,7 +824,7 @@ static int chk_keep(char *msg, uint32_t n, uint32_t mode)
     trk[0].p[P_AMODE] = 0;
     trk[0].p[P_SUS] = 100;
     for (k = 1; k < NPART; k++) {
-        host_preset(&trk[k], ENGI_FM6, 1);
+        host_preset(&trk[k], ENGI_VECTOR, 1);
         trk[k].p[P_VOICE] = V_POLY;
         trk[k].p[P_AMODE] = 0;
         trk[k].p[P_SUS] = 100;
@@ -856,7 +854,7 @@ static int chk_voice_cap(char *msg, uint32_t n)
     for (mode = 0; mode < 2u; mode++) {
         track_t *t = &trk[0];
         host_tracks_init();
-        host_preset(t, ENGI_VOICE, 0);
+        host_preset(t, ENGI_DUBCHORD, 0);
         t->p[P_VOICE] = mode ? V_UNISON : V_POLY;
         t->p[P_AMODE] = 0;
         for (k = 0; k < 8u; k++)
@@ -1041,11 +1039,11 @@ int main(int argc, char **argv)
     int cinfo = getenv("CPU_INFO") != 0;          /* (an 8-track test build: the 4-track baselines for information only) */
     /* a distribution other than the default (FELUCCA_DIST): its presets' renders and costs only, against the same
      * files (the mixes and the checks are written for the default's engines); nothing there is "gone" */
-    const int dist = FELUCCA_DIST_TAG[0] != 0;
+    const int dist = !FELUCCA_DIST_PRIMARY || NPART != 4;   /* (the full set: the primary distribution, distributions/BUILD's, built with the 4 parts its shared checks are for) */
     uint32_t jobs_at_once = getenv("JOBS") ? (uint32_t)atoi(getenv("JOBS")) : 8u;
     static const char *const MN[4] = {"POLY", "MONO", "LEGATO", "UNISON"};
     static const char *const SN[6] = {"dry", "chorus", "delay", "reverb", "all", "dist"};
-    static const uint8_t MODE_E[2][2] = {{0, 0}, {ENGI_VOICE, 0}};   /* engine, preset */
+    static const uint8_t MODE_E[2][2] = {{0, 0}, {ENGI_DUBCHORD, 0}};   /* engine, preset */
     static const uint8_t SEND_E[1][2] = {{0, 3}};
     static uint8_t cpu_parts[MAXJ][NPART][3];
     static kv_t gold[MAXKV], cpu[MAXKV];
@@ -1071,11 +1069,7 @@ int main(int argc, char **argv)
         }
     if (dist)
         goto renders_done;
-    add(J_DRUMS, "drums/drum_gm_kit");
-    for (i = 0; i < DV_NKIT; i++) {                 /* the model kits (KIT 80 10 66 55 77) */
-        snprintf(name, sizeof name, "drums/kit_%s", N_DRUM_KIT[DK_80 + i]);
-        add(J_DRUMS, name)->arg = (uint8_t)(DK_80 + i);
-    }
+    add(J_DRUMS, "drums/kit_gm");
     for (i = 0; i < NELEM(MODE_E); i++)
         for (k0 = 0; k0 < 4u; k0++) {
             job_t *j;
@@ -1144,17 +1138,6 @@ checks_done:
             j->e = (uint8_t)e;
             j->pi = (uint8_t)pi;
         }
-    for (i = 0; i < (dist ? 0u : DV_NKIT); i++) {   /* DRUM's model kits: the 8 lanes, as its preset above */
-        job_t *j;
-        snprintf(name, sizeof name, "cpu/DRUM/kit_%s", N_DRUM_KIT[DK_80 + i]);
-        j = add(J_CPU, name);
-        memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
-        cpu_parts[ncpu][0][0] = ENGI_DRUM, cpu_parts[ncpu][0][1] = 0, cpu_parts[ncpu][0][2] = 8;
-        j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
-        j->e = ENGI_DRUM;
-        j->pi = 0;
-        j->arg = (uint8_t)(DK_80 + i);
-    }
     {   /* mixes: idle (subtracted from the presets' counts), idle + drums (part 4 DRUM), FM6 + PHASE + VOICE asking
          * 8 + 8 + 4 + the drums (the budget keeps 8; FM6 plays 6) */
         job_t *j = add(J_CPU, "cpu/mix/idle");
@@ -1165,15 +1148,15 @@ checks_done:
             goto mixes_done;
         j = add(J_CPU, "cpu/mix/idle_drums");
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
-        cpu_parts[ncpu][3][0] = ENGI_DRUM, cpu_parts[ncpu][3][1] = 0, cpu_parts[ncpu][3][2] = DRUM_HITS;
+        cpu_parts[ncpu][3][0] = ENGI_KIT, cpu_parts[ncpu][3][1] = 0, cpu_parts[ncpu][3][2] = DRUM_HITS;
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
         j->e = 0xFF;
         j = add(J_CPU, "cpu/mix/3parts_full_drums");
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
-        cpu_parts[ncpu][0][0] = ENGI_FM6, cpu_parts[ncpu][0][1] = 0, cpu_parts[ncpu][0][2] = 8;
-        cpu_parts[ncpu][1][0] = ENGI_PHASE, cpu_parts[ncpu][1][1] = 0, cpu_parts[ncpu][1][2] = 8;
-        cpu_parts[ncpu][2][0] = ENGI_VOICE, cpu_parts[ncpu][2][1] = 0, cpu_parts[ncpu][2][2] = 4;
-        cpu_parts[ncpu][3][0] = ENGI_DRUM, cpu_parts[ncpu][3][1] = 0, cpu_parts[ncpu][3][2] = DRUM_HITS;
+        cpu_parts[ncpu][0][0] = ENGI_VECTOR, cpu_parts[ncpu][0][1] = 0, cpu_parts[ncpu][0][2] = 8;
+        cpu_parts[ncpu][1][0] = ENGI_SID, cpu_parts[ncpu][1][1] = 0, cpu_parts[ncpu][1][2] = 8;
+        cpu_parts[ncpu][2][0] = ENGI_DUBCHORD, cpu_parts[ncpu][2][1] = 0, cpu_parts[ncpu][2][2] = 4;
+        cpu_parts[ncpu][3][0] = ENGI_KIT, cpu_parts[ncpu][3][1] = 0, cpu_parts[ncpu][3][2] = DRUM_HITS;
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
         j->e = 0xFF;
         j = add(J_CPU, "cpu/mix/idle_click");          /* idle + the metronome's click (click.c) never silent */

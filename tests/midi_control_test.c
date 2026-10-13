@@ -361,8 +361,8 @@ static int cc_map_test(void)
     };
     int bad = 0, ok = 1; uint32_t i, e; int16_t before[P_COUNT];
     midi_test_reset();
-    bad += check("power-on parts: ANALOG, FM6, LOFI, DRUM", trk[0].eng_req == 0u && trk[1].eng_req == ENGI_FM6 &&
-                 trk[2].eng_req == ENGI_LOFI && trk[3].eng_req == ENGI_DRUM);
+    bad += check("power-on parts: SID, VOSIM, SID, KIT", trk[0].eng_req == ENGI_SID && trk[1].eng_req == ENGI_VOSIM &&
+                 trk[2].eng_req == ENGI_SID && trk[3].eng_req == ENGI_KIT);
     for (i = 0; i < NELEM(COMMON); i++) {
         queued(0xB0, COMMON[i].cc, 127, 1);
         ok &= trk[0].p[COMMON[i].id] == TP[COMMON[i].id].max;
@@ -376,14 +376,19 @@ static int cc_map_test(void)
     queued(0xB0, 10, 127, 1); ok &= trk[0].p[P_PAN] == 63;
     queued(0xB0, 10, 64, 1); ok &= trk[0].p[P_PAN] == 0;
     bad += check("CC10 PAN: 0 left, 64 centre, 127 right", ok);
-    queued(0xB0, 74, 127, 1); queued(0xB0, 71, 0, 1);
-    bad += check("CC74 / CC71 on ANALOG: CUT / RES", trk[0].p[P_E4] == 127 && trk[0].p[P_E5] == 0);
-    queued(0xB1, 74, 64, 1); queued(0xB1, 74, 127, 1);
-    bad += check("CC74 on FM6 (channel 2): MLVL, bipolar (127: +63)", trk[1].p[P_E2] == 63);
-    memcpy(before, trk[1].p, sizeof before); queued(0xB1, 71, 99, 1);
-    bad += check("CC71 on FM6 (no resonance): ignored", !memcmp(before, trk[1].p, sizeof before));
-    queued(0xB3, 74, 10, 1);
-    bad += check("CC74 on DRUM (channel 4): TONE", trk[3].p[P_E2] == 10);
+    {   /* CC74 / CC71: each engine's own targets (engine_t.cc: CC74 the high nibble's EDIT value, CC71 the low's) */
+        uint32_t c0 = ENGINES[trk[0].eng_req]->cc, c1 = ENGINES[trk[1].eng_req]->cc, c3 = ENGINES[trk[3].eng_req]->cc;
+        queued(0xB0, 74, 127, 1); queued(0xB0, 71, 0, 1);
+        ok = (!(c0 >> 4) || trk[0].p[P_E0 + (c0 >> 4) - 1u] == ENGINES[trk[0].eng_req]->edit[(c0 >> 4) - 1u].max) &&
+             (!(c0 & 15u) || trk[0].p[P_E0 + (c0 & 15u) - 1u] == ENGINES[trk[0].eng_req]->edit[(c0 & 15u) - 1u].min);
+        bad += check("CC74 / CC71 on track 1: its engine's targets, 127 the top, 0 the bottom", ok);
+        queued(0xB1, 74, 127, 1);
+        bad += check("CC74 on channel 2: track 2's target", !(c1 >> 4) ||
+                     trk[1].p[P_E0 + (c1 >> 4) - 1u] == ENGINES[trk[1].eng_req]->edit[(c1 >> 4) - 1u].max);
+        queued(0xB3, 74, 0, 1);
+        bad += check("CC74 on KIT (channel 4): its target", !(c3 >> 4) ||
+                     trk[3].p[P_E0 + (c3 >> 4) - 1u] == ENGINES[trk[3].eng_req]->edit[(c3 >> 4) - 1u].min);
+    }
     for (e = 0, ok = 1; e < NENGINES; e++) {   /* the table names a continuous EDIT value of every engine */
         uint32_t m = ENGINES[e]->cc, k;
         for (k = 0; k < 2u; k++) {
@@ -393,9 +398,13 @@ static int cc_map_test(void)
         }
     }
     bad += check("every engine's CC74 / CC71 target is a continuous EDIT value (or none)", ok);
-    trk[2].eng_req = trk[2].engine = ENGI_WHEEL;       /* WHEEL: no brightness, no resonance */
-    memcpy(before, trk[2].p, sizeof before); queued(0xB2, 74, 3, 1); queued(0xB2, 71, 3, 1);
-    bad += check("CC74 / CC71 on WHEEL: ignored", !memcmp(before, trk[2].p, sizeof before));
+    for (e = 0; e < NENGINES && ENGINES[e]->cc; e++)
+        ;
+    if (e < NENGINES) {                                   /* an engine of no CC74 / CC71 target: ignored */
+        trk[2].eng_req = trk[2].engine = (uint8_t)e;
+        memcpy(before, trk[2].p, sizeof before); queued(0xB2, 74, 3, 1); queued(0xB2, 71, 3, 1);
+        bad += check("CC74 / CC71 on an engine without targets: ignored", !memcmp(before, trk[2].p, sizeof before));
+    }
     memcpy(before, trk[0].p, sizeof before);
     queued(0xB0, 121, 0, 1);
     bad += check("CC121 resets no mapped parameter (RP-015)", !memcmp(before, trk[0].p, sizeof before));
@@ -414,12 +423,16 @@ static int cc_map_test(void)
     midi_test_reset();
     song.rec = 1; seq_start(); events_block(CTL);
     queued(0xB0, 74, 20, 1);
-    bad += check("armed and playing: CC74 sets CUT", trk[0].p[P_E4] != ANALOG_PRESETS[trk[0].preset].e[4]);
-    seq_stop(); events_block(CTL);
-    bad += check("  stopped: the CC's value stays", trk[0].p[P_E4] != ANALOG_PRESETS[trk[0].preset].e[4]);
-    song.rec = 0;
-    queued(0xB0, 74, 77, 1);
-    bad += check("not armed: the CC is the new value", trk[0].p[P_E4] == 77);
+    {
+        uint32_t c = P_E0 + (ENGINES[trk[0].eng_req]->cc >> 4) - 1u;   /* (track 1's CC74 target) */
+        int16_t pre = ENGINES[trk[0].eng_req]->presets[trk[0].preset].e[c - P_E0];
+        bad += check("armed and playing: CC74 sets its target", trk[0].p[c] != pre);
+        seq_stop(); events_block(CTL);
+        bad += check("  stopped: the CC's value stays", trk[0].p[c] != pre);
+        song.rec = 0;
+        queued(0xB0, 74, 0, 1);
+        bad += check("not armed: the CC is the new value", trk[0].p[c] == ENGINES[trk[0].eng_req]->edit[c - P_E0].min);
+    }
     return bad;
 }
 int main(void)

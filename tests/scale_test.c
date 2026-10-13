@@ -61,8 +61,8 @@ static void mapping_test(void)
     for (k = 0; k < 27u; k++)
         assert(kb_map(t, k) == 48u + k);
     t->p[P_QUANT] = 2;
-    host_preset(t, ENGI_DRUM, 0);              /* DRUM (the GM map, any part; SAMPLE PERC until 1.0.2): the first */
-    t->engine = t->eng_req = ENGI_DRUM;        /* C is the kick */
+    host_preset(t, ENGI_KIT, 0);              /* DRUM (the GM map, any part; SAMPLE PERC until 1.0.2): the first */
+    t->engine = t->eng_req = ENGI_KIT;        /* C is the kick */
     for (k = 0; k < 27u; k++)
         assert(kb_map(t, k) == 29u + k);
     t->engine = t->eng_req = 0;                /* SNAP (QNT 1, the old ON): every key, rounded down */
@@ -223,8 +223,8 @@ static void seq_quant_test(void)                    /* 1.5: the tracker's rows (
     assert(gated(t) == 0);
 
     /* the DRUM engine never snaps: its notes are GM drums */
-    host_preset(t, ENGI_DRUM, 0);
-    t->engine = t->eng_req = ENGI_DRUM;
+    host_preset(t, ENGI_KIT, 0);
+    t->engine = t->eng_req = ENGI_KIT;
     t->p[P_SCALE] = 1;
     t->p[P_ROOT] = 0;
     *tk_at(0, 0, 0) = tk_pack(37, 0, 0, 0);

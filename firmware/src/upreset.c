@@ -16,13 +16,8 @@
  * P_LEVEL.. in order, and parameters it does not have take their defaults.
  * That holds as long as common parameters are only ever added just before
  * P_E0 (else bump UP_VER and translate). Version 1 (before 1.0) has the
- * same layout; only its PHYS MODEL 2 meant DUST, which up_values loads as
- * MODAL bowed (eng_phys.c phys_legacy). A record of PHYS MODEL 4 (DRUM, version 2
- * until the kit became the DRUM engine) is that engine: up_migrate rewrites it
- * in the RAM mirror when a bank is read and when UP_PUT sends one (core.h
- * drum_from_phys); flash keeps the old record until its bank is written again,
- * which stores the new one. No version bump: today's PHYS has no MODEL 4, so
- * such a record cannot be anything else, and older firmware keeps reading the bank.
+ * same layout. (Felucca's PHYS and DRUM records are of retired engines now:
+ * Fel-Tracker removed those, and such a record is refused like any retired id.)
  * Version 3 (UP_VER_GRID, the DRUM grid of 1.0.5 .. 1.4) is the same record with a drum grid as its pattern: note[i] is
  * step i's lane hits (bit l = lane l), flags[i] their accents. Older firmware shows a version 3 record as empty and
  * keeps its bytes. A note pattern's flags: 1 accent, 2 slide, 4 tie, 8 | 16 the step's RATCH (UP_PF_KEEP).
@@ -79,8 +74,6 @@ static int up_to_v4(up_rec_t *r)                 /* 1 = r is version 4 / 5 (now)
     uint32_t i;
     if (r->ver >= 4u)
         return 1;
-    if (r->ver == 1u && r->engine == EID_PHYS)
-        return 0;
     for (i = 0; i < r->np; i++)
         if ((v[i] = r->p[i]) < -64 || v[i] > 127)
             return 0;
@@ -112,17 +105,6 @@ static void up_set_value(up_rec_t *r, uint32_t k, int16_t v)
 {
     if (r->ver >= 4u) r->packed[k] = (uint8_t)(v + 64); else r->p[k] = v;
 }
-/* Legacy PHYS drums map through decoded parameters, not their disk representation. */
-static void up_migrate(up_rec_t *r)
-{
-    int16_t e[8]; uint32_t k;
-    if (!up_valid(r)) return;
-    for (k = 0; k < 8u; k++) e[k] = up_value(r, r->np - 8u + k);
-    if (drum_from_phys(r->engine, e)) {
-        r->engine = EID_DRUM;
-        for (k = 0; k < 8u; k++) up_set_value(r, r->np - 8u + k, e[k]);
-    }
-}
 
 static void up_pat_norm(uint8_t *note, uint8_t *flags);
 /* after loading bank b (len bytes, -1 = none): wrong shape -> empty; each record's pattern inside its fields, as
@@ -138,7 +120,6 @@ static void up_bank_check(uint32_t b, int len)
         up_rec_t *r = &bk->r[i];
         if (!up_valid(r))
             continue;
-        up_migrate(r);
         for (k = 0; k < 16u; k++)
             if (up_grid(r))
                 r->flags[k] &= r->note[k];          /* a drum grid: accents only on its hits */
@@ -237,7 +218,6 @@ static int up_parse(const uint8_t *a, uint32_t na, up_rec_t *r, uint32_t *slot)
     }
     if (na == end + 18u)
         up_set_cat(r, a[end + 17u]);
-    up_migrate(r);                               /* (an editor of before the DRUM engine) */
     *target = *r;
     return 0;
 }
@@ -252,14 +232,10 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* mapped and clamped for
     for (i = 0; i < P_COUNT; i++)
         def[i] = up_desc(r->engine, i)->def;
     up_params(r, v, def);
-    if (r->ver == 1u && r->engine == EID_PHYS)   /* (before 1.0: MODEL 2 was DUST) */
-        phys_legacy(&v[P_E0]);
     for (i = 0; i < P_COUNT; i++)
-        v[i] = (int16_t)param_fit(up_desc(r->engine, i), param_oct(i, v[i]));   /* (a retired KIT: the kit it plays) */
+        v[i] = (int16_t)param_fit(up_desc(r->engine, i), param_oct(i, v[i]));
 }
 
-#include "up_fm6.c"                            /* the FM6 user presets' patches: the same kind of store */
-#include "fm6_vbank.c"                         /* FM6's voice bank (SLOT B1..B32, 1.4.1) */
 
 static void up_boot(void)                      /* persist_boot: the banks from flash */
 {
@@ -268,8 +244,6 @@ static void up_boot(void)                      /* persist_boot: the banks from f
     for (b = 0; b < UP_SLOTS / UP_PER_BANK; b++)
         up_bank_check(b, flash_ok ? st_load(OBJ_UPRESET0 + b, &up_bank[b], sizeof up_bank[b]) : -1);
 #endif
-    upf_boot();                                  /* (after the banks: it may move the retired FM6 bank's patches) */
-    fvb_boot();                                  /* FM6's voice bank: a staged one finished, its voices */
 #ifdef FELUCCA_FAVORITES
     for (uint32_t k = 0; k < UP_SLOTS; k++)
         if (!up_used(k)) favorite_set(EID_COUNT, k, 0);
@@ -383,15 +357,7 @@ static int up_store_cat(uint32_t k, const char *name, uint32_t cat)
     for (i = 0; i < P_COUNT; i++)
         up_set_value(&r, i, TSEL->p[i]);
     up_set_cat(&r, cat ? cat : track_cat(TSEL));      /* (the pattern: empty) */
-    {
-        int rc = up_put(k, &r);                         /* the record first, then its FM6 patch (up_fm6.c) */
-        if ((rc == 0 || rc == 3) && r.engine == EID_FM6) {
-            int u = upf_store(k, (uint32_t)(TSEL - trk));
-            if (u == 2)
-                rc = 2;
-        }
-        return rc;
-    }
+    return up_put(k, &r);
 }
 
 static int up_store(uint32_t k, const char *name) { return up_store_cat(k, name, 0); }
@@ -437,7 +403,6 @@ static int up_load(uint32_t k)
                 t->p[i] = v[i];
         t->preset = 0;
         fm1_irq_on();
-        upf_track_load(t, k);                           /* FM6: the preset's own patch (up_fm6.c) */
     }
     t->user = (uint8_t)(k + 1u);
     load_end(t);
@@ -465,7 +430,6 @@ static void up_tk_sound(track_t *t, uint32_t k)
     t->p[P_OCT] = v[P_OCT];                             /* (the sound's octave goes with it) */
     t->preset = 0;
     t->user = (uint8_t)(k + 1u);
-    upf_track_load(t, k);                               /* FM6: the preset's own patch (up_fm6.c) */
 }
 
 

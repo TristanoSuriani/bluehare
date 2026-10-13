@@ -313,24 +313,34 @@ static void test_math(void)
     check("every per-block value restored", t->p[P_DIST] == 64 && t->p[P_CHOR] == 64 && t->p[P_LRATE] == 100 && t->p[P_LD_PIT] == 0);
 
     /* an engine parameter: its descriptor's range */
-    e_trio = eng_by_name("TRIO");
+    e_trio = eng_by_name("SID");                   /* (TRIO's checks until Fel-Tracker removed it: SID's PW) */
     k_pw = edit_by_label(e_trio, "PW", 7);
     fresh(e_trio, 0);
     lfo_at(t, 32767);
     t->p[P_E0 + k_pw] = 100;
     slot(t, 0, MS_LFO, MD_E1 + (int32_t)k_pw, 40);
     mod_begin(t);
-    check("LFO -> TRIO PW: clamped to its range (0..127)", t->p[P_E0 + k_pw] == 127);
+    check("LFO -> SID PW: clamped to its range (0..127)", t->p[P_E0 + k_pw] == 127);
     mod_end(t);
-    t->p[P_E0 + 1] = 0;                            /* INT2: -24..24 */
-    slot(t, 0, MS_MODW, MD_E1 + 1, -32);
-    t->mw = 127;
-    mod_begin(t);
-    check("MODW -> E2 -32: half its range down (TRIO INT2 -24..24: -24)",
-          t->p[P_E0 + 1] == (((((127 * 258) * -32) >> 6) * (ENGINES[e_trio]->edit[1].max - ENGINES[e_trio]->edit[1].min)) >> 15) &&
-          t->p[P_E0 + 1] < -10);
-    mod_end(t);
-    check("the engine parameters restored", t->p[P_E0 + k_pw] == 100 && t->p[P_E0 + 1] == 0);
+    check("  restored", t->p[P_E0 + k_pw] == 100);
+    {   /* a bipolar E2 (the first engine with one) */
+        uint32_t eb = 0;
+        while (eb < NENGINES && ENGINES[eb]->edit[1].min >= 0)
+            eb++;
+        if (eb < NENGINES) {
+            fresh(eb, 0);
+            t->p[P_E0 + 1] = 0;
+            slot(t, 0, MS_MODW, MD_E1 + 1, -32);
+            t->mw = 127;
+            mod_begin(t);
+            check("MODW -> E2 -32: half its range down (a bipolar E2)",
+                  t->p[P_E0 + 1] == (((((127 * 258) * -32) >> 6) * (ENGINES[eb]->edit[1].max - ENGINES[eb]->edit[1].min)) >> 15) &&
+                  t->p[P_E0 + 1] < 0);
+            mod_end(t);
+            check("the engine parameters restored", t->p[P_E0 + 1] == 0);
+        }
+    }
+    fresh(e_trio, 0);                              /* (SID again) */
     check("DST names: E1..E8 by the engine's labels", str_eq(mod_dst_name(t, MD_E1 + (int32_t)k_pw), "PW") &&
                                                           str_eq(mod_dst_name(t, MD_CUT), "CUT"));
 
@@ -484,7 +494,7 @@ static void test_cost(void)
 {
     uint32_t e_phys = eng_by_name("PHYS"), pp = preset_by_name(e_phys, "BOWED METAL");
     uint8_t phys[NPART][3] = {{(uint8_t)e_phys, (uint8_t)pp, 8}}, idle[NPART][3] = {{0}};
-    uint8_t mix[NPART][3] = {{ENGI_FM6, 0, 8}, {ENGI_PHASE, 0, 8}, {(uint8_t)e_phys, (uint8_t)pp, 4}, {ENGI_TRIO, 0, 4}};
+    uint8_t mix[NPART][3] = {{ENGI_VECTOR, 0, 8}, {ENGI_SID, 0, 8}, {(uint8_t)e_phys, (uint8_t)pp, 4}, {ENGI_WASP, 0, 4}};
     double c_idle, c0, c1, m0, m1;
     if (!instr_now()) {
         printf("mod: cost: no instruction counter on this host (proc_pid_rusage), skipped\n");
@@ -547,7 +557,7 @@ static int demos(const char *dir)
         n++;
     }
     /* VEL -> AMP: FM6 TINE EP, the same note at velocities 10 .. 127, twice as much dynamics */
-    fresh(ENGI_FM6, 0);
+    fresh(ENGI_VECTOR, 0);
     slot(t, 0, MS_VEL, MD_AMP, 63);
     slot(t, 1, MS_VEL, MD_CUT, 30);
     if ((f = demo_open(dir, "vel_amp", 16u * (FS / 4u / CTL) * CTL + FS / CTL * CTL))) {

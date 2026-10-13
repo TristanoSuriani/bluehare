@@ -161,12 +161,7 @@ static void proj_write(pw_t *w, const char *name)
                 pw_u8(w, i);
                 pw_i16(w, v[i]);
             }
-        pw_u8(w, e == ENGI_FM6);
-        if (e == ENGI_FM6) {
-            uint8_t pk[FM6_PACKED];
-            fm6_pack(fm6_patch[k], pk);
-            pw_bytes(w, pk, sizeof pk);
-        }
+        pw_u8(w, 0);                                    /* (Felucca's FM6 patch flag: no patch, FM6 is gone) */
     }
     pw_u8(w, tk.norder);
     pw_bytes(w, tk.order, tk.norder);
@@ -272,8 +267,6 @@ static void proj_track_default(uint32_t k)
         t->p[i] = param_desc_of(e, i)->def;
     for (i = 0; ENGINES[e]->npresets && i < 8u; i++)
         t->p[P_E0 + i] = ENGINES[e]->presets[t->preset].e[i];
-    if (e == ENGI_FM6)
-        fm6_track_loaded(t);
 }
 
 /* 0 = good, 1 = bad, 2 = a song of more tracks than this build has (8 on a 4-track one) */
@@ -332,17 +325,8 @@ static int proj_read(pr_t *r, int apply)
                                                      * sound as saved) */
             for (i = 0; i < 8u; i++)
                 t->p[P_E0 + i] = ENGINES[e]->npresets ? ENGINES[e]->presets[0].e[i] : ENGINES[e]->edit[i].def;
-        if (pr_u8(r)) {
-            uint8_t pk[FM6_PACKED], v[FP_SIZE + 1u];
-            pr_bytes(r, pk, sizeof pk);
-            if (apply) {                            /* the project's own patch: F n if it is that factory one, else OWN */
-                fm6_unpack(pk, v);
-                fm6_set_patch(k, v);
-                fm6_adopt(k);
-            }
-        } else if (apply && e == ENGI_FM6) {
-            fm6_track_loaded(t);
-        }
+        if (pr_u8(r))                               /* a Felucca FM6 patch: an engine this firmware has none of */
+            return 1;
     }
     n = pr_u8(r);
     if (!n || n > TK_ORDER)

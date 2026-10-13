@@ -54,10 +54,10 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Fourteen engines** in the default distribution (below; other distributions hold other sets of the engines, up to 16:
-  BUILDING.md "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
+- **Sixteen engines** in a distribution (below): IDM, the one a plain build makes, and FOUNDRY (BUILDING.md
+  "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
-- **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
+- **Four tracks**, one synth part each with its own engine and sound (drums are KIT, BREAKS or WAR);
   12 voices shared between them (Fel-Tracker; 8 when the device is busy: voices 9 .. 12 start only while the audio's
   measured load is under 75 %, a heavy song keeps to 8 on its own). ALGORITHM selects the track on every page
 - **Tracker** *(Fel-Tracker, by Tristano Suriani; replaces Felucca's step sequencer)*: 24 patterns of up to 64 rows (a row is a 1/16), a column per
@@ -141,6 +141,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   replaced once a new one arrived whole; projects, presets, samples and settings are not touched. **The full backup
   does not include the bank: keep the .syx file.**
 - 1.4.1 opens and saves everything 1.4 does, in the same formats.
+- (Fel-Tracker: FM6 and DRUM are gone, with the bank and the DRUM quick actions; KIT has the lane mutes on the black
+  keys now.)
 
 ## ⚠ Coming from 1.1.5
 
@@ -359,7 +361,9 @@ way as from the menu, in the same tabs.
 
 ## Engines
 
-Felucca's engines, by Leo Kuroshita: ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM.
+Felucca's own engines, by Leo Kuroshita (ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM), are not in
+Fel-Tracker any more (below); what other engines build on of them stays (PHYS's resonators in MODAL and ANVIL, DRUM's
+lanes and General MIDI map in KIT, WAR and GLITCH).
 
 Fel-Tracker's engines, by Tristano Suriani, marked *(Fel-Tracker)* below: WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC,
 KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, ECHOES,
@@ -367,12 +371,6 @@ GLITCH, KIT, BREAKS and RISERS.
 
 A build holds the engines of its distribution (BUILDING.md "Distributions"). In the order the device lists them:
 
-- **ANALOG**: virtual analog; two oscillators (WAVE SYNC: the second hard-synced to the first; SUB: a square an
-  octave down), noise, drive, resonant low-pass filter
-- **FM6**: classic 6-operator FM (Dexed-based): 32 algorithms, a full patch per track, edited in the
-  web editor (which imports .syx files) or on the device: EDIT > OPERATOR (ratio or fixed frequency, fine, level),
-  OP ENV (each stage's rate and level, drawn as the envelope) and OPERATOR 2 (mode, detune, velocity), one
-  operator at a time on the algorithm chart; macros on top; SLOT picks a factory patch (F1–F8), the track's own (OWN) or a voice of the bank the web editor sent (B1–B32)
 - **WAVE** *(Fel-Tracker)*: wavetables. TBL picks one of 8 tables of 8 frames each (BASIC: sine to narrow pulses;
   ADDTV: one partial to many; SYNC: a hard-sync sweep; RESO: a resonant peak climbing; VOX: vowels; FM: two-operator
   FM; DIGI: sparse, metallic spectra; BITS: stepped and 1-bit shapes), POS the place between its frames; the SHP
@@ -521,24 +519,10 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   DOO, YEAH ..), PHON (single phonemes); WORD picks one. Presets: sung vowels, syllables, the keys as words, screams MODE TONE plays WORD at the keys' pitch, WORDS makes every key a word; RATE, INTN (the intonation, 0
   monotone), BUZZ (to a whisper), FORM (the filter's clock: every formant up or down), END (STOP, HOLD the last vowel
   while held, LOOP)
-- **PHASE**: phase distortion (ported from CrispyZebra)
-- **LOFI**: chiptune; pulse, triangle, saw, noise and a 4-bit wave RAM, stepped envelope, sweep, arpeggio
-- **VOICE**: formant oscillator, sung vowels
-- **TRIO**: 3 oscillators with ring modulation and sync, multimode filter
-- **WHEEL**: tonewheel-style organ; drawbar registrations, percussion, key click, drive, rotary speaker
-- **PHYS**: physical models: modal resonators, strings, struck membranes, sympathetic strings
-- **NOISE**: noise from analog to digital: colours, crackle, shift-register and metallic tones
 - **BYTE** *(Fel-Tracker)*: bytebeat. A counter restarts at every note and runs at 8 kHz on C4 (following the key; RATE
   shifts it); FORM picks a formula of it (SAW, PWM, SIERP, XOR, OR, CHIRP, 42, MELO, OCTS, GLTCH, NOISE, MASK), A B C
   are its constants (A mostly the pitch, B how fast the pattern moves, C a mask or a melody); LOOP restarts the counter
   (1K .. 256K steps) so a pattern repeats while held; BITS and TONE shape the 8-bit output
-- **DRUM**: an 8-lane kit of Felucca's own drum voices on the General MIDI key map. KIT picks the
-  standard kit or one of five virtual-analog (VA) kits in the manner of
-  classic analog drum machines (the numbers are a hint), every lane its own voice: **80** (deep sine kick with a long decay, noisy snare,
-  six-square hats), **10** (swept kick, white-noise snare, long-tailed claps, a cymbal), **66** (soft
-  round kick, bright snare, noise hats, a conga), **55** (dropping kick, high metal hats, a metal bell)
-  and **77** (swelling kick, multi-burst claps, claves, a cymbal). All of them are synthesized by
-  Felucca, no samples. EDIT > LANES and LANES 2 set each lane's level
 
 **This fork removed DIGITAL, SAMPLE, GRAIN and SLICE** (1.5): DIGITAL (four-operator FM) had already been replaced by
 FM6, and the other three played recorded material. The firmware has no built-in samples and no user sample slots, which
@@ -547,10 +531,11 @@ numbers (1, 4, 8, 13) are retired, so a project with a track on one of them is r
 an empty slot, a song's instrument of one is dropped, and a library file's patch of one is skipped. A complete backup
 restores without its samples.
 
-FM6's patch bank (the B slots) was removed in 1.0.3: user presets keep their own FM6 patch, and presets that used a B
-slot get that patch on the first start of 1.0.3. 1.4.1 brings B slots back as a voice bank sent from the web editor
-(B1–B32): a voice picked from it becomes the track's own patch, so nothing saved depends on the bank. DRUM's KIT
-variants HAND, CYM and H+CYM were retired in 1.0.5: sounds and projects that used them play the 66, 10 and 77 kits.
+**Fel-Tracker removed Felucca's own engines** (ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE, DRUM) and the
+default distribution that held them, with FM6's whole patch editing: the 6-OP FM tab of the web editor, its voice
+bank (the B slots, its flash sector) and the user presets' FM6 patches. Their ids (0, 2, 3, 5 .. 7, 9 .. 12) are
+retired as the four above, with the same clean break: a project with a track on one is refused, a user preset of one
+shows empty, a song's instrument of one is dropped. The plain build is IDM.
 
 **SLICER** (FX page, every track): a tempo-synced 16-step gate or stutter, with 16 patterns.
 
@@ -633,14 +618,11 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
   Felucca listed in
   [AUTHORS.md](AUTHORS.md)
 - **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):
-  Felucca itself; the PHASE engine's waveforms (a C port of the oscillator of
-  [CrispyZebra](https://github.com/hugelton/CrispyZebra), GPL-3.0); the DRUM voices and kits; the [Fukiai](https://github.com/hugelton/Fukiai) icon
-  font ([MIT](LICENSES/MIT-Fukiai.txt))
+  Felucca itself, its own engines (removed in Fel-Tracker) and the DRUM lanes' General MIDI map KIT uses; the
+  [Fukiai](https://github.com/hugelton/Fukiai) icon font ([MIT](LICENSES/MIT-Fukiai.txt))
 - Fonts: [Inter Tight](https://github.com/rsms/inter-tight) by The Inter Project Authors, [SIL OFL 1.1](LICENSES/OFL-InterTight.txt);
   the browser emulator's labels: [DotGothic16](https://github.com/fontworks-fonts/DotGothic16) by The DotGothic16 Project Authors, [SIL OFL 1.1](LICENSES/OFL-DotGothic16.txt)
-- VOICE engine: after [klattsch](https://github.com/tgies/klattsch) by Tony Gies (MIT); formant data from Klatt (1980) and Hillenbrand et al. (1995)
-- PHYS engine: models ported from [DaisySP](https://github.com/electro-smith/DaisySP) by Electrosmith and Emilie Gillet ([MIT](LICENSES/MIT-DaisySP.txt)) and from Emilie Gillet's [eurorack](https://github.com/pichenettes/eurorack) code ([MIT](LICENSES/MIT-Rings.txt))
-- FM6 engine: msfa from [Dexed](https://github.com/asb2m10/dexed) by Google Inc. and Pascal Gauthier ([Apache-2.0](LICENSES/Apache-2.0-msfa.txt))
+- MODAL and ANVIL: the modal resonator ported from [DaisySP](https://github.com/electro-smith/DaisySP) by Electrosmith and Emilie Gillet ([MIT](LICENSES/MIT-DaisySP.txt))
 - Browser emulator: after [X0X](https://github.com/charlesvestal/fm1-x0x) by [charlesvestal](https://github.com/charlesvestal) (GPL-3.0), a Felucca fork whose browser build showed the way
 - Package format and boot files: [JieLi AC79 SDK](https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK) ([Apache-2.0](LICENSES/Apache-2.0.txt); three of its files are in every package, none in this tree)
 - Contributions: [keremimo](https://github.com/keremimo) (white-key scales, #2), [ChanceTheMaker](https://github.com/ChanceTheMaker)

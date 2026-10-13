@@ -15,13 +15,7 @@ import os
 import re
 import sys
 
-FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
-         "trio_render", "trio_pass", "wheel_render", "wheel_block",
-         "phys_render", "drum_render", "noise_render", "fm6_render", "fm6_op_run", "fm6_op_fb", "px_modal_block", "px_modal_run", "px_memb_block",
-         "px_string_excite", "px_string_run", "px_symp_run",
-         "dv_metal_run", "dv_kick_run", "dv_snare_run", "dv_clap_run", "dv_hat_run", "dv_tom_run",   # drum_voice.c
-         "dv_rim_run", "dv_bell_run", "dv_cym_run", "dv_out", "dv_metal_mix",
-         "slicer_track",
+FUNCS = ["slicer_track",
          "wave_render", "byte_render", "west_render",       # WAVE, BYTE, WEST (1.5: eng_wave.c, eng_byte.c, eng_west.c)
          "hoover_render",                                   # HOOVER (1.5: eng_hoover.c)
          "speech_render",                                   # SPEECH (1.5: eng_speech.c; the IDM distribution's)
@@ -51,9 +45,7 @@ FUNCS = ["analog_render", "phase_render", "lofi_render", "formant_render",
 OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
 # the one build/felucca.dis is: tools/build.py), skipped then
-ENGINE_OF = {"analog_render": "ANALOG", "phase_render": "PHASE", "lofi_render": "LOFI", "formant_render": "VOICE",
-             "trio_render": "TRIO", "trio_pass": "TRIO", "wheel_render": "WHEEL", "wheel_block": "WHEEL",
-             "phys_render": "PHYS", "drum_render": "DRUM", "noise_render": "NOISE", "wave_render": "WAVE",
+ENGINE_OF = {"wave_render": "WAVE",
              "byte_render": "BYTE", "west_render": "WEST", "hoover_render": "HOOVER", "speech_render": "SPEECH",
              "fmperc_render": "FMPERC", "karplus_render": "KARPLUS",
              "vosim_render": "VOSIM",
@@ -64,11 +56,6 @@ ENGINE_OF = {"analog_render": "ANALOG", "phase_render": "PHASE", "lofi_render": 
              "risers_render": "RISERS", "dubsiren8_render": "DUBSIREN8", "dubchord_render": "DUBCHORD",
              "kit_render": "KIT", "breaks_render": "BREAKS", "risers_render": "RISERS",
              "fmp_run": "FMPERC"}
-ENGINE_OF.update({n: "FM6" for n in ("fm6_render", "fm6_op_run", "fm6_op_fb")})
-ENGINE_OF.update({n: "PHYS" for n in ("px_modal_block", "px_modal_run", "px_memb_block", "px_string_excite",
-                                      "px_string_run", "px_symp_run")})
-ENGINE_OF.update({n: "DRUM" for n in ("dv_metal_run", "dv_kick_run", "dv_snare_run", "dv_clap_run", "dv_hat_run",
-                                      "dv_tom_run", "dv_rim_run", "dv_bell_run", "dv_cym_run", "dv_out", "dv_metal_mix")})
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...

@@ -292,7 +292,7 @@ static void song_setup(void)
     perf_reset();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, ENGI_FM6, 4);                  /* FM6 PAD */
+    host_preset(t2, ENGI_VECTOR, 4);                  /* FM6 PAD */
     host_drums(td);                                /* DRUM KIT */
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i], d[4], k = 0;

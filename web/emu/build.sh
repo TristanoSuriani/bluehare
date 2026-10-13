@@ -6,7 +6,7 @@
 # to WebAssembly with Emscripten, plus the page. After X0X's web/emu/build.sh (charlesvestal/fm1-x0x, GPL-3.0).
 #   web/emu/build.sh                       ->  build/emu/{index.html, worklet.js, felucca.wasm, fonts/}: the distribution
 #                                              distributions/BUILD names (as ./build.sh)
-#   FELUCCA_DIST=default web/emu/build.sh  ->  build/emu-default/ (another distribution: distributions/<name>.txt)
+#   FELUCCA_DIST=foundry web/emu/build.sh  ->  build/emu-foundry/ (another distribution: distributions/<name>.txt)
 # Run after one ./build.sh (build/gen: the tables, the fonts, the distributions' headers).
 # -ffp-contract=off: no fused multiply-adds, as the host build. EMU_OPT replaces -O2, EMU_CFLAGS adds flags
 # (EMU_CFLAGS=-msimd128: let the compiler vectorise; every browser with AudioWorklet has wasm SIMD).

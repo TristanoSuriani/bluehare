@@ -195,12 +195,6 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v)
         return ICON_LFO_WAVE;                 /* "WAVE" is also the oscillator wave */
     if (d == &TP[P_ARATE] || d == &TP[P_SLRATE])
         return ICON_DIVISION;                 /* arp / SLICER RATE is a note division, not Hz */
-    if (d->names == N_TRIO_MODE)
-        return ICON_CUTOFF;                   /* TRIO's MODE is the filter type, not the arp mode */
-    if (d->names == N_NOISE_MODE)
-        return ICON_NOISE;                    /* NOISE's MODE is the source; its CLK the register clock */
-    if (d == &NOISE_CLK)
-        return ICON_RATE;
     return icon_for_label(d->label);
 }
 

@@ -8,7 +8,7 @@
  *    glides from the cycle before's value to this one's, stays inside S&H's range; DEPTH scales the LFO (its LFO DEST
  *    routings and the matrix's LFO source) as AMP does a voice, several slots multiply, none = untouched (bit for bit);
  *    RATE (the LFO's rate) with them: the modulator modulated; values past the lists do nothing.
- * 2. ANALOG WAVE SYNC / SUB (eng_analog.c): WAVE 0..4 untouched (the golden renders: regress.c), the labels (SYNC, SUB),
+ * 2. (ANALOG WAVE SYNC / SUB: gone with ANALOG, Fel-Tracker) WAVE 0..4 untouched (the golden renders: regress.c), the labels (SYNC, SUB),
  *    no DC, bounded, not silent; SUB an octave below (period twice the note's), SYNC periodic at the note whatever DTN,
  *    its sweep (DTN, SHP) brightens it, no restart click (largest sample step against the plain saw's).
  * 3. SPREAD (fx.c mix_spread): SPRD 0 / MONO / LEGATO bit for bit the plain mix, a POLY note hard left / the next hard
@@ -24,6 +24,7 @@
 #endif
 
 static int bad;
+static uint32_t EA;                               /* track 1's engine: WASP (ANALOG's until Fel-Tracker removed it) */
 static void check(const char *what, int ok)
 {
     printf("sound14: %-74s %s\n", what, ok ? "ok" : "FAIL");
@@ -161,7 +162,7 @@ static void test_matrix(void)
           !MD_ENGINE(MD_DEPTH) && MD_ENGINE(MD_E1 + 7));
 
     /* S&H and SLEW over a few LFO cycles: one value per cycle, the steps at the wraps; SLEW continuous */
-    fresh(0, 0);
+    fresh(EA, 0);
     t->p[P_LRATE] = 90;                                   /* a few Hz */
     t->p[P_LWAVE] = 4;                                    /* S&H: the LFO's own value is the same random */
     trk_note_on(t, 60, 100);
@@ -211,14 +212,14 @@ static void test_matrix(void)
     /* S&H follows RATE: a faster LFO steps more often */
     {
         uint32_t s1 = 0, s2 = 0;
-        fresh(0, 0);
+        fresh(EA, 0);
         t->p[P_LRATE] = 70;
         for (k = 0; k < 2u * FS / CTL; k++) {
             uint32_t ph0 = t->lfo_ph;
             blocks(1);
             s1 += t->lfo_ph < ph0;
         }
-        fresh(0, 0);
+        fresh(EA, 0);
         t->p[P_LRATE] = 70;
         slot(t, 0, MS_MODW, MD_RATE, 63);                 /* the matrix's RATE: S&H with it */
         t->mw = 127;
@@ -231,7 +232,7 @@ static void test_matrix(void)
     }
 
     /* DEPTH: the LFO's gain, as AMP's */
-    fresh(0, 0);
+    fresh(EA, 0);
     t->lfo_val = 32767;
     t->lfo_fade = 32767;
     slot(t, 0, MS_MODW, MD_DEPTH, 63);
@@ -308,9 +309,9 @@ static void sh_on_nothing(track_t *t)             /* S&H and SLEW slots with AMT
 }
 static void test_matrix_sound(void)
 {
-    uint64_t h0 = phrase_child(0, 0, 0), hn = phrase_child(0, 0, sh_on_nothing);
-    uint64_t p0 = phrase_child(0, 0, vib_plain), d0 = phrase_child(0, 0, vib_depth0);
-    uint64_t d1 = phrase_child(0, 0, vib_depth1), f1 = phrase_child(0, 0, vib_full);
+    uint64_t h0 = phrase_child(EA, 0, 0), hn = phrase_child(EA, 0, sh_on_nothing);
+    uint64_t p0 = phrase_child(EA, 0, vib_plain), d0 = phrase_child(EA, 0, vib_depth0);
+    uint64_t d1 = phrase_child(EA, 0, vib_depth1), f1 = phrase_child(EA, 0, vib_full);
     check("S&H / SLEW / DEPTH slots at AMT 0: bit for bit no matrix", h0 && h0 == hn);
     check("DEPTH closed: LFO DEST PIT plays nothing (bit for bit LFO DEST PIT 0)", p0 && p0 == d0);
     check("DEPTH open: the vibrato is there (not the plain note), as without the matrix but for the gain",
@@ -326,7 +327,7 @@ static void analog_note(uint32_t pi, int32_t w, int32_t d, int32_t mx, int32_t s
 {
     track_t *t = &trk[0];
     uint32_t k, i;
-    fresh(0, pi);
+    fresh(EA, pi);
     dry(t);
     t->p[P_VOICE] = V_POLY;
     t->p[P_E0] = (int16_t)w;
@@ -392,78 +393,6 @@ static uint32_t best_lag(uint32_t from, uint32_t lo, uint32_t hi)
     return best;
 }
 
-static void test_analog(void)
-{
-    const engine_t *e = ENGINES[0];
-    track_t *t = &trk[0];
-    stats_t saw, sub, sync0, sync40, syncs;
-    double per = FS / 220.0;                              /* A3 (57) */
-    uint32_t from = FS / 10u, lag;
-    char msg[160];
-
-    check("ANALOG WAVE: SAW .. PWM where they were, SYNC 5 SUB 6 appended, default SAW",
-          e->edit[0].max == 6 && e->edit[0].def == 0 && str_eq(e->edit[0].names[4], "PWM") &&
-          str_eq(e->edit[0].names[5], "SYNC") && str_eq(e->edit[0].names[6], "SUB"));
-    fresh(0, 0);
-    t->p[P_E0] = 5;
-    check("labels: SYNC shows DTN as SYNC, SUB MIX as SUB; the others as before",
-          str_eq(track_desc(t, P_E1)->label, "SYNC") && str_eq(track_desc(t, P_E2)->label, "MIX") &&
-          track_desc(t, P_E1)->min == 0 && track_desc(t, P_E1)->max == 127);
-    t->p[P_E0] = 6;
-    t->eng_req = 0;
-    check("  .. SUB", str_eq(track_desc(t, P_E2)->label, "SUB") && str_eq(track_desc(t, P_E1)->label, "DTN"));
-    t->p[P_E0] = 0;
-    check("  .. SAW: DTN MIX", str_eq(track_desc(t, P_E1)->label, "DTN") && str_eq(track_desc(t, P_E2)->label, "MIX"));
-
-    analog_note(0, 0, 0, 0, 0, 57);
-    saw = stats(from);
-    analog_note(0, 6, 0, 127, 0, 57);                     /* SUB alone */
-    sub = stats(from);
-    lag = best_lag(from, (uint32_t)(per * 1.5), (uint32_t)(per * 2.5));
-    snprintf(msg, sizeof msg, "SUB: an octave below (period %u samples, the note's %.1f), no DC, bounded", lag, per);
-    check(msg, fabs(lag - 2 * per) < 2.0 && autocorr(from, lag) > 0.95 && fabs(sub.mean) < sub.rms * 0.02 &&
-          sub.peak < 32000 && sub.rms > saw.rms * 0.3);
-    analog_note(0, 6, 0, 64, 0, 57);                      /* SUB half */
-    {
-        stats_t s = stats(from);
-        check("SUB 50 %: saw + sub, bounded, no DC", fabs(s.mean) < s.rms * 0.02 && s.peak < 32000 && s.rms > 100);
-    }
-    analog_note(0, 5, 0, 127, 0, 57);                     /* SYNC alone, DTN 0: OSC 2 at OSC 1's pitch */
-    sync0 = stats(from);
-    analog_note(0, 5, 40, 127, 0, 57);                    /* SYNC alone, DTN 40: +7.5 semitones, synced */
-    sync40 = stats(from);
-    lag = best_lag(from, (uint32_t)(per * 0.5), (uint32_t)(per * 1.5));
-    snprintf(msg, sizeof msg, "SYNC: periodic at the note whatever DTN (period %u, the note's %.1f; r %.3f)", lag, per,
-             autocorr(from, lag));
-    check(msg, fabs(lag - per) < 1.5 && autocorr(from, lag) > 0.97);
-    snprintf(msg, sizeof msg, "SYNC: DTN 0 ~ the saw (rms %.0f vs %.0f), DTN 40 brighter (%.3f vs %.3f)", sync0.rms,
-             saw.rms, sync40.hf, sync0.hf);
-    check(msg, fabs(sync0.rms / saw.rms - 1) < 0.05 && sync40.hf > sync0.hf * 1.1);
-    snprintf(msg, sizeof msg, "SYNC: no DC, bounded, the restart band-limited (largest step %.0f vs the saw's %.0f)",
-             sync40.maxstep, saw.maxstep);
-    check(msg, fabs(sync40.mean) < sync40.rms * 0.03 && sync40.peak < 32000 && sync40.maxstep < saw.maxstep * 1.3);
-    analog_note(0, 5, 10, 127, 63, 57);                   /* ENV -> SHP: the sync sweep */
-    syncs = stats(from);
-    check("SYNC: ENV DEST SHP sweeps it (other than without), bounded", syncs.peak < 32000 &&
-          fabs(syncs.hf - sync0.hf) > 0.01);
-    /* the corners: low and high notes, DTN 127, drive and resonance: bounded, no DC */
-    {
-        static const uint8_t NOTE[3] = {24, 60, 108};
-        uint32_t w, n, okc = 1;
-        double worst = 0;
-        for (w = 5; w <= 6; w++)
-            for (n = 0; n < 3u; n++) {
-                stats_t s;
-                analog_note(0, (int32_t)w, 127, 100, 63, NOTE[n]);
-                s = stats(from);
-                okc &= s.peak < 32767 && fabs(s.mean) < s.rms * 0.05 + 30 && s.rms > 10;
-                worst = fabs(s.mean) > worst ? fabs(s.mean) : worst;
-            }
-        snprintf(msg, sizeof msg, "SYNC / SUB at the corners (notes 24 60 108, DTN 127, SHP env): bounded, no DC (|mean| <= %.0f)",
-                 worst);
-        check(msg, okc);
-    }
-}
 
 /* ------------------------------------------------------------------ 3 --- */
 static void sp_mono127(track_t *t) { t->p[P_VOICE] = V_MONO; t->p[P_SPRD] = 127; }
@@ -473,14 +402,14 @@ static void sp_leg0(track_t *t) { t->p[P_VOICE] = V_LEGATO; }
 static void sp_poly0(track_t *t) { t->p[P_VOICE] = V_POLY; t->sp_alt = 1; }   /* (the sides change nothing at 0) */
 static void sp_poly0b(track_t *t) { t->p[P_VOICE] = V_POLY; }
 
-/* track 1 (ANALOG SOFT PAD, dry, POLY), SPRD sp, PAN pan: notes, then blocks; L and R sums of squares, the mono sum's */
+/* track 1 (WASP PAD, dry, POLY), SPRD sp, PAN pan: notes, then blocks; L and R sums of squares, the mono sum's */
 typedef struct { double l, r, m, lr; int32_t rmax, lmax; } lr_t;
 static lr_t spread_run(int32_t sp, int32_t pan, uint32_t mode, const uint8_t *notes, uint32_t nn, uint32_t nb)
 {
     track_t *t = &trk[0];
     lr_t a = {0};
     uint32_t k, i;
-    fresh(0, preset_by_name(0, "SOFT PAD"));
+    fresh(EA, preset_by_name(EA, "WASP PAD"));
     dry(t);
     song.master_q12 = 1024;                               /* below the limiter: the levels as mixed */
     t->p[P_VOICE] = (int16_t)mode;
@@ -514,14 +443,14 @@ static void test_spread(void)
     check("SPRD: a track parameter 0..127, default 0 (as before), before the engine's (P_E0 96, P_COUNT 104)",
           TP[P_SPRD].min == 0 && TP[P_SPRD].max == 127 && TP[P_SPRD].def == 0 && P_SPRD + 1 == P_E0 && P_E0 == 96 &&
           P_COUNT == 104 && str_eq(TP[P_SPRD].label, "SPRD"));
-    h1 = phrase_child(0, 1, sp_mono0);
-    h2 = phrase_child(0, 1, sp_mono127);
+    h1 = phrase_child(EA, 1, sp_mono0);
+    h2 = phrase_child(EA, 1, sp_mono127);
     check("MONO: SPRD 127 plays bit for bit as SPRD 0 (one voice: on PAN)", h1 && h1 == h2);
-    h1 = phrase_child(0, 1, sp_leg0);
-    h2 = phrase_child(0, 1, sp_leg127);
+    h1 = phrase_child(EA, 1, sp_leg0);
+    h2 = phrase_child(EA, 1, sp_leg127);
     check("LEGATO: SPRD 127 plays bit for bit as SPRD 0", h1 && h1 == h2);
-    h1 = phrase_child(0, 1, sp_poly0);
-    h2 = phrase_child(0, 1, sp_poly0b);
+    h1 = phrase_child(EA, 1, sp_poly0);
+    h2 = phrase_child(EA, 1, sp_poly0b);
     check("POLY SPRD 0: the voices' sides change nothing (the plain mix, bit for bit)", h1 && h1 == h2);
 
     a = spread_run(0, 0, V_POLY, ONE, 1, NREND / 2);
@@ -580,7 +509,7 @@ static void test_spread_fx(void)
     double side_closed = 0, side_open = 0;
     char msg[160];
     /* SLICER GATE, pattern 1 (x.x.), DEPTH 100 %: in the closed steps L and R both near silent */
-    fresh(0, preset_by_name(0, "SOFT PAD"));
+    fresh(EA, preset_by_name(EA, "WASP PAD"));
     dry(t);
     t->p[P_ATK] = 0;
     t->p[P_SPRD] = 127;
@@ -614,7 +543,7 @@ static void test_spread_fx(void)
         double side[2][2] = {{0}}, all[2][2] = {{0}};
         uint32_t ph, r;
         for (r = 0; r < 2u; r++) {
-            fresh(0, preset_by_name(0, "SOFT PAD"));
+            fresh(EA, preset_by_name(EA, "WASP PAD"));
             dry(t);
             t->p[P_ATK] = 0;
             t->p[P_SPRD] = (int16_t)(r ? 127 : 0);
@@ -644,7 +573,7 @@ static void test_spread_fx(void)
         uint64_t hw[2];
         uint32_t r;
         for (r = 0; r < 2u; r++) {
-            fresh(0, preset_by_name(0, "SOFT PAD"));
+            fresh(EA, preset_by_name(EA, "WASP PAD"));
             dry(t);
             t->p[P_REV] = 100;
             t->p[P_SPRD] = (int16_t)(r ? 127 : 0);
@@ -675,7 +604,7 @@ static uint64_t instr_now(void)
 #endif
     return 0;
 }
-/* instructions per sample of ANALOG SOFT PAD POLY with nv notes, SPRD sp; or matrix slots (S&H -> CUT, SLEW -> PITCH,
+/* instructions per sample of WASP PAD POLY with nv notes, SPRD sp; or matrix slots (S&H -> CUT, SLEW -> PITCH,
  * MODW -> DEPTH, ENV -> RATE) with mx */
 static double cost(uint32_t nv, int32_t sp, int mx, uint32_t wave)
 {
@@ -683,7 +612,7 @@ static double cost(uint32_t nv, int32_t sp, int mx, uint32_t wave)
     track_t *t = &trk[0];
     uint32_t i, rep;
     double best = 1e30;
-    fresh(0, preset_by_name(0, "SOFT PAD"));
+    fresh(EA, preset_by_name(EA, "WASP PAD"));
     t->p[P_VOICE] = V_POLY;
     t->p[P_SUS] = 127;
     t->p[P_SPRD] = (int16_t)sp;
@@ -710,7 +639,7 @@ static double cost(uint32_t nv, int32_t sp, int mx, uint32_t wave)
 }
 static void test_cost(void)
 {
-    double c1, c1s, c8, c8s, m0, m1, a0, a5, a6;
+    double c1, c1s, c8, c8s, m0, m1;
     if (!instr_now()) {
         printf("sound14: cost: no instruction counter on this host (proc_pid_rusage), skipped\n");
         return;
@@ -719,7 +648,7 @@ static void test_cost(void)
     c1s = cost(1, 64, 0, 0);
     c8 = cost(8, 0, 0, 0);
     c8s = cost(8, 64, 0, 0);
-    printf("sound14: cost: SPREAD, ANALOG SOFT PAD POLY: 1 voice %.0f -> %.0f (+%.0f), 8 voices %.0f -> %.0f (+%.0f) "
+    printf("sound14: cost: SPREAD, WASP PAD POLY: 1 voice %.0f -> %.0f (+%.0f), 8 voices %.0f -> %.0f (+%.0f) "
            "instructions / sample: per part +%.0f, per voice %+.1f\n", c1, c1s, c1s - c1, c8, c8s, c8s - c8,
            c1s - c1, ((c8s - c8) - (c1s - c1)) / 7.0);
     check("cost: SPREAD a fixed cost per part (< 3 % of an 8-voice part), next to nothing per voice",
@@ -729,12 +658,6 @@ static void test_cost(void)
     printf("sound14: cost: matrix S&H -> CUT, SLEW -> PITCH, MODW -> DEPTH, ENV -> RATE on 8 voices: %.0f -> %.0f (+%.1f %%)\n",
            m0, m1, (m1 - m0) * 100 / m0);
     check("cost: the new sources / DEPTH within the matrix's allowance (+5 %)", (m1 - m0) * 100 / m0 <= 5.0);
-    a0 = cost(8, 0, 0, 0);
-    a5 = cost(8, 0, 0, 5);
-    a6 = cost(8, 0, 0, 6);
-    printf("sound14: cost: ANALOG 8 voices SAW %.0f, SYNC %.0f (%+.1f %%), SUB %.0f (%+.1f %%) instructions / sample\n", a0, a5,
-           (a5 - a0) * 100 / a0, a6, (a6 - a0) * 100 / a0);
-    check("cost: SYNC / SUB within 25 % of SAW (regress.c's CPU allowance)", a5 < a0 * 1.25 && a6 < a0 * 1.25);
 }
 
 /* ------------------------------------------------------------------ 4 --- */
@@ -775,7 +698,7 @@ static int demos(const char *dir)
     FILE *f;
     track_t *t = &trk[0];
     /* S&H -> CUT: ANALOG ACID, a held note, the cutoff jumps once per LFO cycle (1/16 at 120 BPM: SYNC) */
-    fresh(0, preset_by_name(0, "SAW LEAD"));
+    fresh(EA, preset_by_name(EA, "WASP LEAD"));
     t->p[P_VOICE] = V_POLY;
     t->p[P_E4] = 50;
     t->p[P_E5] = 90;
@@ -790,7 +713,7 @@ static int demos(const char *dir)
         n++;
     }
     /* SLEW -> CUT, the same: the smooth random line */
-    fresh(0, preset_by_name(0, "SAW LEAD"));
+    fresh(EA, preset_by_name(EA, "WASP LEAD"));
     t->p[P_VOICE] = V_POLY;
     t->p[P_E4] = 50;
     t->p[P_E5] = 90;
@@ -806,7 +729,7 @@ static int demos(const char *dir)
     }
     /* LFO rate and depth modulated: LFO DEST PIT vibrato; ENV -> RATE speeds it up as the note decays .. no: MODW
      * rises over 4 s: MODW -> DEPTH opens the vibrato, MODW -> RATE speeds it up (a mod-wheel vibrato that quickens) */
-    fresh(0, preset_by_name(0, "SINE KEY"));
+    fresh(EA, preset_by_name(EA, "WASP KEYS"));
     t->p[P_VOICE] = V_POLY;
     t->p[P_SUS] = 127;
     t->p[P_LRATE] = 55;
@@ -824,52 +747,8 @@ static int demos(const char *dir)
         fclose(f);
         n++;
     }
-    /* ANALOG SUB: a bass line, SUB at 0 .. 127 over it */
-    fresh(0, preset_by_name(0, "SQR BASS"));
-    t->p[P_E0] = 6;
-    t->p[P_E2] = 0;
-    if ((f = demo_open(dir, "analog_sub", 6u * FS / CTL * CTL))) {
-        static const uint8_t LINE[8] = {36, 36, 43, 36, 39, 36, 46, 43};
-        for (k = 0; k < 24u; k++) {
-            t->p[P_E2] = (int16_t)(k * 127u / 23u);
-            trk_note_on(t, LINE[k & 7u], 100);
-            demo_blocks(f, FS / 4u / CTL * 3u / 4u);
-            trk_note_off(t, LINE[k & 7u]);
-            demo_blocks(f, FS / 4u / CTL - FS / 4u / CTL * 3u / 4u);
-        }
-        demo_blocks(f, 6u * FS / CTL - 24u * (FS / 4u / CTL));
-        fclose(f);
-        n++;
-    }
-    /* ANALOG SYNC: the classic sweep, ENV DEST SHP on a lead, then DTN up by hand */
-    fresh(0, preset_by_name(0, "SAW LEAD"));
-    t->p[P_E0] = 5;
-    t->p[P_E1] = 0;
-    t->p[P_E2] = 110;
-    t->p[P_E4] = 100;
-    t->p[P_ED_SHP] = 63;
-    t->p[P_DEC] = 90;
-    t->p[P_SUS] = 40;
-    if ((f = demo_open(dir, "analog_sync", 7u * FS / CTL * CTL))) {
-        static const uint8_t MEL[8] = {57, 60, 64, 67, 64, 60, 62, 55};
-        for (k = 0; k < 8u; k++) {
-            trk_note_on(t, MEL[k], 110);
-            demo_blocks(f, FS / 2u / CTL);
-            trk_note_off(t, MEL[k]);
-        }
-        t->p[P_ED_SHP] = 0;
-        trk_note_on(t, 57, 110);
-        for (k = 0; k < 2u * FS / CTL; k++) {
-            t->p[P_E1] = (int16_t)(k * 127u / (2u * FS / CTL));
-            demo_blocks(f, 1);
-        }
-        trk_note_off(t, 57);
-        demo_blocks(f, 7u * FS / CTL - 4u * FS / CTL - 2u * FS / CTL);
-        fclose(f);
-        n++;
-    }
     /* SPREAD on a pad: two chords at SPRD 0, then the same at SPRD 100 */
-    fresh(0, preset_by_name(0, "SOFT PAD"));
+    fresh(EA, preset_by_name(EA, "WASP PAD"));
     t->p[P_REV] = 50;
     if ((f = demo_open(dir, "spread_pad", 6u * (2u * FS / CTL) * CTL))) {
         uint32_t r;
@@ -887,7 +766,7 @@ static int demos(const char *dir)
         n++;
     }
     /* SPREAD on UNISON: a supersaw-ish lead, SPRD 0 then 127 */
-    fresh(0, preset_by_name(0, "SAW LEAD"));
+    fresh(EA, preset_by_name(EA, "WASP LEAD"));
     t->p[P_VOICE] = V_UNISON;
     t->p[P_DETUNE] = 60;
     if ((f = demo_open(dir, "spread_unison", 6u * FS / CTL * CTL))) {
@@ -902,16 +781,15 @@ static int demos(const char *dir)
         fclose(f);
         n++;
     }
-    printf("sound14: %u demos in %s (sh_cutoff, slew_cutoff, lfo_rate_depth, analog_sub, analog_sync, spread_pad, "
-           "spread_unison)\n", n, dir);
-    return n == 7u;
+    printf("sound14: %u demos in %s (sh_cutoff, slew_cutoff, lfo_rate_depth, spread_pad, spread_unison)\n", n, dir);
+    return n == 5u;
 }
 
 int main(int argc, char **argv)
 {
+    EA = eng_by_name("WASP");
     test_matrix();
     test_matrix_sound();
-    test_analog();
     test_spread();
     test_spread_fx();
     test_cost();

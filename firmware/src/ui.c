@@ -344,14 +344,11 @@ static int layer_locked(void);
 static uint32_t layer_leds(uint32_t *br);
 static uint32_t layer_btn(void);
 
-/* LANES / LANES 2 are a DRUM track's (its lane levels); OPERATOR, OP ENV, OPERATOR 2 an FM6 track's (its patch's
- * operators, ui_fm6op.c) */
+/* LANES / LANES 2 are a KIT track's (its lane levels) */
 static int page_visible(uint32_t i)
 {
     if (PAGES[i].scope == SC_TRACK && PAGES[i].id[0] >= P_LN0 && PAGES[i].id[0] <= P_LN7)
-        return TSEL->eng_req % NENGINES == ENGI_DRUM || TSEL->eng_req % NENGINES == ENGI_KIT;
-    if (PAGES[i].graph >= GR_FMOP && PAGES[i].graph <= GR_FMENV)
-        return TSEL->eng_req % NENGINES == ENGI_FM6;
+        return TSEL->eng_req % NENGINES == ENGI_KIT;
     return 1;
 }
 
@@ -468,8 +465,6 @@ static struct {
     uint8_t trk;                 /* track + 1, 0 = nothing to undo */
     uint8_t keep;                /* the track is as the last load left it (undo.after): a next load keeps the copy */
     uint8_t eng, preset, user;
-    uint8_t fm6_slot;            /* the track's FM6 patch and its SLOT (eng_fm6.c): an edited or a project's */
-    uint8_t fm6[FP_SIZE + 1u];   /* patch is the track's own, not a factory one */
     int16_t p[P_COUNT];
     uint32_t after;              /* track_sig right after the last load */
     uint32_t t_ms;               /* time of the last load (the editor's SETs after it belong to it) */
@@ -484,11 +479,10 @@ static uint32_t fnv(uint32_t h, const void *p, uint32_t n)
         h = (h ^ *b++) * 16777619u;
     return h;
 }
-static uint32_t track_sig(const track_t *t)      /* the sound (an FM6 track's patch too) */
+static uint32_t track_sig(const track_t *t)      /* the sound */
 {
     uint8_t id[3] = {t->eng_req, t->preset, t->user};
-    uint32_t h = fnv(fnv(2166136261u, t->p, sizeof t->p), id, 3);
-    return fnv(h, fm6_patch[trk_index(t)], sizeof fm6_patch[0]);   /* (a patch the editor sent between two loads) */
+    return fnv(fnv(2166136261u, t->p, sizeof t->p), id, 3);
 }
 
 /* MOMENTARY (ui_input.c mom_turn: LFO held, the knobs' changes go back when it is let go): the values turned, where
@@ -526,8 +520,6 @@ static void undo_copy(track_t *t)                 /* the track's sound as it is 
     undo.preset = t->preset;
     undo.user = t->user;
     memcpy(undo.p, t->p, sizeof undo.p);
-    memcpy(undo.fm6, fm6_patch[i], FP_SIZE);
-    undo.fm6_slot = fm6_slot[i];
 }
 static void load_begin(track_t *t)
 {
@@ -588,7 +580,6 @@ static void undo_swap(void)
 {
     track_t *t;
     uint32_t i, tr;
-    uint8_t v[FP_SIZE + 1u], sl;
     char b[4] = {'T', 0, 0, 0};
     if (!undo.trk) {
         ui_message("NOTHING TO UNDO");
@@ -614,13 +605,6 @@ static void undo_swap(void)
             }
     }
     fm1_irq_on();
-    sl = fm6_slot[tr];                            /* FM6: the track's patch as it was (edited, a project's, a */
-    memcpy(v, fm6_patch[tr], FP_SIZE);            /* user preset's), not a factory one */
-    fm6_set_patch(tr, undo.fm6);
-    fm6_slot[tr] = undo.fm6_slot;                 /* (fm6_poll: the patch stays) */
-    fm6_own_ok &= (uint8_t)~(1u << tr);
-    memcpy(undo.fm6, v, FP_SIZE);
-    undo.fm6_slot = sl;
     undo.keep = 0;                                /* the next load copies the track as it is now */
     if (t == TSEL)
         sync_reload = 1;
@@ -682,7 +666,6 @@ static void apply_preset_to(track_t *t, uint32_t pi)
         for (i = 0; i < 4u; i++)
             t->p[P_DIST + i] = (int16_t)(pr->fx[i] ? pr->fx[i] - 1 : FX_DEF[i]);
     }
-    fm6_track_loaded(t);                              /* FM6: the preset's patch (its SLOT) */
     load_end(t);
 }
 

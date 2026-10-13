@@ -27,7 +27,6 @@ static int ed_bk_song(uint32_t id)
 #define ED_BK_N ((uint32_t)sizeof ED_BK_IDS)
 #define ED_BK_MAX ((uint32_t)sizeof proj_wire_u.raw)
 #define ED_BK_RAW (proj_wire_u.raw)  /* reuse the existing serialized main-loop scratch */
-_Static_assert(sizeof proj_wire_u.raw >= sizeof(upf_t) && sizeof proj_wire_u.raw >= sizeof(fm6_bank_t), "backup staging");
 static persist_t ed_bk_settings;
 static uint32_t ed_bk_rgen;                     /* a restore's generation for the song's chunks (ids 2..5) */
 static uint8_t ed_bk_chunk = 0xFFu;             /* the stored chunk ED_BK_RAW holds (ed_bk_object), 0xFF none */
@@ -76,12 +75,8 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         if (up_bank[id - 6u].magic == UP_BANK_MAGIC) *len = sizeof up_bank[0];
         return (const uint8_t *)&up_bank[id - 6u];
     }
-    if (id == 8u)                                   /* the retired FM6 patch bank: always empty */
+    if (id == 8u || id == 9u)                       /* Felucca's FM6 patch banks (FM6 removed): always empty */
         return ED_BK_RAW;
-    if (id == 9u) {                                 /* the user presets' FM6 patches */
-        if (upf_valid(&upf)) *len = sizeof upf;
-        return (const uint8_t *)&upf;
-    }
     if (id >= 32u && id < 35u)                      /* the user sample slots (removed in 1.5): always empty */
         return ED_BK_RAW;
     return 0;
@@ -164,18 +159,8 @@ static uint32_t ed_bk_commit(void)
             p->rsize != sizeof(up_rec_t) || p->nslot != UP_PER_BANK)) return 2;
         /* Unknown record versions remain inert bytes, preserving future/older bank data. */
         obj = OBJ_UPRESET0 + ed_bk_id - 6u;
-    } else if (ed_bk_id == 8u) {                    /* an older archive's FM6 bank: into the restored user presets */
-        if (!ed_bk_len) return 0;
-        if (ed_bk_len != sizeof(fm6_bank_t) || !fm6_bank_valid((const fm6_bank_t *)raw)) return 2;
-        upf_migrate((const fm6_bank_t *)raw);
-        sync_reload = 1; ui.force = 1;
-        return upf_save() == 2 ? 4u : 0u;
-    } else if (ed_bk_id == 9u) {                    /* the user presets' FM6 patches (0: none) */
-        const upf_t *u = (const upf_t *)raw;
-        if (ed_bk_len && (ed_bk_len != sizeof *u || !upf_valid(u) || (u->used >> (UP_SLOTS - 1u) >> 1))) return 2;
-        if (ed_bk_len) memcpy(&upf, raw, sizeof upf); else upf_empty();
-        sync_reload = 1; ui.force = 1;
-        return upf_save() == 2 ? 4u : 0u;           /* (a failed write keeps the restored RAM copy) */
+    } else if (ed_bk_id == 8u || ed_bk_id == 9u) {  /* Felucca's FM6 patch banks: FM6 is gone, nothing to restore */
+        return 0;
     } else return 1;
 #if FELUCCA_FLASH
     if (!flash_ok || st_save(obj, raw, ed_bk_len)) return 4;
@@ -210,8 +195,8 @@ static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
         if (len > ED_BK_MAX || (a[1] == 0u && len) ||
             (a[1] == 1u && len != sizeof(persist_t)) ||
             (ed_bk_song(a[1]) >= 0 && len && !proj_store_len(len)) ||
-            ((a[1] == 6u || a[1] == 7u) && len && len != sizeof(up_bank_t)) ||
-            (a[1] == 8u && len && len != sizeof(fm6_bank_t)) || (a[1] == 9u && len && len != sizeof(upf_t))) return 1;
+            ((a[1] == 6u || a[1] == 7u) && len && len != sizeof(up_bank_t))) return 1;
+        /* (8, 9: Felucca's FM6 objects, gone: taken and ignored, so an older archive restores) */
         if (ed_flash_stop()) return 3;
         ed_bk_valid = 0; ed_bk_put = 1; ed_bk_id = a[1]; ed_bk_len = len; ed_bk_gen = ++proj_wire_gen;
         ed_bk_crc = ed_bk_r32(a + 7); ed_bk_pos = 0;

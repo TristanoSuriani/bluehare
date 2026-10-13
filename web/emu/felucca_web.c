@@ -444,13 +444,14 @@ EXPORT uint8_t *web_anim_levels(void)
 }
 
 /* for the test and the bench (web/emu/emu_test.mjs), a heavy song straight into the tracks (as hostsim's
- * renders set them): T1 FM6 PAD (a build without FM6: VOSIM FORMANT PAD), T2 PHYS DRONE STRING (SYMP), T3 WAVE SCAN PAD (GRAIN CLOUD PAD until 1.5), 4-note
- * chords on all 16
- * steps, held; T4 DRUM, kick snare and hats. PLAY is the page's (or the test's) to press */
+ * renders set them): T1 VOSIM FORMANT PAD, T2 KARPLUS, T3 WAVE SCAN PAD (a build without one of them: its first
+ * engine), 4-note chords on all 16 steps, held; T4 KIT, kick snare and hats. PLAY is the page's (or the test's) to
+ * press */
 EXPORT void web_test_heavy(void)
 {
-    static const uint8_t ENG[3][2] = {{FELUCCA_ENG_FM6 ? (uint8_t)ENGI_FM6 : (uint8_t)ENGI_VOSIM, FELUCCA_ENG_FM6 ? 4 : 13},
-                                      {FELUCCA_ENG_PHYS ? (uint8_t)ENGI_PHYS : (uint8_t)ENGI_KARPLUS, FELUCCA_ENG_PHYS ? 7 : 2}, {ENGI_WAVE, 1}};
+#define WEB_PICK(X, p) {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : 0u, FELUCCA_ENG_##X ? (uint8_t)(p) : 0u}
+    static const uint8_t ENG[3][2] = {WEB_PICK(VOSIM, 13), WEB_PICK(KARPLUS, 2), WEB_PICK(WAVE, 1)};
+#undef WEB_PICK
     static const uint8_t CH[4][4] = {{48, 55, 60, 64}, {45, 52, 57, 60}, {41, 48, 53, 57}, {43, 50, 55, 59}};
     uint32_t p, i;
     for (p = 0; p < 3u; p++) {
@@ -480,6 +481,7 @@ EXPORT void web_test_heavy(void)
 }
 
 EXPORT uint32_t web_test_user_preset(uint32_t i) { return (uint32_t)up_used(i); }
+
 
 EXPORT uint16_t *web_screen(void) { return web_fb; }
 EXPORT uint32_t web_screen_draws(void) { return web_draws; }

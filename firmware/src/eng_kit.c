@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* KIT (1.5): a whole drum kit on one part, of FMPERC's voices (eng_fmperc.c fmp_run). DRUM's 8 lanes and its key and
- * note map (eng_drum.c drum_lane, DRUM_GM: the General MIDI drums, the kick on the first C), its lane LEVELs (EDIT >
+ * note map (shared/drum_map.c drum_lane, DRUM_GM: the General MIDI drums, the kick on the first C), its lane LEVELs (EDIT >
  * LANES) and its lane MUTEs (the EDIT layer's black keys): KICK SNARE CLAP HAT CL HAT OP TOM RIM BELL (a cowbell).
  * KIT picks the voices: FM (clean FM drums), METAL (inharmonic, industrial), BIT (chip-like: fed back, short), GLITCH
  * (zaps and ticks), DEEP (long, subby, dark). The knobs move every lane from its design (64: as designed): TUNE

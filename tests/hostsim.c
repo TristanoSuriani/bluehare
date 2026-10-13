@@ -110,7 +110,6 @@ static void host_preset_values(track_t *t, uint32_t e, uint32_t pi, const preset
     t->p[P_LWAVE] = p->lwave ? (int16_t)(p->lwave - 1u) : TP[P_LWAVE].def;
     for (i = 0; i < 4u; i++)
         t->p[P_DIST + i] = (int16_t)(p->fx[i] ? p->fx[i] - 1 : FX_DEF[i]);
-    fm6_track_loaded(t);                          /* FM6: the preset's patch (ui.c apply_preset_to) */
 }
 static void host_preset_req(track_t *t, uint32_t e, uint32_t pi)
 {
@@ -132,7 +131,7 @@ static void host_preset(track_t *t, uint32_t e, uint32_t pi)
 }
 
 /* the drums of the render tests: DRUM's kit (the power-on track 4; until 1.0.2 these used SAMPLE PERC) */
-static void host_drums(track_t *t) { host_preset(t, FELUCCA_ENG_DRUM ? ENGI_DRUM : ENGI_KIT, 0); }
+static void host_drums(track_t *t) { host_preset(t, FELUCCA_ENG_KIT ? (uint32_t)ENGI_KIT : 0u, 0); }   /* (no KIT: the first engine) */
 
 /* a step of the renders' songs, written as they were for the step sequencer of 1.4 (the goldens keep their songs): into
  * row i of the tracker's pattern 00, which plays them: its first note, a REST an OFF, a TIE nothing (the note rings);
@@ -206,7 +205,7 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
     host_preset(t2, TRK_DEF[1][0], TRK_DEF[1][1]);
-    host_preset(t3, ENGI_LOFI, 0);
+    host_preset(t3, ENGI_WASP, 0);
     host_drums(td);
     tk.len[0] = 16;
     for (i = 0; i < 16u; i++) {
@@ -449,7 +448,7 @@ static int xfade_test(const char *dir)
     /* switches: (a) in a release tail, (b) twice with a chord held, (c) with a note right after it */
     const uint32_t sw[4] = {11u * B, 23u * B, 29u * B + 7u * CTL, 33u * B};
     const uint32_t on[3] = {B, 15u * B, 25u * B}, sine[3] = {14u * B, 24u * B, 32u * B};
-    const uint8_t to[4] = {ENGI_FM6, 2, 3, ENGI_WAVE};
+    const uint8_t to[4] = {ENGI_VECTOR, 2, 3, ENGI_WAVE};
     char path[512];
     FILE *w;
     int32_t *L = calloc(frames + CTL, sizeof *L);               /* (the last block may run past frames) */
@@ -749,13 +748,13 @@ static int tracks_test(const char *dir)
                    e + 1u < NENGINES ? "," : "\n");
     {   /* FM6, PHASE, VOICE (their heaviest presets) and drums on part 4 at once: 3 + 3 + 2 notes and the hits in the
          * budget of 8 */
-        const uint8_t fm = ENGI_FM6;
-        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_PHASE, (uint8_t)heavy[ENGI_PHASE], 3}, {ENGI_VOICE, (uint8_t)heavy[ENGI_VOICE], 2},
-                                   {ENGI_DRUM, 0, DRUM_HITS}};
-        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_PHASE, (uint8_t)heavy[ENGI_PHASE], 8}, {ENGI_VOICE, (uint8_t)heavy[ENGI_VOICE], 4},
-                                  {ENGI_DRUM, 0, DRUM_HITS}};
-        uint8_t vv[NPART][3] = {{ENGI_VOICE, (uint8_t)heavy[ENGI_VOICE], 4}, {ENGI_VOICE, (uint8_t)heavy[ENGI_VOICE], 4}, {0, 0, 0}, {0, 0, 0}};
-        uint8_t idle[NPART][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {ENGI_DRUM, 0, DRUM_HITS}};
+        const uint8_t fm = ENGI_VECTOR;
+        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 3}, {ENGI_DUBCHORD, (uint8_t)heavy[ENGI_DUBCHORD], 2},
+                                   {ENGI_KIT, 0, DRUM_HITS}};
+        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 8}, {ENGI_DUBCHORD, (uint8_t)heavy[ENGI_DUBCHORD], 4},
+                                  {ENGI_KIT, 0, DRUM_HITS}};
+        uint8_t vv[NPART][3] = {{ENGI_DUBCHORD, (uint8_t)heavy[ENGI_DUBCHORD], 4}, {ENGI_DUBCHORD, (uint8_t)heavy[ENGI_DUBCHORD], 4}, {0, 0, 0}, {0, 0, 0}};
+        uint8_t idle[NPART][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {ENGI_KIT, 0, DRUM_HITS}};
         uint32_t bm2 = 0, bm3 = 0;
         double two_voice, none;
         four = tracks_cost(parts, &bm);
@@ -801,7 +800,6 @@ int main(int argc, char **argv)
         if (p->lrate) inst.p[P_LRATE] = (int16_t)(p->lrate - 1u);
         if (p->lwave) inst.p[P_LWAVE] = (int16_t)(p->lwave - 1u);
     }
-    fm6_track_loaded(&inst);                            /* FM6: the preset's patch */
     inst.p[P_VOICE] = (int16_t)mono;
     inst.p[P_CHOR] = argc > 5 ? atoi(argv[5]) : 24;      /* as felucca_init */
     inst.p[P_DLY] = argc > 5 ? atoi(argv[5]) : 28;

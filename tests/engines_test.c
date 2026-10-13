@@ -2,7 +2,8 @@
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as FELUCCA_DIST=idm, which has
- * no VOICE, TRIO, WHEEL, FM6, ANALOG, PHYS, PHASE, NOISE. The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
+ * no HOOVER, BYTE, KARPLUS, FMPERC, DUBSIREN8, FMKEYS, RISERS nor FOUNDRY's engines (Felucca's own ANALOG .. FM6 are
+ * retired ids since Fel-Tracker removed them). The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
  * stored sound of an engine left out loads as its substitute (engines.c eng_load_id):
  *   the table      the indices in order, the ids both ways, the left-out ids map to none, the substitutes
  *   power-on       the parts whose engine is left out: the build's first engine
@@ -41,32 +42,32 @@ int main(void)
     char dbg2[200];
 
     /* the table */
-    ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_VOICE && !FELUCCA_ENG_TRIO && !FELUCCA_ENG_WHEEL && !FELUCCA_ENG_FM6 && !FELUCCA_ENG_ANALOG &&
-         !FELUCCA_ENG_PHYS && !FELUCCA_ENG_PHASE && !FELUCCA_ENG_NOISE && !FELUCCA_ENG_HOOVER && !FELUCCA_ENG_DUBSIREN8 &&
-         !FELUCCA_ENG_FMKEYS && !FELUCCA_ENG_RISERS && FELUCCA_ENG_MODAL && FELUCCA_ENG_VECTOR && FELUCCA_ENG_ECHOES &&
-         FELUCCA_ENG_GLITCH;
+    ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_HOOVER && !FELUCCA_ENG_BYTE && !FELUCCA_ENG_KARPLUS && !FELUCCA_ENG_FMPERC &&
+         !FELUCCA_ENG_DUBSIREN8 && !FELUCCA_ENG_FMKEYS && !FELUCCA_ENG_RISERS && !FELUCCA_ENG_DARK && FELUCCA_ENG_MODAL &&
+         FELUCCA_ENG_VECTOR && FELUCCA_ENG_ECHOES && FELUCCA_ENG_GLITCH;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
-    ok &= eng_of_id(EID_TRIO) == ENG_NO && eng_of_id(EID_WHEEL) == ENG_NO && eng_of_id(EID_VOICE) == ENG_NO &&
-          ENGI_TRIO == ENG_ABSENT && str_eq(N_ENGNAME[EID_TRIO], "-") && eng_by_id(EID_WHEEL) == &ENG_NONE;
-    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 ANALOG PHYS PHASE NOISE HOOVER SIREN8 FMKEYS RISERS none", ok);
-    ok = eng_load_id(EID_HOOVER, &sub) == ENGI_SID && sub && ENGI_HOOVER == ENG_ABSENT && eng_load_id(EID_WHEEL, &sub) == ENGI_WAVE && sub &&
-         eng_load_id(EID_DUBSIREN8, &sub) == ENGI_SID && sub && ENGI_DUBSIREN8 == ENG_ABSENT &&
+    ok &= eng_of_id(EID_HOOVER) == ENG_NO && eng_of_id(EID_BYTE) == ENG_NO && eng_of_id(EID_DARK) == ENG_NO &&
+          ENGI_HOOVER == ENG_ABSENT && str_eq(N_ENGNAME[EID_HOOVER], "-") && eng_by_id(EID_BYTE) == &ENG_NONE;
+    for (i = 0; i <= 13u; i++)                          /* (retired: Felucca's own and 1.5's) */
+        ok &= EID_RETIRED(i) && eng_of_id(i) == ENG_NO && str_eq(N_ENGNAME[i], "-");
+    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; HOOVER BYTE DARK .. none; 0 .. 13 retired", ok);
+    ok = eng_load_id(EID_HOOVER, &sub) == ENGI_SID && sub && eng_load_id(EID_DUBSIREN8, &sub) == ENGI_SID && sub &&
+         eng_load_id(EID_FMKEYS, &sub) == ENGI_WAVE && sub && eng_load_id(EID_RISERS, &sub) == ENGI_CHAOS && sub &&
+         eng_load_id(EID_KARPLUS, &sub) == ENGI_WEST && sub && eng_load_id(EID_FMPERC, &sub) == ENGI_KIT && sub &&
+         eng_load_id(EID_BYTE, &sub) == ENGI_SID && sub && eng_load_id(EID_DARK, &sub) == ENGI_SID && sub &&
+         eng_load_id(EID_GUTS, &sub) == ENGI_WASP && sub && eng_load_id(EID_ANVIL, &sub) == ENGI_MODAL && sub &&
          eng_load_id(EID_MODAL, &sub) == ENGI_MODAL && !sub && eng_load_id(EID_VECTOR, &sub) == ENGI_VECTOR && !sub &&
-         eng_load_id(EID_FMKEYS, &sub) == ENGI_WAVE && sub && eng_load_id(EID_RISERS, &sub) == ENGI_SID && sub &&
          eng_load_id(EID_ECHOES, &sub) == ENGI_ECHOES && !sub && eng_load_id(EID_GLITCH, &sub) == ENGI_GLITCH && !sub &&
-         eng_load_id(EID_FM6, &sub) == ENGI_WAVE && sub &&
-         eng_load_id(EID_VOICE, &sub) == ENGI_SPEECH && sub && eng_load_id(EID_TRIO, &sub) == ENGI_SID && sub &&
-         eng_load_id(EID_ANALOG, &sub) == ENGI_SID && sub && eng_load_id(EID_PHYS, &sub) == ENGI_WEST && sub && eng_load_id(EID_KARPLUS, &sub) == ENGI_WEST && sub &&
-         eng_load_id(EID_FMPERC, &sub) == ENGI_KIT && sub && ENGI_FMPERC == ENG_ABSENT &&
-         eng_load_id(27, &sub) == ENG_NO &&
-         eng_load_id(EID_WASP, &sub) == ENGI_WASP && !sub &&
-         eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub && eng_load_id(13, &sub) == ENG_NO;
-    bad += check("  substitutes: WHEEL, FM6 -> WAVE; VOICE -> SPEECH; TRIO, ANALOG -> SID; PHYS, KARPLUS (gone) -> WEST; FMPERC (gone) -> KIT; HOOVER, DUBSIREN8 (gone) -> SID; FMKEYS -> WAVE; RISERS -> SID; retired: ACID (27)", ok);
+         eng_load_id(EID_WASP, &sub) == ENGI_WASP && !sub && eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub &&
+         eng_load_id(0, &sub) == ENG_NO && eng_load_id(12, &sub) == ENG_NO && eng_load_id(13, &sub) == ENG_NO &&
+         eng_load_id(27, &sub) == ENG_NO;
+    bad += check("  substitutes: HOOVER, DUBSIREN8, BYTE, DARK -> SID; FMKEYS -> WAVE; RISERS -> CHAOS; KARPLUS -> WEST; FMPERC "
+                 "-> KIT; GUTS -> WASP; ANVIL -> MODAL; retired (0 .. 13, 27): none", ok);
 
     /* power-on */
     reset();                                            /* (tk_defaults: the instruments of the power-on parts) */
-    bad += check("power-on: SID BASS (no ANALOG), VOSIM FORMANT PAD (no FM6), SID SYNC LEAD, FM KIT; the instruments by id",
+    bad += check("power-on: SID BASS, VOSIM FORMANT PAD, SID SYNC LEAD, FM KIT; the instruments by id",
                  TRK_DEF[0][0] == ENGI_SID && TRK_DEF[0][1] == 0u && TRK_DEF[1][0] == ENGI_VOSIM &&
                  str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[1][1]].name, "FORMANT PAD") &&
                  TRK_DEF[2][0] == ENGI_SID && TRK_DEF[2][1] == 2u && TRK_DEF[3][0] == ENGI_KIT && tk.instr[1].src == EID_VOSIM &&
@@ -83,17 +84,17 @@ int main(void)
         for (i = 0; i < EID_COUNT; i++, n += strlen(n) + 1)
             ok &= !strcmp(n, eng_by_id(i)->name);
     }
-    bad += check("INFO: the ids' names, \"-\" for a retired id or an engine left out", ok && !strcmp(N_ENGNAME[EID_TRIO], "-"));
-    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_WHEEL) & 127; a[3] = (8192 + EID_WHEEL) >> 7;
+    bad += check("INFO: the ids' names, \"-\" for a retired id or an engine left out", ok && !strcmp(N_ENGNAME[EID_HOOVER], "-"));
+    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_FMKEYS) & 127; a[3] = (8192 + EID_FMKEYS) >> 7;
     request(ED_SET, a, 4);
     ok = TSEL->eng_req == ENGI_WAVE && TSEL->preset == 0u;
-    a[0] = EID_TRIO; a[1] = 3;
+    a[0] = EID_HOOVER; a[1] = 3;
     request(ED_PRESET, a, 2);
     ok &= TSEL->eng_req == ENGI_SID && TSEL->preset == 0u && host_wire[5] == EID_SID;
-    a[0] = EID_TRIO;
+    a[0] = EID_HOOVER;
     request(ED_NAMES, a, 1);
-    ok &= host_wire[5] == EID_TRIO && host_wire[6] == 0;
-    bad += check("  G_ENGSEL WHEEL: WAVE; PRESET TRIO 3: SID's first preset (replies its id); NAMES TRIO: none", ok);
+    ok &= host_wire[5] == EID_HOOVER && host_wire[6] == 0;
+    bad += check("  G_ENGSEL FMKEYS: WAVE; PRESET HOOVER 3: SID's first preset (replies its id); NAMES HOOVER: none", ok);
 
     /* OCT (Fel-Tracker): a preset sets it, the next preset puts it back (FMPERC's 6 kicks carry -3: FMPERC is not in this
      * distribution, its table is read as it stands); a tracker instrument sets it too; a song keeps it; a stored value
@@ -207,7 +208,7 @@ int main(void)
         bad += check(dbg2, end && pk > 2000u);
     }
 
-    /* projects: track 1 of a stored song re-stamped TRIO (as a full build saves it) */
+    /* projects: track 1 of a stored song re-stamped HOOVER (as a build with it saves it) */
     reset();
     set_engine_of(&trk[0], ENGI_WAVE);
     apply_preset_to(&trk[0], 2);
@@ -216,7 +217,7 @@ int main(void)
     project_save(0);
     off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + (PROJ_VER >= 3u);   /* (v3: the track count first) */    /* track 1's engine byte */
     ok = proj_ram[0][off] == EID_WAVE;
-    proj_ram[0][off] = EID_TRIO;
+    proj_ram[0][off] = EID_HOOVER;
     stream_rehash();
     project_new();
     project_load(0);
@@ -224,23 +225,23 @@ int main(void)
     ok &= e == ENGI_SID && trk[0].preset == 0u && trk[0].p[P_ATK] == 33 && tk_note(tk_at(0, 0, 0)) == 60u;
     for (i = 0; i < 8u; i++)
         ok &= trk[0].p[P_E0 + i] == ENGINES[ENGI_SID]->presets[0].e[i];
-    bad += check("project: a track of TRIO (left out) loads as SID, its first preset's engine values, the rest as saved",
+    bad += check("project: a track of HOOVER (left out) loads as SID, its first preset's engine values, the rest as saved",
                  ok);
 
     /* user presets */
     reset();
     up_store(4, "WAVY");
-    up_rec(4)->engine = EID_WHEEL;                     /* (a record the default distribution stored) */
+    up_rec(4)->engine = EID_BYTE;                         /* (a record a build with BYTE stored) */
     ok = up_used(4) && up_engine(4) == ENG_NO && !up_avail(4) && up_count() == 0u && up_load(4) == 1;
-    bad += check("user preset of WHEEL (left out): kept (used), in no list, loads nothing", ok);
+    bad += check("user preset of BYTE (left out): kept (used), in no list, loads nothing", ok);
 
     /* the song */
     reset();
-    tk.instr[9].src = EID_WHEEL; tk.instr[9].preset = 3;
+    tk.instr[9].src = EID_FMKEYS; tk.instr[9].preset = 3;
     fm1_irq_off();
     tk_inst_apply(&trk[2], 10);
     fm1_irq_on();
-    bad += check("instrument of WHEEL (left out): plays WAVE's first preset (FM6 left out too)", trk[2].eng_req == ENGI_WAVE && trk[2].preset == 0u);
+    bad += check("instrument of FMKEYS (left out): plays WAVE's first preset", trk[2].eng_req == ENGI_WAVE && trk[2].preset == 0u);
 
     /* sound */
     {

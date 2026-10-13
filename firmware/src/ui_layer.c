@@ -97,7 +97,7 @@ static struct {
                                         * it opened (SEQ: a tool used); OCT- / OCT+ pressed in a SET layer (bits) */
     uint8_t rp_dirty;                  /* REC: a setting changed (settings_save when the layer lets go); FX: the key map */
     uint8_t fxk;                       /* FX: the white key pressed last in the layer (+ 1; 0 none): PRESETS assigns it */
-    uint8_t mute[NPART];               /* EDIT: the DRUM lanes' mutes when it opened (eng_drum.c drum_mute; OCT-) */
+    uint8_t mute[NPART];               /* EDIT: the DRUM lanes' mutes when it opened (shared/drum_map.c drum_mute; OCT-) */
     uint32_t eqh;                      /* EDIT: the keys (bits 0..26) of the HOLD quick actions held */
     int16_t v[9];                      /* the values when it opened: GLO mutes, levels, BPM; SCL ROOT..TRN, CHRD VOIC;
                                         * SEQ LEN DIV SWING GATE; REC the settings (ui_rec_prefs) */
@@ -500,7 +500,7 @@ static void fx_default(void)
  * breathes) or SET (act on each press), its handler and its LED (on: lit). They are performance state: no sound load,
  * no undo copy, not recorded; OCT- puts back what they changed since the layer opened (eqa_put_back). A new engine's
  * actions: a table and its row in EQA, and what OCT- puts back in eqa_put_back.
- *   DRUM  1..8 MUTE of the lanes KICK .. BELL (eng_drum.c drum_mute; the cells the kit's names), latched: lit =
+ *   DRUM  1..8 MUTE of the lanes KICK .. BELL (shared/drum_map.c drum_mute; the cells the kit's names), latched: lit =
  *         sounding, dark = muted (as GLO's track mutes); the cell of a muted lane as a muted track's (KEY) */
 enum { EQ_SHOW_SEL, EQ_SHOW_MUTE };                /* the cell: on = the selection's fill; on = idle, off = KEY */
 typedef struct {
@@ -524,8 +524,7 @@ static uint32_t eqa_drum_on(const track_t *t, uint32_t l) { return !((drum_mute[
 static const eqa_t EQA_DRUM[NLANE] = {EQA_LANE(0), EQA_LANE(1), EQA_LANE(2), EQA_LANE(3), EQA_LANE(4), EQA_LANE(5),
     EQA_LANE(6), EQA_LANE(7)};
 static const eqa_set_t EQA[] = {
-    {FELUCCA_ENG_DRUM ? (uint8_t)ENGI_DRUM : ENG_NO, NLANE, EQA_DRUM},   /* (no DRUM in the build: none) */
-    {FELUCCA_ENG_KIT ? (uint8_t)ENGI_KIT : ENG_NO, NLANE, EQA_DRUM},     /* (KIT: the same lanes, drum_mute) */
+    {FELUCCA_ENG_KIT ? (uint8_t)ENGI_KIT : ENG_NO, NLANE, EQA_DRUM},     /* (KIT: the lanes of drum_map.c, drum_mute) */
 };
 typedef char eqa_fits[NLANE <= 11 ? 1 : -1];       /* (11 black keys) */
 

@@ -4,6 +4,13 @@ This is Felucca's protocol, by Leo Kuroshita. Fel-Tracker (Tristano Suriani) cha
 commands, the engine ids and their count, the distribution tag, and the removal of the step sequencer's and the
 samples' commands. Those parts are marked 1.5. Whose work is whose: [AUTHORS.md](../AUTHORS.md).
 
+**Fel-Tracker without Felucca's engines:** ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM are
+gone, their ids (0, 2, 3, 5, 6, 7, 9, 10, 11, 12) retired like 1, 4, 8, 13 and 27: `INFO` names them `-`, a
+`PRESET` / `G_ENGSEL` of one plays the first engine's first preset, `UP_PUT` of one is refused. With FM6 went its
+commands (68..71, 74..77: no reply), its INFO tags (`46`, `50`, `56`: not sent; an editor steps over them when an
+older firmware sends them) and the backup's FM6 objects (ids 8 and 9: always listed empty; a `BACKUP_PUT` of either is
+taken and ignored, rc 0, so an older archive still restores). The sections on FM6 below describe Felucca's firmware.
+
 The firmware side is `firmware/src/editor.c`. Commands 1-15, track selection, dumps, step reads
 and parameter writes (27, 29, 30, 31) were checked on hardware. `tests/editor_test.c` also exercises the real C
 handler, malformed transfers and stop timeouts against simulated flash. User-preset
@@ -769,7 +776,7 @@ earlier objects restored; the file is still the source.
 `BACKUP_LIST` answers `1, rc, 0` when rc is not 0. `GET` and `PUT` answer id 127 when they got no arguments.
 A `LIST` replaces the snapshot, and a `PUT` begin ends it: a `GET` after a begin gets rc 5.
 
-## FM6 patches (68-71)
+## FM6 patches (68-71; Felucca only: not in Fel-Tracker)
 
 The FM6 engine (12) plays a 6-operator patch per track; its eight EDIT parameters are macros on top of it
 (ALG 0 = the patch's algorithm, 1..32 another; FB, MLVL, MRAT, MEG, VMOD offsets; DTUN; SLOT). The patch itself
@@ -833,7 +840,7 @@ read too. Pick a voice, edit it, send it to a track (target 0); to keep it, SAVE
 project) on the device. It exports single voices. Its librarian reads and writes a user preset's patch (target 3)
 with the record when the firmware has FM6 v2 bit 1, and keeps it in library files as `fm6` (128 numbers).
 
-## FM6 voice bank (74-77; 1.4.1)
+## FM6 voice bank (74-77; 1.4.1; Felucca only: not in Fel-Tracker)
 
 32 voices in flash, written whole from the editor (a 32-voice SysEx file: its 128-byte packed records, the format
 `FM6_PUT` takes), picked on the device with SLOT B1..B32 (9..40). Loading one copies it into the track's patch as F1..F8

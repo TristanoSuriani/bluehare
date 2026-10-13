@@ -145,7 +145,6 @@ static __attribute__((noinline)) void tk_inst_apply(track_t *t, uint32_t i)
             for (k = 0; k < 8u; k++)
                 t->p[P_E0 + k] = e->edit[k].def;
         }
-        fm6_track_loaded(t);
     } else {
         return;
     }

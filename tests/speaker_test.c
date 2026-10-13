@@ -5,7 +5,7 @@
  *   blocker); LOWCUT cuts below ~110 Hz (12 dB/oct), BASS+ below ~220 Hz; both leave 1 kHz and up alone.
  *   BASS+: a 55 Hz tone gains energy at 250 Hz..1 kHz, the sub is cut, the output settles back to 0 after the
  *   tone and nothing reaches full scale.
- * #180 (BASS+ distorted a kick): a full-scale kick pattern (the DRUM voices KICK PUNCH / ROUND, 4 hits, at full scale
+ * #180 (BASS+ distorted a kick): a full-scale kick pattern (a punchy and a round kick, 4 hits, at full scale
  *   and twice that: a loud mix) through each mode. BASS+ keeps the samples off the rails (under 30000: the soft clip
  *   tops out at 31600) with no flat tops, and leaves the limiter no busier than LOWCUT (its envelope's peak at most
  *   +0.5 dB): the harmonics of 1.4 peaked at 1.5 .. 3.5 x the kick itself, and the limiter pulled the whole mix down
@@ -68,24 +68,17 @@ static uint32_t kick_pattern(void)
 {
     static const char *const NAME[2] = {"PUNCH", "ROUND"};
     static float f[2 * FS];
-    static dv_coef_t c;
-    static dv_voice_t v;
-    static dv_metal_t mb;
     uint32_t type, gi, mode, i, k, fails = 0;
     for (type = 0; type < 2u; type++) {
-        dv_param_t p;
-        int32_t y[CTL], m[CTL], pk = 1;
-        dv_default(&p, type);
-        dv_setup(&c, &p);
-        dv_init(&v, c.type);
-        memset(&mb, 0, sizeof mb);
-        dv_metal_tune(&mb, &c);
-        for (i = 0; i < 2u * FS; i += CTL) {
-            if (i % (FS / 2u) < CTL)
-                dv_trigger(&v);
-            dv_metal_run(&mb, m, CTL);
-            dv_run(&c, &v, m, y, CTL);
+        int32_t y[CTL], pk = 1;
+        double ph = 0;
+        for (i = 0; i < 2u * FS; i += CTL) {        /* a kick: a sine falling in pitch, decaying (Felucca's DRUM voices
+                                                     * until Fel-Tracker removed that engine) */
             for (k = 0; k < CTL; k++) {
+                double t = (double)((i + k) % (FS / 2u)) / FS, f0 = type ? 45.0 + 45.0 * exp(-t / 0.05) :
+                                                                        50.0 + 100.0 * exp(-t / 0.02);
+                ph += 2.0 * M_PI * f0 / FS;
+                y[k] = (int32_t)(32000.0 * sin(ph) * exp(-t / (type ? 0.35 : 0.22)));
                 f[i + k] = (float)y[k];
                 pk = abs(y[k]) > pk ? abs(y[k]) : pk;
             }

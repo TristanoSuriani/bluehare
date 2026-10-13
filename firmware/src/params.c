@@ -47,7 +47,8 @@ static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", 
 static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE",
                                      "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"};
 static const char *const N_ENGNAME[EID_COUNT] = {   /* by id (G_ENGSEL); "-": a retired id or an engine left out */
-    [1] = "-", [4] = "-", [8] = "-", [13] = "-", [27] = "-",   /* (27: ACID, Fel-Tracker) */
+    [0] = "-", [1] = "-", [2] = "-", [3] = "-", [4] = "-", [5] = "-", [6] = "-", [7] = "-", [8] = "-", [9] = "-",
+    [10] = "-", [11] = "-", [12] = "-", [13] = "-", [27] = "-",   /* (retired: core.h EID_RETIRED) */
 #define ENGINE(N, id, sub) [EID_##N] = FELUCCA_ENG_##N ? #N : "-",
 #include "engine_ids.h"
 #undef ENGINE
@@ -123,7 +124,7 @@ static const param_desc_t TP[P_COUNT] = {
 #undef FMOP
     [P_CHRD] = PE("CHRD", N_CHRD, 0),
     [P_VOIC] = PE("VOIC", N_VOIC, 0),
-/* the DRUM engine's lane levels (eng_drum.c, #97): 100 % = the kit as designed (the sound before 1.1) */
+/* the DRUM engine's lane levels (KIT; once DRUM, #97): 100 % = the kit as designed (the sound before 1.1) */
 #define LANE(k, l) [P_LN0 + (k)] = PD(l, F_PCT, 0, 127, 127)
     LANE(0, "KICK"), LANE(1, "SNARE"), LANE(2, "CLAP"), LANE(3, "HATCL"),
     LANE(4, "HATOP"), LANE(5, "TOM"), LANE(6, "RIM"), LANE(7, "BELL"),
@@ -192,46 +193,11 @@ static const param_desc_t *param_desc_of(uint32_t e, uint32_t id)
     return id >= P_E0 ? &ENGINES[e]->edit[id - P_E0] : &TP[id];
 }
 
-/* a retired F_ENUM value kept as an alias, so stored values stay valid: DRUM KIT 1..3, once HAND CYM H+CYM, play
- * 66 10 77 (eng_drum.c DK_PLAYS).
- * It shows the original's name; knobs step over it and the editor's SET lands on the original. -> the value v
- * stands for */
-static int32_t enum_orig(const param_desc_t *d, int32_t v)
-{
-    if (d->names == N_DRUM_KIT)
-        return v >= 0 && v < DK_COUNT ? (int32_t)DK_PLAYS[v] : v;
-    return v;
-}
-
-/* a stored value as the parameter takes it (projects, user presets, motion): inside d's range, and a retired
- * DRUM KIT (1..3) as the kit it plays, so KIT never holds one again. FM6's SLOT is never stored as a
- * bank slot: 9..40 (1.4.1's B1..B32; 1.0.2's B1..B27 were 8..34) is 8, OWN, and the patch comes with what is loaded */
 /* a stored value of track parameter id: OCT's old values (ENV DEST FX) outside -4 .. 4 are 0, not 4 octaves away */
 static int32_t param_oct(uint32_t id, int32_t v) { return id == P_OCT && (v < -4 || v > 4) ? 0 : v; }
-static int32_t param_fit(const param_desc_t *d, int32_t v)
-{
-    v = clamp(v, d->min, d->max);
-    if (d->names == N_FM6_PATCH)
-        return v > (int32_t)FM6_OWN ? (int32_t)FM6_OWN : v;
-    return d->names == N_DRUM_KIT ? enum_orig(d, v) : v;
-}
-
-/* v is a value a knob passes over: an alias, or one of FM6's bank slots without a voice */
-static int enum_skip(const param_desc_t *d, int32_t v)
-{
-    return enum_orig(d, v) != v || (d->names == N_FM6_PATCH && !fm6_slot_ok(v));
-}
-/* a knob moved an F_ENUM from `from` to v: past any value it skips in that direction; with none left to the end, the
- * last one it does not skip on the way from `from` (else `from`) */
-static int32_t enum_step(const param_desc_t *d, int32_t from, int32_t v)
-{
-    int32_t dir = v > from ? 1 : -1, w = v;
-    while (w != from && enum_skip(d, w))
-        w = w + dir > d->max || w + dir < d->min ? from : w + dir;
-    while (w == from && v != from && enum_skip(d, v))
-        v -= dir;
-    return w == from ? v : w;
-}
+/* a stored value as the parameter takes it (projects, user presets, motion): inside d's range. (Felucca kept retired
+ * values as aliases here, DRUM's kits and FM6's bank slots; their engines are gone) */
+static int32_t param_fit(const param_desc_t *d, int32_t v) { return clamp(v, d->min, d->max); }
 
 /* #48: the note divisions in the order of their length, longest first (triplets between their neighbours), on the
  * knobs and the gauges; the stored values (N_DIV, N_SLDIV indices: projects, presets, the editor protocol) stay.
@@ -251,13 +217,13 @@ static int32_t enum_rank(const param_desc_t *d, int32_t v)   /* v's place in the
             break;
     return o ? r + d->min : v;
 }
-/* a knob turned `steps` (signed) from v: clamped, over the shown order, past aliases (enum_step) */
+/* a knob turned `steps` (signed) from v: clamped, over the shown order */
 static int32_t param_turn(const param_desc_t *d, int32_t v, int32_t steps)
 {
     const uint8_t *o = enum_order(d);
     if (o)
         return o[clamp(enum_rank(d, v) - d->min + steps, 0, d->max - d->min)] + d->min;
-    return enum_step(d, v, clamp(v + steps, d->min, d->max));
+    return clamp(v + steps, d->min, d->max);
 }
 
 static uint8_t fmt_named;        /* the last param_format was a name (F_ENUM, even "4"): ui_draw.c's digits do not roll it */
@@ -376,9 +342,7 @@ enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE,
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_TRK };   /* SC_TRK: the TRACKS page (ui_input.c tracks_edit) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_ARP, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
        GR_SLCR, GR_MOD, GR_TOOLS, GR_CHORD,
-       GR_FMOP, GR_FMOP2, GR_FMENV,
-       GR_TKPAT, GR_TKSONG, GR_TKSET, GR_TKINST, GR_TKLAY };   /* (GR_FMOP..: FM6's operator pages, ui_fm6op.c; GR_TK*:
-                                                                * the tracker's, ui_tracker.c) */
+       GR_TKPAT, GR_TKSONG, GR_TKSET, GR_TKINST, GR_TKLAY };   /* (GR_TK*: the tracker's, ui_tracker.c) */
 
 typedef struct {
     const char *title;
@@ -405,9 +369,6 @@ static const page_t PAGES[] = {
     {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E4, P_E5, P_E6, P_E7}},
     {"LANES", FAM_EDIT, SC_TRACK, GR_NONE, {P_LN0, P_LN1, P_LN2, P_LN3}},   /* DRUM only: the lane levels */
     {"LANES 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_LN4, P_LN5, P_LN6, P_LN7}},
-    {"OPERATOR", FAM_EDIT, SC_TRACK, GR_FMOP, {0xFF, 0xFF, 0xFF, 0xFF}},    /* FM6 only: KNOB 1 the operator, then its */
-    {"OP ENV", FAM_EDIT, SC_TRACK, GR_FMENV, {0xFF, 0xFF, 0xFF, 0xFF}},     /* bytes of the track's patch (ui_fm6op.c): */
-    {"OPERATOR 2", FAM_EDIT, SC_TRACK, GR_FMOP2, {0xFF, 0xFF, 0xFF, 0xFF}}, /* CRS FINE LEVEL / STG RATE LEVEL / MODE DTUN VEL */
     {"VOICE", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_GLIDE, P_GLMODE, P_PRIO}},
     {"VOICE 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_ALLOC, P_DETUNE, P_PAN, P_MUTE}},
     {"VOICE 3", FAM_EDIT, SC_TRACK, GR_NONE, {P_SPRD, P_OCT, 0xFF, 0xFF}},   /* #148: SPREAD; OCT (Fel-Tracker) */

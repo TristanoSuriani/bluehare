@@ -19,7 +19,8 @@ This includes:
 - **The firmware:** the HAL, the update loader, the voice and effects engine, the UI, the menus, storage, MIDI, USB
   and the editor protocol.
 - **The engines ANALOG, FM6 (with its msfa port), PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM**, with their
-  factory presets.
+  factory presets (Fel-Tracker removed them; what other engines use of PHYS and DRUM is kept in
+  `firmware/src/shared/`: `phys_dsp.c`, the resonators, and `drum_map.c`, the lanes and the General MIDI map).
 - **The tools, the web pages and the tests:** the web editor, the installer and the browser emulator.
 - **The name "Felucca"**, its documentation and its artwork.
 
@@ -87,7 +88,8 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
 - Favourites are mapped for the new engine ids.
 - The EDIT layer handles 16 engines.
 - DRUM's special cases (lanes, mutes, MIDI) cover KIT too.
-- FM6's voice bank is left out of builds without FM6.
+- Felucca's own engines, its default distribution and FM6's patch editing (its web editor tab, voice bank and preset
+  patches) are removed; their ids retired; the host tests build IDM.
 - The documentation is updated to match.
 
 ### Files moved from Felucca
