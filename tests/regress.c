@@ -1015,13 +1015,18 @@ static void slug(char *d, const char *s, size_t n)
 }
 
 /* ------------------------------------------------------------- main --- */
-#define MAXJ 512
+#define MAXJ 2048
 #define MAXKV 2048                              /* (the files hold every distribution's entries: more than one run's) */
 static job_t J[MAXJ];
 static uint32_t nj;
 static job_t *add(uint32_t kind, const char *name)
 {
-    job_t *j = &J[nj++];
+    job_t *j;
+    if (nj >= MAXJ) {                          /* (past the table: every later job would write over what follows) */
+        fprintf(stderr, "regress: more than %d jobs: raise MAXJ\n", MAXJ);
+        exit(2);
+    }
+    j = &J[nj++];
     memset(j, 0, sizeof *j);
     j->kind = (uint8_t)kind;
     snprintf(j->name, sizeof j->name, "%s", name);
