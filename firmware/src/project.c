@@ -32,7 +32,9 @@
  * Version 4 (Fel-Tracker, the variations; every build writes it): version 3, an order entry's bits 5..6 its variation
  * (tracker.c TK_OVAR), and before the hash the variations: u8 n, n x (u8 pattern | variation << 5, u8 bpm, u8 mute,
  * tracks x u8 chance, tracks x VO_N x u8 the sends and SLICER), every one but A in a pattern's count (tk_nvar) and an A
- * that is not as the tracks have it. Versions 2 and 3 load with every entry on A. */
+ * that is not as the tracks have it. Versions 2 and 3 load with every entry on A.
+ * Version 5 (Fel-Tracker, each track's place in the mix): version 4, and before the hash tracks x u8 WIDTH, tracks x
+ * u8 LOW CUT (core.h trk_width, trk_lowcut). Earlier versions load with them as at power-on. */
 #define PROJ_NAME_LEN 12u                      /* the name: upper-case ASCII 32..126, 0-padded; "" = none */
 #define PROJ_NO_SLOT 0xFFu
 #if NTRK == 8
@@ -41,8 +43,8 @@
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
 #endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER 4u                            /* (Fel-Tracker) 3: the track count after the name, a cell's place 2 bytes;
-                                                * 4: the variations (above) */
+#define PROJ_VER 5u                            /* (Fel-Tracker) 3: the track count after the name, a cell's place 2 bytes;
+                                                * 4: the variations; 5: WIDTH and LOW CUT (above) */
 #define PROJ_HDR 16u
 #if !FELUCCA_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
 #define ST_PAYLOAD_MAX 3840u
@@ -218,6 +220,8 @@ static void proj_write(pw_t *w, const char *name)
                 pw_bytes(w, x->chance, NTRK);
                 pw_bytes(w, &x->vo[0][0], NTRK * VO_N);
             }
+    pw_bytes(w, trk_width, NTRK);                      /* WIDTH, LOW CUT (version 5) */
+    pw_bytes(w, trk_lowcut, NTRK);
     {
         uint32_t h = w->h;
         uint8_t b[4] = {(uint8_t)h, (uint8_t)(h >> 8), (uint8_t)(h >> 16), (uint8_t)(h >> 24)};
@@ -294,7 +298,7 @@ static int proj_read(pr_t *r, int apply)
     uint32_t i, k, p, n, np, ng, at, prev, ver, ntr = 4u;
     uint8_t nm[PROJ_NAME_LEN], b[3];
     ver = pr_u8(r);
-    if (ver < 2u || ver > 4u)
+    if (ver < 2u || ver > 5u)
         return 1;
     np = pr_u8(r);
     ng = pr_u8(r);
@@ -432,6 +436,17 @@ static int proj_read(pr_t *r, int apply)
                 if (v >= tk_nvar[p])
                     tk_nvar[p] = (uint8_t)(v + 1u);
             }
+        }
+    }
+    if (apply)
+        trk_mix_defaults();                         /* (a song of before, and a track the song does not hold) */
+    if (ver >= 5u) {                                /* WIDTH, LOW CUT */
+        uint8_t wd[8], lc[8];
+        pr_bytes(r, wd, ntr);
+        pr_bytes(r, lc, ntr);
+        for (k = 0; apply && k < ntr; k++) {
+            trk_width[k] = wd[k];
+            trk_lowcut[k] = lc[k];
         }
     }
     {

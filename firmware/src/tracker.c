@@ -607,6 +607,7 @@ static void tk_defaults(void)
     }
     memset(tk.cut, TK_INST_VAL, sizeof tk.cut);
     memset(tk.res, TK_INST_VAL, sizeof tk.res);
+    trk_mix_defaults();                           /* (Fel-Tracker: WIDTH, LOW CUT) */
     memset(&tk_pl, 0, sizeof tk_pl);
     memset(tk_trk_inst, 0, sizeof tk_trk_inst);
     tk_cur_inst = 0;
@@ -655,6 +656,10 @@ static void tk_bound(void)
             tk.cut[i] = TK_INST_VAL;
         if (tk.res[i] > 127u)
             tk.res[i] = TK_INST_VAL;
+        if (trk_width[i] > TW_MAX || !tw_has(i))   /* (WIDTH: the last tracks' alone) */
+            trk_width[i] = (uint8_t)(tw_has(i) && trk_width[i] <= TW_MAX ? trk_width[i] : 0u);
+        if (trk_lowcut[i] >= TL_N)
+            trk_lowcut[i] = 0;
     }
 }
 

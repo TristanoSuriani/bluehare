@@ -285,9 +285,15 @@ SLICER: KEEP). Turning a value up from KEEP starts at the track's own. An edit w
 once, and PLAY on this page loops its pattern in it. The tracks' own settings never change: STOP returns to them. A
 new variation starts as a copy of A; the web editor also removes them (its entries then play A).
 
-**SETTINGS**: each track's ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESO, FLT ENV, DIST, CHORUS, DELAY, REVERB, LEVEL
-and PAN. PRESETS picks the row, KNOB 1–4 set it for tracks 1–4. CUTOFF and RESO hold the engine's filter over every
-instrument; INST (EDIT) leaves it to the instrument.
+**SETTINGS**: each track's ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESO, FLT ENV, DIST, CHORUS, DELAY, REVERB, LEVEL,
+PAN, WIDTH and LOW CUT. PRESETS picks the row, KNOB 1–4 set it for tracks 1–4. CUTOFF and RESO hold the engine's filter
+over every instrument; INST (EDIT) leaves it to the instrument. *(Fel-Tracker)* **WIDTH** (OFF, 1–20 ms; the last four
+tracks only, or the last two of four, so the rhythm section stays in the middle) is the Haas effect: the track's highs,
+above about 250 Hz, play a little late on one side and its lows as they are on both, so it widens without hollowing
+the bass in a mono sum; the late side changes track by track (track 5 sits left, 6 right, and so on, as their pans).
+**LOW CUT** (OFF, 40, 60, 80, 120, 160, 240, 320 Hz) takes a track's lows away after DIST and the SLICER, so pads and
+leads leave the bass its room. At power-on the wide tracks have WIDTH 12 ms and LOW CUT 120 Hz, the rhythm section
+neither; EDIT puts that back. The song keeps them.
 
 **INSTR**: the instruments 01..3F. KNOB 1 the slot, KNOB 2 its engine (or USER), KNOB 3 its preset; the selected
 track plays it at once. EDIT empties the slot. A row's instrument sets the track's engine, its EDIT values and voice

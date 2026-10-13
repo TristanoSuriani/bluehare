@@ -25,6 +25,8 @@
  * last one the pattern has: a new one, a copy of A).
  * SETTINGS: each track's ENV, filter and FX: a row a setting, a column a track; PRESETS the row, KNOB 1..4 tracks
  * 1..4. CUT and RES hold the engine's filter over every instrument (INST: the instrument's own; EDIT puts INST back).
+ * (Fel-Tracker) WIDTH (the last tracks': OFF, 1..20 ms of Haas) and LOW CUT (OFF, 40 .. 320 Hz): the track's place in
+ * the mix (core.h trk_width, trk_lowcut); EDIT puts the power-on one back.
  * INSTR: the instruments 01..3F, each a factory preset of an engine or a user preset. KNOB 1 (or PRESETS) the slot,
  * 2 its engine (or USER, or none), 3 its preset; the selected track plays it at once (the keys audition it), and the
  * keys record it. EDIT empties the slot. */
@@ -611,17 +613,37 @@ static void tk_draw_song(void)
 /* SETTINGS' rows: a track parameter, or the track's CUT / RES over the instruments (TKS_CUT, TKS_RES) */
 #define TKS_CUT 0xFEu
 #define TKS_RES 0xFDu
+#define TKS_WIDTH 0xFCu                  /* (Fel-Tracker) core.h trk_width, trk_lowcut: the track's place in the mix */
+#define TKS_LOWCUT 0xFBu
 static const struct { const char *label; uint8_t id; } TK_SET[] = {
     {"ATTACK", P_ATK}, {"DECAY", P_DEC}, {"SUSTAIN", P_SUS}, {"RELEASE", P_REL},
     {"CUTOFF", TKS_CUT}, {"RESO", TKS_RES}, {"FLT ENV", P_ED_FLT},
     {"DIST", P_DIST}, {"CHORUS", P_CHOR}, {"DELAY", P_DLY}, {"REVERB", P_REV},
-    {"LEVEL", P_LEVEL}, {"PAN", P_PAN},
+    {"LEVEL", P_LEVEL}, {"PAN", P_PAN}, {"WIDTH", TKS_WIDTH}, {"LOW CUT", TKS_LOWCUT},
 };
 #define TK_NSET ((uint32_t)NELEM(TK_SET))
 static void tk_set_value(uint32_t row, uint32_t k, char *val)     /* track k's value of setting row (val: 8) */
 {
     uint32_t id = TK_SET[row % TK_NSET].id;
     const char *unit;
+    if (id == TKS_WIDTH) {                          /* "12MS", OFF; "-": a track of the rhythm section (no WIDTH) */
+        if (!tw_has(k % NTRK))
+            str_cpy(val, "-", 8);
+        else if (!trk_width[k % NTRK])
+            str_cpy(val, "OFF", 8);
+        else {
+            fmt_int(val, trk_width[k % NTRK]);
+            str_cpy(val + str_len(val), "MS", 8 - str_len(val));
+        }
+        return;
+    }
+    if (id == TKS_LOWCUT) {                         /* OFF, "120" (Hz) */
+        if (!trk_lowcut[k % NTRK])
+            str_cpy(val, "OFF", 8);
+        else
+            fmt_int(val, TL_HZ[trk_lowcut[k % NTRK] % TL_N]);
+        return;
+    }
     if (id == TKS_CUT || id == TKS_RES) {
         uint8_t v = (id == TKS_CUT ? tk.cut : tk.res)[k % NTRK];
         if (v == TK_INST_VAL)
@@ -1117,6 +1139,14 @@ static void tk_knob_set(uint32_t k, int32_t s)
 {
     uint32_t id = TK_SET[tku.srow % TK_NSET].id;
     track_t *t = &trk[k % NTRK];
+    if (id == TKS_WIDTH || id == TKS_LOWCUT) {      /* (Fel-Tracker) OFF, then 1..20 ms / the cutoffs */
+        uint32_t tk_ = k % NTRK;
+        if (id == TKS_WIDTH && tw_has(tk_))
+            trk_width[tk_] = (uint8_t)clamp((int32_t)trk_width[tk_] + accel(EN_K1 + k, s, TW_MAX), 0, TW_MAX);
+        else if (id == TKS_LOWCUT)
+            trk_lowcut[tk_] = (uint8_t)clamp((int32_t)trk_lowcut[tk_] + (s > 0 ? 1 : -1), 0, TL_N - 1);
+        return;
+    }
     if (id == TKS_CUT || id == TKS_RES) {           /* INST, then 0..127 */
         uint8_t *v = &(id == TKS_CUT ? tk.cut : tk.res)[k % NTRK];
         uint32_t fid = tk_filter_id(t, id == TKS_CUT ? TKP_CUT : TKP_RES);
@@ -1294,7 +1324,11 @@ static int tk_edit_tap(void)
         tk_var_live(p, v);
     } else if (g == GR_TKSET) {
         uint32_t id = TK_SET[tku.srow % TK_NSET].id;
-        if (id == TKS_CUT || id == TKS_RES)
+        if (id == TKS_WIDTH)                        /* (Fel-Tracker) back as at power-on */
+            trk_width[song.sel] = (uint8_t)(tw_has(song.sel) ? TW_DEF : 0u);
+        else if (id == TKS_LOWCUT)
+            trk_lowcut[song.sel] = (uint8_t)(tw_has(song.sel) ? TL_DEF : 0u);
+        else if (id == TKS_CUT || id == TKS_RES)
             (id == TKS_CUT ? tk.cut : tk.res)[song.sel] = TK_INST_VAL;
         else
             TSEL->p[id] = track_desc(TSEL, id)->def;

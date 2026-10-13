@@ -376,6 +376,31 @@ static inline int32_t tp_vo(const track_t *t, uint32_t vo)
 }
 static inline uint32_t song_bpm(void) { return tempo_ovr ? tempo_ovr : (uint32_t)song.g[G_BPM]; }
 
+/* (Fel-Tracker) each track's place in the mix, the song's (SETTINGS' WIDTH and LOW CUT; project.c, version 5):
+ *   trk_width   0 off, 1..TW_MAX ms: the Haas effect, on the last TW_N tracks only (5..8, or 3..4 on 4 tracks: the
+ *               rhythm section stays in the middle): the track's highs (over ~250 Hz) late on one side, the side
+ *               changing track by track (the first late on the right, so it sits left: as its PAN), its lows as they
+ *               are on both (fx.c mix_haas)
+ *   trk_lowcut  0 off, 1..TL_N - 1: a 12 dB/oct high-pass at TL_HZ[] on the track, after DIST and the SLICER (fx.c
+ *               track_lowcut) */
+#define TW_N (NTRK / 2u)
+#define TW_FIRST (NTRK - TW_N)
+#define TW_MAX 20u
+#define TW_DEF 12u
+#define TL_N 8u
+#define TL_DEF 4u                         /* (120 Hz: the wide tracks' default; the rhythm section's OFF) */
+static const uint16_t TL_HZ[TL_N] = {0, 40, 60, 80, 120, 160, 240, 320};
+static uint8_t trk_width[NTRK], trk_lowcut[NTRK];
+static inline int tw_has(uint32_t k) { return k >= TW_FIRST && k < NTRK; }
+static void trk_mix_defaults(void)
+{
+    uint32_t k;
+    for (k = 0; k < NTRK; k++) {
+        trk_width[k] = (uint8_t)(tw_has(k) ? TW_DEF : 0u);
+        trk_lowcut[k] = (uint8_t)(tw_has(k) ? TL_DEF : 0u);
+    }
+}
+
 /* SWING of a track's step clock (#31): CLOCK's SWING, at most 100. 1.5: the tracker's rows (tracker.c tk_row_len) and
  * the SLICER (slicer.c sl_enter) both swing by it, so the SLICER stays on the rows; a track's own SWG (P_SSWING, the
  * step sequencer's, up to 1.4) is not read any more. At 100 the even steps are 1.4 x the straight length and the odd

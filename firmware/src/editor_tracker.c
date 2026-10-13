@@ -22,12 +22,15 @@
  *              inside the parameter's range. A write at var == nvar adds it (var past that: rc 1)
  *  10 VARCOUNT pat [, n 1..TK_VARS]           -> pat, n: fewer, the ones gone back to the default and the order's
  *              entries of them on A; more, each new one a copy of A
+ *  11 WIDTH    [track, width, low cut]        -> the first track with WIDTH, NTRK x (width, low cut) (Fel-Tracker,
+ *              INFO 58 04): width 0 off or 1..20 ms (the last tracks' alone: 0 on the others), low cut 0 off or 1..7
+ *              (40 60 80 120 160 240 320 Hz); a value outside: rc 1
  * A cell is 6 bytes: note (0 none, 1..126 a MIDI note, 127 OFF), instrument (0 none, 1..TK_INSTS), FX command
  * (0..TKC_N-1), FX value (0..127), the chord's two intervals above the note (0 none, 1..15 semitones each). rc: 0 ok, 1 arguments (nothing written), 2 busy. A write is the editor's own: no
  * TRACKER_CHANGED for it (the shadow takes it). TRACKER_CHANGED (79, pushed with WATCH bit 2): kind (0 a pattern, 1
  * the song: order, instruments, CUT / RES), index. */
 enum { EDT_STATUS, EDT_PATTERN, EDT_CELLS, EDT_LENGTH, EDT_ORDER, EDT_INSTR, EDT_FILTER, EDT_PLAY, EDT_CLEAR,
-       EDT_VAR, EDT_VARCOUNT };
+       EDT_VAR, EDT_VARCOUNT, EDT_WIDTH };
 #define EDT_VAR_N (2u + 2u + NTRK + 2u * NTRK * VO_N)   /* VARIATION's values on the wire: bytes */
 static const uint8_t EDT_VO_MAX[VO_N] = {127, 127, 127, 127, 2, 16, 5};   /* (tracker.c tk_bound's) */
 #define EDT_CELL 6u                              /* bytes a cell on the wire */
@@ -342,6 +345,25 @@ static int ed_tracker_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
             }
         }
         ed_b(op); ed_b(rc); ed_b(a[0]); ed_b(tk_nvar[a[0]]);
+        return 1;
+    case EDT_WIDTH:
+        if (na && (na != 3u || a[0] >= NTRK))
+            return 0;
+        if (na) {
+            if (a[1] > TW_MAX || (a[1] && !tw_has(a[0])) || a[2] >= TL_N) {
+                rc = 1;
+            } else {
+                trk_width[a[0]] = a[1];
+                trk_lowcut[a[0]] = a[2];
+                edt_known(TK_PATS);
+                ui.force = 1;
+            }
+        }
+        ed_b(op); ed_b(rc); ed_b(TW_FIRST);
+        for (i = 0; i < NTRK; i++) {
+            ed_b(trk_width[i]);
+            ed_b(trk_lowcut[i]);
+        }
         return 1;
     default:
         return 0;

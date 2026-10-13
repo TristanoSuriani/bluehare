@@ -151,8 +151,8 @@ int main(void)
         project_load(0);
         ok &= !memcmp(&tk_var[0][1], &keep01, sizeof keep01) && !memcmp(&tk_var[3][2], &keep32, sizeof keep32) &&
               tk_nvar[0] == 2u && tk_nvar[3] == 3u && tk.order[1] == TK_OENT(0, 1) && tk.order[2] == TK_OENT(3, 2) &&
-              proj_ram[0][PROJ_HDR] == 4u;
-        bad += check("the store: version 4 keeps the variations (0B, 3C) and the order's letters", ok);
+              proj_ram[0][PROJ_HDR] == PROJ_VER;
+        bad += check("the store: version 4 on keeps the variations (0B, 3C) and the order's letters", ok);
     }
 
     /* bounds: a stored variation's fields inside their ranges */

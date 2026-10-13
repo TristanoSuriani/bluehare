@@ -880,13 +880,22 @@ async function editorTracker() {
   const C = E.CMD, TK = E.TK, P = (a) => E.parse[C.TRACKER](a);
   const old = attachMock({ noTracker: true });
   const oi = E.parse[C.INFO](await old.rq(E.req.info()));
-  ok(oi.tracker === null && oi.ratchet === 4, "tracker: firmware before 1.5: no 58 03 tag (the rest as before)");
+  ok(oi.tracker === null && oi.ratchet === 4, "tracker: firmware before 1.5: no 58 tag (the rest as before)");
   old.done();
   const { m, rq, ev, done } = attachMock({ watchMs: 1000 });
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const tk = info.tracker;
   ok(tk && tk.pats === 24 && tk.rows === 64 && tk.insts === 63 && tk.ncmd === TK.FX.length && tk.order === 128 && tk.vars === 4 &&
-     info.ratchet === 4, "tracker: INFO 58 03 24 64 63 15 (128) 4, the last tag");
+     tk.wfirst === 2 && info.ratchet === 4, "tracker: INFO 58 04 24 64 63 15 (128) 4 2, the last tag");
+  {   /* (Fel-Tracker) WIDTH, LOW CUT (op 11) */
+    let wd = P(await rq(E.req.tkWidth()));
+    ok(wd.op === TK.WIDTH && wd.first === 2 && eq(wd.width, [0, 0, 12, 12]) && eq(wd.lowcut, [0, 0, 4, 4]),
+      "tracker: WIDTH read: the last two tracks 12 ms and 120 Hz, the first two dry");
+    wd = P(await rq(E.req.tkWidth(3, 18, 2)));
+    const r1 = P(await rq(E.req.tkWidth(0, 5, 0)));
+    ok(!wd.rc && wd.width[3] === 18 && wd.lowcut[3] === 2 && r1.rc === 1 && r1.width[0] === 0 && m.tracker.width[3] === 18,
+      "tracker: WIDTH written (track 4: 18 ms, 60 Hz); on a rhythm track: rc 1");
+  }
   let s = P(await rq(E.req.tkStatus()));
   ok(s.op === TK.STATUS && !s.rc && !s.playing && s.norder === 1, "tracker: STATUS stopped, one position");
   let p = P(await rq(E.req.tkPattern(0, 0, 32)));

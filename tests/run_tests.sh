@@ -204,6 +204,10 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "robustness: engine ids, retained old projects, preset patterns, malformed requests" \
         "$OUT/robust_test"
     for n in 4 8; do
+        $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/width_test$n" tests/width_test.c -lm
+        run "WIDTH and LOW CUT ($n tracks): the Haas effect on the last tracks, the lows whole, the cut, the store, the editor" "$OUT/width_test$n"
+    done
+    for n in 4 8; do
         $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/variation_test$n" tests/variation_test.c -lm
         run "variations ($n tracks): tempo, mutes, chance, sends and SLICER over the tracks', STOP, the store, bounds" "$OUT/variation_test$n"
     done

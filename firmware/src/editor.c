@@ -139,6 +139,8 @@ static uint32_t ed_tk_sig(uint32_t i)
     h = ed_fnv(h, &tk.instr[0].src, sizeof tk.instr);
     h = ed_fnv(h, tk.cut, NTRK);
     h = ed_fnv(h, tk.res, NTRK);
+    h = ed_fnv(h, trk_width, NTRK);                     /* (Fel-Tracker: WIDTH, LOW CUT) */
+    h = ed_fnv(h, trk_lowcut, NTRK);
     h = ed_fnv(h, tk_nvar, TK_PATS);                    /* (Fel-Tracker: the variations; a pattern's unused ones are
                                                          * the default) */
     for (r = 0; r < TK_PATS; r++)
@@ -365,8 +367,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x53); ed_b(1); ed_b(3);   /* live sync: bit 0 WATCH while on keeps the shadow, bit 1 no RELOAD echo */
         ed_b(0x4E); ed_b(1); ed_b(ED_MENU_N);   /* MENU settings: cmds 72, 73; the items MENU_DESC offers */
         /* (1.5: no 52 01 / 4C 01 / 41 01 / 54 01, the steps' ratchet, locks, motion, nudge; no 57 01, the A..D song) */
-        ed_b(0x58); ed_b(3); ed_b(TK_PATS); ed_b(TK_ROWS); ed_b(TK_INSTS); ed_b(TKC_N);   /* 1.5: the tracker (78, 79); */
-        ed_b(TK_ORDER); ed_b(TK_ORDER >> 7); ed_b(TK_VARS);   /* 03 (Fel-Tracker): the variations, ops 9, 10 */
+        ed_b(0x58); ed_b(4); ed_b(TK_PATS); ed_b(TK_ROWS); ed_b(TK_INSTS); ed_b(TKC_N);   /* 1.5: the tracker (78, 79); */
+        ed_b(TK_ORDER); ed_b(TK_ORDER >> 7); ed_b(TK_VARS);   /* 03 (Fel-Tracker): the variations, ops 9, 10; 04: */
+        ed_b(TW_FIRST);                                       /* WIDTH, op 11, from that track */
         break;
     case ED_GET:
     case ED_SET:

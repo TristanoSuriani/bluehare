@@ -113,7 +113,7 @@ static int preferences(void)
     int bad = 0;
     uint8_t a[4] = {0, 7, 0, 0};
     reset();
-    uint32_t n = request(ED_INFO, a, 0), m = n - 9u;   /* (m: before 1.5's tracker tag, 58 03 + 7) */
+    uint32_t n = request(ED_INFO, a, 0), m = n - 10u;   /* (m: before 1.5's tracker tag, 58 04 + 8) */
     bad += check("INFO explicitly tags display capabilities after SONG without changing command 33 (1.5: no step tags but "
                  "4D 01, kept where the editors look for the tags after it)",
         ED_SONG == 33 && ED_UI_STATE == 34 && ED_FAV_SET == 38 &&
@@ -123,9 +123,9 @@ static int preferences(void)
         host_wire[m - 10] == 0x42 && host_wire[m - 9] == 1 && host_wire[m - 8] == 3 &&
         host_wire[m - 7] == 0x53 && host_wire[m - 6] == 1 && host_wire[m - 5] == 3 &&   /* (no FM6 tags 46 50 56: FM6 gone) */
         host_wire[m - 4] == 0x4E && host_wire[m - 3] == 1 && host_wire[m - 2] == 22 &&   /* MENU settings: 22 items (1.5) */
-        host_wire[n - 10] == 0x58 && host_wire[n - 9] == 3 && host_wire[n - 8] == TK_PATS && host_wire[n - 7] == TK_ROWS &&
-        host_wire[n - 6] == TK_INSTS && host_wire[n - 5] == TKC_N && (host_wire[n - 4] | host_wire[n - 3] << 7) == TK_ORDER &&
-        host_wire[n - 2] == TK_VARS);
+        host_wire[n - 11] == 0x58 && host_wire[n - 10] == 4 && host_wire[n - 9] == TK_PATS && host_wire[n - 8] == TK_ROWS &&
+        host_wire[n - 7] == TK_INSTS && host_wire[n - 6] == TKC_N && (host_wire[n - 5] | host_wire[n - 4] << 7) == TK_ORDER &&
+        host_wire[n - 3] == TK_VARS && host_wire[n - 2] == TW_FIRST);
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 7 && T_BG == UI_PALETTES[7].bg);

@@ -734,6 +734,8 @@ static __attribute__((noinline)) void rev_side_mix(int32_t *l, int32_t *r, uint3
 static void events_block(uint32_t n);                    /* seq.c */
 static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_r[CTL];
 
+static void track_lowcut(uint32_t k, int32_t *b, uint32_t n);   /* (Fel-Tracker: LOW CUT, below) */
+
 /* SPREAD (#148): a POLY or UNISON part whose SPRD is above 0. Its voices start left and right of PAN in turn (voice.c
  * voice_start; UNISON's detuned voices alternate), at PAN -/+ SPRD / 2 (SPRD 127: hard left and right), with the pan
  * law PAN has (the far side down, the near one as it is). track_render gives every voice (b, as always) and the left
@@ -759,6 +761,8 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
         d[i] = (d[i] << 1) - b[i];                      /* left - right */
     track_dist(t, b, n);
     slicer_track_sd(t, b, d, n);
+    if (trk_lowcut[(t - trk) % NTRK])
+        track_lowcut((uint32_t)(t - trk) % NTRK, b, n);   /* (Fel-Tracker; the side d passes it, as it passes DIST) */
     if ((pf.mute >> (t - trk)) & 1u)
         perf_mute_sd((uint32_t)(t - trk), b, d, n);
     for (i = 0; i < n; i++) {
@@ -775,6 +779,71 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
         mix_l[i] += ((x * glm) >> 12) + ((y * gld) >> 12);
         mix_r[i] += ((x * grm) >> 12) + ((y * grd) >> 12);
     }
+    t->peak = pk;
+}
+
+/* (Fel-Tracker) LOW CUT (core.h trk_lowcut): two one-pole high-passes at TL_HZ[] on the track's block, after DIST and the
+ * SLICER (so the sends lose the lows too). The states are Q8 and step by the difference / 256 * k / 128, at least one
+ * unit while they differ (tl_pole), so they reach their input exactly: silence in, silence out */
+static const int16_t TL_K[TL_N] = {0, 186, 279, 371, 555, 739, 1101, 1458};   /* Q15: 1 - e^(-2 pi f / 44100) */
+static struct { int32_t s1, s2, h1, h2; } tmix[NTRK];   /* LOW CUT's poles; WIDTH's split (all Q8) */
+static inline int32_t tl_pole(int32_t *s, int32_t x, int32_t k)   /* the one-pole low-pass of x (k Q15), its state Q8 */
+{
+    int32_t d = (x << 8) - *s, st = (d >> 8) * k >> 7;
+    *s += st ? st : (d > 0) - (d < 0);
+    return *s >> 8;
+}
+static __attribute__((noinline)) void track_lowcut(uint32_t k, int32_t *b, uint32_t n)
+{
+    int32_t kk = TL_K[trk_lowcut[k] % TL_N], s1 = tmix[k].s1, s2 = tmix[k].s2;
+    uint32_t i;
+    for (i = 0; i < n; i++) {
+        int32_t hp = b[i] - tl_pole(&s1, b[i], kk);
+        b[i] = hp - tl_pole(&s2, hp, kk);
+    }
+    tmix[k].s1 = s1;
+    tmix[k].s2 = s2;
+}
+
+/* (Fel-Tracker) WIDTH (core.h trk_width): the Haas effect on one of the last TW_N tracks. The track's sample x (its level
+ * applied) splits at ~250 Hz (high: two one-pole high-passes, 12 dB/oct, so 60 Hz is ~-25 dB in it; low = x - high);
+ * one side plays x, the other low + the high of WIDTH ms before (tw_buf, the highs halved into 16 bits). The first of these tracks is late on the right (it sits
+ * left, as its PAN), the next on the left, and so on. The sends take x, as always; the mono sum keeps the lows whole */
+#define TW_LEN 1024u                     /* (20 ms: 882 samples) */
+static int16_t tw_buf[TW_N][TW_LEN] __attribute__((section(".pool")));
+static uint16_t tw_w[TW_N];
+static __attribute__((noinline)) void mix_haas(track_t *t, uint32_t k, const int32_t *b, uint32_t n, int32_t lvl, int32_t gl,
+                                               int32_t gr, int32_t c, int32_t d, int32_t r, int32_t xmax)
+{
+    uint32_t j = k - TW_FIRST, i, w = tw_w[j], dl = ((uint32_t)trk_width[k] * 441u + 5u) / 10u, right = !(j & 1u);
+    int16_t *q = tw_buf[j];
+    int32_t h1 = tmix[k].h1, h2 = tmix[k].h2, pk = t->peak;
+    for (i = 0; i < n; i++) {
+        int32_t x = ((b[i] >> 2) * lvl) >> 10, a = x < 0 ? -x : x, xs = clamp(x, -xmax, xmax), hi, xd;
+        if (a > pk)
+            pk = a;
+        if (c)
+            send_c[i] += mulq15(xs, c);
+        if (d)
+            send_d[i] += mulq15(xs, d);
+        if (r)
+            send_r[i] += mulq15(xs, r);
+        hi = x - tl_pole(&h1, x, 1147);                 /* (Q15 1147: 250 Hz) */
+        hi -= tl_pole(&h2, hi, 1147);
+        q[w & (TW_LEN - 1u)] = (int16_t)clamp(hi >> 1, -32768, 32767);
+        xd = x - hi + (q[(w - dl) & (TW_LEN - 1u)] << 1);
+        w++;
+        if (right) {
+            mix_l[i] += (x * gl) >> 12;
+            mix_r[i] += (xd * gr) >> 12;
+        } else {
+            mix_l[i] += (xd * gl) >> 12;
+            mix_r[i] += (x * gr) >> 12;
+        }
+    }
+    tw_w[j] = (uint16_t)w;
+    tmix[k].h1 = h1;
+    tmix[k].h2 = h2;
     t->peak = pk;
 }
 
@@ -802,10 +871,19 @@ static void mix_part(track_t *t, uint32_t n)
         int32_t c = tp_vo(t, VO_CHOR) * 258, d = tp_vo(t, VO_DLY) * 258, r = tp_vo(t, VO_REV) * 258, pk = t->peak;
         int32_t xmax = c > d ? c : d;
         xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);   /* sends: loud chords at a high LEVEL */
+        uint32_t k = (uint32_t)(t - trk) % NTRK;
         track_dist(t, b, n);
         slicer_track(t, b, n);                          /* slicer.c: before the level, pan and sends */
+        if (trk_lowcut[k])
+            track_lowcut(k, b, n);                      /* (Fel-Tracker) LOW CUT */
         if ((pf.mute >> (t - trk)) & 1u)
             perf_mute((uint32_t)(t - trk), b, n);       /* perform.c: a black key in the FX layer */
+        if (tw_has(k) && trk_width[k]) {                /* (Fel-Tracker) WIDTH */
+            mix_haas(t, k, b, n, lvl, gl, gr, c, d, r, xmax);
+            if (mod.on)
+                mod_end(t);
+            return;
+        }
         for (i = 0; i < n; i++) {
             int32_t x = ((b[i] >> 2) * lvl) >> 10, a = x < 0 ? -x : x;   /* pre-shift: 8 loud voices */
             int32_t xs = clamp(x, -xmax, xmax);         /* sends: mulq15 would overflow */
