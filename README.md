@@ -14,7 +14,10 @@ What Fel-Tracker adds, all by Tristano Suriani:
   orange). The **IDM**
   distribution is the default, with **8 tracks**: the tracker, the MIXER and the quick layers show the selected
   track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
-  into its first four (BUILDING.md "Distributions").
+  into its first four (BUILDING.md "Distributions"). At power-on the rhythm section comes first and sits in the
+  centre: tracks 1–4 the drums (KIT, BREAKS) and the basses (SID BASS, WASP's FAT BASS); 5–8 the chords (DUBCHORD),
+  the pad (VOSIM's FORMANT PAD), the lead (SID SYNC LEAD) and the siren, panned left and right in turn. On 4 tracks:
+  the kit and the bass, then the pad and the lead apart.
 - **Twenty-three new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
   DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, ECHOES, GLITCH, KIT, BREAKS and RISERS.
 

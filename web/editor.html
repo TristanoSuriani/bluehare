@@ -1694,7 +1694,7 @@ function makeMockDevice(opt = {}) {
   /*MOCK-ENG-END*/];
   const E_OF = (n) => ENG.findIndex((e) => e.name === n);
   /*MOCK-TRKDEF-BEGIN*/
-  const TRK_DEF = [[24, 0], [21, 13], [24, 2], [28, 0]];   /* engines.c TRK_DEF (ids: ENG is by id) */
+  const TRK_DEF = [[28, 0], [24, 0], [21, 13], [24, 2]];   /* engines.c TRK_DEF (ids: ENG is by id) */
   const FIRST_E = E_OF("SID");   /* the build's first engine */
   /*MOCK-TRKDEF-END*/
   const KIT_E = E_OF("KIT");
@@ -1830,13 +1830,14 @@ function makeMockDevice(opt = {}) {
     st.bank[slot] = snapshot(name);
     clearSteps(); st.p[29] = 16;
   });
-  /* the power-on sounds (engines.c TRK_DEF): SID BASS, VOSIM FORMANT PAD, SID SYNC LEAD, KIT FM KIT */
-  [1, 2, 3, 0].forEach((i) => { st.sel = i; setEngine(TRK_DEF[i][0]); applyPreset(TRK_DEF[i][1]); });
+  /* the power-on sounds (engines.c TRK_DEF; Fel-Tracker: the rhythm section first): KIT FM KIT, SID BASS, VOSIM
+     FORMANT PAD, SID SYNC LEAD; the pad and the lead apart (TRK_PAN) */
+  [3, 2, 1, 0].forEach((i) => { st.sel = i; setEngine(TRK_DEF[i][0]); applyPreset(TRK_DEF[i][1]); });
   /* the device powers on with its sequencers empty; the mock starts as a little demo to look at: track 1 with
-     the ACID pattern, track 4 with BEAT (as SAVE > PHRASES would load them), pads left, lead right */
-  st.sel = 3; loadPattern(11);
-  st.sel = 0; loadPattern(0);
-  st.tracks[1].p[39] = -24; st.tracks[2].p[39] = 20; st.tracks[2].p[0] = 92;
+     BEAT, track 2 with the ACID pattern (as SAVE > PHRASES would load them), the pad left, the lead right */
+  st.sel = 1; loadPattern(0);
+  st.sel = 0; loadPattern(11);
+  st.tracks[2].p[39] = -24; st.tracks[3].p[39] = 24; st.tracks[3].p[0] = 92;
   const project = () => JSON.parse(JSON.stringify({ tracks: st.tracks, sel: st.sel, g: st.g, songRows: st.songRows }));
   st.slots[0] = project();
 

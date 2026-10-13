@@ -285,6 +285,7 @@ static void proj_track_default(uint32_t k)
         t->p[i] = param_desc_of(e, i)->def;
     for (i = 0; ENGINES[e]->npresets && i < 8u; i++)
         t->p[P_E0 + i] = ENGINES[e]->presets[t->preset].e[i];
+    t->p[P_PAN] = TRK_PAN[k];                     /* (Fel-Tracker: as at power-on) */
 }
 
 /* 0 = good, 1 = bad, 2 = a song of more tracks than this build has (8 on a 4-track one) */

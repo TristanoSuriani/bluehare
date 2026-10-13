@@ -153,7 +153,16 @@ static int check(const char *what, int ok)
     return ok ? 0 : 1;
 }
 
-/* main.c felucca_init */
+/* (Fel-Tracker) the sounds these tests power on with: the layout they were written against (a bass on track 1, the
+ * pad on 2, a lead on 3, the kit on 4; 5..8 chords, a pluck, a break, the siren), every pan centred. The device's own
+ * power-on (engines.c TRK_DEF, TRK_PAN: the rhythm section first) is engines_test.c's to check */
+static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(VOSIM, 13), TRK_PICK(SID, 2), TRK_PICK(KIT, 0)
+#if NPART == 8
+                                         , TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK2(BREAKS, 0, KIT, 0),
+                                         TRK_PICK2(DUBSIREN, 0, HOOVER, 5)
+#endif
+};
+/* main.c felucca_init, with these tests' sounds (UT_DEF) */
 static void ui_power_on(void)
 {
     uint32_t i;
@@ -186,12 +195,15 @@ static void ui_power_on(void)
     rev_clear();                                  /* power-on: no tail of the test before sounds into this one) */
     memset(dly_buf, 0, sizeof dly_buf);
     memset(cho_buf, 0, sizeof cho_buf);
+    memset(wside, 0, sizeof wside);
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         track_defaults(t);
-        set_engine_of(t, TRK_DEF[i][0]);
-        apply_preset_to(t, TRK_DEF[i][1]);
+        set_engine_of(t, UT_DEF[i][0]);
+        apply_preset_to(t, UT_DEF[i][1]);
         t->engine = t->eng_req;
+        tk.instr[i].src = (uint8_t)eng_id(UT_DEF[i][0]);   /* (the instruments of these sounds, as tk_defaults makes */
+        tk.instr[i].preset = UT_DEF[i][1];                   /* them of TRK_DEF's) */
     }
     undo_depth--;
     song.sel = 0;
@@ -337,7 +349,7 @@ static int test_sound_loads(void)
     for (i = 0; i < TK_PATS; i++)
         empty &= (uint32_t)tk_pat_empty(i);
     bad += check("power-on: the four sounds, the tracker's song empty, no undo copy", empty && undo.trk == 0 && undo_depth == 0 &&
-                 trk[3].eng_req == ENGI_KIT && trk[3].preset == 0u && trk[0].preset == TRK_DEF[0][1]);
+                 trk[3].eng_req == ENGI_KIT && trk[3].preset == 0u && trk[0].preset == UT_DEF[0][1]);
     t->p[P_E0 + 1] = 77;                          /* a sound edit */
     t->p[P_AMODE] = 2;                            /* and the track's own settings */
     t->p[P_AOCT] = 3;
@@ -3298,7 +3310,7 @@ static int test_retired_engines(void)
     tk_bound();
     bad += check("  a song's instrument of one: none", tk.instr[5].src == TK_SRC_NONE && tk.instr[6].src == TK_SRC_NONE);
     ui_power_on();
-    bad += check("power-on: track 2 is VOSIM FORMANT PAD (TRK_DEF)", trk[1].eng_req == ENGI_VOSIM &&
+    bad += check("power-on: track 2 is VOSIM FORMANT PAD (these tests' UT_DEF)", trk[1].eng_req == ENGI_VOSIM &&
                  str_eq(ENGINES[ENGI_VOSIM]->presets[trk[1].preset].name, "FORMANT PAD"));
     preset_all_pos(&total);
     for (i = 0, seen = 0; i < total; i++) {
@@ -4546,7 +4558,7 @@ static int test_layer_lock(void)
     go_title("ENV"); frame();
     press(B_EDIT); press(B_EDIT); frames(100);
     turn(EN_K1, 1);
-    ok = TSEL->eng_req != trk[1].eng_req || TSEL->eng_req != TRK_DEF[0][0];
+    ok = TSEL->eng_req != trk[1].eng_req || TSEL->eng_req != UT_DEF[0][0];
     ok &= str_eq(cur_page()->title, "ENV") && ui.lock == LAYER_EDIT;
     key_down(init_key()); frame(); key_up(init_key()); frame();   /* INIT: the dialog closes it */
     ok &= ui.confirm == CF_INIT_SOUND && !ui.lock && !ui.layer;
@@ -6114,7 +6126,7 @@ static int test_tracker_play(void)
     for (i = 0; i < 8u; i++)
         ok &= t0->p[P_E0 + i] == dp->e[i];
     events_block(row);
-    ok &= t0->eng_req == TRK_DEF[0][0] && t0->preset == TRK_DEF[0][1] && t0->p[P_ATK] == atk && t0->p[P_REV] == rev;
+    ok &= t0->eng_req == UT_DEF[0][0] && t0->preset == UT_DEF[0][1] && t0->p[P_ATK] == atk && t0->p[P_REV] == rev;
     bad += check("tracker: a row's instrument is the track's sound from it on (engine, EDIT values); its ENV, sends stay", ok);
     events_block(row);
     ok = t0->p[P_REV] == TP[P_REV].max;
@@ -6122,7 +6134,7 @@ static int test_tracker_play(void)
     id = tk_filter_id(t0, TKP_CUT);
     ok &= t0->p[P_REV] == rev && id < P_COUNT && t0->p[id] == param_desc_of(t0->eng_req, id)->min;
     events_block(row);
-    ok &= t0->p[id] == ENGINES[TRK_DEF[0][0]]->presets[TRK_DEF[0][1]].e[id - P_E0];
+    ok &= t0->p[id] == ENGINES[UT_DEF[0][0]]->presets[UT_DEF[0][1]].e[id - P_E0];
     bad += check("  a row's FX: that parameter for that row only (REVERB 7F the top, CUTOFF 00 the engine's lowest)", ok);
     transport_req = 2;
     events_block(CTL);
@@ -6944,7 +6956,7 @@ static int test_eight_tracks(void)
     int16_t l4;
     ui_power_on();
     for (k = 4, ok = 1; k < NTRK; k++)
-        ok &= trk[k].eng_req == eng_for_track(&trk[k], TRK_DEF[k][0]) && tk.instr[k].src == eng_id(TRK_DEF[k][0]);
+        ok &= trk[k].eng_req == eng_for_track(&trk[k], UT_DEF[k][0]) && tk.instr[k].src == eng_id(UT_DEF[k][0]);
     bad += check("8 tracks: power-on, tracks 5 .. 8 their sounds (and their instruments)", ok);
     ok = trk_view() == 0u;
     track_select(5);

@@ -67,11 +67,24 @@ int main(void)
 
     /* power-on */
     reset();                                            /* (tk_defaults: the instruments of the power-on parts) */
-    bad += check("power-on: SID BASS, VOSIM FORMANT PAD, SID SYNC LEAD, FM KIT; the instruments by id",
-                 TRK_DEF[0][0] == ENGI_SID && TRK_DEF[0][1] == 0u && TRK_DEF[1][0] == ENGI_VOSIM &&
-                 str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[1][1]].name, "FORMANT PAD") &&
-                 TRK_DEF[2][0] == ENGI_SID && TRK_DEF[2][1] == 2u && TRK_DEF[3][0] == ENGI_KIT && tk.instr[1].src == EID_VOSIM &&
-                 tk.instr[3].src == EID_KIT);
+#if NPART == 8
+    bad += check("power-on: FM KIT, BREAKS, SID BASS, FAT BASS (centred), DUBCHORD, FORMANT PAD, SYNC LEAD, the siren (left "
+                 "and right in turn); the instruments by id",
+                 TRK_DEF[0][0] == ENGI_KIT && TRK_DEF[1][0] == ENGI_BREAKS && TRK_DEF[2][0] == ENGI_SID && TRK_DEF[2][1] == 0u &&
+                 TRK_DEF[3][0] == ENGI_WASP && str_eq(ENGINES[ENGI_WASP]->presets[TRK_DEF[3][1]].name, "FAT BASS") &&
+                 TRK_DEF[4][0] == ENGI_DUBCHORD && TRK_DEF[5][0] == ENGI_VOSIM &&
+                 str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[5][1]].name, "FORMANT PAD") && TRK_DEF[6][0] == ENGI_SID &&
+                 TRK_DEF[6][1] == 2u && TRK_DEF[7][0] == ENGI_DUBSIREN && tk.instr[0].src == EID_KIT &&
+                 tk.instr[5].src == EID_VOSIM && !TRK_PAN[0] && !TRK_PAN[2] && !TRK_PAN[3] && TRK_PAN[4] < 0 &&
+                 TRK_PAN[5] > 0 && TRK_PAN[6] < 0 && TRK_PAN[7] > 0);
+#else
+    bad += check("power-on (4 tracks): FM KIT, SID BASS, FORMANT PAD, SYNC LEAD; the pad and the lead apart; the "
+                 "instruments by id",
+                 TRK_DEF[0][0] == ENGI_KIT && TRK_DEF[1][0] == ENGI_SID && TRK_DEF[1][1] == 0u && TRK_DEF[2][0] == ENGI_VOSIM &&
+                 str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[2][1]].name, "FORMANT PAD") && TRK_DEF[3][0] == ENGI_SID &&
+                 TRK_DEF[3][1] == 2u && tk.instr[0].src == EID_KIT && tk.instr[2].src == EID_VOSIM && !TRK_PAN[0] &&
+                 !TRK_PAN[1] && TRK_PAN[2] < 0 && TRK_PAN[3] > 0);
+#endif
 
     /* protocol */
     reset();

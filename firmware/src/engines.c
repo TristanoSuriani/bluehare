@@ -174,16 +174,23 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
     return (eng_rank(e) + (dir > 0 ? 1u : NENGINES - 1u)) % NENGINES;
 }
 
-/* the parts at power-on (engine index, preset): bass, pad, lead, drums (SID BASS, VOSIM's FORMANT PAD, SID SYNC LEAD,
- * KIT's FM KIT); an engine the build leaves out: its first engine, preset 0 */
+/* the parts at power-on (engine index, preset). (Fel-Tracker) The rhythm section first, the wide parts last: with 8
+ * tracks 1..4 the drums (KIT's FM KIT, BREAKS) and the basses (SID BASS, WASP's FAT BASS), centred, 5..8 the chords
+ * (DUBCHORD), the pad (VOSIM's FORMANT PAD), the lead (SID SYNC LEAD) and the siren (the last track's), spread left and
+ * right in turn; with 4, the drums and the bass, then the pad and the lead. An engine the build leaves out: the second
+ * pick, else its first engine, preset 0 */
 #define TRK_PICK(X, p) {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : 0u, FELUCCA_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
     {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : 0u}
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(VOSIM, 13), TRK_PICK(SID, 2), TRK_PICK(KIT, 0)
-#if NPART == 8                                  /* (Fel-Tracker, TRACKS 8) 5 .. 8: chords, a pluck, a break, the siren */
-                                          , TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK2(BREAKS, 0, KIT, 0),
-                                          TRK_PICK2(DUBSIREN, 0, HOOVER, 5)   /* (no siren engine: HOOVER's SIREN) */
+#if NPART == 8
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(KIT, 0), TRK_PICK2(BREAKS, 0, KIT, 0), TRK_PICK(SID, 0),
+                                          TRK_PICK2(WASP, 7, SID, 10), TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(VOSIM, 13),
+                                          TRK_PICK(SID, 2), TRK_PICK2(DUBSIREN, 0, HOOVER, 5)};   /* (no siren engine:
+                                                                                                    * HOOVER's SIREN) */
+static const int8_t TRK_PAN[NPART] = {0, -8, 0, 0, -24, 24, -16, 16};
+#else
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(KIT, 0), TRK_PICK(SID, 0), TRK_PICK(VOSIM, 13), TRK_PICK(SID, 2)};
+static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24};
 #endif
-};
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

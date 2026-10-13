@@ -204,7 +204,8 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     host_tracks_init();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, TRK_DEF[1][0], TRK_DEF[1][1]);
+    host_preset(t2, FELUCCA_ENG_VOSIM ? (uint32_t)ENGI_VOSIM : 0u, FELUCCA_ENG_VOSIM ? 13u : 0u);   /* (VOSIM's FORMANT
+                                                    * PAD: the power-on pad until Fel-Tracker's rhythm section came first) */
     host_preset(t3, ENGI_WASP, 0);
     host_drums(td);
     tk.len[0] = 16;

@@ -438,6 +438,7 @@ async function editorLibrarian() {
   const { m, rq, done } = attachMock({});
   const C = E.CMD;
   const info = E.parse[C.INFO](await rq(E.req.info()));
+  await rq(E.req.track(1));                        /* (Fel-Tracker: SID BASS with ACID is track 2 since the rhythm section came first) */
   const pdesc = [];
   for (let i = 0; i < info.pcount; i++) pdesc.push(E.parse[C.DESC](await rq(E.req.desc(0, i))));
   const keys = E.paramKeys(pdesc, info.pe0, info.pcount);
@@ -766,22 +767,22 @@ async function editorTracks() {
   const { m, rq, ev, done } = attachMock({ watchMs: 1000 });
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const tr = E.parse[C.TRACK](await rq(E.req.track()));
-  ok(info.ntrk === 4 && tr.sel === 0 && tr.ntrk === 4 && tr.tracks[0].engine === 24 && tr.tracks[1].engine === 21
-    && tr.tracks[3].engine === 28 && tr.tracks[3].preset === 0, "tracks: INFO NTRK, TRACK lists 4 parts (track 4: KIT FM KIT)");
+  ok(info.ntrk === 4 && tr.sel === 0 && tr.ntrk === 4 && tr.tracks[0].engine === 28 && tr.tracks[0].preset === 0
+    && tr.tracks[1].engine === 24 && tr.tracks[2].engine === 21, "tracks: INFO NTRK, TRACK lists 4 parts (track 1: KIT FM KIT)");
   /* the v1 commands follow the selected track */
   const d0 = E.parse[C.DUMP](await rq(E.req.dump()), info);
-  const t1 = E.parse[C.TRACK](await rq(E.req.track(1)));
+  const t1 = E.parse[C.TRACK](await rq(E.req.track(2)));
   const d1 = E.parse[C.DUMP](await rq(E.req.dump()), info);
   await rq(E.req.set(0, 1, 77));
   const td0 = E.parse[C.TRACK_DUMP](await rq(E.req.trackDump(0)), info);
-  const td1 = E.parse[C.TRACK_DUMP](await rq(E.req.trackDump(1)), info);
-  ok(t1.sel === 1 && d1.engine === 21 && d0.engine === 24 && td1.p[1] === 77 && td0.p[1] === d0.p[1] && td0.p[1] !== 77,
+  const td1 = E.parse[C.TRACK_DUMP](await rq(E.req.trackDump(2)), info);
+  ok(t1.sel === 2 && d1.engine === 21 && d0.engine === 28 && td1.p[1] === 77 && td0.p[1] === d0.p[1] && td0.p[1] !== 77,
     "tracks: TRACK selects; DUMP / SET act on it, TRACK_DUMP reads any track");
   /* steps of a track that is not selected */
-  const w = E.parse[C.TRACK_STEP](await rq(E.req.trackStep(2, 5, { n: 2, notes: [60, 67, 0, 0], time: 0, flags: 1, vel: 99 })));
-  const g2 = E.parse[C.TRACK_STEP](await rq(E.req.trackStep(2, 5)));
+  const w = E.parse[C.TRACK_STEP](await rq(E.req.trackStep(3, 5, { n: 2, notes: [60, 67, 0, 0], time: 0, flags: 1, vel: 99 })));
+  const g2 = E.parse[C.TRACK_STEP](await rq(E.req.trackStep(3, 5)));
   const s1 = E.parse[C.STEP_GET](await rq(E.req.stepGet(5)));
-  ok(w.track === 2 && g2.n === 2 && g2.notes[1] === 67 && g2.vel === 99 && s1.n === 0, "tracks: TRACK_STEP set / get on another track");
+  ok(w.track === 3 && g2.n === 2 && g2.notes[1] === 67 && g2.vel === 99 && s1.n === 0, "tracks: TRACK_STEP set / get on another track");
   /* level / mute, track 4 as any other */
   const mx = E.parse[C.TRACK_MIX](await rq(E.req.trackMix(0, 90, 1)));
   const mxd = E.parse[C.TRACK_MIX](await rq(E.req.trackMix(3, 64, 0)));
@@ -789,13 +790,13 @@ async function editorTracks() {
   const tr2 = E.parse[C.TRACK](await rq(E.req.track()));
   ok(mx.level === 90 && mx.mute === 1 && mx2.level === 90 && mxd.level === 64 && m.state.tracks[3].p[0] === 64 && tr2.tracks[3].level === 64
     && tr2.tracks[0].level === 90 && tr2.tracks[0].mute === 1, "tracks: TRACK_MIX level / mute (track 4: its own LEVEL)");
-  /* track 4 has a sound: stored and loaded as any other */
-  await rq(E.req.track(3));
+  /* the kit's track has a sound: stored and loaded as any other */
+  await rq(E.req.track(0));
   const dd = E.parse[C.DUMP](await rq(E.req.dump()), info);
   const us = E.parse[C.UP_STORE](await rq(E.req.upStore(20, "X"), { timeout: 2500, retries: 0 }));
   const ul = E.parse[C.UP_LOAD](await rq(E.req.upLoad(1), { timeout: 2500, retries: 0 }));
   const dl = E.parse[C.DUMP](await rq(E.req.dump()), info);
-  ok(dd.engine === 28 && us.rc === 0 && ul.rc === 0 && dl.engine === 21, "tracks: track 4 selected -> DUMP engine KIT, UP_STORE / UP_LOAD rc 0");
+  ok(dd.engine === 28 && us.rc === 0 && ul.rc === 0 && dl.engine === 21, "tracks: track 1 selected -> DUMP engine KIT, UP_STORE / UP_LOAD rc 0");
   /* pushes carry the selected track */
   await rq(E.req.track(0));
   ok(await E.startWatch(rq), "tracks: WATCH on");
@@ -807,10 +808,10 @@ async function editorTracks() {
     "tracks: RELOAD / STEP_CHANGED carry the selected track");
   /* projects keep all four tracks */
   await rq(E.req.project(1, 3), { timeout: 4000, retries: 0 });
-  await rq(E.req.trackStep(2, 5, { n: 0, notes: [0, 0, 0, 0], time: 2, flags: 0, vel: 0 }));
+  await rq(E.req.trackStep(3, 5, { n: 0, notes: [0, 0, 0, 0], time: 2, flags: 0, vel: 0 }));
   await rq(E.req.track(0));
   await rq(E.req.project(0, 3), { timeout: 4000, retries: 0 });
-  const back = E.parse[C.TRACK_STEP](await rq(E.req.trackStep(2, 5)));
+  const back = E.parse[C.TRACK_STEP](await rq(E.req.trackStep(3, 5)));
   const sel = E.parse[C.TRACK](await rq(E.req.track())).sel;
   ok(back.n === 2 && back.notes[0] === 60 && sel === 2, "tracks: PROJECT save / load keeps every track and the selection");
   /* older firmware: no NTRK in INFO, no RELOAD track byte */
@@ -828,7 +829,7 @@ async function editorMixer() {
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const PAN = 39, MUTE = 40;
   const m0 = await E.mixer.read(rq, info, { pan: PAN });
-  ok(m0.ntrk === 4 && m0.tracks.length === 4 && m0.tracks[1].pan === -24 && m0.tracks[2].pan === 20 && m0.tracks[3].engine === 28
+  ok(m0.ntrk === 4 && m0.tracks.length === 4 && m0.tracks[2].pan === -24 && m0.tracks[3].pan === 24 && m0.tracks[0].engine === 28
     && m0.tracks.every((x) => Number.isInteger(x.level) && (x.mute === 0 || x.mute === 1)), "mixer: read = TRACK + pan of every track (TRACK_DUMP)");
   /* level / mute of tracks that are not selected (clamped) */
   const a = await E.mixer.setMix(rq, 2, 70, 1);
@@ -847,7 +848,7 @@ async function editorMixer() {
   await sleep(10);
   const m2 = await E.mixer.read(rq, info, { pan: PAN });
   const d0 = E.parse[C.DUMP](await rq(E.req.dump()), info);
-  ok(p2 === -40 && p0 === 63 && m2.sel === 0 && m2.tracks[2].pan === -40 && m2.tracks[0].pan === 63 && d0.p[PAN] === 63 && m2.tracks[1].pan === -24
+  ok(p2 === -40 && p0 === 63 && m2.sel === 0 && m2.tracks[2].pan === -40 && m2.tracks[0].pan === 63 && d0.p[PAN] === 63 && m2.tracks[3].pan === 24
     && ev.pushes.length === pushes, "mixer: pan of any track via SET (other track selected for a moment, then back; no push)");
   /* the device's TRACKS page: level of the selected track pushes CHANGED; REC arm shows in TRACK */
   m.sim.level(33);
@@ -862,12 +863,12 @@ async function editorMixer() {
   await sleep(10);
   const chd = E.parse[C.CHANGED](ev.pushes.filter((f) => f.cmd === C.CHANGED).pop().a);
   ok(chd.scope === 0 && chd.id === 0 && chd.value === 90, "mixer: track 4's level on the device pushes its LEVEL (P_LEVEL)");
-  /* track 4's demo beat: the DRUM kit's lane hits and accents */
+  /* track 1's demo beat: the kit's lane hits and accents */
   const st = [];
-  for (let i = 0; i < 16; i++) st.push(E.parse[C.TRACK_STEP](await rq(E.req.trackStep(3, i))));
+  for (let i = 0; i < 16; i++) st.push(E.parse[C.TRACK_STEP](await rq(E.req.trackStep(0, i))));
   ok(st.every((s) => s.n === 0) && st[0].hit === 1 && st[0].acc === 1 && st[1].hit === 8
     && st[4].hit === 2 && st[4].acc === 2 && st[14].hit === 16,
-    "mixer: the mock's track 4 holds the BEAT grid (KICK CHH ... SNARE ... OHH)");
+    "mixer: the mock's track 1 holds the BEAT grid (KICK CHH ... SNARE ... OHH)");
   ok(JSON.stringify(E.parseNotes("C4 E4 G4")) === "[60,64,67]" && JSON.stringify(E.parseNotes("36 38")) === "[36,38]" && E.parseNotes("KICK") === null,
     "mixer: notes parse as numbers or note names (no GM drum names)");
   done();
@@ -933,9 +934,9 @@ async function editorTracker() {
   await rq(E.req.tkOrder([0, 5, 5, 1]));
   const ins = P(await rq(E.req.tkInstr(4, 3, [{ kind: 1, a: 33, b: 3 }, { kind: 2, a: 7, b: 0 }, { kind: 0, a: 0, b: 0 }])));
   const all = P(await rq(E.req.tkInstr(0, 63)));
-  ok(!ins.rc && all.instr.length === 63 && all.instr[0].kind === 1 && all.instr[0].a === 24 && all.instr[0].b === 0 && all.instr[4].a === 33 &&
+  ok(!ins.rc && all.instr.length === 63 && all.instr[0].kind === 1 && all.instr[0].a === 28 && all.instr[0].b === 0 && all.instr[4].a === 33 &&
      all.instr[4].b === 3 && all.instr[5].kind === 2 && all.instr[5].a === 7 && !all.instr[6].kind,
-    "tracker: INSTR 05 WASP 4, 06 user 8, 07 none; 01 is SID BASS (power-on)");
+    "tracker: INSTR 05 WASP 4, 06 user 8, 07 none; 01 is KIT FM KIT (power-on)");
   ok(P(await rq(E.req.tkInstr(0, 1, [{ kind: 1, a: 1, b: 0 }]))).rc === 1, "tracker: INSTR of the retired engine 1: rc 1");
   const f = P(await rq(E.req.tkFilter(1, 90, -1)));
   ok(!f.rc && f.filter[1].cut === 90 && f.filter[1].res === -1 && f.filter[0].cut === -1, "tracker: FILTER track 2 CUT 90, RES INST");
@@ -1000,15 +1001,15 @@ async function editorTrackParam() {
   ok(E.parse[C.WATCH](await rq(E.req.watch(3))).on === 3, "v4: WATCH 3 -> 3 (TRACK_PARAM / TRACK_CHANGED known)");
   ok(await E.startWatch(rq) === 7, "1.5: the editor's WATCH 7 -> 7 (also TRACKER_CHANGED)");
   const tracks0 = sent[C.TRACK] || 0, pushes = ev.pushes.length;
-  const g = E.parse[C.TRACK_PARAM](await rq(E.req.trackParam(1, PAN)));
+  const g = E.parse[C.TRACK_PARAM](await rq(E.req.trackParam(3, PAN)));   /* (track 4, the lead: +24 at power-on) */
   const p2 = await E.mixer.setPan(rq, 2, 0, PAN, -40, true);
   const p1 = await E.mixer.setPan(rq, 1, 0, PAN, 99, true);
-  const alg = E.parse[C.TRACK_PARAM](await rq(E.req.trackParam(1, info.pe0, 150)));   /* track 2 is VOSIM FORMANT PAD: F1 0..127 */
+  const alg = E.parse[C.TRACK_PARAM](await rq(E.req.trackParam(2, info.pe0, 150)));   /* track 3 is VOSIM FORMANT PAD: F1 0..127 */
   const lv = E.parse[C.TRACK_PARAM](await rq(E.req.trackParam(3, 0, -5)));
   const sel = E.parse[C.TRACK](await rq(E.req.track()));
   const td2 = E.parse[C.TRACK_DUMP](await rq(E.req.trackDump(2)), info);
   await sleep(10);
-  ok(g.track === 1 && g.id === PAN && g.value === -24 && p2 === -40 && p1 === 63 && alg.value === 127 && lv.value === 0 && td2.p[PAN] === -40
+  ok(g.track === 3 && g.id === PAN && g.value === 24 && p2 === -40 && p1 === 63 && alg.value === 127 && lv.value === 0 && td2.p[PAN] === -40
     && sel.sel === 0 && (sent[C.TRACK] || 0) === tracks0 + 1 && ev.pushes.length === pushes,
     "v4: TRACK_PARAM get / set on other tracks (clamped as SET, selection kept, no push)");
   const bad = await rq(E.req.trackParam(4, PAN), { timeout: 60, retries: 0, quiet: true }).then(() => "reply", () => "none");

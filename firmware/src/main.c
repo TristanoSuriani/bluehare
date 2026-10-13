@@ -110,6 +110,7 @@ static void felucca_init(void)
         track_defaults(t);
         set_engine_of(t, TRK_DEF[i][0]);
         apply_preset_to(t, TRK_DEF[i][1]);    /* with its sends */
+        t->p[P_PAN] = TRK_PAN[i];             /* (Fel-Tracker: the wide parts left and right in turn) */
         t->engine = t->eng_req;
     }
     undo_depth--;
