@@ -479,8 +479,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   - **VENOM**: caustic acid: a low-pass and a band-pass that move each other's cutoff at audio rate (XMOD), RES, ENV,
     DEC, DRIVE
   - **WAR**: an industrial kit, a key each from C2 (as DRUM): KICK, HARD, SNARE, CLAP, HAT, OPEN, TOM L, TOM H, METAL,
-    ANVIL, CRASH, ZAP; each an FM pair with a falling pitch and noise; TUNE, DECAY, TONE, METAL, NOISE, PUNCH, DIST,
-    CRUSH
+    ANVIL, CRASH, ZAP (the octave above the same again); each an FM pair with a fast falling pitch (PUNCH) and noise;
+    TUNE, DECAY, TONE (a low-pass), METAL, NOISE, DIST, CRUSH
   - **CHOKE**: gated noise, hard limited: a band-pass at the key (TONE, Q), BODY, SNAP, held for GATE then shut over
     TAIL, SWEEP (an air-brake's fall), LIMIT
   - **RUST**: corroded noise: COLOR, TONE (a pulse at the key), RATE and BITS reduction, CORRUPT (bit flips, jumps),

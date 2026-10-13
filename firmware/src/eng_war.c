@@ -2,33 +2,35 @@
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* WAR (1.5, FOUNDRY): an industrial kit (Fel-Tracker's own). Every key from C2 another drum, made anew at each hit
- * (DRUM's map; the octave above the same twelve, an octave up): KICK, HARD (a harder kick), SNARE, CLAP, HAT, OPEN
+ * (DRUM's map; the octave above the same twelve again): KICK, HARD (a harder kick), SNARE, CLAP, HAT, OPEN
  * (an open hat), TOM L, TOM H, METAL, ANVIL, CRASH, ZAP. Each is a pair of operators (a carrier, a modulator RATIO
- * times it: FM, METAL its index), a pitch falling from PUNCH semitones above, and noise (NOISE), cut short or rung
- * long by DECAY, through DIST (a folder pushed into clipping: the war) and TONE, CRUSH last. TUNE moves the kit.
+ * times it: FM, METAL its index), a pitch falling fast (~25 ms, whatever DECAY) from PUNCH semitones above, and noise
+ * (NOISE), cut short or rung long by DECAY, through DIST (a folder pushed into clipping: the war), TONE (a low-pass)
+ * and CRUSH last. TUNE moves the kit.
  * Its own envelope (engine_t.ownenv: the velocity the level), the voice ending with the hit.
  * Voice state: ph[0] the carrier, ph[1] the modulator, s[0] samples since the hit, s[1] its length, s[2] the noise,
- * s[3] TONE's filter, s[4] the drum, s[5] the level (Q15), s[6] CRUSH's held sample, s[7] its count. */
+ * s[3] the noise's colour, s[4] the drum, s[5] the level (Q15), s[6] CRUSH's held sample, s[7] its count; ph[2] TONE's
+ * low-pass. */
 typedef struct { int8_t note, sweep; uint16_t ratio, index; uint8_t noise; uint16_t ms; uint8_t nlp; } war_drum_t;
 static const war_drum_t WAR_D[12] = {   /* {note, the pitch's fall (st), RATIO Q8, index, noise 0..127, ms, noise colour} */
-    {33, 36, 256, 2, 6, 380, 4}, {31, 48, 358, 6, 14, 320, 6}, {50, 12, 591, 3, 90, 220, 90}, {60, 0, 256, 0, 127, 260, 70},
-    {96, 0, 361, 8, 80, 70, 127}, {96, 0, 361, 8, 80, 380, 127}, {43, 12, 256, 1, 10, 320, 20}, {52, 12, 256, 1, 10, 260, 20},
-    {67, 0, 909, 9, 16, 480, 60}, {72, 4, 707, 10, 24, 700, 50}, {88, 0, 443, 12, 100, 1100, 110}, {84, 60, 256, 4, 10, 150, 40},
+    {29, 24, 256, 1, 4, 420, 4}, {31, 28, 358, 4, 10, 340, 6}, {45, 7, 591, 2, 80, 220, 55}, {57, 0, 256, 0, 127, 260, 45},
+    {88, 0, 361, 8, 80, 70, 100}, {88, 0, 361, 8, 80, 380, 95}, {38, 9, 256, 1, 8, 340, 15}, {45, 9, 256, 1, 8, 280, 15},
+    {60, 0, 909, 7, 14, 480, 40}, {64, 3, 707, 8, 20, 700, 35}, {81, 0, 443, 10, 100, 1100, 80}, {72, 36, 256, 3, 8, 150, 30},
 };
 
 static void war_note_on(track_t *t, voice_t *v)
 {
-    int32_t k = ((int32_t)v->note - 36) % 24, len;
+    int32_t k = ((int32_t)v->note - 36) % 12, len;
     const war_drum_t *d;
-    k = k < 0 ? k + 24 : k;
-    d = &WAR_D[k % 12];
+    k = k < 0 ? k + 12 : k;
+    d = &WAR_D[k];
     len = (int32_t)d->ms * (int32_t)FS / 1000;
     v->s[1] = (len * (16 + t->p[P_E1] * 2)) >> 6;     /* DECAY: a quarter .. four times */
     v->s[1] = v->s[1] < 64 ? 64 : v->s[1];
     v->s[0] = 0;
     v->s[4] = k;
     v->s[5] = 4096 + v->vel * 225;
-    v->ph[0] = v->ph[1] = 0;
+    v->ph[0] = v->ph[1] = v->ph[2] = 0;
     v->s[3] = v->s[6] = v->s[7] = 0;
     if (!v->s[2])
         v->s[2] = (int32_t)(0x2545F491u ^ (v->age * 2654435761u));
@@ -42,10 +44,13 @@ static void war_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
     int32_t k = v->s[4], age = v->s[0], len = v->s[1], lp = v->s[3], amp = v->s[5], hold = v->s[6], hc = v->s[7];
     const war_drum_t *d = &WAR_D[k % 12];
     uint32_t i, nz = (uint32_t)v->s[2], ph = v->ph[0], mph = v->ph[1], inv = (1u << 29) / (uint32_t)len;
-    int32_t base16 = (d->note + (k >= 12 ? 12 : 0) + p[P_E0]) * 16, idx = d->index * (16 + p[P_E3]) / 2;
+    int32_t base16 = (d->note + p[P_E0]) * 16, idx = d->index * (16 + p[P_E3]) / 2;
     int32_t noise = d->noise * (32 + p[P_E4]) / 96, sweep = d->sweep * (16 + p[P_E5]) / 80, dist = 256 + p[P_E6] * 24;
-    int32_t kt = clamp(2000 + p[P_E2] * 240, 2000, 32767), nk = 1500 + d->nlp * 240, crush = p[P_E7];
+    int32_t kt = clamp(2500 + p[P_E2] * 236, 2500, 32767), tl = (int32_t)v->ph[2], pe0, pe1, pd, nk = 1500 + d->nlp * 240, crush = p[P_E7];
     int32_t mask = crush ? ~((1 << (crush / 12)) - 1) : -1, hold_n = 1 + crush / 20;
+    pe0 = (int32_t)((32767u * 1100u) / (1100u + (uint32_t)age));   /* the pitch's fall: ~25 ms, hyperbolic (once a block, */
+    pe1 = (int32_t)((32767u * 1100u) / (1100u + (uint32_t)age + n));   /* between the block's ends) */
+    pd = (pe1 - pe0) / (int32_t)n;
     for (i = 0; i < n; i++) {
         int32_t w, e, ef, x, nzv, cm;
         uint32_t inc, minc;
@@ -53,7 +58,8 @@ static void war_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
             break;
         w = (int32_t)(((uint32_t)(len - age) * inv) >> 14);   /* 1 .. 0 over the hit, Q15 */
         e = (w * w) >> 15;
-        ef = (e * e) >> 15;                           /* (the pitch falls fast) */
+        ef = (pe0 * pe0) >> 15;
+        pe0 += pd;
         if (age < 32)
             e = (e * age) >> 5;
         inc = pitch_inc((uint32_t)clamp(base16 + ((sweep * 16 * ef) >> 15), 0, 2047));
@@ -80,7 +86,8 @@ static void war_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
             }
             x = hold;
         }
-        x = (x * kt) >> 15;
+        tl += ((x - tl) * kt) >> 15;                  /* TONE */
+        x = tl;
         out[i] += voice_amp(clamp((x * amp) >> 15, -32767, 32767), m, i) << 1;
         ph += inc;
         mph += minc;
@@ -93,6 +100,7 @@ static void war_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
     v->s[7] = hc;
     v->ph[0] = ph;
     v->ph[1] = mph;
+    v->ph[2] = (uint32_t)tl;
 }
 
 static int32_t war_keys(const track_t *t, uint32_t k) { return drum_keys(t, k); }
