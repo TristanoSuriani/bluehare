@@ -345,7 +345,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     if (ed_tracker_handle(cmd, a, na)) { ed_send(); return; }
     switch (cmd) {
     case ED_INFO:
-        ed_str("FELUCCA " FELUCCA_VERSION_DIST, 24);
+        ed_str("FEL-TRACKER " FELUCCA_VERSION_DIST, 24);   /* (Fel-Tracker: was "FELUCCA ") */
         ed_b(EID_COUNT);                                  /* (NENGINES of the protocol: the ids, "-" none here) */
         ed_b(P_COUNT);
         ed_b(G_COUNT);

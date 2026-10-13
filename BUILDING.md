@@ -73,10 +73,11 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `c
 
 The tree holds every engine (`firmware/src/engine_ids.h`); a **distribution** is the set one build holds, at most 16,
 in the order the device lists them: `distributions/<name>.txt`, one engine a line, and optionally `TRACKS 4` or
-`TRACKS 8`, the build's track count (4 without the line).
+`TRACKS 8`, the build's track count (4 without the line), and `PALETTE <name>`, the palette a device starts with
+(tools/gen_ui_palettes.py: IDM's IDM, the default's SIGNAL; GREY without the line).
 
 ```
-./build.sh                         # the distribution distributions/BUILD names: IDM (build/felucca.fwsc, "v1.4.1 IDM")
+./build.sh                         # the distribution distributions/BUILD names: IDM (build/felucca.fwsc, "v0.10.0 IDM")
 FELUCCA_DIST=default ./build.sh    # another one (build/felucca-default.fwsc)
 ```
 
@@ -120,8 +121,10 @@ python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 shows the distribution after the version.
 
 The computer's keyboard: the bottom rows play the keys, the number row the buttons, [ ] OCT, ↑ ↓ KNOB 1 (with Shift
-SELECT), ← → ALGORITHM; ` (or the Full screen button) shows the device alone, as large as the screen allows (Escape
-leaves it).
+SELECT; up a step back, down a step on), ← → ALGORITHM; \ (or the QE AD ZC button) turns Q E, A D, Z C from notes
+into KNOB 2, 3, 4 (each pair: down, up) and back. ` (or the Full screen button) shows the device alone, as large
+as the screen allows (Escape leaves it); Shift ` (or Big screen) shows the screen large above a smaller panel, on the
+page and in full screen. The two choices are remembered in the browser.
 
 MIDI in: a keyboard plugged into the computer plays the emulator (Web MIDI: Chrome, Edge or Firefox, not Safari; the
 page on localhost or https). Once switched on, the line under the key hints names the inputs found and blinks on what

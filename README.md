@@ -3,12 +3,15 @@
 **Fel-Tracker** is a fork of [Felucca](https://github.com/hugelton/Felucca), the multi-engine synthesizer firmware
 for the M-VAVE FM-1 by Leo Kuroshita ([Hügelton Instruments](https://hugelton.com)). It is developed by
 **Tristano Suriani** (<https://github.com/TristanoSuriani/fel-tracker>). It is an independent fork, not an official
-Felucca release.
+Felucca release. Version **0.10.0** (its own numbering; it grew from Felucca 1.4.1). On the device, the editor and
+the browser emulator it introduces itself as Fel-Tracker, naming Felucca and its makers as what it is built on.
 
 What Fel-Tracker adds, all by Tristano Suriani:
 
 - **The tracker**, in place of the step sequencer.
-- **Distributions:** builds of any set of up to 16 engines, with stable engine ids, on 4 or 8 tracks. The **IDM**
+- **Distributions:** builds of any set of up to 16 engines, with stable engine ids, on 4 or 8 tracks, each with its
+  own palette (the device's and the emulator page's: IDM electric cyan and magenta on indigo, the default signal
+  orange). The **IDM**
   distribution is the default, with **8 tracks**: the tracker, the MIXER and the quick layers show the selected
   track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
   into its first four (BUILDING.md "Distributions").

@@ -1,5 +1,7 @@
 # Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # The default distribution: the engines in display order, one a line (names: firmware/src/engine_ids.h; at most 16)
+# PALETTE: the one a device starts with
+PALETTE SIGNAL
 ANALOG
 FM6
 WAVE

@@ -32,7 +32,8 @@
 #define FELUCCA_ID "FM-1_900"    /* package identity (build.py: the .fwsc marker string) */
 #endif
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "v1.4.1" /* shown in the menu, the console and the editor; build.py --release X.Y */
+#define FELUCCA_VERSION "v0.10.0" /* Fel-Tracker's (was Felucca's v1.4.1, its base): shown in the menu, the splash, the
+                                    * console and the editor; build.py --release X.Y */
 #endif
 #if FELUCCA_OTA && !FELUCCA_FLASH
 #error "FELUCCA_OTA needs FELUCCA_FLASH"

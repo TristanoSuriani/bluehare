@@ -49,6 +49,11 @@ PALETTES = [
     ("NIGHT",  (0, 0, 0),       (0, 24, 10),     (150, 230, 170), (56, 220, 100),  (255, 255, 255)),
     # 1.0.2: black and white (the derived tokens are set, not blended: bw()); the old MONO is GREY (id 0)
     ("MONO",   (0, 0, 0),       (0, 0, 0),       (255, 255, 255), (255, 255, 255), (255, 255, 255)),
+    # (Fel-Tracker) a distribution's own (distributions/*.txt PALETTE: what a device starts with). IDM: electric cyan
+    # values, a hot magenta for the one active thing, on deep indigo; SIGNAL (the default distribution): signal
+    # orange, cyan the active thing, on warm near-black
+    ("IDM",    (8, 6, 26),      (26, 20, 64),    (232, 236, 255), (0, 229, 255),   (255, 46, 190)),
+    ("SIGNAL", (14, 12, 10),    (40, 34, 28),    (242, 236, 228), (255, 128, 24),  (40, 220, 255)),
 ]
 BW = "MONO"
 BW_GREY = (82, 82, 82)             # MONO's one mid grey (RGB565 10/20/10): DIM LINE RAISE LANE
@@ -188,6 +193,7 @@ def main():
                 f"#define UI_BW_INDEX {names.index(BW)}u          /* MONO: black and white (src/gfx.c palette_set) */",
                 f"#define UI_BW_GREY 0x{to565(BW_GREY):04x}u          /* MONO's one grey: DIM LINE RAISE LANE */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* stored id = UI_PAL_TAG + index; below 20: an old id */"]
+        out += [f"#define UI_PAL_{n.replace('-', '_')} {i}u" for i, n in enumerate(names)]   # (by name: a distribution's)
         out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */"]
         out += [f"#define UI_REC_DARK 0x{to565(REC_DARK):04x}u", f"#define UI_REC_LIGHT 0x{to565(REC_LIGHT):04x}u",
                 f"#define UI_QR_LIGHT 0x{to565(QR_LIGHT):04x}u", f"#define UI_QR_DARK 0x{to565(QR_DARK):04x}u",

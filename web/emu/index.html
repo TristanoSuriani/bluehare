@@ -7,16 +7,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Felucca</title>
+<title>Fel-Tracker</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22/%3E%3Crect x=%224%22 y=%224%22 width=%228%22 height=%228%22 fill=%22%23fff%22/%3E%3C/svg%3E">
-<meta name="description" content="Felucca, the multi-engine synth firmware for the FM-1, running in your browser: the same code the instrument runs.">
+<meta name="description" content="Fel-Tracker, a tracker and multi-engine synth firmware for the FM-1 (a fork of Felucca), running in your browser: the same code the instrument runs.">
 <style>
 /* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt), cut to printable ASCII, for the knob labels */
 @font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
 :root { --bg: #8e8e93; --fg: #111; --dim: #2c2c2e; --rule: #5a5a5e;
         --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
         --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
+/* (Fel-Tracker) every distribution its own palette (the class the build sets, web/emu/build.sh; its device palette
+ * the same: distributions/*.txt PALETTE). DEFAULT (SIGNAL): signal orange and cyan on warm near-black; IDM: electric
+ * cyan and hot magenta on deep indigo, a scan-line glow behind the device */
+body.dist-default { --bg: #0e0c0a; --fg: #f2ece4; --dim: #b5a898; --rule: #4a4038; --a1: #ff8018; --a2: #28dcff;
+                    --body: #1c1916; --tray: #120f0d; --part: #2c2620; --edge: #463c32; --label: #f0e6d8;
+                    --glow1: rgba(255, 128, 24, .18); --glow2: rgba(40, 220, 255, .10); color-scheme: dark; }
+body.dist-idm { --bg: #08061a; --fg: #e8ecff; --dim: #9aa6ff; --rule: #2e3270; --a1: #ff2ebe; --a2: #00e5ff;
+                --body: #121030; --tray: #0a0820; --part: #1e1a4a; --edge: #3a3488; --label: #d6dcff;
+                --glow1: rgba(255, 46, 190, .22); --glow2: rgba(0, 229, 255, .16); color-scheme: dark; }
 html, body { background: var(--bg); }
+body[class^="dist-"] { background: radial-gradient(900px 520px at 12% -8%, var(--glow1), transparent 70%),
+                       radial-gradient(900px 520px at 92% 18%, var(--glow2), transparent 70%), var(--bg);
+                       background-attachment: fixed; }
+body.dist-idm::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+                        background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 3px); }
+body[class^="dist-"] main { position: relative; z-index: 1; }
+body[class^="dist-"] a { color: var(--a2); }
+.brand { display: flex; align-items: baseline; justify-content: center; gap: 12px; margin: 0 0 14px; }
+.brand h1 { margin: 0; font: 400 30px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; color: var(--fg); }
+.brand h1 b { font-weight: 400; color: var(--a1, var(--fg)); }
+.brand span { font: 12px/1 ui-monospace, Menlo, monospace; color: var(--a2, var(--dim)); letter-spacing: .12em; }
+body[class^="dist-"] .full[aria-pressed="true"] { background: var(--a1); color: var(--bg); border-color: var(--a1); }
+body[class^="dist-"] #stage:fullscreen, body[class^="dist-"].solo #stage {
+    background: radial-gradient(900px 520px at 12% -8%, var(--glow1), transparent 70%),
+                radial-gradient(900px 520px at 92% 18%, var(--glow2), transparent 70%), var(--bg); }
 body { margin: 0; color: var(--fg); font: 13px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
 main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 32px; }
 @media (orientation: portrait) and (max-width: 700px) { main { padding: 8px 8px 24px; } }
@@ -78,6 +102,16 @@ footer { margin-top: 12px; font-size: 12px; }
 body.solo #stage { position: fixed; inset: 0; z-index: 10; }
 #stage:fullscreen .device, body.solo .device { width: min(100vw, calc(100vh * 1000 / 624)); }
 body.solo { overflow: hidden; }
+/* (Fel-Tracker) big screen: a large copy of the screen above a smaller panel (on the page and in full screen) */
+.toggles { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+.toggles .full { margin: 0; }
+.full[aria-pressed="true"] { background: var(--dim); color: var(--bg); }
+#big { display: none; image-rendering: crisp-edges; image-rendering: pixelated; background: #000; }
+body.big #big { display: block; width: min(100%, 58vh); aspect-ratio: 1; margin: 0 auto 12px; }
+body.big .device { width: min(100%, calc(36vh * 1000 / 624)); margin: 0 auto; }
+body.big #stage:fullscreen, body.big.solo #stage { flex-direction: column; }
+body.big #stage:fullscreen #big, body.big.solo #big { width: min(96vw, 60vh); margin: 0 0 1vh; }
+body.big #stage:fullscreen .device, body.big.solo .device { width: min(100vw, calc(36vh * 1000 / 624)); }
 .midi .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%;
              background: var(--rule); vertical-align: 0; transition: background .15s; }
 .midi .dot.on { background: var(--green); transition: none; }
@@ -85,9 +119,11 @@ footer nav a { margin: 0 6px; }
 footer small { font-size: 11px; opacity: .8; }
 </style>
 </head>
-<body>
+<body class="dist-@DIST@">
 <main>
+<header class="brand"><h1>FEL<b>-</b>TRACKER</h1><span>@VERSION@</span></header>
 <div id="stage">
+<canvas id="big" width="240" height="240" role="img" aria-label="The screen, large"></canvas>
 <div class="device" id="device">
   <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
   <canvas id="screen" width="240" height="240" role="img" aria-label="The screen"></canvas>
@@ -102,17 +138,23 @@ footer small { font-size: 11px; opacity: .8; }
   <span><kbd>↑</kbd> <kbd>↓</kbd> KNOB 1</span>
   <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
   <span><kbd>Shift</kbd> <kbd>↑</kbd> <kbd>↓</kbd> SELECT</span>
-  <span><kbd>`</kbd> full screen</span>
+  <span><kbd>\</kbd> <kbd>Q</kbd> <kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>Z</kbd> <kbd>C</kbd>: notes or KNOB 2 3 4</span>
+  <span><kbd>`</kbd> full screen, <kbd>Shift</kbd> <kbd>`</kbd> big screen</span>
   <span><kbd>Shift</kbd>-click holds a button</span>
 </p>
-<button class="full" id="full" type="button">Full screen</button>
+<div class="toggles">
+  <button class="full" id="full" type="button">Full screen</button>
+  <button class="full" id="bigb" type="button" aria-pressed="false">Big screen</button>
+  <button class="full" id="numb" type="button" aria-pressed="false">QE AD ZC: notes</button>
+</div>
 <p class="midi" id="midi"><span class="dot" id="midi-dot"></span><span id="midi-text">MIDI in: connects when switched on</span></p>
 
 <footer>
   <small class="version">@VERSION@@PREVIEW@</small><br>
-  Felucca by Leo Kuroshita, Hügelton Instruments · <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · browser build after charlesvestal's <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
-  <nav><a href="../installer/">Install</a><a href="../editor/">Editor</a><a href="https://github.com/hugelton/Felucca">Source</a></nav>
-  <small>M-VAVE and FM-1 are trademarks of their respective owners. Felucca is not affiliated with or endorsed by them.</small>
+  Fel-Tracker by Tristano Suriani · a fork of <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments, and the people who built it with him ·
+  <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · browser build after charlesvestal's <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
+  <nav><a href="../installer/">Install</a><a href="../editor/">Editor</a><a href="https://github.com/TristanoSuriani/fel-tracker">Source</a></nav>
+  <small>M-VAVE and FM-1 are trademarks of their respective owners. Fel-Tracker and Felucca are not affiliated with or endorsed by them.</small>
 </footer>
 </main>
 
@@ -354,15 +396,34 @@ const KEYMAP = {};
 ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9", "Digit0", "Minus", "Equal"]
   .forEach((c, i) => KEYMAP[c] = { btn: B[[...ROW1, ...ROW2][i]] });
 Object.assign(KEYMAP, { BracketLeft: { btn: B["OCT-"] }, BracketRight: { btn: B["OCT+"] } });
-// (Fel-Tracker) the arrows: up and down KNOB 1 (SELECT with Shift), left and right ALGORITHM
-const ARROWS = { ArrowUp: [EN["KNOB 1"], 1], ArrowDown: [EN["KNOB 1"], -1], ArrowRight: [EN.ALGORITHM, 1], ArrowLeft: [EN.ALGORITHM, -1] };
-const ARROWS_SHIFT = { ArrowUp: [EN.SELECT, 1], ArrowDown: [EN.SELECT, -1] };
+// (Fel-Tracker) the arrows: up and down KNOB 1 (SELECT with Shift; up a step back, down a step on: a list's way),
+// left and right ALGORITHM. \ turns Q E, A D, Z C from notes into KNOB 2, 3, 4 (each pair: down, up) and back
+const ARROWS = { ArrowUp: [EN["KNOB 1"], -1], ArrowDown: [EN["KNOB 1"], 1], ArrowRight: [EN.ALGORITHM, 1], ArrowLeft: [EN.ALGORITHM, -1] };
+const ARROWS_SHIFT = { ArrowUp: [EN.SELECT, -1], ArrowDown: [EN.SELECT, 1] };
+const NUMKNOBS = { KeyQ: [EN["KNOB 2"], -1], KeyE: [EN["KNOB 2"], 1], KeyA: [EN["KNOB 3"], -1], KeyD: [EN["KNOB 3"], 1],
+                   KeyZ: [EN["KNOB 4"], -1], KeyC: [EN["KNOB 4"], 1] };
+const pref = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
+let numKnobs = pref("felucca-letterknobs") === "1";
+function numSync() {
+  const b = document.getElementById("numb");
+  b.textContent = numKnobs ? "QE AD ZC: KNOB 2 3 4" : "QE AD ZC: notes";
+  b.setAttribute("aria-pressed", numKnobs);
+}
+function numToggle() {
+  numKnobs = !numKnobs;
+  pref("felucca-letterknobs", numKnobs ? "1" : "0");
+  for (const c of Object.keys(NUMKNOBS)) keyBy.delete("k" + c);   // (a note held on one of them: let go)
+  syncKeys();
+  numSync();
+}
 addEventListener("keydown", (e) => {
-  if (e.code === "Backquote" && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { fullToggle(); e.preventDefault(); return; }
+  if (e.code === "Backquote" && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { (e.shiftKey ? bigToggle : fullToggle)(); e.preventDefault(); return; }
+  if (e.code === "Backslash" && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { numToggle(); e.preventDefault(); return; }
   if (e.code === "Escape" && document.body.classList.contains("solo")) { fullToggle(); return; }
   if (!node || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.(".hit.knob")) return;
   const arrow = (e.shiftKey && ARROWS_SHIFT[e.code]) || ARROWS[e.code];
   if (arrow) { const [r, n] = arrow; turn(knobs.find((k) => k.role === r), n); e.preventDefault(); return; }
+  if (numKnobs && NUMKNOBS[e.code]) { const [r, n] = NUMKNOBS[e.code]; turn(knobs.find((k) => k.role === r), n); e.preventDefault(); return; }
   const m = KEYMAP[e.code];
   if (!m) return;
   e.preventDefault();
@@ -398,6 +459,19 @@ function fullToggle() {
   }
 }
 document.getElementById("full").addEventListener("click", fullToggle);
+// (Fel-Tracker) big screen: the screen copied large each frame (drawScreen), the panel smaller
+const big = document.getElementById("big"), bigCtx = big.getContext("2d");
+function bigSync() {
+  const on = pref("felucca-bigscreen") === "1";
+  document.body.classList.toggle("big", on);
+  document.getElementById("bigb").setAttribute("aria-pressed", on);
+  if (on) bigCtx.drawImage(canvas, 0, 0);
+}
+function bigToggle() { pref("felucca-bigscreen", document.body.classList.contains("big") ? "0" : "1"); bigSync(); }
+document.getElementById("bigb").addEventListener("click", bigToggle);
+document.getElementById("numb").addEventListener("click", numToggle);
+bigSync();
+numSync();
 
 // ------------------------------------------------------------------ screen and lights
 const ctx = document.getElementById("screen").getContext("2d");
@@ -412,6 +486,8 @@ function drawScreen(fb) {
     d[i * 4 + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
+  if (document.body.classList.contains("big"))
+    bigCtx.drawImage(canvas, 0, 0);                             // (big screen: the same frame, large)
 }
 // the power-on sweep (hal/fm1_led_anim.h): a level per LED, lit frames /64 (| 128: the glow under them), drawn as the
 // LED's share of lit between its dark (or glowing) colour and the lit one, mixed in linear light

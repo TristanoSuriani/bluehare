@@ -28,7 +28,7 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
     --no-entry -sSTANDALONE_WASM -sSTACK_SIZE=1048576 -sINITIAL_MEMORY=33554432 -sFILESYSTEM=0 \
     -o "$OUTD/felucca.wasm" web/emu/felucca_web.c
 [ "${EMU_PREVIEW:-1}" = 0 ] && PREVIEW='' || PREVIEW=' (preview)'
-sed -e "s/@VERSION@/$VERSION$TAG/g" -e "s/@PREVIEW@/$PREVIEW/g" web/emu/index.html > "$OUTD/index.html"
+sed -e "s/@VERSION@/$VERSION$TAG/g" -e "s/@PREVIEW@/$PREVIEW/g" -e "s/@DIST@/$DIST/g" web/emu/index.html > "$OUTD/index.html"
 cp web/emu/worklet.js "$OUTD/"
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt "$OUTD/fonts/"
 echo "emu: $OUTD ($(wc -c < "$OUTD/felucca.wasm" | tr -d ' ') B wasm, $VERSION$TAG)"

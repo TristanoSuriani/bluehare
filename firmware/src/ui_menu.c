@@ -118,16 +118,16 @@ static int32_t menu_document(int32_t y, int draw)
 {
     uint32_t i;
     if (draw) {
-        cv_text(6, y + 2, &AF_L, "FELUCCA", T_THEME);
-        cv_text(6, y + 38, &AF_S, "Multi-engine synthesizer", T_TEXT);
+        cv_text(6, y + 2, &AF_L, "FEL-TRACKER", T_THEME);   /* (Fel-Tracker: its name, its developer; Felucca, */
+        cv_text(6, y + 38, &AF_S, "Tracker, multi-engine synth", T_TEXT);   /* what it grew from, and its makers) */
         cv_text(6, y + 58, &AF_M, FELUCCA_VERSION_DIST, T_THEME);
         cv_text_r(232, y + 61, &AF_S, __DATE__, T_MID, T_BG);
-        cv_text(6, y + 82, &AF_S, "(C) 2026 Leo Kuroshita", T_TEXT);
-        cv_text(6, y + 100, &AF_S, "H\xFCgelton Instruments", T_TEXT);
-        cv_text(6, y + 118, &AF_S, "GPL-3.0-only", T_TEXT);
-        cv_text(6, y + 138, &AF_S, "hugelton.github.io", T_MID);
-        cv_text(6, y + 156, &AF_S, "/Felucca", T_MID);
-        cv_text(6, y + 180, &AF_S, "hugelton.com", T_MID);
+        cv_text(6, y + 82, &AF_S, "(C) 2026 Tristano Suriani", T_TEXT);
+        cv_text(6, y + 100, &AF_S, "after Felucca, Leo Kuroshita", T_TEXT);
+        cv_text(6, y + 118, &AF_S, "H\xFCgelton Instruments", T_TEXT);
+        cv_text(6, y + 138, &AF_S, "GPL-3.0-only", T_TEXT);
+        cv_text(6, y + 160, &AF_S, "github.com/Tristano", T_MID);
+        cv_text(6, y + 178, &AF_S, "Suriani/fel-tracker", T_MID);
         draw_about_qr(158, y + 122);
     }
     y = menu_text("CREDITS", y + 216, T_THEME, draw) + 8;
@@ -145,7 +145,8 @@ static int32_t menu_document(int32_t y, int draw)
     y = menu_text("Fonts and icons: their licences travel with the source and the release files.", y, T_TEXT, draw);
     y = menu_text("NO WARRANTY", y, T_TEXT, draw);
     y = menu_text("Full notices in source:", y + 8, T_TEXT, draw);
-    y = menu_text("github.com/hugelton/Felucca", y, T_MID, draw);
+    y = menu_text("github.com/TristanoSuriani/fel-tracker", y, T_MID, draw);
+    y = menu_text("Felucca's: github.com/hugelton/Felucca", y, T_MID, draw);
     return y + 4;
 }
 static int32_t menu_scroll_max(void)

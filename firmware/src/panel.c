@@ -113,6 +113,9 @@ static uint32_t leds_step(uint32_t m, int32_t s)
     return LEDS_MENU[i];
 }
 
+#ifndef FELUCCA_DIST_PALETTE                  /* (a build without a distribution's header: the tests') */
+#define FELUCCA_DIST_PALETTE UI_GREY_INDEX
+#endif
 static void settings_init(void)
 {
     if (settings.magic == SETTINGS_MAGIC_OLD && settings.palette < 20u) {
@@ -121,7 +124,8 @@ static void settings_init(void)
     }
     if (settings.magic != SETTINGS_MAGIC || settings.palette >= NPALETTES) {
         settings.magic = SETTINGS_MAGIC;
-        settings.palette = UI_GREY_INDEX;      /* GREY (default; named MONO before 1.0.2) */
+        settings.palette = FELUCCA_DIST_PALETTE;   /* (Fel-Tracker) the distribution's own (its distributions/ file
+                                                * PALETTE; none: GREY, the default before) */
         settings.lowcut = 0;
         settings.zoom = 0;                     /* (retired: the LEDS setting, settings_persist.c) */
     }
