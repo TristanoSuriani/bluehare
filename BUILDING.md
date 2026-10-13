@@ -119,6 +119,10 @@ python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 `FELUCCA_DIST=default web/emu/build.sh` another one into `build/emu-default/` (serve that folder instead). The page
 shows the distribution after the version.
 
+The computer's keyboard: the bottom rows play the keys, the number row the buttons, [ ] OCT, ↑ ↓ KNOB 1 (with Shift
+SELECT), ← → ALGORITHM; ` (or the Full screen button) shows the device alone, as large as the screen allows (Escape
+leaves it).
+
 MIDI in: a keyboard plugged into the computer plays the emulator (Web MIDI: Chrome, Edge or Firefox, not Safari; the
 page on localhost or https). Once switched on, the line under the key hints names the inputs found and blinks on what
 they send. MIDI channel 1 plays track 1, 2 track 2 .. (MENU > MIDI > MIDI IN: CH1-8); SEL plays the selected track

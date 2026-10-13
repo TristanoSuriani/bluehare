@@ -69,6 +69,15 @@ a { color: inherit; }
 kbd { font: 600 11px ui-monospace, Menlo, monospace; border: 1px solid var(--rule); padding: 0 4px; color: var(--fg); }
 footer { margin-top: 12px; font-size: 12px; }
 .midi { margin: 8px 0 0; color: var(--dim); text-align: center; }
+/* (Fel-Tracker) full screen: the device alone, as large as fits (the browser's full screen, or this page's own where
+ * an element cannot have it: .solo) */
+.full { font: inherit; font-size: 12px; margin: 12px auto 0; display: block; padding: 4px 12px; cursor: pointer;
+        background: transparent; color: var(--dim); border: 1px solid var(--rule); border-radius: 4px; }
+#stage:fullscreen, body.solo #stage { display: flex; align-items: center; justify-content: center; background: var(--bg);
+                                      width: 100vw; height: 100vh; }
+body.solo #stage { position: fixed; inset: 0; z-index: 10; }
+#stage:fullscreen .device, body.solo .device { width: min(100vw, calc(100vh * 1000 / 624)); }
+body.solo { overflow: hidden; }
 .midi .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%;
              background: var(--rule); vertical-align: 0; transition: background .15s; }
 .midi .dot.on { background: var(--green); transition: none; }
@@ -78,20 +87,25 @@ footer small { font-size: 11px; opacity: .8; }
 </head>
 <body>
 <main>
+<div id="stage">
 <div class="device" id="device">
   <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
   <canvas id="screen" width="240" height="240" role="img" aria-label="The screen"></canvas>
   <div class="start" id="start"><button id="go" type="button">Switch on</button><p id="status" hidden></p></div>
+</div>
 </div>
 
 <p class="keys">
   <span><kbd>Z</kbd>–<kbd>'</kbd> <kbd>Q</kbd>–<kbd>O</kbd> keys</span>
   <span><kbd>1</kbd>–<kbd>=</kbd> FX … REC</span>
   <span><kbd>[</kbd> <kbd>]</kbd> OCT</span>
-  <span><kbd>↑</kbd> <kbd>↓</kbd> SELECT</span>
+  <span><kbd>↑</kbd> <kbd>↓</kbd> KNOB 1</span>
   <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
+  <span><kbd>Shift</kbd> <kbd>↑</kbd> <kbd>↓</kbd> SELECT</span>
+  <span><kbd>`</kbd> full screen</span>
   <span><kbd>Shift</kbd>-click holds a button</span>
 </p>
+<button class="full" id="full" type="button">Full screen</button>
 <p class="midi" id="midi"><span class="dot" id="midi-dot"></span><span id="midi-text">MIDI in: connects when switched on</span></p>
 
 <footer>
@@ -340,10 +354,15 @@ const KEYMAP = {};
 ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9", "Digit0", "Minus", "Equal"]
   .forEach((c, i) => KEYMAP[c] = { btn: B[[...ROW1, ...ROW2][i]] });
 Object.assign(KEYMAP, { BracketLeft: { btn: B["OCT-"] }, BracketRight: { btn: B["OCT+"] } });
-const ARROWS = { ArrowUp: [EN.SELECT, 1], ArrowDown: [EN.SELECT, -1], ArrowRight: [EN.ALGORITHM, 1], ArrowLeft: [EN.ALGORITHM, -1] };
+// (Fel-Tracker) the arrows: up and down KNOB 1 (SELECT with Shift), left and right ALGORITHM
+const ARROWS = { ArrowUp: [EN["KNOB 1"], 1], ArrowDown: [EN["KNOB 1"], -1], ArrowRight: [EN.ALGORITHM, 1], ArrowLeft: [EN.ALGORITHM, -1] };
+const ARROWS_SHIFT = { ArrowUp: [EN.SELECT, 1], ArrowDown: [EN.SELECT, -1] };
 addEventListener("keydown", (e) => {
+  if (e.code === "Backquote" && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { fullToggle(); e.preventDefault(); return; }
+  if (e.code === "Escape" && document.body.classList.contains("solo")) { fullToggle(); return; }
   if (!node || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.(".hit.knob")) return;
-  if (ARROWS[e.code]) { const [r, n] = ARROWS[e.code]; turn(knobs.find((k) => k.role === r), n); e.preventDefault(); return; }
+  const arrow = (e.shiftKey && ARROWS_SHIFT[e.code]) || ARROWS[e.code];
+  if (arrow) { const [r, n] = arrow; turn(knobs.find((k) => k.role === r), n); e.preventDefault(); return; }
   const m = KEYMAP[e.code];
   if (!m) return;
   e.preventDefault();
@@ -362,6 +381,23 @@ addEventListener("blur", () => {
   syncButtons();
   syncKeys();
 });
+
+// (Fel-Tracker) full screen: the device alone. The browser's own (the stage), else this page's (body.solo: an iPhone
+// has no full screen for an element); ` or the button, Escape out of either
+const stage = document.getElementById("stage");
+function fullToggle() {
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else if (document.body.classList.contains("solo")) {
+    document.body.classList.remove("solo");
+  } else {
+    const go = stage.requestFullscreen || stage.webkitRequestFullscreen;
+    const r = go ? go.call(stage) : null;           // (a promise, or nothing: Safari's prefixed one)
+    if (!go) document.body.classList.add("solo");
+    else if (r && r.catch) r.catch(() => document.body.classList.add("solo"));
+  }
+}
+document.getElementById("full").addEventListener("click", fullToggle);
 
 // ------------------------------------------------------------------ screen and lights
 const ctx = document.getElementById("screen").getContext("2d");
