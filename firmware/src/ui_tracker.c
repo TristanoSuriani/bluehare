@@ -21,7 +21,7 @@
  * VARIATION (Fel-Tracker): the variation of the SONG page's position (stopped there: of the pattern LOOP plays), its
  * rows like SETTINGS': TEMPO (SONG or a BPM), MUTE, CHANCE, the sends and the SLICER (each KEEP: the track's own),
  * PRESETS the row, KNOB 1..4 the view's tracks (TEMPO: KNOB 1), EDIT the selected track's value back to KEEP (TEMPO:
- * SONG); PLAY here plays its pattern under it (LOOP). On SONG KNOB 3 picks a position's variation A .. D (past the
+ * SONG; on the last row, DELETE, the variation deleted after the OCT- / OCT+ dialog: not A); PLAY here plays its pattern under it (LOOP). On SONG KNOB 3 picks a position's variation A .. D (past the
  * last one the pattern has: a new one, a copy of A).
  * SETTINGS: each track's ENV, filter and FX: a row a setting, a column a track; PRESETS the row, KNOB 1..4 tracks
  * 1..4. CUT and RES hold the engine's filter over every instrument (INST: the instrument's own; EDIT puts INST back).
@@ -62,6 +62,7 @@ static struct {
 } tku = {0, 0, 1, 0, 0, 0, 0, 60, TKC_LEVEL, 0, 0, {0}};
 
 static void tk_vtarget(uint32_t *p, uint32_t *v);   /* (VARIATION's variation, below) */
+static void confirm_open(uint32_t kind, uint32_t trk);   /* (ui_input.c: the OCT- / OCT+ dialog) */
 static uint32_t tk_graph(void) { return ui.home ? GR_NONE : PAGES[ui.page % NPAGES].graph; }
 static int tk_page(void) { uint32_t g = tk_graph(); return g >= GR_TKPAT && g <= GR_TKINST; }
 /* the pattern the PATTERN page shows: the one playing while SONG plays, else the one LOOP plays (and edits) */
@@ -688,15 +689,18 @@ static void tk_vtarget(uint32_t *p, uint32_t *v)
         *v = tk_pl.loop_var % TK_VARS;
     }
 }
-enum { TV_TEMPO, TV_MUTE, TV_CHANCE, TV_VO };   /* the rows: then one a VO_* (the sends, the SLICER) */
-#define TK_NVROW (TV_VO + VO_N)
+enum { TV_TEMPO, TV_MUTE, TV_CHANCE, TV_VO };   /* the rows: then one a VO_* (the sends, the SLICER), then DELETE */
+#define TV_DEL (TV_VO + VO_N)
+#define TK_NVROW (TV_DEL + 1u)
 static const char *const TV_LABEL[TK_NVROW] = {"TEMPO", "MUTE", "CHANCE", "DIST", "CHORUS", "DELAY", "REVERB",
-                                               "SLICER", "SL PAT", "SL RATE"};
+                                               "SLICER", "SL PAT", "SL RATE", "DELETE"};
 static void tk_var_value(const tk_var_t *x, uint32_t row, uint32_t k, char *val)   /* (val: 8) */
 {
     uint32_t v;
     const char *unit;
-    if (row == TV_TEMPO) {
+    if (row == TV_DEL) {
+        val[0] = 0;
+    } else if (row == TV_TEMPO) {
         if (x->bpm)
             fmt_int(val, x->bpm);
         else
@@ -723,8 +727,10 @@ static void tk_draw_var(void)
         char val[VIEW_N][8];
         if (q < TK_NVROW)
             for (k = 0; k < VIEW_N; k++) {          /* (8 tracks: the view's four; TEMPO: one) */
-                if (q == TV_TEMPO && k)
+                if ((q == TV_TEMPO && k) || (q == TV_DEL && k))
                     val[k][0] = 0;
+                else if (q == TV_DEL)                   /* (DELETE: what EDIT deletes) */
+                    str_cpy(val[k], v ? "EDIT" : "-", 8);
                 else
                     tk_var_value(x, q, trk_view() + k, val[k]);
                 sig = str_hash(sig, val[k]);
@@ -773,7 +779,9 @@ static void tk_knob_var(uint32_t k, int32_t s)
     tk_var_t *x;
     tk_vtarget(&p, &v);
     x = &tk_var[p][v];
-    if (row == TV_TEMPO) {                          /* SONG, then 40 .. 240 (from the song's tempo) */
+    if (row == TV_DEL) {
+        return;
+    } else if (row == TV_TEMPO) {                   /* SONG, then 40 .. 240 (from the song's tempo) */
         int32_t b = x->bpm ? (int32_t)x->bpm + accel(EN_K1 + k, s, 200) : s > 0 ? song.g[G_BPM] : 0;
         if (k)
             return;
@@ -945,7 +953,8 @@ static void tk_foot(char *b, uint32_t n)
     } else if (g == GR_TKSONG) {
         str_cpy(b, "K2 PATTERN  K3 VARIATION  K4 INS/DEL", n);
     } else if (g == GR_TKVAR) {
-        str_cpy(b, tku.vrow == TV_TEMPO ? "K1 TEMPO  EDIT SONG" : "K1-K4 TRACKS  EDIT KEEP", n);
+        str_cpy(b, tku.vrow == TV_TEMPO ? "K1 TEMPO  EDIT SONG" : tku.vrow == TV_DEL ? "EDIT DELETES THIS VARIATION" :
+                   "K1-K4 TRACKS  EDIT KEEP", n);
     } else if (g == GR_TKSET) {
         str_cpy(b, "K1-K4 TRACK 1-4  EDIT INST", n);
     } else {
@@ -1267,6 +1276,13 @@ static int tk_edit_tap(void)
         tk_var_t *x;
         tk_vtarget(&p, &v);
         x = &tk_var[p][v];
+        if (row == TV_DEL) {                        /* (A stays: the dialog for the others) */
+            if (v)
+                confirm_open(CF_DEL_VAR, p << 2 | v);
+            else
+                ui_message("A STAYS");
+            return 1;
+        }
         if (row == TV_TEMPO)
             x->bpm = 0;
         else if (row == TV_MUTE)

@@ -4,7 +4,7 @@
 // The browser build (build/emu/felucca.wasm, web/emu/felucca_web.c) in Node, as the worklet runs it. After X0X's
 // tests/host/emu_test.mjs (charlesvestal/fm1-x0x, GPL-3.0).
 //   node web/emu/emu_test.mjs build/emu/felucca.wasm [NATIVE.f32]
-// Checks: it boots (splash, then HOME on the screen, the HOME LED; the power-on LED sweep under the splash, over by
+// Checks: the page's script parses; it boots (splash, then HOME on the screen, the HOME LED; the power-on LED sweep under the splash, over by
 // 1 s), a held key sounds and lights its LED, PLAY
 // starts the sequencer (PLAY's green LED), a user preset saved from the panel (SAVE, OCT+, OCT+) reaches the flash,
 // and the flash sectors kept as the page keeps them bring it back in a fresh instance; the same gestures twice
@@ -20,6 +20,21 @@ const B = { FX: 0, SCL: 1, ENV: 2, LFO: 3, EDIT: 4, GLO: 5, HOME: 6, SAVE: 7, AR
 const EN = { SELECT: 0, ALGO: 1, PRESETS: 2, K1: 3, K2: 4, K3: 5, K4: 6 };
 let fails = 0;
 const check = (what, ok) => { console.log(`emu: ${what.padEnd(76)} ${ok ? "ok" : "FAIL"}`); if (!ok) fails++; };
+
+{   /* (Fel-Tracker) the page's own script parses: a syntax error there leaves Switch on dead, the wasm fine */
+  const { spawnSync } = await import("child_process"), os = await import("os"), path = await import("path");
+  const html = fs.readFileSync(new URL("./index.html", import.meta.url), "utf8");
+  const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "emu-")), "page.mjs");
+  let bad = "";
+  for (const src of scripts) {
+    fs.writeFileSync(tmp, src);
+    const r = spawnSync(process.execPath, ["--check", tmp], { encoding: "utf8" });
+    if (r.status) bad += r.stderr.split("\n").slice(0, 5).join("\n");
+  }
+  check(`index.html: its ${scripts.length} script(s) parse`, scripts.length > 0 && !bad);
+  if (bad) console.log(bad);
+}
 
 async function device(saved) {
   const { instance } = await WebAssembly.instantiate(bytes, {});

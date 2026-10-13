@@ -368,6 +368,31 @@ static void tk_var_count(uint32_t p, uint32_t n)
     if (song.playing && tk_pl.pat == p && tk_pl.var >= n)
         tk_var_enter(p, 0);
 }
+/* variation v of pattern p deleted (not A): the ones after it move up a letter, as do the order's entries of them;
+ * the order's entries of v (and LOOP's) play A; the one playing, if it moved, plays on as it is now lettered (the
+ * caller holds the audio ISR off). 1 = deleted */
+static int tk_var_delete(uint32_t p, uint32_t v)
+{
+    uint32_t i, n;
+    p %= TK_PATS;
+    n = tk_nvar[p];
+    if (!v || v >= n)
+        return 0;
+    for (i = v; i + 1u < n; i++)
+        tk_var[p][i] = tk_var[p][i + 1u];
+    tk_var_default(&tk_var[p][n - 1u]);
+    for (i = 0; i < tk.norder; i++) {
+        uint32_t w = TK_OVAR(tk.order[i]);
+        if (TK_OPAT(tk.order[i]) == p && w >= v)
+            tk.order[i] = TK_OENT(p, w == v ? 0u : w - 1u);
+    }
+    if (tk_pl.loop_pat == p && tk_pl.loop_var >= v)
+        tk_pl.loop_var = (uint8_t)(tk_pl.loop_var == v ? 0u : tk_pl.loop_var - 1u);
+    tk_nvar[p] = (uint8_t)(n - 1u);
+    if (song.playing && tk_pl.pat == p && tk_pl.var >= v)
+        tk_var_enter(p, tk_pl.var == v ? 0u : tk_pl.var - 1u);
+    return 1;
+}
 /* a note of track k on this row plays: not muted by the variation, and its chance */
 static int tk_var_plays(uint32_t k)
 {

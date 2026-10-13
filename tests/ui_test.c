@@ -6263,6 +6263,33 @@ static int test_tracker_pages(void)
     ok &= tk_var[0][1].vo[0][VO_REV] == 0u && trk[0].p[P_REV] == 40;
     bad += check("VARIATION: 00B from SONG's KNOB 3; TEMPO SONG / BPM on KNOB 1, MUTE, CHANCE, REVERB KEEP / a value; "
                  "EDIT: SONG / KEEP; the tracks' own values untouched", ok);
+    {   /* DELETE (the last row): A stays; B deleted after the dialog, C moved up to B, the order's entries with it */
+        ui_power_on();
+        tk.order[0] = TK_OENT(0, 1); tk.order[1] = TK_OENT(0, 2); tk.order[2] = TK_OENT(0, 0); tk.norder = 3;
+        tk_nvar[0] = 3;
+        tk_var[0][1].bpm = 80; tk_var[0][2].bpm = 150;
+        tku.pos = 2;                                    /* (00A) */
+        go_page(GR_TKVAR); frame();
+        turn(EN_PRESET, 20);                            /* DELETE */
+        ok = tku.vrow == TK_NVROW - 1u;
+        press(B_EDIT);
+        ok &= ui.confirm == CF_NONE && msg_is("A STAYS") && tk_nvar[0] == 3u;
+        tku.pos = 0;                                    /* 00B */
+        press(B_EDIT);
+        ok &= ui.confirm == CF_DEL_VAR;
+        press(B_OCTDN);
+        ok &= ui.confirm == CF_NONE && tk_nvar[0] == 3u;
+        press(B_EDIT);
+        press(B_OCTUP);
+        ok &= ui.confirm == CF_NONE && tk_nvar[0] == 2u && tk_var[0][1].bpm == 150u && tk_var_is_default(&tk_var[0][2]) &&
+              tk.order[0] == TK_OENT(0, 0) && tk.order[1] == TK_OENT(0, 1) && tk.order[2] == TK_OENT(0, 0) &&
+              msg_is("VARIATION DELETED");
+        bad += check("  DELETE: A stays; B after OCT+ (OCT- keeps it): C is B now, B's positions play A", ok);
+        ui_power_on();
+        go_page(GR_TKSONG); frame();
+        turn(EN_K3, 1);
+        go_page(GR_TKVAR); frame();
+    }
     {   /* PLAY on VARIATION: its pattern under it (LOOP); an edit while it plays reaches the sound now */
         tk_var[0][1].mute = 0;
         press(B_PLAY);                                  /* (the audio starts it: here the request) */
