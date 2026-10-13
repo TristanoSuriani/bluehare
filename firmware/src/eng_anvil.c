@@ -41,13 +41,17 @@ static const preset_t ANVIL_PRESETS[] = {
     {"BOWED TANK", {5, 2, 64, 30, 120, 30, 40, 20}, {50, 0, 127, 105}, 0, 0, FX(0, 40, 30, 80)},
     {"FACTORY", {0, 0, 100, 70, 60, 60, 120, 80}, {0, 0, 127, 50}, 0, 0, FX(30, 0, 30, 30)},
     {"SUB GONG", {2, 0, 50, 20, 125, 40, 40, 30}, {0, 0, 127, 115}, 0, 0, FX(0, 20, 20, 70), .oct = -1},
+    {"HAMMER TIME", {0, 3, 80, 40, 80, 45, 120, 20}, {0, 0, 127, 70}, 0, 0, FX(20, 0, 20, 30)},
+    {"RAIL", {4, 1, 70, 30, 105, 30, 110, 15}, {0, 0, 127, 95}, 0, 0, FX(10, 0, 25, 50)},
+    {"BELL TOWER", {7, 0, 64, 40, 125, 20, 90, 30}, {0, 0, 127, 110}, 0, 0, FX(0, 20, 30, 70)},
+    {"TANK DRUM", {5, 0, 64, 40, 95, 55, 70, 10}, {0, 0, 127, 90}, 0, 0, FX(0, 0, 25, 45)},
 };
 
 static const engine_t ENG_ANVIL = {
     .name = "ANVIL",
     .id = EID_ANVIL,
     .cc = 0x57,                  /* CC74 DECAY, CC71 BRIGHT */
-    .cats = "DDFDDFDKFPDF",
+    .cats = "DDFDDFDKFPDFDFKD",
     .page_title = {"METAL", "STRIKE"},
     .edit = {
         {"MATRL", F_ENUM, 0, 7, 0, N_AV_MATRL, 0},

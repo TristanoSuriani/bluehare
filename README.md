@@ -479,8 +479,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   - **VENOM**: caustic acid: a low-pass and a band-pass that move each other's cutoff at audio rate (XMOD), RES, ENV,
     DEC, DRIVE
   - **WAR**: an industrial kit, a key each from C2 (as DRUM): KICK, HARD, SNARE, CLAP, HAT, OPEN, TOM L, TOM H, METAL,
-    ANVIL, CRASH, ZAP (the octave above the same again); each an FM pair with a fast falling pitch (PUNCH) and noise;
-    TUNE, DECAY, TONE (a low-pass), METAL, NOISE, DIST, CRUSH
+    ANVIL, CRASH, PEDAL (a pedal hat; the octave above the same again); each an FM pair with a fast falling pitch
+    (PUNCH) and noise; TUNE, DECAY, TONE (a low-pass), METAL, NOISE, DIST, CRUSH
   - **CHOKE**: gated noise, hard limited: a band-pass at the key (TONE, Q), BODY, SNAP, held for GATE then shut over
     TAIL, SWEEP (an air-brake's fall), LIMIT
   - **RUST**: corroded noise: COLOR, TONE (a pulse at the key), RATE and BITS reduction, CORRUPT (bit flips, jumps),
@@ -489,9 +489,10 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     while held, 1/32 .. 1/128), DRIVE, TONE
   - **ANVIL**: heavy metal struck: MODAL's resonator with ANVIL, PIPE, GONG, CHAIN, BEAM, TANK, SLAB, CAST; HAMMER,
     SCRAPE, BOW, CLICK
-  - **SCREAM**: a resonator at the key fed back on itself through a saturation (GAIN: a whistle .. a held shriek),
-    NOISE to start and rasp it, two formants (VOWEL A E I O U), SHRIEK (a fall from an octave up), VIB, HOWL, GRIT,
-    TONE
+  - **SCREAM**: a voice breaking under terror (mono): a buzzing glottal pulse at the key made unstable period by
+    period: STRAIN (the effort, building while held: higher, rougher, more broken), ROUGH (30 .. 150 Hz roughness),
+    BREAK (cracks up an octave or a fifth, falls into the half or third, chaos bursts), CHAOS (jitter), VOWEL (A .. I),
+    SHRILL (a 2.4 .. 3.9 kHz peak), RASP (breath let through the open folds), CROWD (1 .. 3 voices out of step)
   - **FLUIDS**: liquid waves: WAVE (sine .. saw .. square) through 2 .. 8 all-passes (STAGES, DISP) mixed back,
     MOTION and DEPTH moving them, a resonant low-pass (CUT, RES), SUB
   - **SCRATCH**: a turntablist's hands on a worked-out record (SRC STAB, VOX, KICK, NOISE): MOTION BABY, FLARE, CHIRP,

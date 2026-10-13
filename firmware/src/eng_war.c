@@ -3,7 +3,7 @@
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* WAR (1.5, FOUNDRY): an industrial kit (Fel-Tracker's own). Every key from C2 another drum, made anew at each hit
  * (DRUM's map; the octave above the same twelve again): KICK, HARD (a harder kick), SNARE, CLAP, HAT, OPEN
- * (an open hat), TOM L, TOM H, METAL, ANVIL, CRASH, ZAP. Each is a pair of operators (a carrier, a modulator RATIO
+ * (an open hat), TOM L, TOM H, METAL, ANVIL, CRASH, PEDAL. Each is a pair of operators (a carrier, a modulator RATIO
  * times it: FM, METAL its index), a pitch falling fast (~25 ms, whatever DECAY) from PUNCH semitones above, and noise
  * (NOISE), cut short or rung long by DECAY, through DIST (a folder pushed into clipping: the war), TONE (a low-pass)
  * and CRUSH last. TUNE moves the kit.
@@ -15,7 +15,7 @@ typedef struct { int8_t note, sweep; uint16_t ratio, index; uint8_t noise; uint1
 static const war_drum_t WAR_D[12] = {   /* {note, the pitch's fall (st), RATIO Q8, index, noise 0..127, ms, noise colour} */
     {29, 24, 256, 1, 4, 420, 4}, {31, 28, 358, 4, 10, 340, 6}, {45, 7, 591, 2, 80, 220, 55}, {57, 0, 256, 0, 127, 260, 45},
     {88, 0, 361, 8, 80, 70, 100}, {88, 0, 361, 8, 80, 380, 95}, {38, 9, 256, 1, 8, 340, 15}, {45, 9, 256, 1, 8, 280, 15},
-    {60, 0, 909, 7, 14, 480, 40}, {64, 3, 707, 8, 20, 700, 35}, {81, 0, 443, 10, 100, 1100, 80}, {72, 36, 256, 3, 8, 150, 30},
+    {60, 0, 909, 7, 14, 480, 40}, {64, 3, 707, 8, 20, 700, 35}, {81, 0, 443, 10, 100, 1100, 80}, {85, 0, 395, 9, 85, 130, 85},
 };
 
 static void war_note_on(track_t *t, voice_t *v)
@@ -106,7 +106,7 @@ static void war_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
 static int32_t war_keys(const track_t *t, uint32_t k) { return drum_keys(t, k); }
 
 /* {TUNE, DECAY, TONE, METAL, NOISE, PUNCH, DIST, CRUSH}. The keys from C2: KICK HARD SNARE CLAP HAT OPEN TOM-L TOM-H
- * METAL ANVIL CRASH ZAP */
+ * METAL ANVIL CRASH PEDAL */
 static const preset_t WAR_PRESETS[] = {
     {"WAR KIT", {0, 64, 100, 64, 64, 64, 40, 0}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 10, 20)},
     {"INDUSTRIAL", {0, 70, 110, 90, 70, 70, 80, 0}, {0, 0, 127, 20}, 0, 0, FX(20, 0, 10, 25)},
@@ -116,13 +116,21 @@ static const preset_t WAR_PRESETS[] = {
     {"HEAVY", {-5, 90, 80, 60, 50, 100, 110, 0}, {0, 0, 127, 20}, 0, 0, FX(30, 0, 10, 30)},
     {"TIGHT", {0, 30, 110, 60, 60, 50, 30, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 10)},
     {"WARZONE", {0, 100, 90, 100, 90, 90, 127, 30}, {0, 0, 127, 20}, 0, 0, FX(40, 0, 20, 40)},
+    {"DEATH KIT", {-4, 90, 70, 50, 60, 110, 120, 0}, {0, 0, 127, 20}, 0, 0, FX(40, 0, 10, 30)},
+    {"RUSTED KIT", {0, 60, 80, 100, 80, 60, 60, 50}, {0, 0, 127, 20}, 0, 0, FX(20, 0, 10, 20)},
+    {"EBM KIT", {0, 40, 110, 40, 50, 70, 30, 0}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 15, 15)},
+    {"DEMOLITION", {-2, 100, 90, 90, 100, 120, 127, 20}, {0, 0, 127, 20}, 0, 0, FX(50, 0, 10, 40)},
+    {"TIN CAN", {4, 30, 127, 127, 70, 40, 40, 40}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 10, 15)},
+    {"SHORT FUSE", {0, 20, 120, 70, 60, 90, 80, 0}, {0, 0, 127, 20}, 0, 0, FX(20, 0, 0, 10)},
+    {"DISTANT WAR", {-3, 110, 50, 60, 60, 60, 40, 0}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 30, 80)},
+    {"BIT WAR", {0, 60, 100, 60, 70, 70, 60, 110}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 10, 15)},
 };
 
 static const engine_t ENG_WAR = {
     .name = "WAR",
     .id = EID_WAR,
     .cc = 0x27,                  /* CC74 DECAY, CC71 DIST */
-    .cats = "DDDDDDDD",
+    .cats = "DDDDDDDDDDDDDDDD",
     .page_title = {"KIT", "WAR"},
     .edit = {
         {"TUNE", F_INT, -24, 24, 0, 0, "st"},
