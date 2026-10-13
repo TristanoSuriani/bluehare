@@ -74,7 +74,7 @@ static int projects(void)
     bad += check("no position, a pattern of no row, an FX command past the last: refused", refused);
     reset();
     trk[1].p[P_LEVEL] = 999;
-    tk.instr[7].src = 50;                               /* (no engine, no user preset) */
+    tk.instr[7].src = EID_COUNT;                        /* (no engine, no user preset) */
     project_save(0);
     project_load(0);
     bad += check("a track's value out of its range loads inside it; an instrument of no engine loads empty",

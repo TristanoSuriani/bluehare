@@ -1016,6 +1016,7 @@ static void slug(char *d, const char *s, size_t n)
 
 /* ------------------------------------------------------------- main --- */
 #define MAXJ 512
+#define MAXKV 2048                              /* (the files hold every distribution's entries: more than one run's) */
 static job_t J[MAXJ];
 static uint32_t nj;
 static job_t *add(uint32_t kind, const char *name)
@@ -1042,7 +1043,7 @@ int main(int argc, char **argv)
     static const uint8_t MODE_E[2][2] = {{0, 0}, {ENGI_VOICE, 0}};   /* engine, preset */
     static const uint8_t SEND_E[1][2] = {{0, 3}};
     static uint8_t cpu_parts[MAXJ][NPART][3];
-    static kv_t gold[MAXJ], cpu[MAXJ];
+    static kv_t gold[MAXKV], cpu[MAXKV];
     uint32_t ng, nc, e, pi, i, g0, g1, c0, c1, k0, ncpu = 0, nmix;
     uint32_t g_changed = 0, g_new = 0, g_gone = 0, h_fail = 0, c_fail = 0, c_warn = 0, k_fail = 0, crash = 0;
     double heavy[NENGINES] = {0}, heavy_ns[NENGINES] = {0}, idle_now, idle_base;
@@ -1181,7 +1182,7 @@ mixes_done:
     run_jobs(J + c0, c1 - c0, 1);
 
     /* ---- report: goldens and health ---- */
-    ng = load_kv(gpath, gold, MAXJ);
+    ng = load_kv(gpath, gold, MAXKV);
     for (i = g0; i < g1; i++) {
         job_t *j = &J[i];
         const res_t *r = &j->r;
@@ -1278,7 +1279,7 @@ mixes_done:
     /* ---- CPU ---- */
     /* a preset's own cost: its count less the idle mix's (the mix alone is half of a light preset's),
      * so +25 % means 25 % more engine work; the mixes as they are */
-    nc = load_kv(cpath, cpu, MAXJ);
+    nc = load_kv(cpath, cpu, MAXKV);
     idle_now = J[c1 - nmix].r.ipc;
     idle_base = kv_get(cpu, nc, J[c1 - nmix].name) ? atof(kv_get(cpu, nc, J[c1 - nmix].name)) : 0;
     for (i = c0; i < c1; i++) {

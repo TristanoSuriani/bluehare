@@ -45,6 +45,11 @@
 #include "eng_rust.c"           /* RUST: corroded noise, metallic resonances (1.5, FOUNDRY) */
 #include "eng_drill.c"          /* DRILL: an FM tone ramped at audio rate (1.5, FOUNDRY) */
 #include "eng_anvil.c"          /* ANVIL: heavy metal struck (MODAL's resonator; 1.5, FOUNDRY) */
+#include "eng_scream.c"         /* SCREAM: a resonator screaming by itself (1.5, FOUNDRY) */
+#include "eng_fluids.c"         /* FLUIDS: dispersed, liquid waves (1.5, FOUNDRY) */
+#include "eng_scratch.c"        /* SCRATCH: a turntablist's hands (1.5, FOUNDRY) */
+#include "eng_abyss.c"          /* ABYSS: a cavern that rings (1.5, FOUNDRY) */
+#include "eng_shred.c"          /* SHRED: a sound torn apart as it plays (1.5, FOUNDRY) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */

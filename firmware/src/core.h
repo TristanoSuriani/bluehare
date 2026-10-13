@@ -44,7 +44,7 @@ enum {                           /* the ids */
 #include "engine_ids.h"
 #undef ENGINE
 };
-#define EID_COUNT 49u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+#define EID_COUNT 54u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 #define EID_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u || (e) == 27u)   /* DIGITAL SAMPLE GRAIN SLICE
                                                                                          * ACID (Fel-Tracker) */
 #define ENG_ABSENT 0x100u        /* the ENGI_ of an engine the build leaves out: no uint8_t equals it */
