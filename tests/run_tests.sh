@@ -232,6 +232,11 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "regression, the IDM distribution with its 8 tracks: its presets' renders and CPU" "$OUT/regress_idm" tests/golden.txt tests/cpu_baseline.txt
     $CC -O2 -w -DFELUCCA_DIST=foundry -Ibuild/gen -Ifirmware/src -o "$OUT/regress_foundry" tests/regress.c -lm
     run "regression, the FOUNDRY distribution: its presets' golden renders and CPU" "$OUT/regress_foundry" tests/golden.txt tests/cpu_baseline.txt
+    mkdir -p build/demo
+    for d in idm foundry; do
+        $CC -O2 -w -DFELUCCA_DIST=$d -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/demo_render_$d" tests/demo_render.c -lm
+        run "the $d demo song (web/emu/demo_song.c): the whole order, no clipping (build/demo/$d.wav)" "$OUT/demo_render_$d" build/demo/$d.wav
+    done
     $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
     mkdir -p build/speech_demo
     run "SPEECH: every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo

@@ -17,11 +17,8 @@
         --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
         --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
 /* (Fel-Tracker) every distribution its own palette (the class the build sets, web/emu/build.sh; its device palette
- * the same: distributions/*.txt PALETTE). DEFAULT (SIGNAL): signal orange and cyan on warm near-black; IDM: electric
- * cyan and hot magenta on deep indigo, a scan-line glow behind the device */
-body.dist-default { --bg: #0e0c0a; --fg: #f2ece4; --dim: #b5a898; --rule: #4a4038; --a1: #ff8018; --a2: #28dcff;
-                    --body: #1c1916; --tray: #120f0d; --part: #2c2620; --edge: #463c32; --label: #f0e6d8;
-                    --glow1: rgba(255, 128, 24, .18); --glow2: rgba(40, 220, 255, .10); color-scheme: dark; }
+ * the same: distributions/*.txt PALETTE). IDM: electric cyan and hot magenta on deep indigo, a scan-line glow behind
+ * the device; FOUNDRY: molten orange and gold on near-black */
 body.dist-foundry { --bg: #0c0806; --fg: #f6e8d6; --dim: #c09878; --rule: #4c3020; --a1: #ff6414; --a2: #ffd646;
                     --body: #1c1410; --tray: #120c08; --part: #2e2018; --edge: #4a3424; --label: #f4dcc0;
                     --glow1: rgba(255, 100, 20, .26); --glow2: rgba(255, 214, 70, .10); color-scheme: dark; }
@@ -149,6 +146,7 @@ footer small { font-size: 11px; opacity: .8; }
   <button class="full" id="full" type="button">Full screen</button>
   <button class="full" id="bigb" type="button" aria-pressed="false">Big screen</button>
   <button class="full" id="numb" type="button" aria-pressed="false">QE AD ZC: notes</button>
+  <button class="full" id="demo" type="button" title="Loads this distribution's demo song into the tracker (the song in RAM is replaced; SAVE it on the device to keep it). Then PLAY on the SONG page.">Demo song</button>
 </div>
 <p class="midi" id="midi"><span class="dot" id="midi-dot"></span><span id="midi-text">MIDI in: connects when switched on</span></p>
 
@@ -473,6 +471,12 @@ function bigSync() {
 function bigToggle() { pref("felucca-bigscreen", document.body.classList.contains("big") ? "0" : "1"); bigSync(); }
 document.getElementById("bigb").addEventListener("click", bigToggle);
 document.getElementById("numb").addEventListener("click", numToggle);
+/* (Fel-Tracker) the demo song: written into the tracker by the firmware side (web_demo, demo_song.c) */
+document.getElementById("demo").addEventListener("click", () => {
+  if (!node) return;
+  if (!confirm("Load the demo song? The song in the emulator's memory is replaced (saved songs are kept).")) return;
+  send({ type: "demo" });
+});
 bigSync();
 numSync();
 
