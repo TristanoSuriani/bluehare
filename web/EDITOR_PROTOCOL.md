@@ -1049,14 +1049,22 @@ bus reset (send `INFO` and `WATCH` again after reconnecting), and a backup in pr
 
 ## 1.5: the tracker (78, 79)
 
-INFO ends with `58 02 pats rows insts ncmd order-lo order-hi` (24, 64, 63, 15, 128 as two 7-bit bytes): the patterns,
-their most rows, the instruments, the FX commands and the order list's most positions. Version 02 has the 6-byte cells
-below (01, 4-byte cells without the chord and 32 patterns, was never released: an editor that knows only 01 shows no
-tracker). The firmware side is
+INFO ends with `58 03 pats rows insts ncmd order-lo order-hi vars` (24, 64, 63, 15, 128 as two 7-bit bytes, 4): the
+patterns, their most rows, the instruments, the FX commands, the order list's most positions and a pattern's most
+variations. Version 03 (Fel-Tracker) adds the variations (ops 9, 10, the order entries' letters); 02, one byte shorter,
+had the 6-byte cells below without them (01, 4-byte cells without the chord and 32 patterns, was never released: an
+editor that knows only 01 shows no tracker). The firmware side is
 `firmware/src/editor_tracker.c`; the song itself `firmware/src/tracker.c` (see the README's Tracker section).
 
 **The song.** 24 patterns (00..17) of 1..64 rows; a row is a 1/16 of the tempo, swung by the global SWING. Each row
-has a cell per track. An order list of 1..128 positions names the pattern each plays. 63 instruments (01..3F), each
+has a cell per track. An order list of 1..128 positions names the pattern each plays, and its variation.
+
+**Variations (03).** A pattern has 1..4 variations, A..D (A always); an order entry is a byte: the pattern in bits 0..4,
+the variation in bits 5..6 (`0x23`: 03B). The device's PATTERN page and LOOP play A unless the device's VARIATION page
+picked another. A variation sets, while its entry plays: the tempo (the song's, or 40..240 BPM), per track a mute and
+a note chance (0..100 %: each note of the track plays with it; the same notes at every PLAY), and per track DIST,
+CHORUS, DELAY, REVERB, SLICER, SL PAT and SL RATE, each KEEP (the track's own value) or a value over it. The tracks'
+own values never change; STOP returns to them. A new variation starts as everything the tracks have. 63 instruments (01..3F), each
 none, a factory preset of an engine or a user preset. Each track's CUT and RES hold the engine's filter over every
 instrument, or leave it to the instrument (INST).
 
@@ -1086,7 +1094,7 @@ its next row.
 | cmd | Request args | Reply args |
 | --- | --- | --- |
 | 78 TRACKER | op, then the op's args (below) | op, rc, then the op's reply |
-| 79 TRACKER_CHANGED (push) | — | kind (0 a pattern: its cells or length; 1 the rest of the song: the order, the instruments, CUT / RES), index (the pattern; 0 for kind 1) |
+| 79 TRACKER_CHANGED (push) | — | kind (0 a pattern: its cells or length; 1 the rest of the song: the order, the instruments, CUT / RES, the variations), index (the pattern; 0 for kind 1) |
 
 | op | Request args (after op) | Reply (after op, rc) |
 | --- | --- | --- |
@@ -1094,17 +1102,20 @@ its next row.
 | 1 PATTERN | pat, row, count (1..16) | pat, length, row, count (cut at row 64), count × 4 cells × 6 bytes (row by row) |
 | 2 CELLS | pat, row, col (0..3), count (1..64), count × 6 bytes | pat, row, col, count. The cells go row-major from (row, col): col 3 is followed by col 0 of the next row. Past row 63, an instrument above 63, a command above 14 or an interval above 15: rc 1, nothing written |
 | 3 LENGTH | pat [, length 1..64] | pat, length (rc 1: a length outside 1..64, unchanged) |
-| 4 ORDER | — (get), or count lo, count hi (1..128), count × pat | count lo, count hi, count × pat (rc 1: a pattern past 23, the order unchanged) |
+| 4 ORDER | — (get), or count lo, count hi (1..128), count × entry | count lo, count hi, count × entry (rc 1: a pattern past 23, the order unchanged; an entry's variation the pattern lacks: it has it now) |
 | 5 INSTR | first (0 = instrument 01), count [, count × (kind, a, b)] | first, count, count × (kind, a, b): kind 0 none, 1 factory preset b of engine a (wrapped to its presets), 2 user preset slot a (b 0). rc 1 (nothing written): another kind, an engine without presets (1, retired DIGITAL), a user slot past the last |
 | 6 FILTER | — (get), or track, cut v14, res v14 (each −1 INST or 0..127) | 4 × (cut v14, res v14); rc 1: a value outside −1..127 |
 | 7 PLAY | 0 (stop); 1, pat (LOOP that pattern; playing: it starts after the one playing); 2, position (SONG from that position: stopped only, rc 2 while playing) | as STATUS (a start is asked for: the transport starts at the next audio block, so the reply may still say stopped) |
 | 8 CLEAR | pat | pat (every cell of it empty; the length stays) |
+| 9 VARIATION | pat, var (0..3) [, bpm v14, mute v14, NTRK × chance, NTRK × 7 × value v14] | pat, var, the pattern's count of variations, bpm v14 (0 the song's, 40..240), mute v14 (bit k: track k+1), NTRK × chance (0..100), NTRK × (DIST, CHORUS, DELAY, REVERB, SLICER, SL PAT, SL RATE) v14: −1 KEEP, else 0..127 for the sends, 0..2, 1..16 (not 0) and 0..5 for the SLICER's. A write at var = the count adds it; past that or a value outside its range: rc 1, nothing written. The one playing takes it at once |
+| 10 VARCOUNT | pat [, count 1..4] | pat, count. Fewer: those gone back to the default, the order's entries of them on A (A plays if one of them played). More: each new one a copy of A. rc 1: a count outside 1..4 |
 
-A request with the wrong number of bytes, or a pattern, row or column out of range, gets no reply. rc: 0 ok, 1 an
+NTRK is the track count (4, or 8 with `TRACKS 8`). A request with the wrong number of bytes, or a pattern, row,
+column or variation out of range, gets no reply. rc: 0 ok, 1 an
 argument (nothing written), 2 busy. Every write is the editor's own: no `TRACKER_CHANGED` follows it. The device
 checks the song's signatures about every 80 ms while watched (the song and two patterns per main-loop pass), so a
 change on the panel or a recorded row arrives as one push per pattern. The editor reads it again with PATTERN (four
-requests for 64 rows) or ORDER / INSTR / FILTER.
+requests for 64 rows) or ORDER / INSTR / FILTER / VARCOUNT and VARIATION.
 
 The tracks' own settings on the device's SETTINGS page other than CUT / RES (ATTACK, DECAY, SUSTAIN, RELEASE, FLT ENV,
 DIST, CHORUS, DELAY, REVERB, LEVEL, PAN) are track parameters: `TRACK_PARAM` (31) reads and sets them.

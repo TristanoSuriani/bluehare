@@ -348,6 +348,26 @@ static void tk_var_leave(void)
     tk_pl.vmute = 0;
     tk_pl.var = 0;
 }
+/* pattern p now has n variations (1 .. TK_VARS): a new one a copy of A; one gone back to the default, the order's
+ * entries of it on A, and if it is the one playing, A plays (the caller holds the audio ISR off) */
+static void tk_var_count(uint32_t p, uint32_t n)
+{
+    uint32_t v, i;
+    p %= TK_PATS;
+    n = n < 1u ? 1u : n > TK_VARS ? TK_VARS : n;
+    for (v = tk_nvar[p]; v < n; v++)
+        tk_var[p][v] = tk_var[p][0];
+    for (v = n; v < TK_VARS; v++)
+        tk_var_default(&tk_var[p][v]);
+    for (i = 0; i < tk.norder; i++)
+        if (TK_OPAT(tk.order[i]) == p && TK_OVAR(tk.order[i]) >= n)
+            tk.order[i] = TK_OENT(p, 0u);
+    if (tk_pl.loop_pat == p && tk_pl.loop_var >= n)
+        tk_pl.loop_var = 0;
+    tk_nvar[p] = (uint8_t)n;
+    if (song.playing && tk_pl.pat == p && tk_pl.var >= n)
+        tk_var_enter(p, 0);
+}
 /* a note of track k on this row plays: not muted by the variation, and its chance */
 static int tk_var_plays(uint32_t k)
 {

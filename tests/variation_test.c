@@ -3,7 +3,7 @@
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The tracker's variations (tracker.c tk_var_*): an order entry's variation playing its tempo, mutes, chance, the
  * tracks' sends and SLICER over their own values (which stay as they are), all of it gone at STOP; the song store
- * keeping them (version 4) and bounding what it reads; a song of before playing every entry as A. */
+ * keeping them (version 4) and bounding what it reads; the editor's ORDER, VARIATION and VARCOUNT. */
 #define EDITOR_TEST_NO_MAIN 1
 #include "editor_test.c"
 
@@ -175,6 +175,73 @@ int main(void)
         m = request(ED_TRACKER, a, 5);
         bad += check("the editor's ORDER: 2B 5A taken, 2 has B now", m > 0u && tk.norder == 2u &&
                      tk.order[0] == TK_OENT(2, 1) && tk_nvar[2] >= 2u);
+    }
+    /* the editor's VARIATION and VARCOUNT (ops 9, 10) */
+    {
+        static uint8_t a[4 + EDT_VAR_N];
+        uint32_t m, k, j, w = 7u;                       /* (w: the reply's values after op, rc) */
+        reset();
+        tk.order[0] = TK_OENT(2, 0);
+        tk.norder = 1;
+        a[0] = EDT_VAR; a[1] = 2; a[2] = 0;
+        m = request(ED_TRACKER, a, 3);
+        ok = m == 11u + EDT_VAR_N && !host_wire[6] && host_wire[w] == 2 && host_wire[w + 1] == 0 &&
+             host_wire[w + 2] == 1 && host_wire[w + 3 + 4] == 100;
+        for (k = 0; k < NTRK * VO_N; k++)               /* (KEEP: -1) */
+            ok &= ed_rv(&host_wire[w + 7 + NTRK + 2 * k]) == -1;
+        bad += check("VARIATION read: 2A, the pattern's 1, SONG, no mute, 100 %, every value KEEP", ok && !ed_rv(&host_wire[w + 3]));
+        a[1] = 2; a[2] = 1;                             /* 2B: a new one */
+        {   /* bpm 96, track 2 muted, chance 60 on track 1, track 1's DELAY 50 and SLICER GATE pattern 3 */
+            uint8_t *x = a + 3;
+            memset(x, 0, EDT_VAR_N);
+            x[0] = (96 + 8192) & 127; x[1] = (96 + 8192) >> 7;
+            x[2] = (2 + 8192) & 127; x[3] = (2 + 8192) >> 7;
+            for (k = 0; k < NTRK; k++)
+                x[4 + k] = k ? 100 : 60;
+            for (k = 0; k < NTRK; k++)
+                for (j = 0; j < VO_N; j++) {
+                    int32_t v = k == 0 && j == VO_DLY ? 50 : k == 0 && j == VO_SLCR ? SL_GATE : k == 0 && j == VO_SLPAT ? 3 : -1;
+                    x[4 + NTRK + 2 * (k * VO_N + j)] = (uint8_t)((v + 8192) & 127);
+                    x[5 + NTRK + 2 * (k * VO_N + j)] = (uint8_t)((v + 8192) >> 7);
+                }
+        }
+        m = request(ED_TRACKER, a, 3 + EDT_VAR_N);
+        ok = m == 11u + EDT_VAR_N && !host_wire[6] && tk_nvar[2] == 2u && tk_var[2][1].bpm == 96u &&
+             tk_var[2][1].mute == 2u && tk_var[2][1].chance[0] == 60u && tk_var[2][1].vo[0][VO_DLY] == 51u &&
+             tk_var[2][1].vo[0][VO_SLCR] == SL_GATE + 1u && tk_var[2][1].vo[0][VO_SLPAT] == 4u && !tk_var[2][1].vo[1][VO_DLY];
+        bad += check("VARIATION write at the count: 2B added with its tempo, mute, chance, DELAY and SLICER", ok);
+        a[2] = 3;                                       /* 2D: past the count */
+        bad += check("  past the count: rc 1, nothing added", request(ED_TRACKER, a, 3 + EDT_VAR_N) && host_wire[6] == 1 &&
+                     tk_nvar[2] == 2u);
+        a[2] = 1; a[3] = (250 + 8192) & 127; a[4] = (250 + 8192) >> 7;
+        bad += check("  a BPM of 250: rc 1, 2B as it was", request(ED_TRACKER, a, 3 + EDT_VAR_N) && host_wire[6] == 1 &&
+                     tk_var[2][1].bpm == 96u);
+        bad += check("  a pattern past the last, a variation past D: no reply", (a[1] = TK_PATS, !request(ED_TRACKER, a, 3)) &&
+                     (a[1] = 2, a[2] = TK_VARS, !request(ED_TRACKER, a, 3)));
+        tk.order[0] = TK_OENT(2, 1);
+        tk_pl.loop_pat = 2; tk_pl.loop_var = 1;
+        a[0] = EDT_VARCOUNT; a[1] = 2;
+        m = request(ED_TRACKER, a, 2);
+        ok = m == 10u && host_wire[7] == 2 && host_wire[8] == 2;
+        a[2] = 1;
+        m = request(ED_TRACKER, a, 3);
+        ok &= m == 10u && !host_wire[6] && host_wire[8] == 1 && tk_nvar[2] == 1u && tk_var_is_default(&tk_var[2][1]) &&
+              tk.order[0] == TK_OENT(2, 0) && !tk_pl.loop_var;
+        a[2] = 3;
+        request(ED_TRACKER, a, 3);
+        ok &= tk_nvar[2] == 3u && !memcmp(&tk_var[2][2], &tk_var[2][0], sizeof tk_var[2][0]);
+        a[2] = 5;
+        ok &= request(ED_TRACKER, a, 3) == 10u && host_wire[6] == 1 && tk_nvar[2] == 3u;
+        bad += check("VARCOUNT: 2 has 2; to 1: B back to the default, the order's 2B and LOOP's on A; to 3: copies of A; 5: rc 1", ok);
+        {   /* a device edit of a variation changes the song's signature (TRACKER_CHANGED kind 1) */
+            uint32_t s0 = ed_tk_sig(TK_PATS);
+            tk_var[2][1].chance[0] = 7;
+            ok = ed_tk_sig(TK_PATS) != s0;
+            s0 = ed_tk_sig(TK_PATS);
+            tk_var[5][3].bpm = 99;                      /* (an unused one: not the song's) */
+            bad += check("the song's signature: a variation's edit changes it, an unused variation's does not",
+                         ok && ed_tk_sig(TK_PATS) == s0);
+        }
     }
     printf("%s\n", bad ? "VARIATION TEST FAILED" : "variation test passed");
     return bad ? 1 : 0;

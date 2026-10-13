@@ -16,11 +16,20 @@
  *   7 PLAY     action [, arg]: 0 stop; 1 LOOP pattern arg (playing: cued, after the one playing); 2 SONG from position
  *              arg (stopped only: rc 2 while playing)  -> as STATUS
  *   8 CLEAR    pat                             -> pat
+ *   9 VARIATION pat, var [, bpm v14, mute v14, NTRK x chance, NTRK x VO_N x v14]  -> pat, var, nvar (the pattern's
+ *              count), bpm, mute, chances, values (Fel-Tracker): bpm 0 the song's or 40..240; mute a bit a track; chance
+ *              0..100; the values DIST CHORUS DELAY REVERB SLICER SL PAT SL RATE each -1 KEEP (the track's own) or
+ *              inside the parameter's range. A write at var == nvar adds it (var past that: rc 1)
+ *  10 VARCOUNT pat [, n 1..TK_VARS]           -> pat, n: fewer, the ones gone back to the default and the order's
+ *              entries of them on A; more, each new one a copy of A
  * A cell is 6 bytes: note (0 none, 1..126 a MIDI note, 127 OFF), instrument (0 none, 1..TK_INSTS), FX command
  * (0..TKC_N-1), FX value (0..127), the chord's two intervals above the note (0 none, 1..15 semitones each). rc: 0 ok, 1 arguments (nothing written), 2 busy. A write is the editor's own: no
  * TRACKER_CHANGED for it (the shadow takes it). TRACKER_CHANGED (79, pushed with WATCH bit 2): kind (0 a pattern, 1
  * the song: order, instruments, CUT / RES), index. */
-enum { EDT_STATUS, EDT_PATTERN, EDT_CELLS, EDT_LENGTH, EDT_ORDER, EDT_INSTR, EDT_FILTER, EDT_PLAY, EDT_CLEAR };
+enum { EDT_STATUS, EDT_PATTERN, EDT_CELLS, EDT_LENGTH, EDT_ORDER, EDT_INSTR, EDT_FILTER, EDT_PLAY, EDT_CLEAR,
+       EDT_VAR, EDT_VARCOUNT };
+#define EDT_VAR_N (2u + 2u + NTRK + 2u * NTRK * VO_N)   /* VARIATION's values on the wire: bytes */
+static const uint8_t EDT_VO_MAX[VO_N] = {127, 127, 127, 127, 2, 16, 5};   /* (tracker.c tk_bound's) */
 #define EDT_CELL 6u                              /* bytes a cell on the wire */
 #define EDT_ROWS_MAX 16u                         /* PATTERN: 16 rows x 4 cells x 6 bytes = 384 reply bytes */
 #define EDT_CELLS_MAX 64u                        /* CELLS: 384 request bytes */
@@ -46,6 +55,41 @@ static void edt_status(void)
     ed_b(tk_pl.loop_pat);
     ed_b(tk.norder);
     ed_b((uint32_t)tk.norder >> 7);
+}
+static void edt_var(uint32_t p, uint32_t v)
+{
+    const tk_var_t *x = &tk_var[p][v];
+    uint32_t k, j;
+    ed_b(p); ed_b(v); ed_b(tk_nvar[p]);
+    ed_v(x->bpm);
+    ed_v(x->mute);
+    for (k = 0; k < NTRK; k++)
+        ed_b(x->chance[k]);
+    for (k = 0; k < NTRK; k++)
+        for (j = 0; j < VO_N; j++)
+            ed_v((int32_t)x->vo[k][j] - 1);
+}
+static int edt_var_put(tk_var_t *x, const uint8_t *a)   /* 1: a value out of its range (nothing written) */
+{
+    int32_t b = ed_rv(a), m = ed_rv(a + 2);
+    uint32_t k, j;
+    if ((b && (b < 40 || b > 240)) || m < 0 || m >= 1 << NTRK)
+        return 1;
+    x->bpm = (uint8_t)b;
+    x->mute = (uint8_t)m;
+    for (k = 0; k < NTRK; k++) {
+        if (a[4 + k] > 100u)
+            return 1;
+        x->chance[k] = a[4 + k];
+    }
+    for (k = 0; k < NTRK; k++)
+        for (j = 0; j < VO_N; j++) {
+            int32_t v = ed_rv(a + 4 + NTRK + 2u * (k * VO_N + j));
+            if (v < -1 || v > EDT_VO_MAX[j] || (j == VO_SLPAT && v == 0))
+                return 1;
+            x->vo[k][j] = (uint8_t)(v + 1);
+        }
+    return 0;
 }
 static int edt_cell_ok(const uint8_t *c) { return c[1] <= TK_INSTS && c[2] < TKC_N && c[4] <= 15u && c[5] <= 15u; }
 static void edt_inst(const tk_inst_t *in)
@@ -257,6 +301,47 @@ static int ed_tracker_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
         edt_known(a[0]);
         ui.force = 1;
         ed_b(op); ed_b(0); ed_b(a[0]);
+        return 1;
+    case EDT_VAR: {
+        uint32_t p, v;
+        if ((na != 2u && na != 2u + EDT_VAR_N) || a[0] >= TK_PATS || a[1] >= TK_VARS)
+            return 0;
+        p = a[0]; v = a[1];
+        if (na > 2u) {
+            tk_var_t x;
+            if (v > tk_nvar[p] || edt_var_put(&x, a + 2)) {
+                rc = 1;
+            } else {
+                fm1_irq_off();
+                if (v == tk_nvar[p])
+                    tk_var_count(p, v + 1u);
+                tk_var[p][v] = x;
+                if (song.playing && tk_pl.pat == p && tk_pl.var == v)
+                    tk_var_enter(p, v);        /* (the one playing: at once) */
+                fm1_irq_on();
+                edt_known(TK_PATS);
+                ui.force = 1;
+            }
+        }
+        ed_b(op); ed_b(rc);
+        edt_var(p, v);
+        return 1;
+    }
+    case EDT_VARCOUNT:
+        if ((na != 1u && na != 2u) || a[0] >= TK_PATS)
+            return 0;
+        if (na == 2u) {
+            if (a[1] < 1u || a[1] > TK_VARS) {
+                rc = 1;
+            } else {
+                fm1_irq_off();
+                tk_var_count(a[0], a[1]);
+                fm1_irq_on();
+                edt_known(TK_PATS);
+                ui.force = 1;
+            }
+        }
+        ed_b(op); ed_b(rc); ed_b(a[0]); ed_b(tk_nvar[a[0]]);
         return 1;
     default:
         return 0;

@@ -879,13 +879,13 @@ async function editorTracker() {
   const C = E.CMD, TK = E.TK, P = (a) => E.parse[C.TRACKER](a);
   const old = attachMock({ noTracker: true });
   const oi = E.parse[C.INFO](await old.rq(E.req.info()));
-  ok(oi.tracker === null && oi.ratchet === 4, "tracker: firmware before 1.5: no 58 02 tag (the rest as before)");
+  ok(oi.tracker === null && oi.ratchet === 4, "tracker: firmware before 1.5: no 58 03 tag (the rest as before)");
   old.done();
   const { m, rq, ev, done } = attachMock({ watchMs: 1000 });
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const tk = info.tracker;
-  ok(tk && tk.pats === 24 && tk.rows === 64 && tk.insts === 63 && tk.ncmd === TK.FX.length && tk.order === 128 && info.ratchet === 4,
-    "tracker: INFO 58 02 24 64 63 15 (128), the last tag");
+  ok(tk && tk.pats === 24 && tk.rows === 64 && tk.insts === 63 && tk.ncmd === TK.FX.length && tk.order === 128 && tk.vars === 4 &&
+     info.ratchet === 4, "tracker: INFO 58 03 24 64 63 15 (128) 4, the last tag");
   let s = P(await rq(E.req.tkStatus()));
   ok(s.op === TK.STATUS && !s.rc && !s.playing && s.norder === 1, "tracker: STATUS stopped, one position");
   let p = P(await rq(E.req.tkPattern(0, 0, 32)));
@@ -907,6 +907,29 @@ async function editorTracker() {
   const long = Array.from({ length: 128 }, (_, i) => i % 24);
   o = P(await rq(E.req.tkOrder(long)));
   ok(!o.rc && o.order.length === 128 && o.order[127] === 127 % 24, "tracker: ORDER of 128 positions (the count in two bytes)");
+  /* (Fel-Tracker) variations: the order's letters, VARIATION, VARCOUNT */
+  {
+    let c = P(await rq(E.req.tkVarCount(5)));
+    let x = P(await rq(E.req.tkVar(5, 0)));
+    ok(c.op === TK.VARCOUNT && c.nvar === 1 && x.op === TK.VAR && x.nvar === 1 && !x.bpm && x.chance.length === 4 &&
+       x.chance.every((q) => q === 100) && x.vo.length === 4 && x.vo.every((t) => t.length === 7 && t.every((y) => y === -1)),
+      "tracker: VARCOUNT 05: 1; VARIATION 05A: SONG, 100 %, every value KEEP");
+    const y = TK.varDefault(4);
+    y.bpm = 96; y.mute = 2; y.chance[0] = 60; y.vo[0][2] = 50; y.vo[0][4] = 1; y.vo[0][5] = 3;
+    x = P(await rq(E.req.tkVar(5, 1, y)));
+    ok(!x.rc && x.nvar === 2 && x.bpm === 96 && x.mute === 2 && x.chance[0] === 60 && x.vo[0][2] === 50 && x.vo[0][4] === 1 &&
+       x.vo[0][5] === 3 && x.vo[1][2] === -1 && m.tracker.nvar[5] === 2, "tracker: VARIATION written at the count: 05B added, read back");
+    ok(P(await rq(E.req.tkVar(5, 3, y))).rc === 1 && P(await rq(E.req.tkVar(5, 1, { ...y, bpm: 250 }))).rc === 1 &&
+       m.tracker.vars[5][1].bpm === 96, "tracker: VARIATION past the count, a BPM of 250: rc 1, nothing written");
+    o = P(await rq(E.req.tkOrder([0, TK.oent(5, 1), TK.oent(2, 2)])));
+    ok(!o.rc && o.order.map(TK.entry).join(" ") === "00A 05B 02C" && m.tracker.nvar[2] === 3,
+      "tracker: ORDER 00A 05B 02C (a variation the pattern lacked: it has it now)");
+    c = P(await rq(E.req.tkVarCount(5, 1)));
+    o = P(await rq(E.req.tkOrder()));
+    ok(!c.rc && c.nvar === 1 && o.order.map(TK.entry).join(" ") === "00A 05A 02C" && m.tracker.vars[5][1].bpm === 0,
+      "tracker: VARCOUNT 05 to 1: B gone (the default again), the order's 05B on A");
+    ok(P(await rq(E.req.tkVarCount(5, 4))).nvar === 4 && m.tracker.vars[5][3].chance[0] === 100, "tracker: VARCOUNT to 4: copies of A");
+  }
   await rq(E.req.tkOrder([0, 5, 5, 1]));
   const ins = P(await rq(E.req.tkInstr(4, 3, [{ kind: 1, a: 33, b: 3 }, { kind: 2, a: 7, b: 0 }, { kind: 0, a: 0, b: 0 }])));
   const all = P(await rq(E.req.tkInstr(0, 63)));
@@ -938,10 +961,11 @@ async function editorTracker() {
   await sleep(10);
   ok(!ev.pushes.some((f) => f.cmd === C.TRACKER_CHANGED), "tracker: WATCH 3 (an editor of before): no TRACKER_CHANGED");
   ok(E.parse[C.WATCH](await rq(E.req.watch(7))).on === 7, "tracker: WATCH 7 -> 7");
-  m.sim.tkCell(3); m.sim.tkOrder([0, 3]);
+  m.sim.tkCell(3); m.sim.tkOrder([0, 3]); m.sim.tkVar(3, 1, { bpm: 100 });
   await sleep(10);
   const tc = ev.pushes.filter((f) => f.cmd === C.TRACKER_CHANGED).map((f) => E.parse[C.TRACKER_CHANGED](f.a));
-  ok(tc.length === 2 && tc[0].kind === 0 && tc[0].index === 3 && tc[1].kind === 1, "tracker: TRACKER_CHANGED 0 03 (a cell), 1 (the order)");
+  ok(tc.length === 3 && tc[0].kind === 0 && tc[0].index === 3 && tc[1].kind === 1 && tc[2].kind === 1,
+    "tracker: TRACKER_CHANGED 0 03 (a cell), 1 (the order), 1 (a variation)");
   done();
   /* the cell text, as the device shows it (ui_tracker.c) */
   let bad = 0;

@@ -64,7 +64,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   track; each cell a note (or OFF) with an optional chord (up to three notes: a shape such as MAJ or MIN7, or two
   intervals), an instrument (01..3F, changing the track's sound on any row) and one FX (a parameter set for that row only: LEVEL,
   ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESONANCE, FLT ENV, PAN, DIST, CHORUS, DELAY, REVERB, GLIDE). PLAY on
-  PATTERN loops the pattern; PLAY on SONG plays the order list (up to 128 positions). The instruments are factory or
+  PATTERN loops the pattern; PLAY on SONG plays the order list (up to 128 positions), each position a pattern in one
+  of its variations (A..D: its own tempo, mutes, note chance, sends and SLICER over the tracks'). The instruments are factory or
   user presets; each track's ENV, filter and sends stay its own (SEQ > SETTINGS). Live recording into the rows, step
   entry at the cursor (REC armed, stopped); playing, the screen follows the row playing, 8 rows a page. Undo / redo
   of pattern edits (SAVE held), copy and paste of a track or a pattern, row insert / delete, PLAY from the cursor's
@@ -255,9 +256,28 @@ at once take voices from each other.
 (`01`..`3F`; `..` keeps the one the column played last). The instrument picked is also the one new notes are entered
 and recorded with. What each number plays is set on INSTR (below).
 
-**SONG** (SEQ again, or GLO): the order list. KNOB 1 the position (past the last: + ADD), KNOB 2 its pattern (on
-+ ADD: a new position), KNOB 3 that pattern's length, KNOB 4 right a copy after it, left deletes it (EDIT too). PLAY
-plays the song from the position picked, round and round; the PATTERN page then shows the pattern playing.
+**SONG** (SEQ again, or GLO): the order list, each position a pattern and its variation (`PATTERN 03B`). KNOB 1 the
+position (past the last: + ADD), KNOB 2 its pattern (on + ADD: a new position), KNOB 3 its variation (past the
+pattern's last: a new one, a copy of A; up to D), KNOB 4 right a copy after it, left deletes it (EDIT too). A
+pattern's length is SEQ held + KNOB 2. PLAY plays the song from the position picked, round and round; the PATTERN page
+then shows the pattern playing.
+
+**VARIATION** (SEQ after SONG) *(Fel-Tracker)*: a pattern plays the same notes in up to four variations, A..D, each
+setting over the tracks while its position plays:
+
+| Row | Sets | KEEP / default |
+|---|---|---|
+| TEMPO | the tempo, 40..240 BPM (KNOB 1) | SONG: the song's |
+| MUTE | a track silent (KNOB 1–4: right mutes, left plays) | PLAY |
+| CHANCE | the chance each of the track's notes plays, 0..100 % (the same notes at every PLAY) | 100 % |
+| DIST, CHORUS, DELAY, REVERB | the track's send | KEEP: the track's own |
+| SLICER, SL PAT, SL RATE | the track's SLICER mode, pattern and rate | KEEP: the track's own |
+
+It edits the variation of the SONG page's position (past the last position: the one LOOP plays). PRESETS picks the
+row; KNOB 1–4 set it for the tracks in view; EDIT puts the selected track's value back (TEMPO: SONG; a send or the
+SLICER: KEEP). Turning a value up from KEEP starts at the track's own. An edit while the variation plays is heard at
+once, and PLAY on this page loops its pattern in it. The tracks' own settings never change: STOP returns to them. A
+new variation starts as a copy of A; the web editor also removes them (its entries then play A).
 
 **SETTINGS**: each track's ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESO, FLT ENV, DIST, CHORUS, DELAY, REVERB, LEVEL
 and PAN. PRESETS picks the row, KNOB 1–4 set it for tracks 1–4. CUTOFF and RESO hold the engine's filter over every
@@ -287,8 +307,10 @@ not used any more. The SLICER follows the rows.
   the instrument and FX only). Up / Down and Enter move
   between rows. While playing, the row playing is highlighted and, with *Follow playback*, the view keeps up with it,
   8 rows at a time, and switches to each new pattern
-- **Song:** the order list: a pattern per position, ▶ plays the song from there, × removes it, + ADD appends one.
-  Picking another pattern while a loop plays cues it, as on the device
+- **Song:** the order list: a pattern and its variation per position (`+`: a new variation), ▶ plays the song from
+  there, × removes it, + ADD appends one. Picking another pattern while a loop plays cues it, as on the device
+- **Variations:** a pattern's A..D: + Variation adds one (a copy of A), *Remove the last* removes one; the tempo (empty:
+  the song's), and per track MUTE, CHANCE, the sends and the SLICER (empty / KEEP: the track's own)
 - **Instruments:** 01..3F, each none, an engine's factory preset, or a user preset
 - **Track settings:** CUTOFF and RESO over the instruments (empty: INST), and each track's ATTACK, DECAY, SUSTAIN,
   RELEASE, FLT ENV, DIST, CHORUS, DELAY, REVERB, LEVEL and PAN

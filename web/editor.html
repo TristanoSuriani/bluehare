@@ -223,6 +223,15 @@
         <p class="bar"><button id="tksongplay"></button> <button id="tkadd" data-t="tkAdd"></button></p>
         <div class="tkorder" id="tkorder"></div>
       </div>
+      <div class="group" id="tkvars">
+        <h2 data-t="tkVars" data-ic="control_arrow_loop"></h2>
+        <p class="dim" data-t="tkVarsHelp"></p>
+        <p class="bar"><label><span data-t="tkPat"></span> <select id="tkvpat"></select></label>
+          <span class="seg" id="tkvvar"></span>
+          <button id="tkvadd" data-t="tkVarAdd"></button> <button id="tkvdel" data-t="tkVarDel"></button>
+          <label><span data-t="tkTempo"></span> <input type="number" id="tkvbpm" min="40" max="240" style="width:7ch"></label></p>
+        <div style="overflow-x:auto"><table id="tkvtab"></table></div>
+      </div>
       <div class="group">
         <h2 data-t="tkInstr" data-ic="symbol_audio"></h2>
         <p class="dim" data-t="tkInstrHelp"></p>
@@ -460,12 +469,16 @@ const parse = {
       }
       if (!o.syncCaps) o.ratchet = 0;
     }
-    o.tracker = null;                             /* 1.5: the tracker (cmds 78, 79), the last tag: 58 02 pats rows insts ncmd order
-                                                     (02: cells with a chord; 01 was never released) */
-    const tk = trailer.length - 8;
-    if (o.uiCaps && tk > 0 && trailer[tk] === 0x58 && trailer[tk + 1] === 2)
+    o.tracker = null;                             /* 1.5: the tracker (cmds 78, 79), the last tag: 58 03 pats rows insts ncmd order
+                                                     vars (03, Fel-Tracker: the variations; 02 without them: cells with a
+                                                     chord; 01 was never released) */
+    const tk = trailer.length - 9, tk2 = trailer.length - 8;
+    if (o.uiCaps && tk > 0 && trailer[tk] === 0x58 && trailer[tk + 1] === 3)
       o.tracker = { pats: trailer[tk + 2], rows: trailer[tk + 3], insts: trailer[tk + 4], ncmd: trailer[tk + 5],
-        order: trailer[tk + 6] | trailer[tk + 7] << 7 };
+        order: trailer[tk + 6] | trailer[tk + 7] << 7, vars: trailer[tk + 8] };
+    else if (o.uiCaps && tk2 > 0 && trailer[tk2] === 0x58 && trailer[tk2 + 1] === 2)
+      o.tracker = { pats: trailer[tk2 + 2], rows: trailer[tk2 + 3], insts: trailer[tk2 + 4], ncmd: trailer[tk2 + 5],
+        order: trailer[tk2 + 6] | trailer[tk2 + 7] << 7, vars: 1 };
     return o;
   },
   [CMD.UI_STATE](a) {
@@ -599,18 +612,36 @@ const parse = {
         break;
       case TK.FILTER: o.filter = Array.from({ length: Math.floor((a.length - r.i) / 4) }, () => ({ cut: r.v(), res: r.v() })); break;
       case TK.CLEAR: o.pat = r.b(); break;
+      case TK.VAR: {                              /* (Fel-Tracker) the values: NTRK x (1 chance + 7 v14) after bpm, mute */
+        o.pat = r.b(); o.var = r.b(); o.nvar = r.b(); o.bpm = r.v(); o.mute = r.v();
+        const n = Math.floor((a.length - r.i) / (1 + 2 * TK.VO.length));
+        o.chance = Array.from({ length: n }, () => r.b());
+        o.vo = Array.from({ length: n }, () => TK.VO.map(() => r.v()));
+        break;
+      }
+      case TK.VARCOUNT: o.pat = r.b(); o.nvar = r.b(); break;
     }
     return o;
   },
-  [CMD.TRACKER_CHANGED](a) { return { kind: a[0], index: a[1] }; },   /* kind 0 a pattern, 1 the song (order, instruments, CUT / RES) */
+  [CMD.TRACKER_CHANGED](a) { return { kind: a[0], index: a[1] }; },   /* kind 0 a pattern, 1 the song (order, instruments, CUT / RES, the variations) */
 };
 
 /* 1.5: the tracker (firmware/src/tracker.c, editor_tracker.c). A cell: note (0 none, 1..126, 127 OFF), instrument (0 none,
    1..63), FX command (TK.FX's letters; 0 none) and its value 0..127, and a chord: two intervals above the note (i1, i2:
    0 none, 1..15 semitones). As the device shows it: "C-4 01 C40", "C-4 MAJ 01 C40", "C-4 +2+9 01 ..." */
 const TK = {
-  STATUS: 0, PATTERN: 1, CELLS: 2, LENGTH: 3, ORDER: 4, INSTR: 5, FILTER: 6, PLAY: 7, CLEAR: 8,
+  STATUS: 0, PATTERN: 1, CELLS: 2, LENGTH: 3, ORDER: 4, INSTR: 5, FILTER: 6, PLAY: 7, CLEAR: 8, VAR: 9, VARCOUNT: 10,
   OFF: 127, ROWS_MAX: 16, CELLS_MAX: 64,
+  /* (Fel-Tracker) an order entry: the pattern in bits 0..4, its variation A..D in 5..6 ("03B") */
+  VLET: "ABCD", opat: (x) => x & 31, ovar: (x) => (x >> 5) & 3, oent: (p, v) => (p & 31) | (v & 3) << 5,
+  entry: (x) => TK.hex2(x & 31) + "ABCD"[(x >> 5) & 3],
+  /* a variation's values over the tracks' (core.h VO_*): [label, min, max, names]; -1 KEEP (the track's own) */
+  VO: [["DIST", 0, 127], ["CHORUS", 0, 127], ["DELAY", 0, 127], ["REVERB", 0, 127], ["SLICER", 0, 2, ["OFF", "GATE", "STUT"]],
+    ["SL PAT", 1, 16], ["SL RATE", 0, 5, ["1/8", "1/16", "1/32", "8T", "16T", "32T"]]],
+  /* the SETTINGS page's track parameters besides CUT / RES (ui_tracker.c TK_SET): [id, label], read with TRACK_PARAM */
+  SETTINGS: [[1, "ATTACK"], [2, "DECAY"], [3, "SUSTAIN"], [4, "RELEASE"], [5, "FLT ENV"], [33, "DIST"], [34, "CHORUS"],
+    [35, "DELAY"], [36, "REVERB"], [0, "LEVEL"], [39, "PAN"]],
+  varDefault: (n) => ({ bpm: 0, mute: 0, chance: new Array(n).fill(100), vo: Array.from({ length: n }, () => new Array(7).fill(-1)) }),
   FX: ".VADSRCQFPXHEWG",                             /* tracker.c TKC_CHAR (append-only) */
   FX_NAMES: ["NO FX", "LEVEL", "ATTACK", "DECAY", "SUSTAIN", "RELEASE", "CUTOFF", "RESONANCE", "FLT ENV", "PAN", "DIST",
     "CHORUS", "DELAY", "REVERB", "GLIDE"],
@@ -748,6 +779,10 @@ const req = {
   /* action 0 stop, 1 LOOP pattern arg (playing: cued), 2 SONG from position arg (from a stop) */
   tkPlay: (action, arg = 0) => [CMD.TRACKER, action ? [TK.PLAY, action, arg & 0x7F] : [TK.PLAY, 0]],
   tkClear: (p) => [CMD.TRACKER, [TK.CLEAR, p & 0x7F]],
+  /* (Fel-Tracker) variation v of pattern p, x {bpm, mute, chance[NTRK], vo[NTRK][7]} to write it (v = the count: added) */
+  tkVar: (p, v, x) => [CMD.TRACKER, x == null ? [TK.VAR, p & 0x7F, v & 3] : [TK.VAR, p & 0x7F, v & 3, ...v14enc(x.bpm), ...v14enc(x.mute),
+    ...x.chance.map((c) => Math.max(0, Math.min(100, c | 0))), ...x.vo.flatMap((t) => t.flatMap((y) => v14enc(y)))]],
+  tkVarCount: (p, n) => [CMD.TRACKER, n == null ? [TK.VARCOUNT, p & 0x7F] : [TK.VARCOUNT, p & 0x7F, Math.max(1, Math.min(4, n | 0))]],
 };
 
 /* which reply belongs to which request (the device echoes these) */
@@ -1764,6 +1799,7 @@ function makeMockDevice(opt = {}) {
     instr: Array.from({ length: TKI }, () => ({ kind: 0, a: 0, b: 0 })),
     filter: [0, 1, 2, 3].map(() => ({ cut: -1, res: -1 })),
     pl: { playing: false, mode: 0, pat: 0, pos: 0, row: 0, loopPat: 0 },
+    nvar: new Array(TKP).fill(1), vars: Array.from({ length: TKP }, () => Array.from({ length: 4 }, () => TK.varDefault(4))),
   };
   /* instruments 01..04: the power-on sounds (tracker.c tk_defaults: engines.c TRK_DEF) */
   TRK_DEF.slice(0, 4).forEach(([e, p], i) => { tk.instr[i] = { kind: 1, a: e, b: p }; });
@@ -1776,7 +1812,7 @@ function makeMockDevice(opt = {}) {
     const pl = tk.pl;
     if (!pl.playing || ++pl.row < tk.len[pl.pat]) return;
     pl.row = 0;
-    if (pl.mode === 1) { pl.pos = (pl.pos + 1) % tk.order.length; pl.pat = tk.order[pl.pos]; } else pl.pat = pl.loopPat;
+    if (pl.mode === 1) { pl.pos = (pl.pos + 1) % tk.order.length; pl.pat = TK.opat(tk.order[pl.pos]); } else pl.pat = pl.loopPat;
   }
   const stepOut = (x, b) => { b(x.n); x.notes.forEach(b); b(x.time); b(x.flags); b(x.vel); hitsEnc(x.hit, x.acc).forEach(b); if (!opt.legacy && !opt.v3 && !opt.v5) b(x.chance ?? 100); if (ratchetOn()) b(x.ratchet ?? 1); };
   function stepIn(x, a) {                         /* editor.c ed_step_put: n, 4 notes, time, flags, vel [, hits (3) [, chance [, ratchet]]] */
@@ -1945,7 +1981,7 @@ function makeMockDevice(opt = {}) {
           b(16);
           if (st.uiCaps) { b(0x55); b(1); b(st.uiCaps); b(0x4d); b(1); b(64); b(1); 
             if (syncCaps()) { b(0x53); b(1); b(syncCaps()); if (ratchetOn()) { b(0x52); b(1); b(4); } }
-            if (tkOn()) { b(0x58); b(2); b(TKP); b(TKR); b(TKI); b(TK.FX.length); b(TKO); b(TKO >> 7); } }   /* 1.5: the tracker, last */
+            if (tkOn()) { b(0x58); b(3); b(TKP); b(TKR); b(TKI); b(TK.FX.length); b(TKO); b(TKO >> 7); b(4); } }   /* 1.5: the tracker, last */
         }
         break;
       case CMD.GET: case CMD.SET: {
@@ -2072,8 +2108,11 @@ function makeMockDevice(opt = {}) {
           if (x.length) {
             const n = x.length >= 2 ? x[0] | x[1] << 7 : 0;
             if (!n || n > TKO || x.length !== 2 + n) return null;
-            if (x.slice(2).some((q) => q >= TKP)) rc = 1;
-            else { tk.order = x.slice(2); if (pl.pos >= n) pl.pos = 0; }
+            if (x.slice(2).some((q) => TK.opat(q) >= TKP)) rc = 1;
+            else {
+              tk.order = x.slice(2); if (pl.pos >= n) pl.pos = 0;
+              tk.order.forEach((q) => { const p = TK.opat(q); tk.nvar[p] = Math.max(tk.nvar[p], TK.ovar(q) + 1); });
+            }
           }
           b(op); b(rc); b(tk.order.length); b(tk.order.length >> 7); tk.order.forEach(b);
         } else if (op === TK.INSTR) {
@@ -2102,12 +2141,41 @@ function makeMockDevice(opt = {}) {
             else { pl.loopPat = x[1]; if (!pl.playing) Object.assign(pl, { playing: true, mode: 0, pat: x[1], row: 0 }); }
           } else if (pl.playing) rc = 2;
           else if (x[1] >= tk.order.length) rc = 1;
-          else Object.assign(pl, { playing: true, mode: 1, pos: x[1], pat: tk.order[x[1]], row: 0 });
+          else Object.assign(pl, { playing: true, mode: 1, pos: x[1], pat: TK.opat(tk.order[x[1]]), row: 0 });
           b(op); b(rc); status();
         } else if (op === TK.CLEAR) {
           if (x.length !== 1 || x[0] >= TKP) return null;
           tk.pats[x[0]] = Array.from({ length: TKR }, () => [0, 1, 2, 3].map(tkBlank));
           b(op); b(0); b(x[0]);
+        } else if (op === TK.VAR) {                 /* (Fel-Tracker) editor_tracker.c EDT_VAR */
+          const N = 4 + 4 + 4 * 2 * TK.VO.length;
+          if ((x.length !== 2 && x.length !== 2 + N) || x[0] >= TKP || x[1] >= 4) return null;
+          const [p, w] = x;
+          if (x.length > 2) {
+            const bpm = v14dec(x[2], x[3]), mute = v14dec(x[4], x[5]), chance = x.slice(6, 10);
+            const vo = [0, 1, 2, 3].map((k) => TK.VO.map((_, j) => v14dec(x[10 + 2 * (k * 7 + j)], x[11 + 2 * (k * 7 + j)])));
+            const okv = vo.every((t) => t.every((y, j) => y === -1 || (y >= TK.VO[j][1] && y <= TK.VO[j][2])));
+            if (w > tk.nvar[p] || (bpm && (bpm < 40 || bpm > 240)) || mute < 0 || mute > 15 || chance.some((c) => c > 100) || !okv) rc = 1;
+            else {
+              if (w === tk.nvar[p]) tk.nvar[p]++;
+              tk.vars[p][w] = { bpm, mute, chance, vo };
+            }
+          }
+          const y = tk.vars[p][w];
+          b(op); b(rc); b(p); b(w); b(tk.nvar[p]); v(y.bpm); v(y.mute); y.chance.forEach(b); y.vo.forEach((t) => t.forEach(v));
+        } else if (op === TK.VARCOUNT) {
+          if ((x.length !== 1 && x.length !== 2) || x[0] >= TKP) return null;
+          const p = x[0];
+          if (x.length === 2) {
+            if (x[1] < 1 || x[1] > 4) rc = 1;
+            else {
+              for (let w = tk.nvar[p]; w < x[1]; w++) tk.vars[p][w] = JSON.parse(JSON.stringify(tk.vars[p][0]));
+              for (let w = x[1]; w < 4; w++) tk.vars[p][w] = TK.varDefault(4);
+              tk.order = tk.order.map((q) => (TK.opat(q) === p && TK.ovar(q) >= x[1] ? p : q));
+              tk.nvar[p] = x[1];
+            }
+          }
+          b(op); b(rc); b(p); b(tk.nvar[p]);
         } else return null;
         break;
       }
@@ -2215,6 +2283,13 @@ function makeMockDevice(opt = {}) {
       return { p, r, k };
     },
     tkOrder(order) { tk.order = order.slice(); if (st.tkw) push(CMD.TRACKER_CHANGED, [1, 0]); return tk.order; },
+    /* (Fel-Tracker) a variation edited on the device (its VARIATION page): TRACKER_CHANGED 1 while watched */
+    tkVar(p = 0, w = 0, patch = { bpm: 100 }) {
+      tk.nvar[p] = Math.max(tk.nvar[p], w + 1);
+      Object.assign(tk.vars[p][w], patch);
+      if (st.tkw) push(CMD.TRACKER_CHANGED, [1, 0]);
+      return tk.vars[p][w];
+    },
     tkRows(n = 1) { for (let i = 0; i < n; i++) tkAdvance(); return { ...tk.pl }; },
     step(i = Math.floor(Math.random() * 16)) {
       const x = st.step[i];
@@ -2372,6 +2447,8 @@ const TEXT = {
     tkHelp: "1 行が 1/16。各セルは「音 和音 楽器 FX」の順に書きます（例: C-4 01 C40、C-4 MAJ 01）。音は C-4 / C#4 / OFF、--- は空。和音は音の後に、形（MAJ MIN SUS2 SUS4 DIM AUG MAJ6 MAJ7 DOM7 MIN7 5TH 5+OCT OCT）か、音の上の半音数を 2 つまで（+3+7、各 1〜15）。そのトラックが POLY のときに 3 音で鳴ります。楽器は 01〜3F（16 進）、.. はなし。FX は文字 + 16 進の値 00〜7F で、その行だけ設定を上書きします（V 音量、A/D/S/R エンベロープ、C カットオフ、Q レゾナンス、F フィルター EG、P パン、X ディストーション、H コーラス、E ディレイ、W リバーブ、G グライド）。空欄でセルを消去。↑↓ と Enter で行を移動します。",
     tkSong: "ソング", tkSongHelp: "パターンを並べた順番です。ソング再生はこの順に最後まで再生し、先頭に戻ります。▶ でその位置から再生。",
     tkAdd: "+ 追加", tkPlaySong: "ソング再生", tkRemove: "削除", tkPlayFrom: "ここから再生",
+    tkVars: "バリエーション", tkVarsHelp: "パターンごとに A〜D の 4 つまで。ソングの各位置はパターンとそのバリエーションを再生します（03B）。テンポ（空欄はソングのテンポ）、トラックごとのミュートと発音確率、センドとスライサー（空欄は KEEP: トラック自身の値）を上書きします。トラックの設定は変わりません。",
+    tkVarAdd: "+ バリエーション", tkVarDel: "最後を削除", tkTempo: "テンポ", tkKeep: "KEEP", tkMute: "MUTE", tkChance: "CHANCE %",
     tkInstr: "楽器", tkInstrHelp: "楽器 01〜3F は、エンジンのファクトリープリセットかユーザープリセットです。セルの楽器はその行からトラックの音色になります（トラックの設定は変わりません）。",
     tkNone: "なし", tkUser: "ユーザー",
     tkSettings: "トラック設定", tkSettingsHelp: "トラックごとの設定で、楽器を切り替えても変わりません。CUTOFF / RESO を空欄にすると楽器自身の値（INST）になります。",
@@ -2462,6 +2539,8 @@ const TEXT = {
     tkHelp: "A row is a 1/16. Type a cell as note, chord, instrument, FX (e.g. C-4 01 C40, C-4 MAJ 01). Notes: C-4 / C#4 / OFF; --- none. A chord follows the note: a shape (MAJ MIN SUS2 SUS4 DIM AUG MAJ6 MAJ7 DOM7 MIN7 5TH 5+OCT OCT) or up to two intervals above it in semitones (+3+7, each 1..15); it plays three notes when the track is POLY. Instrument 01..3F (hex); .. none. FX: a letter and a hex value 00..7F, which overrides a setting for that row only (V level, A/D/S/R envelope, C cutoff, Q resonance, F filter env, P pan, X distortion, H chorus, E delay, W reverb, G glide). An empty cell clears it. Up / Down and Enter move between rows.",
     tkSong: "Song", tkSongHelp: "The order the patterns play in. Song playback plays them to the end, then from the start again. ▶ plays from that position.",
     tkAdd: "+ Add", tkPlaySong: "Play song", tkRemove: "Remove", tkPlayFrom: "Play from here",
+    tkVars: "Variations", tkVarsHelp: "Up to four per pattern, A..D. Each song position plays a pattern in one of its variations (03B). A variation sets the tempo (empty: the song's), each track's mute and note chance, and its sends and SLICER (empty: KEEP, the track's own value) over the tracks, whose own settings stay as they are.",
+    tkVarAdd: "+ Variation", tkVarDel: "Remove the last", tkTempo: "Tempo", tkKeep: "KEEP", tkMute: "MUTE", tkChance: "CHANCE %",
     tkInstr: "Instruments", tkInstrHelp: "Instruments 01..3F are factory presets of an engine or user presets. A cell's instrument becomes the track's sound from that row on (the track's settings stay).",
     tkNone: "none", tkUser: "USER",
     tkSettings: "Track settings", tkSettingsHelp: "Each track's own settings: they stay when the instrument changes. CUTOFF / RESO left empty: the instrument's own value (INST).",
@@ -3419,13 +3498,14 @@ $("clearseq").addEventListener("click", async () => {
    and length, the song's order, the instruments, the tracks' settings (CUT / RES there, the rest TRACK_PARAM), the
    transport. TRACKER_CHANGED (79) says what the device changed; STATUS is polled while the tab shows. */
 const tkHas = (d = dev) => !!d && !!d.info && !!d.info.tracker;
-const tkUI = { pat: 0, lastPlayPat: -1, reading: new Set() };
+const tkUI = { pat: 0, lastPlayPat: -1, reading: new Set(), vpat: 0, vvar: 0 };   /* (vpat, vvar: the variation shown) */
+const tkVarsOn = (d = dev) => tkHas(d) && (d.info.tracker.vars || 1) > 1;
 const tkRq = async (d, r, o) => parse[CMD.TRACKER](await sessionRequest(d, r, o));
 const tkFail = (r) => { if (r.rc) throw new Error(t(r.rc === 2 ? "tkBusy" : "tkBad")); return r; };
 async function tkLoad(d = dev) {
   assertSession(d);
   if (!tkHas(d)) return;
-  d.tk = d.tk || { cells: [], len: [], order: [0], instr: [], filter: [], params: [], status: null };
+  d.tk = d.tk || { cells: [], len: [], order: [0], instr: [], filter: [], params: [], status: null, nvar: [], var: null };
   d.tk.status = await tkRq(d, req.tkStatus());
   tkUI.pat = d.tk.status.playing ? d.tk.status.pat : d.tk.status.loopPat;
   tkUI.lastPlayPat = d.tk.status.playing ? d.tk.status.pat : -1;
@@ -3453,6 +3533,11 @@ async function tkReadSong(d = dev) {
   d.tk.order = (await tkRq(d, req.tkOrder())).order;
   d.tk.instr = (await tkRq(d, req.tkInstr(0, d.info.tracker.insts))).instr;
   d.tk.filter = (await tkRq(d, req.tkFilter())).filter;
+  if (tkVarsOn(d)) {                               /* (Fel-Tracker) the patterns' counts, the variation shown */
+    for (let p = 0; p < d.info.tracker.pats; p++) d.tk.nvar[p] = (await tkRq(d, req.tkVarCount(p))).nvar;
+    if (tkUI.vvar >= (d.tk.nvar[tkUI.vpat] || 1)) tkUI.vvar = 0;
+    d.tk.var = await tkRq(d, req.tkVar(tkUI.vpat, tkUI.vvar));
+  }
 }
 async function tkReadParams(d = dev) {             /* the SETTINGS page's track parameters (TRACK_PARAM, v4) */
   assertSession(d);
@@ -3472,7 +3557,7 @@ function tkSongChanged() {
   const d = dev;
   if (!tkHas(d) || !d.tk || tkUI.reading.has("song")) return;
   tkUI.reading.add("song");
-  tkReadSong(d).then(() => { if (d === dev) { renderTkOrder(); renderTkInstr(); renderTkSettings(); } }).catch(report)
+  tkReadSong(d).then(() => { if (d === dev) { renderTkOrder(); renderTkInstr(); renderTkSettings(); renderTkVars(); } }).catch(report)
     .finally(() => tkUI.reading.delete("song"));
 }
 
@@ -3490,6 +3575,7 @@ function renderTracker() {
   renderTkOrder();
   renderTkInstr();
   renderTkSettings();
+  renderTkVars();
   renderTkStatus();
 }
 const tkCellKey = (r, k) => `${r}:${k}`;
@@ -3580,12 +3666,28 @@ function renderTkOrder() {
   const d = dev, box = $("tkorder"), order = d.tk.order;
   if (box.contains(document.activeElement)) return;
   $("tkadd").disabled = order.length >= d.info.tracker.order;
-  box.replaceChildren(...order.map((p, i) => {
+  box.replaceChildren(...order.map((e, i) => {
+    const p = TK.opat(e), w = TK.ovar(e), nv = d.tk.nvar[p] || 1;
     const sel = el("select", { "aria-label": `${t("tkPos")} ${TK.hex2(i)}` },
       ...Array.from({ length: d.info.tracker.pats }, (_, q) => el("option", { value: q, text: TK.hex2(q) })));
     sel.value = String(p);
-    sel.addEventListener("change", () => tkSetOrder(order.map((x, j) => (j === i ? +sel.value : x))));
-    return el("span", { class: "pos", "data-i": i }, el("span", { class: "dim", text: TK.hex2(i) }), sel,
+    sel.addEventListener("change", () => {            /* (its variation if the new pattern has it, else A) */
+      const q = +sel.value;
+      tkSetOrder(order.map((x, j) => (j === i ? TK.oent(q, w < (d.tk.nvar[q] || 1) ? w : 0) : x)));
+    });
+    /* (Fel-Tracker) its variation: those the pattern has, then + a new one (a copy of A) */
+    const vs = el("select", { "aria-label": `${t("tkPos")} ${TK.hex2(i)} ${t("tkVars")}`, hidden: !tkVarsOn(d) },
+      ...Array.from({ length: nv }, (_, k) => el("option", { value: k, text: TK.VLET[k] })),
+      ...(nv < 4 ? [el("option", { value: nv, text: "+" })] : []));
+    vs.value = String(w);
+    vs.addEventListener("change", () => op(async () => {
+      const k = +vs.value;
+      if (k >= nv) d.tk.nvar[p] = tkFail(await tkRq(d, req.tkVarCount(p, k + 1))).nvar;
+      tkUI.vpat = p; tkUI.vvar = k;
+      await tkSetOrder(order.map((x, j) => (j === i ? TK.oent(p, k) : x)));
+      await tkShowVar(p, k);
+    }));
+    return el("span", { class: "pos", "data-i": i }, el("span", { class: "dim", text: TK.hex2(i) }), sel, vs,
       el("button", { type: "button", title: t("tkPlayFrom"), "aria-label": t("tkPlayFrom"), onclick: () => tkPlaySong(i) }, "▶"),
       el("button", { type: "button", title: t("tkRemove"), "aria-label": t("tkRemove"), disabled: order.length <= 1,
         onclick: () => tkSetOrder(order.filter((_, j) => j !== i)) }, "×"));
@@ -3659,6 +3761,71 @@ async function tkSetFilter(k, cut, res) {
   try { d.tk.filter = tkFail(await tkRq(d, req.tkFilter(k, cut, res))).filter; } catch (err) { report(err); }
   if (d === dev) renderTkSettings();
 }
+/* (Fel-Tracker) the Variations group: variation tkUI.vvar of pattern tkUI.vpat (VARIATION, VARCOUNT) */
+async function tkShowVar(p, w, d = dev) {
+  tkUI.vpat = p; tkUI.vvar = w;
+  d.tk.var = await tkRq(d, req.tkVar(p, w));
+  d.tk.nvar[p] = d.tk.var.nvar;
+  if (d === dev) renderTkVars();
+}
+async function tkPutVar(x) {
+  const d = dev;
+  try { d.tk.var = tkFail(await tkRq(d, req.tkVar(tkUI.vpat, tkUI.vvar, x))); d.tk.nvar[tkUI.vpat] = d.tk.var.nvar; }
+  catch (err) { report(err); }
+  if (d === dev) renderTkVars();
+}
+async function tkSetVarCount(n) {
+  const d = dev, p = tkUI.vpat;
+  try { d.tk.nvar[p] = tkFail(await tkRq(d, req.tkVarCount(p, n))).nvar; } catch (err) { report(err); }
+  d.tk.order = (await tkRq(d, req.tkOrder())).order;  /* (the order's entries of one gone: on A) */
+  await tkShowVar(p, Math.min(tkUI.vvar, d.tk.nvar[p] - 1), d);
+  if (d === dev) renderTkOrder();
+}
+function renderTkVars() {
+  const d = dev, box = $("tkvars"), x = d.tk && d.tk.var;
+  box.hidden = !tkVarsOn(d);
+  if (box.hidden || !x || box.contains(document.activeElement)) return;
+  const nv = d.tk.nvar[tkUI.vpat] || 1, cols = tkCols(d);
+  const ps = $("tkvpat");
+  if (ps.options.length !== d.info.tracker.pats)
+    ps.replaceChildren(...Array.from({ length: d.info.tracker.pats }, (_, p) => el("option", { value: p, text: TK.hex2(p) })));
+  ps.value = String(tkUI.vpat);
+  $("tkvvar").replaceChildren(...Array.from({ length: nv }, (_, k) => el("button", { type: "button", text: TK.VLET[k],
+    class: k === tkUI.vvar ? "on" : "", "aria-pressed": String(k === tkUI.vvar), onclick: () => op(() => tkShowVar(tkUI.vpat, k)) })));
+  $("tkvadd").disabled = nv >= 4;
+  $("tkvdel").disabled = nv <= 1;
+  $("tkvbpm").value = x.bpm ? String(x.bpm) : "";
+  $("tkvbpm").placeholder = "SONG";
+  const put = (f) => { const y = JSON.parse(JSON.stringify({ bpm: x.bpm, mute: x.mute, chance: x.chance, vo: x.vo })); f(y); tkPutVar(y); };
+  const rows = [
+    el("tr", {}, el("th", { text: t("tkMute") }), ...cols.map((k) => {
+      const c = el("input", { type: "checkbox", checked: !!((x.mute >> k) & 1), "aria-label": `${t("tkMute")} ${t("tkTrack")} ${k + 1}` });
+      c.addEventListener("change", () => put((y) => { y.mute = c.checked ? y.mute | 1 << k : y.mute & ~(1 << k); }));
+      return el("td", {}, c);
+    })),
+    el("tr", {}, el("th", { text: t("tkChance") }), ...cols.map((k) => {
+      const c = el("input", { type: "number", min: 0, max: 100, value: x.chance[k] ?? 100, "aria-label": `${t("tkChance")} ${t("tkTrack")} ${k + 1}` });
+      c.addEventListener("change", () => put((y) => { y.chance[k] = Math.max(0, Math.min(100, Math.round(+c.value || 0))); }));
+      return el("td", {}, c);
+    })),
+    ...TK.VO.map(([label, lo, hi, names], j) => el("tr", {}, el("th", { text: label }), ...cols.map((k) => {
+      const cur = x.vo[k]?.[j] ?? -1, aria = `${label} ${t("tkTrack")} ${k + 1}`;
+      let c;
+      if (names) {
+        c = el("select", { "aria-label": aria }, el("option", { value: -1, text: t("tkKeep") }), ...names.map((n, i) => el("option", { value: lo + i, text: n })));
+        c.value = String(cur);
+      } else {
+        c = el("input", { type: "number", min: lo, max: hi, placeholder: t("tkKeep"), value: cur < 0 ? "" : cur, "aria-label": aria });
+      }
+      c.addEventListener("change", () => put((y) => {
+        y.vo[k][j] = c.value === "" || +c.value < 0 ? -1 : Math.max(lo, Math.min(hi, Math.round(+c.value)));
+      }));
+      return el("td", {}, c);
+    }))),
+  ];
+  $("tkvtab").replaceChildren(el("tr", {}, el("th", { text: TK.hex2(tkUI.vpat) + TK.VLET[tkUI.vvar] }),
+    ...cols.map((k) => el("th", { text: `${t("tkTrack")} ${k + 1}` }))), ...rows);
+}
 async function tkPlay(r) {
   const d = dev;
   d.tk.status = tkFail(await tkRq(d, r));
@@ -3691,6 +3858,13 @@ $("tklen").addEventListener("change", () => op(async () => {
 $("tkplay").addEventListener("click", () => op(() => tkPlay(dev.tk.status?.playing ? req.tkPlay(0) : req.tkPlay(1, tkUI.pat))));
 $("tksongplay").addEventListener("click", () => (dev.tk.status?.playing ? op(() => tkPlay(req.tkPlay(0))) : tkPlaySong(0)));
 $("tkadd").addEventListener("click", () => { const o = dev.tk.order; tkSetOrder([...o, o[o.length - 1] ?? 0]); });
+$("tkvpat").addEventListener("change", () => op(() => tkShowVar(+$("tkvpat").value, 0)));
+$("tkvadd").addEventListener("click", () => op(async () => { await tkSetVarCount((dev.tk.nvar[tkUI.vpat] || 1) + 1); await tkShowVar(tkUI.vpat, dev.tk.nvar[tkUI.vpat] - 1); }));
+$("tkvdel").addEventListener("click", () => op(() => tkSetVarCount((dev.tk.nvar[tkUI.vpat] || 1) - 1)));
+$("tkvbpm").addEventListener("change", () => {
+  const x = dev.tk.var, n = $("tkvbpm").value === "" ? 0 : Math.max(40, Math.min(240, Math.round(+$("tkvbpm").value)));
+  tkPutVar({ bpm: n, mute: x.mute, chance: x.chance, vo: x.vo });
+});
 $("tkclear").addEventListener("click", () => {
   if (!dev || !confirm(t("tkClearConfirm").replace("{n}", TK.hex2(tkUI.pat)))) return;
   op(async () => { tkFail(await tkRq(dev, req.tkClear(tkUI.pat))); await tkReadPattern(tkUI.pat); renderTkGrid(); });

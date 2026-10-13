@@ -119,7 +119,7 @@ static struct {
 
 static int16_t *ed_val(uint32_t i) { return i < P_COUNT ? &TSEL->p[i] : &song.g[i - P_COUNT]; }
 /* 1.5: the signature of tracker pattern i (its cells and length), or (i == TK_PATS) of the rest of the song: the order
- * list, the instruments, the tracks' CUT / RES. FNV-1a; a pattern is 768 bytes, so ed_sync checks a few a pass */
+ * list, the instruments, the tracks' CUT / RES, the variations. FNV-1a; a pattern is 768 bytes, so ed_sync checks a few a pass */
 static uint32_t ed_fnv(uint32_t h, const uint8_t *b, uint32_t n)
 {
     while (n--)
@@ -138,7 +138,12 @@ static uint32_t ed_tk_sig(uint32_t i)
     h = ed_fnv(h, tk.order, tk.norder);
     h = ed_fnv(h, &tk.instr[0].src, sizeof tk.instr);
     h = ed_fnv(h, tk.cut, NTRK);
-    return ed_fnv(h, tk.res, NTRK);
+    h = ed_fnv(h, tk.res, NTRK);
+    h = ed_fnv(h, tk_nvar, TK_PATS);                    /* (Fel-Tracker: the variations; a pattern's unused ones are
+                                                         * the default) */
+    for (r = 0; r < TK_PATS; r++)
+        h = ed_fnv(h, &tk_var[r][0].bpm, sizeof(tk_var_t) * tk_nvar[r]);   /* (tk_var_t: bytes only) */
+    return h;
 }
 static void ed_shadow(void)                              /* the editor is in sync */
 {
@@ -360,8 +365,8 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x53); ed_b(1); ed_b(3);   /* live sync: bit 0 WATCH while on keeps the shadow, bit 1 no RELOAD echo */
         ed_b(0x4E); ed_b(1); ed_b(ED_MENU_N);   /* MENU settings: cmds 72, 73; the items MENU_DESC offers */
         /* (1.5: no 52 01 / 4C 01 / 41 01 / 54 01, the steps' ratchet, locks, motion, nudge; no 57 01, the A..D song) */
-        ed_b(0x58); ed_b(2); ed_b(TK_PATS); ed_b(TK_ROWS); ed_b(TK_INSTS); ed_b(TKC_N);   /* 1.5: the tracker (78, 79) */
-        ed_b(TK_ORDER); ed_b(TK_ORDER >> 7);
+        ed_b(0x58); ed_b(3); ed_b(TK_PATS); ed_b(TK_ROWS); ed_b(TK_INSTS); ed_b(TKC_N);   /* 1.5: the tracker (78, 79); */
+        ed_b(TK_ORDER); ed_b(TK_ORDER >> 7); ed_b(TK_VARS);   /* 03 (Fel-Tracker): the variations, ops 9, 10 */
         break;
     case ED_GET:
     case ED_SET:
