@@ -146,7 +146,6 @@ footer small { font-size: 11px; opacity: .8; }
   <button class="full" id="full" type="button">Full screen</button>
   <button class="full" id="bigb" type="button" aria-pressed="false">Big screen</button>
   <button class="full" id="numb" type="button" aria-pressed="false">QE AD ZC: notes</button>
-  <button class="full" id="demo" type="button" title="Loads this distribution's demo song into the tracker (the song in RAM is replaced; SAVE it on the device to keep it). Then PLAY on the SONG page.">Demo song</button>
 </div>
 <p class="midi" id="midi"><span class="dot" id="midi-dot"></span><span id="midi-text">MIDI in: connects when switched on</span></p>
 
@@ -471,11 +470,6 @@ function bigSync() {
 function bigToggle() { pref("felucca-bigscreen", document.body.classList.contains("big") ? "0" : "1"); bigSync(); }
 document.getElementById("bigb").addEventListener("click", bigToggle);
 document.getElementById("numb").addEventListener("click", numToggle);
-/* (Fel-Tracker) the demo song: written into the tracker by the firmware side (web_demo, demo_song.c) */
-document.getElementById("demo").addEventListener("click", () => {
-  if (!node) return;
-  if (!confirm("Load the demo song? The song in the emulator's memory is replaced (saved songs are kept).")) return;
-  send({ type: "demo" });
 });
 bigSync();
 numSync();

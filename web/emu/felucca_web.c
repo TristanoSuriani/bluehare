@@ -482,20 +482,6 @@ EXPORT void web_test_heavy(void)
 
 EXPORT uint32_t web_test_user_preset(uint32_t i) { return (uint32_t)up_used(i); }
 
-/* (Fel-Tracker) the DEMO button: this distribution's demo song (demo_song.c) into the tracker, the transport stopped;
- * PLAY on the SONG page plays it. 1 = written, 0 = no demo for these engines */
-#include "demo_song.c"
-EXPORT uint32_t web_demo(void)
-{
-    int ok;
-    transport_req = 2;                            /* (stopped, every note let go: as a project load) */
-    panic_req = (uint8_t)((1u << NTRK) - 1u);
-    seq_stop();
-    ok = demo_song();
-    sync_reload = 1;
-    ui.force = 1;
-    return (uint32_t)ok;
-}
 
 EXPORT uint16_t *web_screen(void) { return web_fb; }
 EXPORT uint32_t web_screen_draws(void) { return web_draws; }
