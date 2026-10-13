@@ -9,7 +9,7 @@
  * the key, held), DRONE (noise, held); MIX the strike against the cavern. The network runs at a quarter of the rate,
  * its lines 8 bits a sample (companded: the grit of the deep); the cavern keeps ringing across notes, the voice
  * ends when it has died away (engine_t.ownenv; the velocity the strike's level).
- * State: the cavern ab_cav[track] (in the pool: 4 lines of AB_LEN bytes), the voice's s[]: s[0] the strike's
+ * State: the cavern (the track's block, engines.c eng_slab: 4 lines of AB_LEN bytes), the voice's s[]: s[0] the strike's
  * samples, s[1] the strike's filter, s[2] the last network output, s[3] the one before (the interpolation), s[4]
  * the samples into the 4, s[5] the noise, s[6] the input summed over the 4, s[7] the level. */
 #define AB_LEN 768
@@ -20,11 +20,10 @@ typedef struct {
     int32_t lp[AB_NL];           /* DAMP's filter in each line */
     uint32_t mph;                /* MOD's phase */
 } ab_cav_t;
-static ab_cav_t ab_cav[NPART] __attribute__((section(".pool")));
 static const uint16_t AB_RATIO[AB_NL] = {256, 325, 387, 469};   /* the lines' lengths against the first, Q8 */
 static const char *const N_AB_SRC[] = {"PULSE", "BURST", "TONE", "DRONE", 0};
 
-static ab_cav_t *ab_of(track_t *t) { return t >= &trk[0] && t < &trk[NPART] ? &ab_cav[t - trk] : 0; }
+static inline __attribute__((always_inline)) ab_cav_t *ab_of(track_t *t) { return eng_slab(t, SLAB_ABYSS, sizeof(ab_cav_t)); }   /* (engines.c) */
 /* 8 bits companded: the square root of the magnitude, the sign (a quiet tail keeps more of its bits) */
 static inline int8_t ab_put(int32_t x, int near)
 {

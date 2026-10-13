@@ -7,15 +7,14 @@
  * grows grittier), and the echo keeps 8 bits a sample at 11025 a second: 464 ms in 5 KB a track, each pass round
  * the loop a little rougher. The bits are cut towards 0, so a dying echo reaches silence and the voice ends.
  * The siren, its LFO, sweep and envelope: eng_dubsiren.c (ds_block, ds_osc, ds_step, ds_done, ds_target).
- * Voice state: as DUBSIREN's, and s[3] the held siren sample. The echo: ds8_echo[part] (in the pool). */
+ * Voice state: as DUBSIREN's, and s[3] the held siren sample. The echo: the track's block (engines.c eng_slab). */
 typedef struct {
     int8_t buf[DS_LEN];          /* the echo line: 8 bits a sample (the value / 256, cut towards 0) */
     uint32_t w, cnt;             /* the next write; the input samples summed so far (4 make one) */
     int32_t acc, lp, d8;         /* their sum; the loop's low-pass; the delay (samples, Q8: glides to TIME) */
 } ds8_echo_t;
-static ds8_echo_t ds8_echo[NPART] __attribute__((section(".pool")));
 
-static ds8_echo_t *ds8_of(track_t *t) { return t >= &trk[0] && t < &trk[NPART] ? &ds8_echo[t - trk] : 0; }
+static inline __attribute__((always_inline)) ds8_echo_t *ds8_of(track_t *t) { return eng_slab(t, SLAB_SIREN8, sizeof(ds8_echo_t)); }   /* (engines.c) */
 static inline int32_t ds8_q(int32_t x) { return (x + ((x >> 31) & 255)) >> 8; }   /* x / 256 towards 0 (no divide) */
 static inline int32_t ds8_bits(int32_t x) { return ds8_q(x) * 256; }                 /* 8 bits, towards 0 */
 

@@ -10,7 +10,7 @@
  * TONE each one darker (down) or thinner (up), SCAT a little of each repeat's time and pitch left to chance. The
  * echoes go on after the key is let go, as echoes do; the voice ends with the last one (engine_t.ownenv: its own
  * envelope; the velocity sets the level).
- * State: the sounds of a voice ec_g[track][voice][] (in the pool, EC_NG at once, the oldest dropped), the voice's s[]:
+ * State: the sounds of a voice in the track's block (engines.c eng_slab, EC_NG at once, the oldest dropped), the voice's s[]:
  * s[0] samples to the next, s[1] the repeats so far, s[2] the next's level (Q15), s[3] the random. */
 #define EC_POLY 4
 #define EC_NG 6
@@ -28,15 +28,17 @@ typedef struct {
     int32_t lp, hp, flt;         /* their states; PLUCK's own filter */
     uint8_t src;
 } ec_g_t;
-static ec_g_t ec_g[NPART][EC_POLY][EC_NG] __attribute__((section(".pool")));
 
-static ec_g_t *ec_of(track_t *t, voice_t *v)
+static inline __attribute__((always_inline)) ec_g_t *ec_of(track_t *t, voice_t *v)
 {
     uint32_t i;
     if (t < &trk[0] || t >= &trk[NPART])
         return 0;
     i = (uint32_t)(v - t->v);
-    return i < EC_POLY ? ec_g[t - trk][i] : 0;
+    {
+        ec_g_t (*a)[EC_NG] = eng_slab(t, SLAB_ECHOES, sizeof(ec_g_t) * EC_POLY * EC_NG);   /* (engines.c) */
+        return a && i < EC_POLY ? a[i] : 0;
+    }
 }
 
 static uint32_t ec_rand(voice_t *v)

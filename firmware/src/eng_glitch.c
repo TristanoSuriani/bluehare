@@ -11,7 +11,7 @@
  * song's tempo (1/32 .. 1/128: a ratchet), CRUSH takes bits and rate, VARY makes each hit differ (pitch, length),
  * DENS scatters extra micro-hits after each one, TONE darkens (down) or thins (up). Its own envelope (engine_t.ownenv:
  * the velocity sets the level); the voice ends when its hits do.
- * State: gl_v[track][voice] (in the pool, GL_POLY voices a track). */
+ * State: the track's block (engines.c eng_slab, GL_POLY voices a track). */
 #define GL_POLY 8
 static uint32_t beat_samples(void);                  /* (fx.c: a beat at the song's tempo, or the MIDI clock's) */
 static const char *const N_GL_KIT[] = {"CLEAN", "HARSH", "LOFI", "BROKEN", 0};
@@ -28,15 +28,17 @@ typedef struct {
     int32_t inv;                 /* 2^29 / len (the hit's progress without a divide a sample) */
     uint8_t snd;
 } gl_voice_t;
-static gl_voice_t gl_v[NPART][GL_POLY] __attribute__((section(".pool")));
 
-static gl_voice_t *gl_of(track_t *t, voice_t *v)
+static inline __attribute__((always_inline)) gl_voice_t *gl_of(track_t *t, voice_t *v)
 {
     uint32_t i;
     if (t < &trk[0] || t >= &trk[NPART])
         return 0;
     i = (uint32_t)(v - t->v);
-    return i < GL_POLY ? &gl_v[t - trk][i] : 0;
+    {
+        gl_voice_t *a = eng_slab(t, SLAB_GLITCH, sizeof(gl_voice_t) * GL_POLY);   /* (engines.c) */
+        return a && i < GL_POLY ? &a[i] : 0;
+    }
 }
 
 static uint32_t gl_rand(gl_voice_t *g)

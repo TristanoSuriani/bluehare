@@ -8,7 +8,7 @@
  * crackle) under SHAPE (PERC a hit, HANN a swell, REV backwards: its last 64 samples faded, Fel-Tracker); TONE a
  * low-pass over the cloud. The ADSR shapes the
  * cloud. Up to PT_NG grains at once a voice (the rest are dropped); the level follows how many overlap.
- * Voice state: the grains pt_g[track][voice][] (in the pool), s[0] samples to the next grain, s[1] the random
+ * Voice state: the grains in the track's block (engines.c eng_slab), s[0] samples to the next grain, s[1] the random
  * generator, s[2] the low-pass, s[3] the DC blocker, s[4] its last input. */
 static const char *const N_PT_QNT[] = {"FREE", "SEMI", "OCT", "5TH", 0};
 static const char *const N_PT_SHAPE[] = {"PERC", "HANN", "REV", 0};
@@ -20,15 +20,17 @@ typedef struct {
     int32_t age, len;            /* samples since the start (< 0: starts later in the block); 0 len: free */
     int32_t p16, cstep;          /* the pitch at the start (1/16 semitone), the glide a sample (Q16 of that) */
 } pt_grain_t;
-static pt_grain_t pt_g[NPART][PT_POLY][PT_NG] __attribute__((section(".pool")));
 
-static pt_grain_t *pt_of(track_t *t, voice_t *v)
+static inline __attribute__((always_inline)) pt_grain_t *pt_of(track_t *t, voice_t *v)
 {
     uint32_t i;
     if (t < &trk[0] || t >= &trk[NPART])
         return 0;
     i = (uint32_t)(v - t->v);
-    return i < PT_POLY ? pt_g[t - trk][i] : 0;
+    {
+        pt_grain_t (*a)[PT_NG] = eng_slab(t, SLAB_PARTICLE, sizeof(pt_grain_t) * PT_POLY * PT_NG);   /* (engines.c) */
+        return a && i < PT_POLY ? a[i] : 0;
+    }
 }
 
 static uint32_t pt_rand(voice_t *v)

@@ -11,7 +11,7 @@
  * how much sooner the high modes die; BRIGHT the exciter's hardness and the high modes' level; BEAT detunes the modes
  * a little each (the beating of a bell, a gamelan's shimmer). Modes past ~19 kHz are left out. The resonators'
  * coefficients cost divides: worked out when the pitch or a parameter moves, not every block.
- * Voice state: md_v[track][voice] (in the pool, MD_POLY voices a track): the modes, the exciter. */
+ * Voice state: the track's block (engines.c eng_slab, MD_POLY voices a track): the modes, the exciter. */
 #define MD_NM 12
 #define MD_POLY 4
 #define MD_FMAX 1846000000u      /* a mode's highest frequency, cycles a sample Q32 (~0.43: ~19 kHz) */
@@ -44,15 +44,17 @@ typedef struct {
     uint32_t age, rng;           /* samples since the strike; the noise */
     int32_t lp;                  /* the exciter's low-pass */
 } md_voice_t;
-static md_voice_t md_v[NPART][MD_POLY] __attribute__((section(".pool")));
 
-static md_voice_t *md_of(track_t *t, voice_t *v)
+static inline __attribute__((always_inline)) md_voice_t *md_of(track_t *t, voice_t *v)
 {
     uint32_t i;
     if (t < &trk[0] || t >= &trk[NPART])
         return 0;
     i = (uint32_t)(v - t->v);
-    return i < MD_POLY ? &md_v[t - trk][i] : 0;
+    {
+        md_voice_t *a = eng_slab(t, SLAB_MODAL, sizeof(md_voice_t) * MD_POLY);   /* (engines.c; ANVIL's too) */
+        return a && i < MD_POLY ? &a[i] : 0;
+    }
 }
 
 static void modal_note_on(track_t *t, voice_t *v)

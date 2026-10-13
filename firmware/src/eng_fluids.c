@@ -6,19 +6,21 @@
  * harmonics smeared in time, half of it mixed back with what went in (its notches: the liquid sheen), MOTION an LFO
  * (~0.05 .. ~8 Hz) moving DISP by DEPTH (the flow); a resonant low-pass (CUT, RES, the key half tracked, ENV ->
  * FILTER) and SUB a sine an octave down last.
- * Voice state: ph[0] the oscillator, ph[1] MOTION's, ph[2] SUB's, s[0] s[1] the filter; the all-passes fl_ap[track]
- * [voice][] (in the pool, FL_POLY voices a track). */
+ * Voice state: ph[0] the oscillator, ph[1] MOTION's, ph[2] SUB's, s[0] s[1] the filter; the all-passes in the
+ * track's block (engines.c eng_slab; FL_POLY voices a track). */
 #define FL_POLY 6
 #define FL_NAP 8
-static int32_t fl_ap[NPART][FL_POLY][FL_NAP] __attribute__((section(".pool")));
 
-static int32_t *fl_of(track_t *t, voice_t *v)
+static inline __attribute__((always_inline)) int32_t *fl_of(track_t *t, voice_t *v)
 {
     uint32_t i;
     if (t < &trk[0] || t >= &trk[NPART])
         return 0;
     i = (uint32_t)(v - t->v);
-    return i < FL_POLY ? fl_ap[t - trk][i] : 0;
+    {
+        int32_t (*a)[FL_NAP] = eng_slab(t, SLAB_FLUIDS, sizeof(int32_t) * FL_POLY * FL_NAP);   /* (engines.c) */
+        return a && i < FL_POLY ? a[i] : 0;
+    }
 }
 
 static void fluids_note_on(track_t *t, voice_t *v)

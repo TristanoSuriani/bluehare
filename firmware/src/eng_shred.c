@@ -7,17 +7,16 @@
  * their speed (+-12 semitones: the tears up or down), STUTTER how often a grain repeats instead of moving on, TEAR
  * how often one jumps somewhere else or plays backwards, at the song's tempo with SYNC (OFF, 1/16, 1/32, 1/64: the
  * stutters land on the grid); MIX the tear against the source.
- * State: the ring sh_buf[track] (in the pool, SH_LEN samples), the voice's ph[0] the source, ph[1] / ph[2] the grains'
+ * State: the ring (the track's block, engines.c eng_slab: SH_LEN samples), the voice's ph[0] the source, ph[1] / ph[2] the grains'
  * read places (Q16 of a sample), s[0] / s[1] the grains' ages, s[2] the write place, s[3] the walk (Q16), s[4] the
  * random, s[5] the grains' direction bits (and bit 8: the ring filled once), s[6] the samples into SYNC's step, s[7] FM's modulator. */
 #define SH_LEN 1536
-static int16_t sh_buf[NPART][SH_LEN] __attribute__((section(".pool")));
 static uint32_t beat_samples(void);
 static const char *const N_SH_SRC[] = {"SAW", "SQR", "FM", "NOISE", 0};
 static const char *const N_SH_SYNC[] = {"OFF", "1/16", "1/32", "1/64", 0};
 static const uint8_t SH_DIV[4] = {0, 4, 8, 16};
 
-static int16_t *sh_of(track_t *t) { return t >= &trk[0] && t < &trk[NPART] ? sh_buf[t - trk] : 0; }
+static inline __attribute__((always_inline)) int16_t *sh_of(track_t *t) { return eng_slab(t, SLAB_SHRED, sizeof(int16_t) * SH_LEN); }   /* (engines.c) */
 
 static void shred_note_on(track_t *t, voice_t *v)
 {

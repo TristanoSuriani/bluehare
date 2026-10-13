@@ -349,6 +349,21 @@ int main(void)
         }
     }
 
+    {   /* (Fel-Tracker) the engines' block of a track (engines.c eng_slab): one a track, as big as this build's
+         * largest needs; lent to a key, cleared when another key asks; nothing for a non-part or too big an ask */
+        uint8_t *x = eng_slab(&trk[2], SLAB_ECHOES, 16), *y;
+        ok = x && sizeof eng_slab_mem[0] >= sizeof(ec_g_t) * EC_POLY * EC_NG &&
+             sizeof eng_slab_mem[0] >= sizeof(md_voice_t) * MD_POLY;
+        x[5] = 77;
+        ok &= eng_slab(&trk[2], SLAB_ECHOES, 16) == (void *)x && x[5] == 77;   /* (the same key: kept) */
+        y = eng_slab(&trk[2], SLAB_MODAL, 16);
+        ok &= y == x && x[5] == 0;                                            /* (another: cleared) */
+        x[5] = 9;
+        ok &= eng_slab(&trk[3], SLAB_MODAL, 16) != (void *)x && x[5] == 9;    /* (another track's: its own) */
+        ok &= !eng_slab(&trk[2], SLAB_MODAL, sizeof eng_slab_mem[0] + 1u) && !eng_slab(&trk[NPART], SLAB_MODAL, 4);
+        bad += check("engines' block: one a track, the largest this build needs; another engine's ask clears it; too "
+                     "big or no part: none", ok);
+    }
     printf("%s\n", bad ? "ENGINES TEST FAILED" : "engines test passed");
     return bad != 0;
 }

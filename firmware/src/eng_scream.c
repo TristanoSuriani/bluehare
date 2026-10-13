@@ -12,7 +12,7 @@
  * top) and SHRILL, a narrow peak at 2.4 .. 3.9 kHz (where hearing is the most sensitive); RASP, breath and fry noise let
  * through while the folds are open (it tears with the voice); CROWD 1 .. 3 voices, each with its own jitter and breaks,
  * out of tune and out of step (a panicking crowd). A lopsided hard clip last. Mono (one throat a track).
- * State: sc_st[track] (in the pool); the voice's own state unused. */
+ * State: the track's block (engines.c eng_slab); the voice's own state unused. */
 #define SC_NC 3
 typedef struct {
     uint32_t ph[SC_NC], inc[SC_NC];
@@ -21,13 +21,12 @@ typedef struct {
     int32_t rr8, strain;         /* the roughness's rate (Hz, Q8), the effort (Q24) */
     int32_t a1, a2, b1, b2, c1, c2, dx, dy;   /* the formants, SHRILL, the DC blocker */
 } sc_t;
-static sc_t sc_st[NPART] __attribute__((section(".pool")));
 static const int16_t SC_VOW[4][2] = {{1000, 1500}, {850, 1900}, {600, 2300}, {420, 2800}};   /* A AE E I (Hz) */
 static const int32_t SC_DET[SC_NC] = {65536, 66871, 63670};   /* the crowd: in tune, +35, -50 cents (Q16) */
 static const uint16_t SC_LVL[SC_NC + 1] = {0, 32767, 23170, 18919};
 enum { SC_NONE, SC_CRACK, SC_FIFTH, SC_HALF, SC_THIRD, SC_CHAOS };
 
-static sc_t *sc_of(track_t *t) { return t >= &trk[0] && t < &trk[NPART] ? &sc_st[t - trk] : 0; }
+static inline __attribute__((always_inline)) sc_t *sc_of(track_t *t) { return eng_slab(t, SLAB_SCREAM, sizeof(sc_t)); }   /* (engines.c) */
 
 static inline uint32_t sc_rnd(sc_t *c)
 {

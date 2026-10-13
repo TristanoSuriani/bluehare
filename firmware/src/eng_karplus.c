@@ -12,21 +12,23 @@
  * sharpen, towards a bell). MUTE damps it on release (a palm mute, staccato); DRIVE saturates the output. The line is
  * KP_LEN samples: the lowest note is ~57 Hz (A#1), one lower plays an octave up. The loop's delay is tuned with the
  * filters' own (a linear interpolation reads between samples).
- * Voice state: the line kp_line[track][voice] (in the pool), s[0] the write place, s[1] the damping filter's last input,
+ * Voice state: the line in the track's block (engines.c eng_slab), s[0] the write place, s[1] the damping filter's last input,
  * s[2] the allpass's state, s[3] the noise generator, s[4] released (MUTE once), s[5] the output's DC blocker, s[6] its
  * last input. */
 static const char *const N_KP_EXCT[] = {"NOIS", "PLUK", "SAW", "CLIK", 0};
 #define KP_POLY 4
 #define KP_LEN 768u
-static int16_t kp_line[NPART][KP_POLY][KP_LEN] __attribute__((section(".pool")));
 
-static int16_t *kp_of(track_t *t, voice_t *v)
+static inline __attribute__((always_inline)) int16_t *kp_of(track_t *t, voice_t *v)
 {
     uint32_t i;
     if (t < &trk[0] || t >= &trk[NPART])
         return 0;
     i = (uint32_t)(v - t->v);
-    return i < KP_POLY ? kp_line[t - trk][i] : 0;
+    {
+        int16_t (*a)[KP_LEN] = eng_slab(t, SLAB_KARPLUS, sizeof(int16_t) * KP_POLY * KP_LEN);   /* (engines.c) */
+        return a && i < KP_POLY ? a[i] : 0;
+    }
 }
 
 /* the loop's length for phase increment inc: samples, Q8 (an octave up until it fits the line) */

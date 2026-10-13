@@ -6,6 +6,15 @@
 #include "dsp.c"
 #include "shared/phys_dsp.c"   /* the resonators MODAL and ANVIL play (PHYS's, DaisySP's: MIT) */
 #include "shared/drum_map.c"   /* the drum lanes and GM map KIT, WAR and GLITCH play */
+/* (Fel-Tracker) the engines' own memory of a track (a cavern, a ring, a voice's grains), one block a track that every
+ * such engine borrows: a track plays one engine at a time (voice.c: the old one's voices fade and go before the new one
+ * takes the track), so the block is as big as the largest of this build's engines needs, not their sum. An engine
+ * asks for it with its key (eng_slab, after the engines): the first ask of a key the block was not lent to clears it
+ * (as at power-on), so a sound starts on silence; MODAL and ANVIL share theirs (ANVIL plays MODAL's resonator). 0: the
+ * track is no part, or the engine needs more than the block (a build without it): it plays nothing */
+enum { SLAB_NONE, SLAB_ABYSS, SLAB_SHRED, SLAB_MODAL, SLAB_ECHOES, SLAB_PARTICLE, SLAB_GLITCH, SLAB_FLUIDS, SLAB_SCREAM,
+       SLAB_KARPLUS, SLAB_SIREN8 };
+static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_byte.c"           /* BYTE: bytebeat formulas (1.5) */
 #include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
@@ -45,6 +54,36 @@
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */
+
+/* the block's size: the largest this build's engines ask for (core.h FELUCCA_ENG_*) */
+#define SLAB_MAX(a, b) ((a) > (b) ? (a) : (b))
+#define SLAB_IF(on, sz) ((on) ? (uint32_t)(sz) : 0u)
+#define ENG_SLAB_BYTES                                                                                                  \
+    SLAB_MAX(SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_ABYSS, sizeof(ab_cav_t)),                                          \
+                               SLAB_IF(FELUCCA_ENG_SHRED, sizeof(int16_t) * SH_LEN)),                                 \
+                      SLAB_MAX(SLAB_IF(FELUCCA_ENG_MODAL || FELUCCA_ENG_ANVIL, sizeof(md_voice_t) * MD_POLY),         \
+                               SLAB_IF(FELUCCA_ENG_ECHOES, sizeof(ec_g_t) * EC_POLY * EC_NG))),                       \
+             SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_PARTICLE, sizeof(pt_grain_t) * PT_POLY * PT_NG),                   \
+                               SLAB_IF(FELUCCA_ENG_GLITCH, sizeof(gl_voice_t) * GL_POLY)),                            \
+                      SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_FLUIDS, sizeof(int32_t) * FL_POLY * FL_NAP),              \
+                                        SLAB_IF(FELUCCA_ENG_SCREAM, sizeof(sc_t))),                                   \
+                               SLAB_MAX(SLAB_IF(FELUCCA_ENG_KARPLUS, sizeof(int16_t) * KP_POLY * KP_LEN),             \
+                                        SLAB_IF(FELUCCA_ENG_DUBSIREN8, sizeof(ds8_echo_t))))))
+#define ENG_SLAB_WORDS ((ENG_SLAB_BYTES + 3u) / 4u + 1u)
+static uint32_t eng_slab_mem[NPART][ENG_SLAB_WORDS] __attribute__((section(".pool")));
+static uint8_t eng_slab_key[NPART];
+static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes)
+{
+    uint32_t k;
+    if (t < &trk[0] || t >= &trk[NPART] || bytes > sizeof eng_slab_mem[0])
+        return 0;
+    k = (uint32_t)(t - trk);
+    if (eng_slab_key[k] != key) {
+        memset(eng_slab_mem[k], 0, sizeof eng_slab_mem[k]);
+        eng_slab_key[k] = (uint8_t)key;
+    }
+    return eng_slab_mem[k];
+}
 
 /* the engine of an id this build has none for (a retired id, or an engine left out): what the editor protocol
  * describes for it (NAMES, DESC: no presets, nothing to edit, named "-"). No track ever plays it */
