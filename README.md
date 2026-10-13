@@ -58,7 +58,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   BUILDING.md "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
-  8 voices shared between them. ALGORITHM selects the track on every page
+  12 voices shared between them (Fel-Tracker; 8 when the device is busy: voices 9 .. 12 start only while the audio's
+  measured load is under 75 %, a heavy song keeps to 8 on its own). ALGORITHM selects the track on every page
 - **Tracker** *(Fel-Tracker, by Tristano Suriani; replaces Felucca's step sequencer)*: 24 patterns of up to 64 rows (a row is a 1/16), a column per
   track; each cell a note (or OFF) with an optional chord (up to three notes: a shape such as MAJ or MIN7, or two
   intervals), an instrument (01..3F, changing the track's sound on any row) and one FX (a parameter set for that row only: LEVEL,
@@ -245,8 +246,8 @@ row. SEQ held + KNOB 4 picks a shape: NONE, MAJ, MIN, SUS2, SUS4, DIM, AUG, MAJ6
 (1 ♭3 ♭7), 5TH, 5+OCT, OCT. Holding keys together writes any chord: the first key is the note, the next two (higher, at
 most 15 semitones up) its intervals; this works for step entry and live recording. KNOB 2 moves the chord with its
 note; OFF or no note drops it. A chord sounds only when the track is POLY (the instrument's voice mode): a MONO, LEGATO
-or UNISON track plays the note alone. The four tracks share 8 voices, so chords on every track at once take voices from
-each other.
+or UNISON track plays the note alone. The tracks share 12 voices (8 when the device is busy), so chords on every track
+at once take voices from each other.
 
 **Changing the instrument on a step**: on PATTERN, KNOB 1 to the row, ALGORITHM to the column, KNOB 3 the instrument
 (`01`..`3F`; `..` keeps the one the column played last). The instrument picked is also the one new notes are entered

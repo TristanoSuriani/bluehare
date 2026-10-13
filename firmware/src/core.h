@@ -18,7 +18,11 @@
                                   * FELUCCA_TRACKS */
 
 /* ------------------------------------------------------------ sizes --- */
-#define NVOICE 8                 /* voices per part, and the budget shared by all parts */
+#define NVOICE 12                /* voices per part, and the most of the budget shared by all parts (Fel-Tracker: 12) */
+#define VOICE_BASE 8             /* (Fel-Tracker) the budget always there; NVOICE while the audio's load allows
+                                  * (voice.c voice_limit) */
+#define VOICE_LOAD_Q8 192        /* (Fel-Tracker) the load under which voices 9 .. 12 may start: 75 % (song.cpu_q8) */
+#define UNISON_MAX 8             /* UNISON's voices (its level and spread made for 8) */
 #ifndef FELUCCA_NTRK             /* (a test build may set it: tests/run_tests.sh's 8-track one) */
 #define FELUCCA_NTRK FELUCCA_TRACKS
 #endif

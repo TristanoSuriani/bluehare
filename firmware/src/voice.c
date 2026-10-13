@@ -5,7 +5,9 @@
  * Runs in the audio ISR.
  *
  * Each synth part has its own NVOICE voices (so MONO / LEGATO / UNISON keep using
- * v[0..]), but only NVOICE of all the parts' voices sound at once: a part that starts
+ * v[0..]), but only voice_limit() of all the parts' voices sound at once (Fel-Tracker: VOICE_BASE, 8, always;
+ * NVOICE, 12, while the audio interrupt's measured load stays under VOICE_LOAD_Q8, 75 %: a heavy song keeps to 8
+ * on its own, a light one gets 12; over it, a note steals as at 8, the voices sounding go on): a part that starts
  * a voice while the budget is full takes one from any part (voice_victim): the oldest
  * released voice, else the oldest extra UNISON voice, else the oldest held voice of a
  * POLY part that is not its lowest note. A voice taken from another part fades out
@@ -91,6 +93,10 @@ static uint32_t trk_vmode(const track_t *t)
 }
 
 /* ------------------------------------------------- the shared voice budget --- */
+static uint32_t voice_limit(void)                       /* (Fel-Tracker) 12 while the load allows, else 8 */
+{
+    return song.cpu_q8 < VOICE_LOAD_Q8 ? NVOICE : VOICE_BASE;
+}
 static uint32_t voices_busy(void)                       /* sounding voices of all parts (not the fading ones) */
 {
     uint32_t p, i, n = 0;
@@ -157,7 +163,7 @@ static int voice_room(track_t *t, int soft)
 {
     track_t *vp = 0;
     uint32_t k;
-    if (voices_busy() < NVOICE)
+    if (voices_busy() < voice_limit())
         return 1;
     k = voice_victim(t, soft, &vp);
     if (k == NVOICE)
@@ -196,7 +202,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
             return voice_reuse(t, &t->v[i]);
         nfree += !t->v[i].active;
     }
-    if (nfree && voices_busy() >= NVOICE) {
+    if (nfree && voices_busy() >= voice_limit()) {
         track_t *vp = 0;
         uint32_t k = voice_victim(t, 0, &vp);
         if (k < np && vp == t)
@@ -306,17 +312,19 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
     uint32_t mode = (uint32_t)t->p[P_VOICE], nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
+    if (nv > UNISON_MAX)
+        nv = UNISON_MAX;                                /* (Fel-Tracker: UNISON stays 8, as made) */
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
         int32_t k = 2 * (int32_t)i - (int32_t)(nv - 1u);   /* -7 .. 7 */
-        if (nv > 1u && nv < NVOICE)
-            k = k * (NVOICE - 1) / (int32_t)(nv - 1u);      /* fewer voices: the outer ones as wide */
+        if (nv > 1u && nv < UNISON_MAX)
+            k = k * (UNISON_MAX - 1) / (int32_t)(nv - 1u);   /* fewer voices: the outer ones as wide */
         v->fine = nv > 1u ? k * t->p[P_DETUNE] * 56 / 889 : 0;   /* up to ~±40 cents */
         if (retrig || !v->active || !v->gate) {
             if ((!v->active || v->stage == 4u) && !voice_room(t, i > 0))
                 continue;                                   /* no room for this extra UNISON voice */
             /* level: about the same sum for 8 or 4 voices at random phases */
-            voice_start(t, v, note, nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
+            voice_start(t, v, note, nv >= UNISON_MAX ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
             v->side = (uint8_t)(i & 1u);                    /* SPREAD: the detuned voices alternate */
             if (nv > 1u && i && !ENGINES[t->engine]->sampled) {   /* random start phases: */
                 static uint32_t seed = 0x1234567u;          /* in phase they stack, evenly spread they cancel */

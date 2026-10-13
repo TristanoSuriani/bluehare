@@ -81,6 +81,8 @@ static void host_tracks_init(void)                /* as felucca_init: defaults, 
             trk[k].p[i] = TP[i].def;
     tk_defaults();                                /* (1.5: the tracker's song, empty) */
     host_rows = 0;
+    song.cpu_q8 = 255;                            /* (Fel-Tracker: the host as a loaded device: the voice budget its base,
+                                                   * 8, every render as before; 12 voices: regress.c's own check) */
     song.master_q12 = 4096;
 }
 
