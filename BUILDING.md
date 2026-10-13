@@ -85,7 +85,7 @@ FELUCCA_DIST=default ./build.sh    # another one (build/felucca-default.fwsc)
 | --- | --- | --- |
 | `default` | 4 | ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM |
 | `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH (16) |
-| `foundry` | 8 | DARK HONKS RAZOR GUTS SLAG VENOM (6 of 16: the rest still to come) |
+| `foundry` | 8 | DARK HONKS WAR RAZOR GUTS RUST ANVIL DRILL SLAG VENOM CHOKE (11 of 16: the rest still to come) |
 
 With 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an

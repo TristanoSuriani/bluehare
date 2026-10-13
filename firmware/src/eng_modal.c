@@ -69,10 +69,10 @@ static void modal_note_on(track_t *t, voice_t *v)
     d->key = 0;
 }
 
-/* the coefficients for the pitch inc and the track's parameters */
-static void md_coef(md_voice_t *d, const int16_t *p, uint32_t inc)
+/* the coefficients for the pitch inc and the track's parameters, the materials' table tbl (MODAL's, ANVIL's) */
+static void md_coef(md_voice_t *d, const int16_t *p, uint32_t inc, const uint16_t (*tbl)[MD_NM])
 {
-    const uint16_t *r = MD_RATIO[(uint32_t)p[P_E0] & 7u];
+    const uint16_t *r = tbl[(uint32_t)p[P_E0] & 7u];
     uint32_t k, n = 0, tms = MD_DEC_MS[p[P_E4] & 127];
     int32_t st = 128 + p[P_E2] * 2, pos = 40 + p[P_E3] * 3, damp = p[P_E5], br = p[P_E6], beat = p[P_E7];
     for (k = 0; k < MD_NM; k++) {
@@ -105,7 +105,8 @@ static void md_coef(md_voice_t *d, const int16_t *p, uint32_t inc)
     d->n = n;
 }
 
-static void modal_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+static void md_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m, const uint16_t (*tbl)[MD_NM],
+                      uint32_t sh)
 {
     md_voice_t *d = md_of(t, v);
     const int16_t *p = t->p;
@@ -116,7 +117,7 @@ static void modal_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     key = m->inc ^ ((uint32_t)p[P_E0] << 24) ^ ((uint32_t)p[P_E2] << 17) ^ ((uint32_t)p[P_E3] << 10) ^
           ((uint32_t)p[P_E4] << 3) ^ ((uint32_t)p[P_E5] * 2654435761u) ^ ((uint32_t)p[P_E6] * 40503u) ^ ((uint32_t)p[P_E7] << 20);
     if (key != d->key || !d->key) {
-        md_coef(d, p, m->inc);
+        md_coef(d, p, m->inc, tbl);
         d->key = key | 1u;
     }
     /* the exciter, Q22 (1.0 = 2^22): MALLET a raised-cosine pulse (BRIGHT: 4 .. ~5 ms wide), PLUCK a noise burst
@@ -159,7 +160,8 @@ static void modal_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
             sp[0][1] = s2 + tt + tt;
             acc += (int64_t)c->a * vv;
         }
-        y = (int32_t)(acc >> 28);                     /* (Q28 x Q22 -> Q15 and +30 dB: the modes ring far below the strike) */
+        y = (int32_t)(acc >> sh);                     /* (Q28 x Q22 -> Q15 and +30 dB at 28: the modes ring far below the
+                                                       * strike) */
         y = soft_knee(clamp(y, -98304, 98304), 22000);
         out[i] += voice_amp(clamp(y, -32767, 32767), m, i) << 1;
     }
@@ -167,6 +169,11 @@ static void modal_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         d->s[k][0] = px_clamp(d->s[k][0], -(1 << 28), 1 << 28);
         d->s[k][1] = px_clamp(d->s[k][1], -(1 << 28), 1 << 28);
     }
+}
+
+static void modal_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+{
+    md_render(t, v, out, n, m, MD_RATIO, 28u);
 }
 
 /* {MATRL, EXCIT, STRUCT, POS, DECAY, DAMP, BRIGHT, BEAT}; MATRL 0 BAR 1 MRMBA 2 BELL 3 GLASS 4 PLATE 5 DRUM 6 TUBE

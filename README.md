@@ -465,7 +465,7 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   an octave up). KIT CLEAN, HARSH, LOFI, BROKEN; PITCH, DECAY, ROLL (a ratchet at the tempo while held, 1/32 ..
   1/128), CRUSH, VARY (each hit different), DENS (extra micro-hits), TONE
 - **FOUNDRY** *(Fel-Tracker; a distribution in the making: industrial, neuro, dark bass; 8 tracks, its own palette,
-  molten orange)*. Its engines so far:
+  molten orange)*. Its engines so far (11 of 16):
   - **DARK**: sub-bass from sines: SUB1 and SUB2 octaves under the note, a sine folder (FOLD, FENV for each note's
     bite), PUNCH (the pitch from up to two octaves above, falling over PDEC: an 808's thud), DRIVE, TONE
   - **HONKS**: brass barks and sax stabs: a reed (BRIGHT, BRTH) through two formants (F1, F2, RES), each note scooped up
@@ -478,6 +478,17 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     MELT lets sink over each note, NOISE sparks
   - **VENOM**: caustic acid: a low-pass and a band-pass that move each other's cutoff at audio rate (XMOD), RES, ENV,
     DEC, DRIVE
+  - **WAR**: an industrial kit, a key each from C2 (as DRUM): KICK, HARD, SNARE, CLAP, HAT, OPEN, TOM L, TOM H, METAL,
+    ANVIL, CRASH, ZAP; each an FM pair with a falling pitch and noise; TUNE, DECAY, TONE, METAL, NOISE, PUNCH, DIST,
+    CRUSH
+  - **CHOKE**: gated noise, hard limited: a band-pass at the key (TONE, Q), BODY, SNAP, held for GATE then shut over
+    TAIL, SWEEP (an air-brake's fall), LIMIT
+  - **RUST**: corroded noise: COLOR, TONE (a pulse at the key), RATE and BITS reduction, CORRUPT (bit flips, jumps),
+    METAL (two resonances, RES), FILTER
+  - **DRILL**: power tools: an FM tone (FM, RATIO) ramped at audio rate (RATE, DEPTH, SHAPE), ROLL (tempo-synced hits
+    while held, 1/32 .. 1/128), DRIVE, TONE
+  - **ANVIL**: heavy metal struck: MODAL's resonator with ANVIL, PIPE, GONG, CHAIN, BEAM, TANK, SLAB, CAST; HAMMER,
+    SCRAPE, BOW, CLICK
 - **KIT** *(Fel-Tracker; the IDM distribution)*: a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
   map (its lane LEVELs and the EDIT layer's lane MUTEs too). KIT: FM, METAL, BIT, GLITCH, DEEP; TUNE, DECAY, PUNCH, FM,
   SNAP, TONE move every lane; VARY gives every hit its own small differences. A closed hat chokes the open one

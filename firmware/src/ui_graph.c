@@ -569,7 +569,8 @@ static const char *eng_abbr(const char *name)
                                        {"FMPERC", "FMPC"}, {"KARPLUS", "KARP"}, {"VOSIM", "VOSM"}, {"PARTICLE", "PART"},
                                        {"CHAOS", "CHAO"}, {"DUBSIREN", "DUB"}, {"SIREN8", "DUB8"}, {"DUBCHORD", "DCHD"}, {"FMKEYS", "FMKY"}, {"BREAKS", "BRKS"},
                                        {"RISERS", "RISE"}, {"MODAL", "MODL"}, {"VECTOR", "VECT"}, {"ECHOES", "ECHO"}, {"GLITCH", "GLCH"},
-                                       {"RAZOR", "RAZR"}, {"VENOM", "VENM"}, {"HONKS", "HONK"}};
+                                       {"RAZOR", "RAZR"}, {"VENOM", "VENM"}, {"HONKS", "HONK"},
+                                       {"CHOKE", "CHOK"}, {"DRILL", "DRIL"}, {"ANVIL", "ANVL"}};
     uint32_t i;
     for (i = 0; i < sizeof A / sizeof A[0]; i++)
         if (str_eq(name, A[i][0]))

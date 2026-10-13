@@ -40,6 +40,11 @@
 #include "eng_slag.c"           /* SLAG: drifting oscillators, molten saturation (1.5, FOUNDRY) */
 #include "eng_venom.c"          /* VENOM: two filters biting each other (1.5, FOUNDRY) */
 #include "eng_honks.c"          /* HONKS: a reed through two formants (1.5, FOUNDRY) */
+#include "eng_war.c"            /* WAR: an industrial kit (1.5, FOUNDRY) */
+#include "eng_choke.c"          /* CHOKE: gated noise, hard limited (1.5, FOUNDRY) */
+#include "eng_rust.c"           /* RUST: corroded noise, metallic resonances (1.5, FOUNDRY) */
+#include "eng_drill.c"          /* DRILL: an FM tone ramped at audio rate (1.5, FOUNDRY) */
+#include "eng_anvil.c"          /* ANVIL: heavy metal struck (MODAL's resonator; 1.5, FOUNDRY) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */
