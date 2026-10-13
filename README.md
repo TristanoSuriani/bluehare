@@ -464,6 +464,20 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   TICK, ZAP, BITERR, DATA, DROP, FAX, MODEM, CRACKL, SPARK, BLIP, SHARD, BUZZ, SKIP, PING (the octave above: the same,
   an octave up). KIT CLEAN, HARSH, LOFI, BROKEN; PITCH, DECAY, ROLL (a ratchet at the tempo while held, 1/32 ..
   1/128), CRUSH, VARY (each hit different), DENS (extra micro-hits), TONE
+- **FOUNDRY** *(Fel-Tracker; a distribution in the making: industrial, neuro, dark bass; 8 tracks, its own palette,
+  molten orange)*. Its engines so far:
+  - **DARK**: sub-bass from sines: SUB1 and SUB2 octaves under the note, a sine folder (FOLD, FENV for each note's
+    bite), PUNCH (the pitch from up to two octaves above, falling over PDEC: an 808's thud), DRIVE, TONE
+  - **HONKS**: brass barks and sax stabs: a reed (BRIGHT, BRTH) through two formants (F1, F2, RES), each note scooped up
+    into (SCOOP), GROWL a ~35 Hz flutter, DRIVE
+  - **RAZOR**: up to 7 saws spread apart (VOICES, SPREAD: reeses, supersaws), SUB, NOISE, DRIVE into a resonant
+    low-pass (CUT, RES) and EDGE, a high-pass after it (thin, icy, laser cuts)
+  - **GUTS**: filthy acid: SAW, TRI or SQR through a lopsided sine folder (FOLD, ASYM), a resonant low-pass opened by
+    ENV over DEC (accents at velocity 100 and up), DRIVE
+  - **SLAG**: hot walls and drones: 2 .. 4 oscillators wandering in tune (DRIFT), HEAT's saturation, a low-pass that
+    MELT lets sink over each note, NOISE sparks
+  - **VENOM**: caustic acid: a low-pass and a band-pass that move each other's cutoff at audio rate (XMOD), RES, ENV,
+    DEC, DRIVE
 - **KIT** *(Fel-Tracker; the IDM distribution)*: a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
   map (its lane LEVELs and the EDIT layer's lane MUTEs too). KIT: FM, METAL, BIT, GLITCH, DEEP; TUNE, DECAY, PUNCH, FM,
   SNAP, TONE move every lane; VARY gives every hit its own small differences. A closed hat chokes the open one

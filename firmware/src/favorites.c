@@ -16,24 +16,27 @@ static favorites_t favorites;
  * (FAV_ROW26: presets 0 .. 63; those rows' own engines keep presets 0 .. 127 since ids 36 .., more than any has). WEST and HOOVER
  * (16, 17) star presets 8 .. 63 in the last two of those tails (their 0 .. 7 stay in [15][8], [15][9]). (Fel-Tracker)
  * 35 (VECTOR) takes the tail of 27, retired (ACID: its stars of before show on VECTOR's first presets); ids 36 .. 46
- * bytes 16 .. 23 of the same rows as 26 .. (presets 0 .. 63), whose own engines keep presets 0 .. 127 (bytes 16 .. 23
- * were their presets 128 .. 191: none has). An id past 46 needs a new settings layout */
+ * bytes 16 .. 23 of the same rows as 26 .. (presets 0 .. 63), ids 47 .. 57 their bytes 8 .. 15, whose own engines
+ * keep presets 0 .. 63 (bytes 8 .. 23 were their presets 64 .. 191: none has). An id past 57 needs a new settings
+ * layout */
 #define FAV_E16 (&favorites.factory[15][8])
 #define FAV_ROWS_FREED 1u       /* [15][12] bit 0: settings_persist.c */
 static const uint8_t FAV_ROW18[4] = {1, 4, 8, 13};
 static const uint8_t FAV_ROW26[11] = {0, 2, 3, 5, 6, 7, 9, 10, 11, 12, 14};
-typedef char fav_ids_fit[EID_COUNT <= 47u && (EID_COUNT <= 35u || EID_RETIRED(27u)) ? 1 : -1];   /* (ids 26 .. 34: FAV_ROW26[0 .. 8], 35
+typedef char fav_ids_fit[EID_COUNT <= 58u && (EID_COUNT <= 35u || EID_RETIRED(27u)) ? 1 : -1];   /* (ids 26 .. 34: FAV_ROW26[0 .. 8], 35
                                                                             * 27's; [9], [10]: 16, 17) */
 static uint8_t *favorite_byte(uint32_t engine, uint32_t preset)
 {
     if (engine >= EID_COUNT || preset >= 256u || EID_RETIRED(engine))
         return 0;
+    if (engine >= 47u)
+        return preset < 64u ? &favorites.factory[FAV_ROW26[engine - 47u]][8u + preset / 8u] : 0;
     if (engine >= 36u)
         return preset < 64u ? &favorites.factory[FAV_ROW26[engine - 36u]][16u + preset / 8u] : 0;
     if (engine >= 26u)
         return preset < 64u ? &favorites.factory[FAV_ROW26[(engine == 35u ? 27u : engine) - 26u]][24u + preset / 8u] : 0;
     if (engine < 16u)
-        return engine == 15u || preset < 128u ? &favorites.factory[engine][preset / 8u] : 0;
+        return engine == 15u || preset < 64u ? &favorites.factory[engine][preset / 8u] : 0;
     if (engine >= 22u)
         return preset < 128u ? &favorites.factory[FAV_ROW18[engine - 22u]][16u + preset / 8u] : 0;
     if (engine >= 18u)

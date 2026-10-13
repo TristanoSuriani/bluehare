@@ -58,6 +58,7 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | VECTOR (vector synthesis over WAVE's frames) | `firmware/src/eng_vector.c` |
 | ECHOES (a note and its repeats, each played anew) | `firmware/src/eng_echoes.c` |
 | GLITCH (a kit of micro-sounds) | `firmware/src/eng_glitch.c` |
+| DARK, HONKS, RAZOR, GUTS, SLAG, VENOM (FOUNDRY's) | `firmware/src/eng_dark.c`, `eng_honks.c`, `eng_razor.c`, `eng_guts.c`, `eng_slag.c`, `eng_venom.c` |
 | KIT (an FM drum kit on one part) | `firmware/src/eng_kit.c` |
 | BREAKS (synthesized breakbeat player) | `firmware/src/eng_breaks.c` |
 | RISERS (build-ups and landings) | `firmware/src/eng_risers.c` |

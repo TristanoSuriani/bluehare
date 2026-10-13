@@ -34,6 +34,12 @@
 #include "eng_vector.c"         /* VECTOR: four sources, a point moving among them (1.5) */
 #include "eng_echoes.c"         /* ECHOES: a note and its repeats, each played anew (1.5) */
 #include "eng_glitch.c"         /* GLITCH: a kit of micro-sounds (1.5) */
+#include "eng_dark.c"           /* DARK: sub-bass from sines, folded (1.5, FOUNDRY) */
+#include "eng_razor.c"          /* RAZOR: a stack of saws, a sharp edge (1.5, FOUNDRY) */
+#include "eng_guts.c"           /* GUTS: acid from a lopsided folder (1.5, FOUNDRY) */
+#include "eng_slag.c"           /* SLAG: drifting oscillators, molten saturation (1.5, FOUNDRY) */
+#include "eng_venom.c"          /* VENOM: two filters biting each other (1.5, FOUNDRY) */
+#include "eng_honks.c"          /* HONKS: a reed through two formants (1.5, FOUNDRY) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */

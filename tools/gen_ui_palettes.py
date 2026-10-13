@@ -54,6 +54,8 @@ PALETTES = [
     # orange, cyan the active thing, on warm near-black
     ("IDM",    (8, 6, 26),      (26, 20, 64),    (232, 236, 255), (0, 229, 255),   (255, 46, 190)),
     ("SIGNAL", (14, 12, 10),    (40, 34, 28),    (242, 236, 228), (255, 128, 24),  (40, 220, 255)),
+    # FOUNDRY: molten orange, a white-hot yellow for the one active thing, on scorched near-black
+    ("FOUNDRY", (12, 8, 6),     (42, 26, 18),    (246, 232, 214), (255, 100, 20),  (255, 214, 70)),
 ]
 BW = "MONO"
 BW_GREY = (82, 82, 82)             # MONO's one mid grey (RGB565 10/20/10): DIM LINE RAISE LANE
