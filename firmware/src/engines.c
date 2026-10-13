@@ -30,6 +30,8 @@
 #include "eng_dubchord.c"       /* DUBCHORD: the dub-techno chord, a whole chord in one voice (1.5) */
 #include "eng_fmkeys.c"         /* FMKEYS: FM electric pianos, bells, mallets (1.5) */
 #include "eng_wasp.c"           /* WASP: two oscillators, a gritty multimode filter (1.5) */
+#include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
+#include "eng_vector.c"         /* VECTOR: four sources, a point moving among them (1.5) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */

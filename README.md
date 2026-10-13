@@ -12,8 +12,8 @@ What Fel-Tracker adds, all by Tristano Suriani:
   distribution is the default, with **8 tracks**: the tracker, the MIXER and the quick layers show the selected
   track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
   into its first four (BUILDING.md "Distributions").
-- **Nineteen new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
-  DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, KIT, BREAKS and RISERS.
+- **Twenty-one new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
+  DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, KIT, BREAKS and RISERS.
 
 Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
 Fel-Tracker's parts are marked *(Fel-Tracker)*.
@@ -358,7 +358,8 @@ way as from the menu, in the same tabs.
 Felucca's engines, by Leo Kuroshita: ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM.
 
 Fel-Tracker's engines, by Tristano Suriani, marked *(Fel-Tracker)* below: WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC,
-KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, KIT, BREAKS and RISERS.
+KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, KIT, BREAKS
+and RISERS.
 
 A build holds the engines of its distribution (BUILDING.md "Distributions"). In the order the device lists them:
 
@@ -419,8 +420,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   the echoes bend), FDBK (runs away while held, settles when let go), MIX. ATK and REL are its envelope; the voice
   lasts until the echoes die away. It plays on the last track only (track 4; its 16-bit echo is that track's): on
   another track it shows dimmed, and a DUBSIREN sound loaded there (a pick, a song, an instrument, a user preset)
-  becomes SIREN8 with the same preset and values
-- **SIREN8** (DUBSIREN8) *(Fel-Tracker; the IDM distribution)*: DUBSIREN's 8-bit cousin, on every track. The same siren
+  becomes SIREN8 with the same preset and values where the build has it (IDM no longer does: there it plays dry)
+- **SIREN8** (DUBSIREN8) *(Fel-Tracker; in no distribution since IDM gave its slot to MODAL)*: DUBSIREN's 8-bit cousin, on every track. The same siren
   and the same 8 controls, made of fewer bits: the siren held a sample in two and cut to 8 bits after its envelope (a
   fading siren grows grittier), the echo 8 bits a sample (464 ms in 5 KB a track), each pass rougher. Its first 12
   presets are DUBSIREN's 12 in 8 bits, then ARCADE ZAP, DIRTY DUB, POCKET HORN, BROKEN TAPE
@@ -440,6 +441,16 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   rises: no thinning); from ~115 it sings by itself, past that a saturating, unsteady self-oscillation. GRIT drives
   the filter and cuts its integrators to fewer bits (16 .. 8): steps, fizz and limit cycles as it rings. 30 presets:
   leads, basses resonant and not, reeses, pads, keys, a clav, self-oscillating and gritty oddities
+- **MODAL** *(Fel-Tracker; the IDM distribution; its resonators are PHYS's, DaisySP's)*: a modal resonator. An exciter
+  strikes 12 tuned resonators, the modes of a material: MATRL BAR, MRMBA, BELL, GLASS, PLATE, DRUM, TUBE, STRING; EXCIT
+  MALLET, PLUCK, BOW (noise while the key is held), CLICK. STRUCT stretches the modes (inharmonic), POS the strike's
+  place, DECAY the ring (50 ms .. 8 s), DAMP how much sooner the highs die, BRIGHT the strike's hardness, BEAT detunes
+  the modes a little each (a bell's beating). Presets: marimba, vibes, bells, glass, plates, drums, harp, kalimba,
+  gamelan, bowed glass and bells, a drone pipe, clanks and glitches
+- **VECTOR** *(Fel-Tracker; the IDM distribution)*: vector synthesis. Four of WAVE's frames at the corners of a square
+  (SET: VOXSTR, GLASS, ORGAN, DIGI, AIR, METAL, CHOIR, SYNTH), a point moving over it: PATH HOLD (at X, Y), ENV (each
+  note round the corners, then to X, Y), LOOP, CIRCLE, EIGHT, RANDOM, RATE ~0.02 .. 5 Hz; the SHP routings move X too.
+  DTN detunes A, C against B, D; CUT, RES. Presets: evolving pads, morphing choirs and organs, keys, a moving bass
 - **KIT** *(Fel-Tracker; the IDM distribution)*: a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
   map (its lane LEVELs and the EDIT layer's lane MUTEs too). KIT: FM, METAL, BIT, GLITCH, DEEP; TUNE, DECAY, PUNCH, FM,
   SNAP, TONE move every lane; VARY gives every hit its own small differences. A closed hat chokes the open one
@@ -566,7 +577,8 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 
 - **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Fel-Tracker, meaning the tracker,
   the distributions and engine ids, the engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE,
-  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, KIT, BREAKS and RISERS, and the changes to
+  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, FMKEYS, WASP, MODAL, VECTOR, KIT, BREAKS and RISERS, and the
+  changes to
   Felucca listed in
   [AUTHORS.md](AUTHORS.md)
 - **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):

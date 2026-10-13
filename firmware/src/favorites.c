@@ -14,19 +14,21 @@ static favorites_t favorites;
  * once: settings_persist.c FAV_ROWS_FREED), their first halves (presets 0 .. 127); ids 22 .. 25 the second halves of
  * the same rows (presets 0 .. 127); ids 26 .. 36 the last 8 bytes of the rows of ids 0 .. 14 still in the layout
  * (FAV_ROW26: presets 0 .. 63; those rows' own engines keep presets 0 .. 191, more than any has). WEST and HOOVER
- * (16, 17) star presets 8 .. 63 in the last two of those tails (their 0 .. 7 stay in [15][8], [15][9]). An id past 34
+ * (16, 17) star presets 8 .. 63 in the last two of those tails (their 0 .. 7 stay in [15][8], [15][9]). (Fel-Tracker)
+ * 35 (VECTOR) takes the tail of 27, retired (ACID: its stars of before show on VECTOR's first presets). An id past 35
  * needs a new settings layout */
 #define FAV_E16 (&favorites.factory[15][8])
 #define FAV_ROWS_FREED 1u       /* [15][12] bit 0: settings_persist.c */
 static const uint8_t FAV_ROW18[4] = {1, 4, 8, 13};
 static const uint8_t FAV_ROW26[11] = {0, 2, 3, 5, 6, 7, 9, 10, 11, 12, 14};
-typedef char fav_ids_fit[EID_COUNT <= 35u ? 1 : -1];   /* (ids 26 .. 34: FAV_ROW26[0 .. 8]; [9], [10]: 16, 17) */
+typedef char fav_ids_fit[EID_COUNT <= 36u && (EID_COUNT <= 35u || EID_RETIRED(27u)) ? 1 : -1];   /* (ids 26 .. 34: FAV_ROW26[0 .. 8], 35
+                                                                            * 27's; [9], [10]: 16, 17) */
 static uint8_t *favorite_byte(uint32_t engine, uint32_t preset)
 {
     if (engine >= EID_COUNT || preset >= 256u || EID_RETIRED(engine))
         return 0;
     if (engine >= 26u)
-        return preset < 64u ? &favorites.factory[FAV_ROW26[engine - 26u]][24u + preset / 8u] : 0;
+        return preset < 64u ? &favorites.factory[FAV_ROW26[(engine == 35u ? 27u : engine) - 26u]][24u + preset / 8u] : 0;
     if (engine < 16u)
         return engine == 15u || preset < 192u ? &favorites.factory[engine][preset / 8u] : 0;
     if (engine >= 22u)

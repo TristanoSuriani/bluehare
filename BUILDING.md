@@ -83,12 +83,12 @@ FELUCCA_DIST=default ./build.sh    # another one (build/felucca-default.fwsc)
 | Distribution | Tracks | Engines |
 | --- | --- | --- |
 | `default` | 4 | ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM |
-| `idm` | 8 | SID WASP WAVE BREAKS WEST HOOVER DUBSIREN DUBSIREN8 DUBCHORD VOSIM PARTICLE CHAOS FMKEYS KIT SPEECH RISERS (16) |
+| `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS FMKEYS KIT SPEECH RISERS (16) |
 
 With 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an
 8-track song; an 8-track build loads both); the song store and the autosave hold 16 chunks; the SLICER's STUT records
-on tracks 1 .. 4 only; DUBSIREN plays on the last track, 8; MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).
+on tracks 1 .. 4 only; DUBSIREN's echo is the last track's, 8 (elsewhere it plays dry); MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).
 
 The engines a distribution leaves out are not linked. A build numbers its engines 0, 1, .. in the distribution's
 order (`core.h` `ENGI_*`, `engines.c` `ENGINES[]`), but everything stored and the editor protocol name an engine by its

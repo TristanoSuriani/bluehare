@@ -33,7 +33,7 @@ static void stream_rehash(void)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"SID", "WASP", "WAVE", "BREAKS", "WEST", "HOOVER", "DUBSIREN", "SIREN8",
+    static const char *const ORDER[] = {"SID", "WASP", "WAVE", "BREAKS", "WEST", "VECTOR", "DUBSIREN", "MODAL",
                                         "DUBCHORD", "VOSIM", "PARTICLE", "CHAOS", "FMKEYS", "KIT", "SPEECH", "RISERS"};
     uint8_t a[16] = {0};
     int bad = 0, ok = 1, sub;
@@ -42,13 +42,16 @@ int main(void)
 
     /* the table */
     ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_VOICE && !FELUCCA_ENG_TRIO && !FELUCCA_ENG_WHEEL && !FELUCCA_ENG_FM6 && !FELUCCA_ENG_ANALOG &&
-         !FELUCCA_ENG_PHYS && !FELUCCA_ENG_PHASE && !FELUCCA_ENG_NOISE && FELUCCA_ENG_HOOVER;
+         !FELUCCA_ENG_PHYS && !FELUCCA_ENG_PHASE && !FELUCCA_ENG_NOISE && !FELUCCA_ENG_HOOVER && !FELUCCA_ENG_DUBSIREN8 &&
+         FELUCCA_ENG_MODAL && FELUCCA_ENG_VECTOR;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
     ok &= eng_of_id(EID_TRIO) == ENG_NO && eng_of_id(EID_WHEEL) == ENG_NO && eng_of_id(EID_VOICE) == ENG_NO &&
           ENGI_TRIO == ENG_ABSENT && str_eq(N_ENGNAME[EID_TRIO], "-") && eng_by_id(EID_WHEEL) == &ENG_NONE;
-    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 ANALOG PHYS PHASE NOISE none", ok);
-    ok = eng_load_id(EID_HOOVER, &sub) == ENGI_HOOVER && !sub && eng_load_id(EID_WHEEL, &sub) == ENGI_WAVE && sub &&
+    bad += check("engines: IDM, 16 in its order from 0, the ids both ways; VOICE TRIO WHEEL FM6 ANALOG PHYS PHASE NOISE HOOVER SIREN8 none", ok);
+    ok = eng_load_id(EID_HOOVER, &sub) == ENGI_SID && sub && ENGI_HOOVER == ENG_ABSENT && eng_load_id(EID_WHEEL, &sub) == ENGI_WAVE && sub &&
+         eng_load_id(EID_DUBSIREN8, &sub) == ENGI_SID && sub && ENGI_DUBSIREN8 == ENG_ABSENT &&
+         eng_load_id(EID_MODAL, &sub) == ENGI_MODAL && !sub && eng_load_id(EID_VECTOR, &sub) == ENGI_VECTOR && !sub &&
          eng_load_id(EID_FM6, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_VOICE, &sub) == ENGI_SPEECH && sub && eng_load_id(EID_TRIO, &sub) == ENGI_SID && sub &&
          eng_load_id(EID_ANALOG, &sub) == ENGI_SID && sub && eng_load_id(EID_PHYS, &sub) == ENGI_WEST && sub && eng_load_id(EID_KARPLUS, &sub) == ENGI_WEST && sub &&
@@ -56,7 +59,7 @@ int main(void)
          eng_load_id(27, &sub) == ENG_NO &&
          eng_load_id(EID_WASP, &sub) == ENGI_WASP && !sub &&
          eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub && eng_load_id(13, &sub) == ENG_NO;
-    bad += check("  substitutes: WHEEL, FM6 -> WAVE; VOICE -> SPEECH; TRIO, ANALOG -> SID; PHYS, KARPLUS (gone) -> WEST; FMPERC (gone) -> KIT; retired: ACID (27)", ok);
+    bad += check("  substitutes: WHEEL, FM6 -> WAVE; VOICE -> SPEECH; TRIO, ANALOG -> SID; PHYS, KARPLUS (gone) -> WEST; FMPERC (gone) -> KIT; HOOVER, DUBSIREN8 (gone) -> SID; retired: ACID (27)", ok);
 
     /* power-on */
     reset();                                            /* (tk_defaults: the instruments of the power-on parts) */
@@ -153,66 +156,52 @@ int main(void)
         bad += check(dbg, bf[1] > 0 && bf[0] / bf[1] > 7.8 && bf[0] / bf[1] < 8.2);
     }
 
-    /* DUBSIREN on the last track alone (its 16-bit echo is that track's); on another a DUBSIREN sound is DUBSIREN8 with
-     * the same preset and values: a pick, an instrument, a song */
+    /* DUBSIREN's echo is the last track's alone; IDM has no DUBSIREN8 since MODAL took its place (engines.c
+     * eng_for_track): on another track DUBSIREN plays itself, dry. A pick, an instrument, a song */
     reset();
     set_engine_of(&trk[0], ENGI_DUBSIREN);
-    ok = trk[0].eng_req == ENGI_DUBSIREN8;
+    ok = trk[0].eng_req == ENGI_DUBSIREN && ENGI_DUBSIREN8 == ENG_ABSENT && ENGINES[ENGI_DUBSIREN]->last_track;
     set_engine_of(&trk[NPART - 1], ENGI_DUBSIREN);
-    ok &= trk[NPART - 1].eng_req == ENGI_DUBSIREN && ENGINES[ENGI_DUBSIREN]->last_track && !ENGINES[ENGI_DUBSIREN8]->last_track;
+    ok &= trk[NPART - 1].eng_req == ENGI_DUBSIREN;
     tk.instr[0].src = EID_DUBSIREN;
     tk.instr[0].preset = 4;                             /* LASER */
     tk_inst_apply(&trk[1], 1);
-    ok &= trk[1].eng_req == ENGI_DUBSIREN8 && trk[1].preset == 4u && trk[1].p[P_E4] == DUBSIREN_PRESETS[4].e[4];
-    tk_inst_apply(&trk[NPART - 1], 1);
-    ok &= trk[NPART - 1].eng_req == ENGI_DUBSIREN && trk[NPART - 1].preset == 4u;
-    bad += check("DUBSIREN: the last track's alone; a pick or an instrument on another track: DUBSIREN8, the same preset", ok);
-    for (i = 0, ok = NELEM(DUBSIREN8_PRESETS) >= NELEM(DUBSIREN_PRESETS); i < NELEM(DUBSIREN_PRESETS); i++)
-        ok &= !memcmp(DUBSIREN8_PRESETS[i].e, DUBSIREN_PRESETS[i].e, 8) && !memcmp(DUBSIREN8_PRESETS[i].env, DUBSIREN_PRESETS[i].env, 4) &&
-              !memcmp(DUBSIREN8_PRESETS[i].fx, DUBSIREN_PRESETS[i].fx, 4) && DUBSIREN8_PRESETS[i].mono == DUBSIREN_PRESETS[i].mono;
-    for (i = 0; i < 8u; i++)
-        ok &= ENG_DUBSIREN8.edit[i].min == ENG_DUBSIREN.edit[i].min && ENG_DUBSIREN8.edit[i].max == ENG_DUBSIREN.edit[i].max;
-    ok &= sizeof ds_echo == sizeof(ds_echo_t) && sizeof ds8_echo == NPART * sizeof(ds8_echo_t) && sizeof(ds8_echo_t) < 5200u;
-    bad += check("  DUBSIREN8's first 12 presets are DUBSIREN's, its controls the same; one 16-bit line, an 8-bit one a track", ok);
+    ok &= trk[1].eng_req == ENGI_DUBSIREN && trk[1].preset == 4u && trk[1].p[P_E4] == DUBSIREN_PRESETS[4].e[4];
+    bad += check("DUBSIREN: no DUBSIREN8 in IDM: on any track itself (its echo the last track's), a pick, an instrument", ok);
     reset();
-    set_engine_of(&trk[0], ENGI_DUBSIREN8);
+    set_engine_of(&trk[0], ENGI_DUBSIREN);
     apply_preset_to(&trk[0], 4);
     trk[0].p[P_E1] = 99;
     project_save(0);
-    off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + (PROJ_VER >= 3u);   /* (v3: the track count first) */    /* track 1's engine byte */
-    proj_ram[0][off] = EID_DUBSIREN;                    /* (a song with DUBSIREN on track 1, as before this rule) */
-    stream_rehash();
     project_new();
     project_load(0);
-    bad += check("  a song with DUBSIREN on track 1 loads it as DUBSIREN8, its preset and values as saved",
-                 trk[0].eng_req == ENGI_DUBSIREN8 && trk[0].preset == 4u && trk[0].p[P_E1] == 99);
-    {   /* the voices end: DUBSIREN8's 8-bit echo dies to silence; DUBSIREN forced onto track 1 plays dry, and ends */
+    bad += check("  a song with DUBSIREN on track 1 loads it so, its preset and values as saved",
+                 trk[0].eng_req == ENGI_DUBSIREN && trk[0].preset == 4u && trk[0].p[P_E1] == 99);
+    {   /* DUBSIREN on track 1 plays dry, and its voice ends once let go */
         int32_t o[2 * CTL];
-        uint32_t f, m, end[2], pk[2];
-        for (m = 0; m < 2u; m++) {
-            reset();                                    /* (no song, no instruments of the tests above) */
-            host_tracks_init();
-            host_preset(&trk[0], m ? ENGI_DUBSIREN : ENGI_DUBSIREN8, 8);   /* RUNAWAY ECHO / GRIT RUNAWAY */
-            panic_req = 0;                              /* (reset's preset loads: their release is not this note's) */
-            trk_note_on(&trk[0], 60, 110);
-            for (f = 0, pk[m] = 0, end[m] = 0; f < 30u * FS; f += CTL) {
-                uint32_t k, on = 0;
-                mix_block(o, CTL);
-                if (f / CTL == FS / CTL)                    /* let go after 1 s */
-                    trk_note_off(&trk[0], 60);
-                for (k = 0; k < CTL; k++)
-                    pk[m] = (uint32_t)abs(o[2 * k]) > pk[m] ? (uint32_t)abs(o[2 * k]) : pk[m];
-                for (k = 0; k < NVOICE; k++)
-                    on |= trk[0].v[k].active;
-                if (f > FS && !on) {
-                    end[m] = f;
-                    break;
-                }
+        uint32_t f, end = 0, pk = 0;
+        reset();                                        /* (no song, no instruments of the tests above) */
+        host_tracks_init();
+        host_preset(&trk[0], ENGI_DUBSIREN, 8);         /* RUNAWAY ECHO */
+        panic_req = 0;                                  /* (reset's preset loads: their release is not this note's) */
+        trk_note_on(&trk[0], 60, 110);
+        for (f = 0; f < 30u * FS; f += CTL) {
+            uint32_t k, on = 0;
+            mix_block(o, CTL);
+            if (f / CTL == FS / CTL)                    /* let go after 1 s */
+                trk_note_off(&trk[0], 60);
+            for (k = 0; k < CTL; k++)
+                pk = (uint32_t)abs(o[2 * k]) > pk ? (uint32_t)abs(o[2 * k]) : pk;
+            for (k = 0; k < NVOICE; k++)
+                on |= trk[0].v[k].active;
+            if (f > FS && !on) {
+                end = f;
+                break;
             }
         }
-        snprintf(dbg2, sizeof dbg2, "  DUBSIREN8 FDBK 118 let go: its voice ends after %.1f s (peak %u); DUBSIREN on track 1, dry: %.1f s (peak %u)",
-                 (end[0] - FS) / (double)FS, pk[0], (end[1] - FS) / (double)FS, pk[1]);
-        bad += check(dbg2, end[0] && end[1] && pk[0] > 2000u && pk[1] > 2000u);
+        snprintf(dbg2, sizeof dbg2, "  DUBSIREN on track 1, dry, let go: its voice ends after %.1f s (peak %u)",
+                 (end - FS) / (double)FS, pk);
+        bad += check(dbg2, end && pk > 2000u);
     }
 
     /* projects: track 1 of a stored song re-stamped TRIO (as a full build saves it) */
@@ -345,7 +334,7 @@ int main(void)
                         break;
                 }
                 fclose(f);
-                set_engine_of(&trk[5], ENGI_HOOVER);    /* (track 6 before: back to its power-on sound) */
+                set_engine_of(&trk[5], ENGI_SID);       /* (track 6 before: back to its power-on sound) */
                 trk[5].p[P_E1] = 99;
                 project_new();
                 project_load(0);

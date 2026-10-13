@@ -54,6 +54,8 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | DUBCHORD (the dub-techno chord, a whole chord in one voice) | `firmware/src/eng_dubchord.c` |
 | FMKEYS (FM keyboards) | `firmware/src/eng_fmkeys.c` |
 | WASP (two oscillators, a gritty multimode filter) | `firmware/src/eng_wasp.c` |
+| MODAL (a modal resonator; its resonators PHYS's, DaisySP's) | `firmware/src/eng_modal.c` |
+| VECTOR (vector synthesis over WAVE's frames) | `firmware/src/eng_vector.c` |
 | KIT (an FM drum kit on one part) | `firmware/src/eng_kit.c` |
 | BREAKS (synthesized breakbeat player) | `firmware/src/eng_breaks.c` |
 | RISERS (build-ups and landings) | `firmware/src/eng_risers.c` |

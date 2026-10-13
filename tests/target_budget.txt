@@ -69,3 +69,5 @@ dly_tape 123
 dubsiren8_render 300
 dubchord_render 840
 wasp_render 578
+modal_render 425
+vector_render 195
