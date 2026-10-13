@@ -135,6 +135,13 @@ static void track_dist(track_t *t, int32_t *b, uint32_t n)
  * get quieter instead of crushed. */
 #define LIM_T 18000
 static int32_t lim_env = LIM_T;
+/* (Fel-Tracker) the bus compressor in front of it (bus_comp): 3:1 above BC_T (6 dB under the limiter's threshold), the
+ * level the block's peak smoothed (~3 ms attack, ~190 ms release), the gain moving across each block. Eight tracks
+ * summed ran the limiter nearly all the time at the top of MASTER (96 % of the blocks of a full song, down to -10 dB):
+ * the compressor takes the body of the mix down smoothly, the limiter only the fast peaks */
+#define BC_T 9000
+static int32_t bc_env, bc_g = 32768;    /* the level; the gain now (Q15) */
+static void bus_comp(int32_t *out, uint32_t n);   /* (below) */
 /* MENU > USB LEVEL FIXED (for #42: record over USB with the speaker turned down): the mix goes to master_out at the
  * full MASTER level, USB audio takes that (audio.c uac_tap), and only then does MASTER scale what the DAC gets
  * (usb_fixed_dac). MASTER (0, the default): MASTER before master_out, as always (USB follows the knob) */
@@ -930,11 +937,46 @@ static __attribute__((noinline)) void perf_master(int32_t *out, uint32_t n)
     }
     perf_block(mix_l, mix_r, n);
     for (i = 0; i < n; i++) {
-        int32_t l = mix_l[i], r = mix_r[i];
+        out[2u * i] = mix_l[i];
+        out[2u * i + 1u] = mix_r[i];
+    }
+    bus_comp(out, n);                                   /* (Fel-Tracker) */
+    for (i = 0; i < n; i++) {
+        int32_t l = out[2u * i], r = out[2u * i + 1u];
         master_out(&l, &r);
         out[2u * i] = l;
         out[2u * i + 1u] = r;
     }
+}
+
+/* (Fel-Tracker) the bus compressor (above) on a block of the mix (out: L R interleaved, MASTER applied) */
+static __attribute__((noinline)) void bus_comp(int32_t *out, uint32_t n)
+{
+    uint32_t i;
+    int32_t pk = 0, g0 = bc_g, g1 = 32768, step;
+    for (i = 0; i < 2u * n; i++) {
+        int32_t a = out[i] < 0 ? -out[i] : out[i];
+        if (a > pk)
+            pk = a;
+    }
+    if (pk > bc_env)
+        bc_env += (pk - bc_env) >> 2;               /* (a block is 0.73 ms: ~3 ms) */
+    else
+        bc_env -= (bc_env >> 8) + (bc_env > 0);     /* (~190 ms) */
+    if (bc_env > BC_T) {                            /* g = (T + (env - T) / 3) / env, Q15; both under 2^16 first */
+        uint32_t e = (uint32_t)bc_env, num = BC_T + (((uint32_t)bc_env - BC_T) * 21845u >> 16);
+        while (e > 65535u) {
+            e >>= 1;
+            num >>= 1;
+        }
+        g1 = (int32_t)((num << 15) / (e | 1u));
+    }
+    step = n == CTL ? (g1 - g0) >> CTL_LOG2 : 0;
+    for (i = 0; i < 2u * n; i++) {                   /* x * g in two parts (the mix may be far above Q15): exact at */
+        int32_t g = n == CTL ? g0 + step * (int32_t)(i / 2u + 1u) : g1, x = out[i];   /* g 1, no floor of a */
+        out[i] = ((x >> 8) * g >> 7) + ((x & 255) * g >> 15);                          /* small negative one */
+    }
+    bc_g = g1;
 }
 
 static void mix_block(int32_t *out, uint32_t n)
@@ -961,8 +1003,12 @@ static void mix_block(int32_t *out, uint32_t n)
         return;
     }
     for (i = 0; i < n; i++) {
-        int32_t l = (((mix_l[i] + wet[i] + wside[i]) >> 2) * mg) >> 10;
-        int32_t r = (((mix_r[i] + wet[i] - wside[i]) >> 2) * mg) >> 10;
+        out[2u * i] = (((mix_l[i] + wet[i] + wside[i]) >> 2) * mg) >> 10;
+        out[2u * i + 1u] = (((mix_r[i] + wet[i] - wside[i]) >> 2) * mg) >> 10;
+    }
+    bus_comp(out, n);                                   /* (Fel-Tracker) */
+    for (i = 0; i < n; i++) {
+        int32_t l = out[2u * i], r = out[2u * i + 1u];
         master_out(&l, &r);
         out[2u * i] = l;
         out[2u * i + 1u] = r;

@@ -82,7 +82,7 @@ static void fresh(uint32_t e, uint32_t pi)        /* the boot state (no FX tails
     for (k = 0; k < NTRK; k++)
         pf.mg[k] = 32768;
     perf_held = perf_latched = 0;
-    lim_env = LIM_T;
+    lim_env = LIM_T; bc_env = 0; bc_g = 32768;
     dc_l = dc_r = dce_l = dce_r = 0;                      /* (the master's DC blockers: no residue of a run before) */
     vage = 0;                                             /* the seeds: every run the same (ANALOG's noise by age) */
     rng_state = 0x1234567u;
@@ -414,6 +414,9 @@ static lr_t spread_run(int32_t sp, int32_t pan, uint32_t mode, const uint8_t *no
     memset(cho_buf, 0, sizeof cho_buf);                   /* (Fel-Tracker: no tail of a render before: the buses are */
     memset(dly_buf, 0, sizeof dly_buf);                   /* stereo now, and a tail L != R) */
     memset(wside, 0, sizeof wside);
+    memset(slc, 0, sizeof slc);
+    memset(tmix, 0, sizeof tmix);
+    lim_env = LIM_T; bc_env = 0; bc_g = 32768;
     rev_clear();
     song.master_q12 = 1024;                               /* below the limiter: the levels as mixed */
     t->p[P_VOICE] = (int16_t)mode;

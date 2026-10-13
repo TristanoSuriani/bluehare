@@ -191,7 +191,7 @@ static void ui_power_on(void)
         song.g[i] = GP[i].def;
     undo_depth++;
     rng_state = 0x1234567u;                       /* (libc.c: the random numbers from their power-on seed) */
-    lim_env = LIM_T;                              /* (fx.c: the master limiter at rest, the effects silent, as at */
+    lim_env = LIM_T; bc_env = 0; bc_g = 32768;    /* (fx.c: the master limiter at rest, the effects silent, as at */
     rev_clear();                                  /* power-on: no tail of the test before sounds into this one) */
     memset(dly_buf, 0, sizeof dly_buf);
     memset(cho_buf, 0, sizeof cho_buf);

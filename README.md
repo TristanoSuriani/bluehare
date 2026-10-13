@@ -92,7 +92,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   saturate and run away into a howl past FDBK ~95; PING echoes left, then right, and so on, up to 0.74 s); master
   limiter. *(Fel-Tracker)* The chorus and ROOM are stereo (the chorus's two sides sweep in opposition; SPRING and the
   tape echoes stay mono, as the real ones are), and the delay's and the reverb's sends lose their lows below about
-  220 Hz first, so the bass and the kick stay dry and the tails stay clear
+  220 Hz first, so the bass and the kick stay dry and the tails stay clear. A gentle bus compressor (3:1, slow) sits in
+  front of the master limiter, so a full mix keeps its punch at the top of MASTER instead of being held down all the time
 - **FX layer:** hold FX for repeat, reverse, filter sweeps, tape stop, freeze, a harmonizer
   (OCT UP / OCT DN with shimmer), and mutes on the black keys;
   any white key can hold any effect (hold the key in the layer and turn PRESETS); MENU > FX LATCH makes them toggle,
