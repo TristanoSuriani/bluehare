@@ -72,6 +72,8 @@ int main(void)
         ck("engines it lacks: GUTS VENOM -> RAZOR, CHOKE -> RUST; kits (KIT, FLOOR) -> WAR; others (WAVE, VOSIM, BLISS) -> SLAG",
            ok);
     }
+    song.cpu_q8 = 255;                               /* (a loaded device) */
+    ck("VOICES 12: the voice budget 12 even at full load (4 tracks freed the CPU)", VOICE_BASE == 12u && voice_limit() == 12u);
     printf("%s\n", bad ? "FOUNDRY TEST FAILED" : "foundry test passed");
     return bad ? 1 : 0;
 }

@@ -3,8 +3,9 @@
 # (WAVE), bytebeat (BYTE), echo arpeggios (ECHOES), the speech chips (SPEECH), 8-bit sirens (DUBSIREN8).
 # The engines in display order, one a line (names: firmware/src/engine_ids.h; at most 8 since the 2026-10 plan: two a
 # track's role, kit, bass, mid, high). TRACKS: the build's track count (4 in every build); PALETTE: the one a device
-# starts with
+# starts with; VOICES 12: the voice budget 12 always (without the line: 8, 12 while the load allows)
 TRACKS 4
+VOICES 12
 PALETTE CHIP
 CHIPKIT
 SID

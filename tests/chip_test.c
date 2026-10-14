@@ -91,6 +91,8 @@ int main(void)
         ck("each console (NES, GB, SMS, C64) its own snare", same == 0u);
         ck("RATE: other frames, another hat", hit(2, 0, 64, &pk, &bl) != hit(2, 0, 120, &pk, &bl));
     }
+    song.cpu_q8 = 255;                               /* (a loaded device) */
+    ck("VOICES 12: the voice budget 12 even at full load (4 tracks freed the CPU)", VOICE_BASE == 12u && voice_limit() == 12u);
     printf("%s\n", bad ? "CHIP TEST FAILED" : "chip test passed");
     return bad ? 1 : 0;
 }

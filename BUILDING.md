@@ -96,7 +96,8 @@ FELUCCA_DIST=foundry ./build.sh    # another one (build/felucca-foundry.fwsc)
 | `ref` | 4 | the host tests' build, never an image: the IDM of before 2026-10 (SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH), the engines the shared tests were written for |
 
 Since the 2026-10 plan every build has 4 tracks and the shipped ones at most 8 engines, two for each track's role (kit,
-bass, mid, high). The code still builds with 8 tracks (`TRACKS 8`, or the tests' `-DFELUCCA_NTRK=8`): with 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
+bass, mid, high). `VOICES 12` keeps the voice budget at 12 always (FOUNDRY, WAREHOUSE, CHIP: 4 tracks freed
+their CPU); without it 8, and 12 while the audio's load stays under 75 % (IDM, until it is tried on an FM-1). The code still builds with 8 tracks (`TRACKS 8`, or the tests' `-DFELUCCA_NTRK=8`): with 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an
 8-track song; an 8-track build loads both); the song store and the autosave hold 16 chunks; the SLICER's STUT records
 on tracks 1 .. 4 only; DUBSIREN's echo is the last track's, 8 (elsewhere it plays dry); MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).

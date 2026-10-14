@@ -64,6 +64,9 @@ int main(void)
         snprintf(what, sizeof what, "every engine renders every preset (not silent): %u of %u", loud, n);
         ck(what, loud == n && n > 8u * 12u);
     }
+    song.cpu_q8 = 255;
+    ck("voices: 8 at full load, 12 while the load allows (no VOICES 12 until it is tried on an FM-1)",
+       VOICE_BASE == 8u && voice_limit() == 8u && (song.cpu_q8 = 0, voice_limit() == 12u));
     printf("%s\n", bad ? "IDM TEST FAILED" : "idm test passed");
     return bad ? 1 : 0;
 }

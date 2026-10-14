@@ -35,7 +35,8 @@
 #else
 #define NVOICE 12                /* voices per part, and the most of the budget shared by all parts (Fel-Tracker: 12) */
 #define VOICE_MAX NVOICE         /* (Fel-Tracker) the budget while the audio's load allows (voice.c voice_limit) */
-#define VOICE_BASE 8             /* (Fel-Tracker) the budget always there */
+#define VOICE_BASE FELUCCA_VOICE_BASE   /* (Fel-Tracker) the budget always there: 8, or 12 where the distribution says so
+                                  * (VOICES 12: FOUNDRY, WAREHOUSE, CHIP since 4 tracks freed their CPU) */
 #define DEV_NAT(dev, nat) (dev)
 #endif
 #include "target.h"              /* (Fel-Tracker) what differs between the device and the host targets */

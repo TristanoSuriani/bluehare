@@ -85,6 +85,8 @@ int main(void)
                 lower = 1;
         ck("SANDSTORM DIVE: let go, the pitch falls (20 semitones and more after ~450 ms)", lower);
     }
+    song.cpu_q8 = 255;                               /* (a loaded device) */
+    ck("VOICES 12: the voice budget 12 even at full load (4 tracks freed the CPU)", VOICE_BASE == 12u && voice_limit() == 12u);
     printf("%s\n", bad ? "WAREHOUSE TEST FAILED" : "warehouse test passed");
     return bad ? 1 : 0;
 }
