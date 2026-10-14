@@ -812,6 +812,8 @@ static void tk_bound(void)
             trk_width[i] = (uint8_t)(tw_has(i) && trk_width[i] <= TW_MAX ? trk_width[i] : 0u);
         if (trk_lowcut[i] >= TL_N)
             trk_lowcut[i] = 0;
+        if (trk_duck[i] > TD_KEY)
+            trk_duck[i] = 0;
     }
 }
 

@@ -473,9 +473,10 @@ const parse = {
                                                      vars (03, Fel-Tracker: the variations; 02 without them: cells with a
                                                      chord; 01 was never released) */
     const tk4 = trailer.length - 10, tk = trailer.length - 9, tk2 = trailer.length - 8;
-    if (o.uiCaps && tk4 > 0 && trailer[tk4] === 0x58 && trailer[tk4 + 1] === 4)   /* 04: WIDTH (op 11) from track wfirst */
+    if (o.uiCaps && tk4 > 0 && trailer[tk4] === 0x58 && (trailer[tk4 + 1] === 4 || trailer[tk4 + 1] === 5))   /* 04: WIDTH (op 11)
+                                                       * from track wfirst; 05 (Fel-Tracker): DUCK (op 12) too */
       o.tracker = { pats: trailer[tk4 + 2], rows: trailer[tk4 + 3], insts: trailer[tk4 + 4], ncmd: trailer[tk4 + 5],
-        order: trailer[tk4 + 6] | trailer[tk4 + 7] << 7, vars: trailer[tk4 + 8], wfirst: trailer[tk4 + 9] };
+        order: trailer[tk4 + 6] | trailer[tk4 + 7] << 7, vars: trailer[tk4 + 8], wfirst: trailer[tk4 + 9], duck: trailer[tk4 + 1] >= 5 };
     else if (o.uiCaps && tk > 0 && trailer[tk] === 0x58 && trailer[tk + 1] === 3)
       o.tracker = { pats: trailer[tk + 2], rows: trailer[tk + 3], insts: trailer[tk + 4], ncmd: trailer[tk + 5],
         order: trailer[tk + 6] | trailer[tk + 7] << 7, vars: trailer[tk + 8] };
@@ -630,6 +631,10 @@ const parse = {
         for (let k = 0; k < n; k++) { o.width.push(r.b()); o.lowcut.push(r.b()); }
         break;
       }
+      case TK.DUCK:                               /* (Fel-Tracker) NTRK x duck: 0 off, 1..15 how deep, 16 the key */
+        o.duck = [];
+        while (r.i < a.length) o.duck.push(r.b());
+        break;
     }
     return o;
   },
@@ -640,9 +645,11 @@ const parse = {
    1..63), FX command (TK.FX's letters; 0 none) and its value 0..127, and a chord: two intervals above the note (i1, i2:
    0 none, 1..15 semitones). As the device shows it: "C-4 01 C40", "C-4 MAJ 01 C40", "C-4 +2+9 01 ..." */
 const TK = {
-  STATUS: 0, PATTERN: 1, CELLS: 2, LENGTH: 3, ORDER: 4, INSTR: 5, FILTER: 6, PLAY: 7, CLEAR: 8, VAR: 9, VARCOUNT: 10, WIDTH: 11,
+  STATUS: 0, PATTERN: 1, CELLS: 2, LENGTH: 3, ORDER: 4, INSTR: 5, FILTER: 6, PLAY: 7, CLEAR: 8, VAR: 9, VARCOUNT: 10, WIDTH: 11, DUCK: 12,
   /* (Fel-Tracker) a track's WIDTH (0 off, 1..20 ms) and LOW CUT (an index into LOWCUT_HZ; core.h TL_HZ) */
   WIDTH_MAX: 20, LOWCUT_HZ: [0, 40, 60, 80, 120, 160, 240, 320],
+  /* (Fel-Tracker) a track's DUCK (core.h trk_duck): 0 off, 1..15 how deep the key ducks it, DUCK_KEY the key */
+  DUCK_MAX: 15, DUCK_KEY: 16,
   OFF: 127, ROWS_MAX: 16, CELLS_MAX: 64,
   /* (Fel-Tracker) an order entry: the pattern in bits 0..4, its variation A..D in 5..6 ("03B") */
   VLET: "ABCD", opat: (x) => x & 31, ovar: (x) => (x >> 5) & 3, oent: (p, v) => (p & 31) | (v & 3) << 5,
@@ -804,6 +811,7 @@ const req = {
   /* (Fel-Tracker) variation v of pattern p, x {bpm, mute, chance[NTRK], vo[NTRK][7]} to write it (v = the count: added) */
   tkVar: (p, v, x) => [CMD.TRACKER, x == null ? [TK.VAR, p & 0x7F, v & 3] : [TK.VAR, p & 0x7F, v & 3, ...v14enc(x.bpm), ...v14enc(x.mute),
     ...x.chance.map((c) => Math.max(0, Math.min(100, c | 0))), ...x.vo.flatMap((t) => t.flatMap((y) => v14enc(y)))]],
+  tkDuck: (track, duck) => [CMD.TRACKER, track == null ? [TK.DUCK] : [TK.DUCK, track & 7, Math.max(0, Math.min(16, duck | 0))]],
   tkWidth: (track, width, lowcut) => [CMD.TRACKER, track == null ? [TK.WIDTH] : [TK.WIDTH, track & 7, Math.max(0, Math.min(20, width | 0)), Math.max(0, Math.min(7, lowcut | 0))]],
   tkVarCount: (p, n) => [CMD.TRACKER, n == null ? [TK.VARCOUNT, p & 0x7F] : [TK.VARCOUNT, p & 0x7F, Math.max(1, Math.min(4, n | 0))]],
 };
@@ -1246,7 +1254,7 @@ function makeMockDevice(opt = {}) {
   /*MOCK-ENGSEL-END*/
     E("SET", NGO, 0),
     E("CLRSQ", NGO, 0), E("INIT", NGO, 0),
-    E("TYPE", ["ROOM", "SPRING", "HALL"], 2),       /* G_RTYPE (id 24, was G_DRCH): the reverb's model (HALL: 1.2) */
+    E("TYPE", ["ROOM", "SPRING", "HALL", "GATED"], 2),   /* G_RTYPE (id 24, was G_DRCH): the reverb's model (HALL: 1.2; GATED: Fel-Tracker) */
     E("TYPE", ["CLEAN", "TAPE", "WORN", "PING"], 0),   /* G_DTYPE (id 25, was G_DRLVL): the delay's (Fel-Tracker 1.5; PING after) */
     D("-", F.INT, 0, 0, 0),                         /* G_DRREV: inert since 1.0 */
   ];
@@ -1860,6 +1868,7 @@ function makeMockDevice(opt = {}) {
     pl: { playing: false, mode: 0, pat: 0, pos: 0, row: 0, loopPat: 0 },
     nvar: new Array(TKP).fill(1), vars: Array.from({ length: TKP }, () => Array.from({ length: 4 }, () => TK.varDefault(4))),
     width: [0, 0, 12, 12], lowcut: [0, 0, 4, 4],    /* (core.h trk_width, trk_lowcut: the last two tracks of four) */
+    duck: [0, 0, 0, 0],                             /* (core.h trk_duck) */
   };
   /* instruments 01..04: the power-on sounds (tracker.c tk_defaults: engines.c TRK_DEF) */
   TRK_DEF.slice(0, 4).forEach(([e, p], i) => { tk.instr[i] = { kind: 1, a: e, b: p }; });
@@ -2042,7 +2051,7 @@ function makeMockDevice(opt = {}) {
           b(16);
           if (st.uiCaps) { b(0x55); b(1); b(st.uiCaps); b(0x4d); b(1); b(64); b(1); 
             if (syncCaps()) { b(0x53); b(1); b(syncCaps()); if (ratchetOn()) { b(0x52); b(1); b(4); } }
-            if (tkOn()) { b(0x58); b(4); b(TKP); b(TKR); b(TKI); b(TK.FX.length); b(TKO); b(TKO >> 7); b(4); b(2); } }   /* 1.5: the tracker, last */
+            if (tkOn()) { b(0x58); b(5); b(TKP); b(TKR); b(TKI); b(TK.FX.length); b(TKO); b(TKO >> 7); b(4); b(2); } }   /* 1.5: the tracker, last */
         }
         break;
       case CMD.GET: case CMD.SET: {
@@ -2244,6 +2253,13 @@ function makeMockDevice(opt = {}) {
             else { tk.width[x[0]] = x[1]; tk.lowcut[x[0]] = x[2]; }
           }
           b(op); b(rc); b(2); for (let k = 0; k < 4; k++) { b(tk.width[k]); b(tk.lowcut[k]); }
+        } else if (op === TK.DUCK) {                /* (Fel-Tracker) editor_tracker.c EDT_DUCK */
+          if (x.length && (x.length !== 2 || x[0] >= 4)) return null;
+          if (x.length) {
+            if (x[1] > 16) rc = 1;
+            else tk.duck[x[0]] = x[1];
+          }
+          b(op); b(rc); for (let k = 0; k < 4; k++) b(tk.duck[k]);
         } else return null;
         break;
       }
@@ -2519,7 +2535,7 @@ const TEXT = {
     tkVarAdd: "+ バリエーション", tkVarDel: "最後を削除", tkTempo: "テンポ", tkKeep: "KEEP", tkMute: "MUTE", tkChance: "CHANCE %",
     tkInstr: "楽器", tkInstrHelp: "楽器 01〜3F は、エンジンのファクトリープリセットかユーザープリセットです。セルの楽器はその行からトラックの音色になります（トラックの設定は変わりません）。",
     tkNone: "なし", tkUser: "ユーザー",
-    tkSettings: "トラック設定", tkSettingsHelp: "トラックごとの設定で、楽器を切り替えても変わりません。CUTOFF / RESO を空欄にすると楽器自身の値（INST）になります。WIDTH（後半のトラックのみ、ms）は高域を片側だけ遅らせて広げ（ハース効果、低域はそのまま）、LOW CUT はトラックの低域を切ります。",
+    tkSettings: "トラック設定", tkSettingsHelp: "トラックごとの設定で、楽器を切り替えても変わりません。CUTOFF / RESO を空欄にすると楽器自身の値（INST）になります。WIDTH（後半のトラックのみ、ms）は高域を片側だけ遅らせて広げ（ハース効果、低域はそのまま）、LOW CUT はトラックの低域を切ります。 DUCK は KEY のトラック（キック）が鳴るたびに他のトラックを深さ（1〜15）だけ一瞬下げます（インダストリアルやテクノのポンプ感）。",
     tkInst: "INST", tkTrack: "トラック", tkPlaying: "再生中", tkStopped: "停止中", tkLoop: "ループ", tkSongMode: "ソング",
     tkCued: "次に再生", tkBad: "読めないセル", tkBusy: "停止してからソング再生してください", tkRow: "行", tkPos: "位置",
     tkSongSlot: "ソング", tkOneSong: "本体のソングはひとつです（パターン、ソング、楽器、トラック設定）。",
@@ -2611,7 +2627,7 @@ const TEXT = {
     tkVarAdd: "+ Variation", tkVarDel: "Remove the last", tkTempo: "Tempo", tkKeep: "KEEP", tkMute: "MUTE", tkChance: "CHANCE %",
     tkInstr: "Instruments", tkInstrHelp: "Instruments 01..3F are factory presets of an engine or user presets. A cell's instrument becomes the track's sound from that row on (the track's settings stay).",
     tkNone: "none", tkUser: "USER",
-    tkSettings: "Track settings", tkSettingsHelp: "Each track's own settings: they stay when the instrument changes. CUTOFF / RESO left empty: the instrument's own value (INST). WIDTH (the last tracks', in ms) widens a track by playing its highs a little late on one side (the Haas effect; the lows stay as they are); LOW CUT takes a track's lows away.",
+    tkSettings: "Track settings", tkSettingsHelp: "Each track's own settings: they stay when the instrument changes. CUTOFF / RESO left empty: the instrument's own value (INST). WIDTH (the last tracks', in ms) widens a track by playing its highs a little late on one side (the Haas effect; the lows stay as they are); LOW CUT takes a track's lows away. DUCK: the track set to KEY (the kick) briefly lowers the others by their depth (1..15), the pump of industrial and techno.",
     tkInst: "INST", tkTrack: "Track", tkPlaying: "playing", tkStopped: "stopped", tkLoop: "loop", tkSongMode: "song",
     tkCued: "next", tkBad: "a cell that does not read", tkBusy: "stop first, then play the song", tkRow: "row", tkPos: "position",
     tkSongSlot: "Song", tkOneSong: "The device holds one song (its patterns, order, instruments and track settings).",
@@ -2826,7 +2842,7 @@ const LAYOUT = (pe0) => [
   { t: "EDIT", engine: true, pages: [["EDIT 1", 0, [pe0, pe0 + 1, pe0 + 2, pe0 + 3]], ["EDIT 2", 0, [pe0 + 4, pe0 + 5, pe0 + 6, pe0 + 7]],
     ...(pe0 >= 91 && engName() === "DRUM" ? [["LANES", 0, P_LANES.slice(0, 4)], ["LANES 2", 0, P_LANES.slice(4)]] : [])] },   /* lane levels 83..90 */
   { t: "VOICE", pages: [["LEVEL", 0, [0]], ["VOICE", 0, [37, 38, 41, 42]], ["VOICE 2", 0, [43, 44, 39, 40]], ...(pe0 >= 96 ? [["VOICE 3", 0, [95, 8]]] : [])] },   /* SPRD 95, OCT 8 (Fel-Tracker) */
-  { t: "FX", pages: [["FX", 0, [33, 34, 35, 36]], ["SLICER", 0, [45, 46, 47, 48]], ["DLY", 1, [4, 5, 6, 7]], ["DLY 2", 1, [25]], ["REVERB", 1, [24, 8, 9]], ["CHORUS", 1, [10, 11]]] },   /* G_RTYPE 24: ROOM / SPRING / HALL; G_DTYPE 25: CLEAN / TAPE / WORN */
+  { t: "FX", pages: [["FX", 0, [33, 34, 35, 36]], ["SLICER", 0, [45, 46, 47, 48]], ["DLY", 1, [4, 5, 6, 7]], ["DLY 2", 1, [25]], ["REVERB", 1, [24, 8, 9]], ["CHORUS", 1, [10, 11]]] },   /* G_RTYPE 24: ROOM / SPRING / HALL / GATED; G_DTYPE 25: CLEAN / TAPE / WORN */
   { t: "SCL", pages: [["SCL", 0, [25, 26, 27, 28]], ...(pe0 >= 83 ? [["CHORD", 0, P_CHORD]] : [])] },   /* CHRD VOIC 81, 82 */
   { t: "ARP", pages: [["ARP", 0, [17, 18, 19, 20]], ["ARP 2", 0, [21, 22, 23, 24]]] },
   { t: "SEQ PATTERN", tab: "seqgroups", pages: [["PATTERN", 0, [29, 30, 31, 32]]] },
@@ -3602,6 +3618,7 @@ async function tkReadSong(d = dev) {
   d.tk.instr = (await tkRq(d, req.tkInstr(0, d.info.tracker.insts))).instr;
   d.tk.filter = (await tkRq(d, req.tkFilter())).filter;
   if (d.info.tracker.wfirst != null) d.tk.width = await tkRq(d, req.tkWidth());   /* (Fel-Tracker) WIDTH, LOW CUT */
+  if (d.info.tracker.duck) d.tk.duck = await tkRq(d, req.tkDuck());               /* (Fel-Tracker) DUCK */
   if (tkVarsOn(d)) {                               /* (Fel-Tracker) the patterns' counts, the variation shown */
     for (let p = 0; p < d.info.tracker.pats; p++) d.tk.nvar[p] = (await tkRq(d, req.tkVarCount(p))).nvar;
     if (tkUI.vvar >= (d.tk.nvar[tkUI.vpat] || 1)) tkUI.vvar = 0;
@@ -3824,6 +3841,19 @@ function renderTkSettings() {
         ...TK.LOWCUT_HZ.map((hz, i) => el("option", { value: i, text: hz ? `${hz} Hz` : "OFF" })));
       sel.value = String(wd.lowcut[k] || 0);
       sel.addEventListener("change", () => tkSetWidth(k, wd.width[k], +sel.value));
+      return el("td", {}, sel);
+    })));
+  }
+  if (d.tk.duck) {                                 /* (Fel-Tracker) DUCK: OFF, 1..15, KEY */
+    rows.push(el("tr", {}, el("th", { text: "DUCK" }), ...tkCols(d).map((k) => {
+      const sel = el("select", { "aria-label": `DUCK ${t("tkTrack")} ${k + 1}` },
+        ...Array.from({ length: TK.DUCK_KEY + 1 }, (_, i) => el("option", { value: i, text: !i ? "OFF" : i === TK.DUCK_KEY ? "KEY" : String(i) })));
+      sel.value = String(d.tk.duck.duck[k] || 0);
+      sel.addEventListener("change", async () => {
+        const dd = dev;
+        try { dd.tk.duck = tkFail(await tkRq(dd, req.tkDuck(k, +sel.value))); } catch (err) { report(err); }
+        if (dd === dev) renderTkSettings();
+      });
       return el("td", {}, sel);
     })));
   }

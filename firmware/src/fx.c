@@ -32,8 +32,8 @@ static struct {
     int32_t dly_lp;
     uint16_t comb_i[4], ap_i[2];
     int32_t comb_lp[4];
-    uint8_t rtype;                       /* the reverb model running (G_RTYPE: 0 ROOM, 1 SPRING, 2 HALL; native: 3 CONCERT,
-                                          * 4 CAVERN, 5 SHIMMER, fx_native.c) */
+    uint8_t rtype;                       /* the reverb model running (G_RTYPE: 0 ROOM, 1 SPRING, 2 HALL, 3 GATED; native: 4
+                                          * CONCERT, 5 CAVERN, 6 SHIMMER, fx_native.c) */
     uint16_t sp_w;                       /* SPRING: the loop's write index (SP_MASK) */
     int32_t sp_lp, sp_hp, sp_he, sp_size;   /* .. its loop low-pass, low cut (and its remainder), the loop
                                              * length (Q8, glides) */
@@ -524,10 +524,38 @@ static __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *o
 
 #ifdef FELUCCA_NATIVE
 #include "fx_native.c"                                   /* (Fel-Tracker) the native image's reverbs: CONCERT, CAVERN, SHIMMER */
-#define RT_LAST 5
+#define RT_LAST 6
 #else
-#define RT_LAST 2
+#define RT_LAST 3
 #endif
+
+/* (Fel-Tracker) GATED (G_RTYPE 3): HALL, dense, cut off sharply: a hit in the send opens the gate, it stays open for
+ * SIZE's hold (~60 .. ~500 ms) after the last one, then shuts over ~10 ms (the 80s gated snare; LINNKIT's, WAR's).
+ * DAMP as HALL's. Its stereo difference (rev_side) gated with it */
+#define GT_OPEN 1500                     /* the send's block peak that opens the gate */
+static struct { int32_t g; uint32_t hold; } gt;
+static __attribute__((noinline)) void rev_gated(const int32_t *rev_in, int32_t *out, uint32_t n)
+{
+    static int32_t t[CTL];
+    uint32_t i, hold = (60u + (uint32_t)song.g[G_RSIZE] * 35u / 10u) * (FS / 1000u);
+    int32_t pk = 0, g0 = gt.g, g1;
+    for (i = 0; i < n; i++) {
+        int32_t a = rev_in[i] < 0 ? -rev_in[i] : rev_in[i];
+        pk = a > pk ? a : pk;
+        t[i] = 0;
+    }
+    if (pk > GT_OPEN)
+        gt.hold = hold;                         /* (a hit: open for the hold from now) */
+    gt.hold = gt.hold > n ? gt.hold - n : 0u;
+    g1 = gt.hold ? (g0 + 16384 > 32767 ? 32767 : g0 + 16384) : g0 - (g0 >> 4) - (g0 > 0);   /* (~1 ms up, ~10 ms down) */
+    rev_hall(rev_in, t, n);
+    for (i = 0; i < n; i++) {
+        int32_t g = g0 + (g1 - g0) * (int32_t)(i + 1u) / (int32_t)n;
+        out[i] += mulq16(t[i], (uint32_t)g << 1);       /* (mulq16: the tail may be far above Q15) */
+        rev_side[i] = mulq16(rev_side[i], (uint32_t)g << 1);
+    }
+    gt.g = g1;
+}
 
 /* the reverb's buffers and states to silence (the model changed) */
 static void rev_clear(void)
@@ -543,6 +571,8 @@ static void rev_clear(void)
         hl.lp[i] = hl.le[i] = 0;
     fx.sp_lp = fx.sp_hp = fx.sp_he = 0;
     hl.x = hl.m = hl.s = hl.hp = hl.he = 0;
+    gt.g = 0;                                           /* (Fel-Tracker: GATED shut) */
+    gt.hold = 0;
 #ifdef FELUCCA_NATIVE
     rev_native_clear();
 #endif
@@ -561,11 +591,13 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
     for (i = 0; i < n; i++)
         t[i] = ts[i] = 0;
 #ifdef FELUCCA_NATIVE
-    if (fx.rtype >= 3u)
+    if (fx.rtype >= 4u)
         rev_native(fx.rtype, rev_in, t, ts, n);
     else
 #endif
-    if (fx.rtype == 2u)
+    if (fx.rtype == 3u)
+        rev_gated(rev_in, t, n);
+    else if (fx.rtype == 2u)
         rev_hall(rev_in, t, n);
     else if (fx.rtype)
         rev_spring(rev_in, t, n);
@@ -720,9 +752,11 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     if (rt != fx.rtype)
         rev_switch(rev_in, wet, n, rt);
 #ifdef FELUCCA_NATIVE
-    else if (rt >= 3)
+    else if (rt >= 4)
         rev_native((uint32_t)rt, rev_in, wet, wside, n);
 #endif
+    else if (rt == 3)
+        rev_gated(rev_in, wet, n);
     else if (rt == 2)
         rev_hall(rev_in, wet, n);
     else if (rt)
@@ -1036,32 +1070,100 @@ static __attribute__((noinline)) void mix_own(uint32_t k, uint32_t n, int32_t mg
 }
 #endif
 
+/* (Fel-Tracker) DUCK (core.h trk_duck): the key track's level (its share of the mix, the block's peak) as an envelope,
+ * at once up, down over ~90 ms; a ducked track's dry share and sends scaled by 1 - depth x envelope (Q12, ramped over
+ * the block from the last one's) */
+#define DK_REF 12000                     /* the key's peak that is the envelope's full (a kick at its LEVEL: ~0 dB) */
+static int32_t dk_env, dk_g[NTRK];
+static int32_t dk_pre[5][CTL];
+static void mix_track(uint32_t i, uint32_t n, int32_t mg);   /* (below) */
+static __attribute__((noinline)) void duck_key(uint32_t key, uint32_t n, int32_t mg)
+{
+    uint32_t j;
+    int32_t pk = 0, e;
+    for (j = 0; j < n; j++) {
+        dk_pre[0][j] = mix_l[j];
+        dk_pre[1][j] = mix_r[j];
+    }
+    mix_track(key, n, mg);
+    for (j = 0; j < n; j++) {
+        int32_t a = mix_l[j] - dk_pre[0][j], b = mix_r[j] - dk_pre[1][j];
+        a = a < 0 ? -a : a;
+        b = b < 0 ? -b : b;
+        pk = a > pk ? a : pk;
+        pk = b > pk ? b : pk;
+    }
+    e = pk >= DK_REF ? 32767 : (int32_t)((uint32_t)pk * 32767u / DK_REF);
+    if (e > dk_env)
+        dk_env = e;
+    else
+        dk_env -= (dk_env >> 7) + (dk_env > 0);
+}
+static __attribute__((noinline)) void mix_ducked(uint32_t i, uint32_t n, int32_t mg)
+{
+    int32_t *bufs[5] = {mix_l, mix_r, send_c, send_d, send_r};
+    int32_t g0 = dk_g[i], g1 = 4096 - (int32_t)((uint32_t)dk_env * trk_duck[i] * 3800u / (TD_MAX * 32767u)), b;   /* (32 bits) */
+    uint32_t j;
+    for (b = 0; b < 5; b++)
+        for (j = 0; j < n; j++)
+            dk_pre[b][j] = bufs[b][j];
+    mix_track(i, n, mg);
+    for (j = 0; j < n; j++) {
+        int32_t g = g0 + (g1 - g0) * (int32_t)(j + 1u) / (int32_t)n;
+        for (b = 0; b < 5; b++)
+            bufs[b][j] = dk_pre[b][j] + (int32_t)(((int64_t)(bufs[b][j] - dk_pre[b][j]) * g) >> 12);
+    }
+    dk_g[i] = g1;
+}
+
+/* one track into the mix (native: its own pair if it has one; the others' pairs silent while any has) */
+static void mix_track(uint32_t i, uint32_t n, int32_t mg)
+{
+#ifdef FELUCCA_NATIVE
+    if ((trk_own >> i) & 1u) {
+        mix_own(i, n, mg);
+        return;
+    }
+    if (trk_own) {
+        uint32_t j;
+        for (j = 0; j < n; j++)
+            trk_out[i][0][(trk_out_w + j) % TRK_OUT_N] = trk_out[i][1][(trk_out_w + j) % TRK_OUT_N] = 0.0f;
+    }
+#else
+    (void)mg;
+#endif
+    mix_part(&trk[i], n);
+}
+
 static void mix_block(int32_t *out, uint32_t n)
 {
-    uint32_t i;
+    uint32_t i, key = NPART;
     int perf;
     int32_t mg = fx_usb_fixed ? MASTER_FULL : (int32_t)song.master_q12;   /* (USB LEVEL FIXED: MASTER after) */
     for (i = 0; i < n; i++)
         send_c[i] = send_d[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
     events_block(n);
     perf = perf_begin(n);                               /* the FX hold layer at work (perform.c) */
-#ifdef FELUCCA_NATIVE
+    for (i = 0; i < NPART; i++)                       /* (Fel-Tracker) DUCK: the key first, if one ducks */
+        if (trk_duck[i] == TD_KEY) {
+            uint32_t k;
+            for (k = 0; k < NPART && !(trk_duck[k] && trk_duck[k] <= TD_MAX && k != i); k++)
+                ;
+            key = k < NPART ? i : NPART;
+            break;
+        }
+    if (key < NPART)
+        duck_key(key, n, mg);
     for (i = 0; i < NPART; i++) {
-        if ((trk_own >> i) & 1u) {
-            mix_own(i, n, mg);
+        if (i == key)
             continue;
-        }
-        if (trk_own) {
-            uint32_t j;
-            for (j = 0; j < n; j++)
-                trk_out[i][0][(trk_out_w + j) % TRK_OUT_N] = trk_out[i][1][(trk_out_w + j) % TRK_OUT_N] = 0.0f;
-        }
-        mix_part(&trk[i], n);
+        if (key < NPART && trk_duck[i] && trk_duck[i] <= TD_MAX)
+            mix_ducked(i, n, mg);
+        else
+            mix_track(i, n, mg);
     }
+#ifdef FELUCCA_NATIVE
     trk_out_w += n;
-#else
-    for (i = 0; i < NPART; i++)
-        mix_part(&trk[i], n);
 #endif
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);

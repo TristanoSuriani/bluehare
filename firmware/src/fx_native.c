@@ -85,11 +85,12 @@ static inline float rn_tap(uint32_t k, float d)
     return b[a] + (b[c] - b[a]) * f;
 }
 
-/* model rt (3 CONCERT, 4 CAVERN, 5 SHIMMER) on a block of the send: the mid added to out, the side to side */
+/* model rt (4 CONCERT, 5 CAVERN, 6 SHIMMER; 3 is GATED, fx.c) on a block of the send: the mid added to out, the side to
+ * side */
 static __attribute__((noinline)) void rev_native(uint32_t rt, const int32_t *rev_in, int32_t *out, int32_t *side,
                                                  uint32_t n)
 {
-    uint32_t m = rt - 3u, i, k;
+    uint32_t m = rt - 4u, i, k;
     float mod[RN_NL], kd, gout = RN_OUT[m] * 32768.0f, khp = 1.0f - expf(-2.0f * (float)M_PI * 100.0f / (float)FS);
     float ksh = 1.0f - expf(-2.0f * (float)M_PI * 400.0f / (float)FS);
     if (rn.made != (int32_t)m + 1 || rn.size != song.g[G_RSIZE] || rn.damp != song.g[G_RDAMP])

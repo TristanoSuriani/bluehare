@@ -293,7 +293,7 @@ int main(void)
         *tk_at(0, 63, NTRK - 1u) = tk_pack(60, 1, 0, 0);       /* the last place: past 255 at 8 tracks */
         *tk_at(TK_PATS - 3u, 40, 0) = tk_pack_ch(48, 2, 0, 0, 0x37);   /* pattern 22 (the pool's at 8), a chord */
         project_save(0);
-        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 5u;   /* (every build: the version of WIDTH and LOW CUT) */
+        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 6u;   /* (every build: the version of DUCK) */
         project_new();
         project_load(0);
         ok &= tk_note(tk_at(0, 63, NTRK - 1u)) == 60u && tk_chord(tk_at(TK_PATS - 3u, 40, 0)) == 0x37u &&

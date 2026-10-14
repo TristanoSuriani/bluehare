@@ -37,9 +37,9 @@ static const char *const N_ROUTE[] = {"CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-1
 static const char *const N_NOTE[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const N_DASH[] = {"--"};
 #ifdef FELUCCA_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "CONCERT", "CAVERN", "SHIMMER"};
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "CAVERN", "SHIMMER"};
 #else
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL"};
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED"};   /* (Fel-Tracker: GATED, every build's) */
 #endif
 static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING"};   /* G_DTYPE: the delay bus's (fx.c dly_tape;
                                                                    * PING: Fel-Tracker's, left and right in turn) */
@@ -366,7 +366,7 @@ static const page_t PAGES[] = {
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},
     {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
     {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN (Fel-Tracker) */
-    {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL */
+    {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL / GATED */
     {"CHORUS", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
     {"SCL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_TRANS}},
     {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, 0xFF, 0xFF}},   /* SCL again: the chord keys (chord.c) */

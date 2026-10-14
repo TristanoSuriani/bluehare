@@ -133,7 +133,7 @@ int main(void)
     project_new();
     ok &= trk_width[NTRK - 1u] == TW_DEF && trk_lowcut[0] == 0u;
     project_load(0);
-    ok &= proj_ram[0][PROJ_HDR] == 5u && trk_width[NTRK - 1u] == 7u && trk_lowcut[NTRK - 1u] == 2u && trk_lowcut[0] == 6u;
+    ok &= proj_ram[0][PROJ_HDR] >= 5u && trk_width[NTRK - 1u] == 7u && trk_lowcut[NTRK - 1u] == 2u && trk_lowcut[0] == 6u;
     bad += check("the store: version 5 keeps WIDTH and LOW CUT; a new song has them as at power-on", ok);
     trk_width[0] = 5;                                 /* (the rhythm section has no WIDTH) */
     trk_width[TW_FIRST] = 99;

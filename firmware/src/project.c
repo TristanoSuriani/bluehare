@@ -34,7 +34,9 @@
  * tracks x u8 chance, tracks x VO_N x u8 the sends and SLICER), every one but A in a pattern's count (tk_nvar) and an A
  * that is not as the tracks have it. Versions 2 and 3 load with every entry on A.
  * Version 5 (Fel-Tracker, each track's place in the mix): version 4, and before the hash tracks x u8 WIDTH, tracks x
- * u8 LOW CUT (core.h trk_width, trk_lowcut). Earlier versions load with them as at power-on. */
+ * u8 LOW CUT (core.h trk_width, trk_lowcut). Earlier versions load with them as at power-on.
+ * Version 6 (Fel-Tracker, ducking): version 5, and after LOW CUT tracks x u8 DUCK (core.h trk_duck). Earlier versions
+ * load with none. */
 #define PROJ_NAME_LEN 12u                      /* the name: upper-case ASCII 32..126, 0-padded; "" = none */
 #define PROJ_NO_SLOT 0xFFu
 #if NTRK == 8
@@ -43,8 +45,8 @@
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
 #endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER 5u                            /* (Fel-Tracker) 3: the track count after the name, a cell's place 2 bytes;
-                                                * 4: the variations; 5: WIDTH and LOW CUT (above) */
+#define PROJ_VER 6u                            /* (Fel-Tracker) 3: the track count after the name, a cell's place 2 bytes;
+                                                * 4: the variations; 5: WIDTH and LOW CUT; 6: DUCK (above) */
 #define PROJ_HDR 16u
 #if !FELUCCA_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
 #define ST_PAYLOAD_MAX 3840u
@@ -222,6 +224,7 @@ static void proj_write(pw_t *w, const char *name)
             }
     pw_bytes(w, trk_width, NTRK);                      /* WIDTH, LOW CUT (version 5) */
     pw_bytes(w, trk_lowcut, NTRK);
+    pw_bytes(w, trk_duck, NTRK);                       /* DUCK (version 6) */
     {
         uint32_t h = w->h;
         uint8_t b[4] = {(uint8_t)h, (uint8_t)(h >> 8), (uint8_t)(h >> 16), (uint8_t)(h >> 24)};
@@ -298,12 +301,14 @@ static int proj_read(pr_t *r, int apply)
     uint32_t i, k, p, n, np, ng, at, prev, ver, ntr = 4u;
     uint8_t nm[PROJ_NAME_LEN], b[3];
     ver = pr_u8(r);
-    if (ver < 2u || ver > 5u)
+    if (ver < 2u || ver > 6u)
         return 1;
     np = pr_u8(r);
     ng = pr_u8(r);
     for (i = 0; i < ng; i++) {
         int32_t v = pr_i16(r);
+        if (i == G_RTYPE && v > GP[i].max)
+            v = 2;                                  /* (Fel-Tracker: the native image's reverbs, on the device: HALL) */
         if (apply && i < G_COUNT && i != G_SLOT && i != G_LOAD && i != G_SAVE)
             song.g[i] = (int16_t)clamp(v, GP[i].min, GP[i].max);
     }
@@ -449,6 +454,12 @@ static int proj_read(pr_t *r, int apply)
             trk_width[k] = wd[k];
             trk_lowcut[k] = lc[k];
         }
+    }
+    if (ver >= 6u) {                                /* DUCK */
+        uint8_t dk[8];
+        pr_bytes(r, dk, ntr);
+        for (k = 0; apply && k < ntr; k++)
+            trk_duck[k] = dk[k];
     }
     {
         uint32_t h = r->h;

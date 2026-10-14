@@ -25,12 +25,14 @@
  *  11 WIDTH    [track, width, low cut]        -> the first track with WIDTH, NTRK x (width, low cut) (Fel-Tracker,
  *              INFO 58 04): width 0 off or 1..20 ms (the last tracks' alone: 0 on the others), low cut 0 off or 1..7
  *              (40 60 80 120 160 240 320 Hz); a value outside: rc 1
+ *  12 DUCK     [track, duck]                  -> NTRK x duck (Fel-Tracker, INFO 58 05): 0 off, 1..15 how deep the
+ *              track is ducked by the key, 16 the key (core.h trk_duck); past 16: rc 1
  * A cell is 6 bytes: note (0 none, 1..126 a MIDI note, 127 OFF), instrument (0 none, 1..TK_INSTS), FX command
  * (0..TKC_N-1), FX value (0..127), the chord's two intervals above the note (0 none, 1..15 semitones each). rc: 0 ok, 1 arguments (nothing written), 2 busy. A write is the editor's own: no
  * TRACKER_CHANGED for it (the shadow takes it). TRACKER_CHANGED (79, pushed with WATCH bit 2): kind (0 a pattern, 1
  * the song: order, instruments, CUT / RES), index. */
 enum { EDT_STATUS, EDT_PATTERN, EDT_CELLS, EDT_LENGTH, EDT_ORDER, EDT_INSTR, EDT_FILTER, EDT_PLAY, EDT_CLEAR,
-       EDT_VAR, EDT_VARCOUNT, EDT_WIDTH };
+       EDT_VAR, EDT_VARCOUNT, EDT_WIDTH, EDT_DUCK };
 #define EDT_VAR_N (2u + 2u + NTRK + 2u * NTRK * VO_N)   /* VARIATION's values on the wire: bytes */
 static const uint8_t EDT_VO_MAX[VO_N] = {127, 127, 127, 127, 2, 16, 5};   /* (tracker.c tk_bound's) */
 #define EDT_CELL 6u                              /* bytes a cell on the wire */
@@ -367,6 +369,22 @@ static int ed_tracker_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
             ed_b(trk_width[i]);
             ed_b(trk_lowcut[i]);
         }
+        return 1;
+    case EDT_DUCK:                                  /* (Fel-Tracker) */
+        if (na && (na != 2u || a[0] >= NTRK))
+            return 0;
+        if (na) {
+            if (a[1] > TD_KEY) {
+                rc = 1;
+            } else {
+                trk_duck[a[0]] = a[1];
+                edt_known(TK_PATS);
+                ui.force = 1;
+            }
+        }
+        ed_b(op); ed_b(rc);
+        for (i = 0; i < NTRK; i++)
+            ed_b(trk_duck[i]);
         return 1;
     default:
         return 0;

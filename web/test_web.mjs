@@ -273,9 +273,9 @@ async function editorMock() {
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 10)));
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 0)));
     const d26 = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 26)));
-    ok(rd.label === "TYPE" && rd.def === 2 && eq(rd.names, ["ROOM", "SPRING", "HALL"]) && r1.value === 2 && r0.value === 0 &&
+    ok(rd.label === "TYPE" && rd.def === 2 && eq(rd.names, ["ROOM", "SPRING", "HALL", "GATED"]) && r1.value === 3 && r0.value === 0 &&
        d26.label === "-" && d26.max === 0 && info.gcount === 27,
-      "editor: REVERB TYPE (ROOM / SPRING / HALL, global id 24; 26 still inert)");
+      "editor: REVERB TYPE (ROOM / SPRING / HALL / GATED, global id 24; 26 still inert)");
   }
   {
     /* FX > DLY 2 TYPE (G_DTYPE 25, the old drum level's id, Fel-Tracker 1.5): CLEAN (0, the default) / TAPE / WORN / PING;
@@ -886,7 +886,17 @@ async function editorTracker() {
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const tk = info.tracker;
   ok(tk && tk.pats === 24 && tk.rows === 64 && tk.insts === 63 && tk.ncmd === TK.FX.length && tk.order === 128 && tk.vars === 4 &&
-     tk.wfirst === 2 && info.ratchet === 4, "tracker: INFO 58 04 24 64 63 15 (128) 4 2, the last tag");
+     tk.wfirst === 2 && tk.duck && info.ratchet === 4, "tracker: INFO 58 05 24 64 63 16 (128) 4 2, the last tag (05: DUCK)");
+  {   /* (Fel-Tracker) DUCK (op 12) */
+    let dk = P(await rq(E.req.tkDuck()));
+    ok(dk.op === TK.DUCK && eq(dk.duck, [0, 0, 0, 0]), "tracker: DUCK: none at power-on");
+    dk = P(await rq(E.req.tkDuck(0, 16)));
+    const dk2 = P(await rq(E.req.tkDuck(2, 12)));
+    ok(!dk.rc && !dk2.rc && eq(dk2.duck, [16, 0, 12, 0]) && eq(m.tracker.duck, [16, 0, 12, 0]), "tracker: DUCK: track 1 the KEY, track 3 ducked 12");
+    ok(P(await rq([C.TRACKER, [TK.DUCK, 1, 17]])).rc === 1, "tracker: DUCK 17: rc 1");
+    await rq(E.req.tkDuck(0, 0));
+    await rq(E.req.tkDuck(2, 0));
+  }
   {   /* (Fel-Tracker) WIDTH, LOW CUT (op 11) */
     let wd = P(await rq(E.req.tkWidth()));
     ok(wd.op === TK.WIDTH && wd.first === 2 && eq(wd.width, [0, 0, 12, 12]) && eq(wd.lowcut, [0, 0, 4, 4]),

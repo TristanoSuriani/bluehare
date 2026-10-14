@@ -173,7 +173,7 @@ native image adds is its own:
 | | FM-1 (and the browser emulator) | native image |
 |---|---|---|
 | voices | 12 shared by all the tracks (8 when the CPU is busy); a new note takes one from another track | 16 on every track, its own: nothing taken from another track |
-| reverb (FX > REVERB TYPE) | ROOM, SPRING, HALL (8 lines at half the rate) | and CONCERT, CAVERN, SHIMMER (`firmware/src/fx_native.c`, below) |
+| reverb (FX > REVERB TYPE) | ROOM, SPRING, HALL (8 lines at half the rate), GATED | and CONCERT, CAVERN, SHIMMER (`firmware/src/fx_native.c`, below) |
 | delay line | 1.49 s (1/1, 2BAR, 4BAR cut short at most tempos) | 23.8 s: 4BAR down to 41 BPM; PING's right side 11.9 s |
 | engines | the distribution's | and the native engines, in a `NATIVE` distribution (`idm_native`): NEBULA, CANYON |
 | MENU > INFO CPU | the device's audio interrupt | the computer's audio thread (the FIRMWARE line reads VERSION) |

@@ -95,7 +95,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 - **SPREAD** (EDIT > VOICE 3): the voices of a POLY or UNISON track alternate left and right of its PAN; **OCT** beside it moves
   the whole sound up or down by octaves (a preset can set it: FMPERC's kicks play 3 octaves under the note)
 - **Effects:** distortion and the SLICER per track; chorus, delay and reverb sends (the reverb as
-  **HALL**, ROOM or SPRING; HALL is a smooth stereo reverb, the default on a fresh start; the delay **CLEAN**,
+  **HALL**, ROOM, SPRING or *(Fel-Tracker)* **GATED**; HALL is a smooth stereo reverb, the default on a fresh start; the delay **CLEAN**,
   **TAPE**, **WORN** or **PING** on DLY 2: TAPE and WORN a tape echo with wow and flutter, repeats that darken and
   saturate and run away into a howl past FDBK ~95; PING echoes left, then right, and so on, up to 0.74 s); master
   limiter. *(Fel-Tracker)* The chorus and ROOM are stereo (the chorus's two sides sweep in opposition; SPRING and the
@@ -309,7 +309,7 @@ once, and PLAY on this page loops its pattern in it. The tracks' own settings ne
 new variation starts as a copy of A; the web editor also removes them (its entries then play A).
 
 **SETTINGS**: each track's ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESO, FLT ENV, DIST, CHORUS, DELAY, REVERB, LEVEL,
-PAN, WIDTH and LOW CUT. PRESETS picks the row, KNOB 1–4 set it for tracks 1–4. CUTOFF and RESO hold the engine's filter
+PAN, WIDTH, LOW CUT and DUCK. PRESETS picks the row, KNOB 1–4 set it for tracks 1–4. CUTOFF and RESO hold the engine's filter
 over every instrument; INST (EDIT) leaves it to the instrument. *(Fel-Tracker)* **WIDTH** (OFF, 1–20 ms; the last four
 tracks only, or the last two of four, so the rhythm section stays in the middle) is the Haas effect: the track's highs,
 above about 250 Hz, play a little late on one side and its lows as they are on both, so it widens without hollowing
@@ -317,6 +317,10 @@ the bass in a mono sum; the late side changes track by track (track 5 sits left,
 **LOW CUT** (OFF, 40, 60, 80, 120, 160, 240, 320 Hz) takes a track's lows away after DIST and the SLICER, so pads and
 leads leave the bass its room. At power-on the wide tracks have WIDTH 12 ms and LOW CUT 120 Hz, the rhythm section
 neither; EDIT puts that back. The song keeps them.
+**DUCK** *(Fel-Tracker)* (OFF, 1–15, KEY): the track set to KEY (the kick) lowers the tracks with a depth for a moment
+each time it sounds, at once and back over about a quarter of a second (15: some 24 dB under at its loudest, 5: about
+a third down): the pump of industrial, EBM and techno, and room for the kick. Their sends go down with them; the
+reverb's and delay's tails already playing do not. Off on every track at power-on (EDIT: OFF); the song keeps it.
 
 **INSTR**: the instruments 01..3F. KNOB 1 the slot, KNOB 2 its engine (or USER), KNOB 3 its preset; the selected
 track plays it at once. EDIT empties the slot. A row's instrument sets the track's engine, its EDIT values and voice
@@ -654,7 +658,9 @@ shows empty, a song's instrument of one is dropped. The plain build is IDM.
 
 **Reverb** (FX > REVERB, TYPE): **HALL** (since 1.4, the default on a fresh start: eight delay lines feeding each
 other with slowly drifting taps, stereo, SIZE the decay up to about 4.5 s, DAMP how fast the highs die), **ROOM** (the
-default up to 1.1.5) and **SPRING**. A project plays the TYPE it was saved with.
+default up to 1.1.5), **SPRING** and *(Fel-Tracker)* **GATED**: HALL cut off sharply, the 80s gated snare. A hit in
+the send opens it; it holds for SIZE (about 60 ms at 0 to 500 ms at 127) after the last one, then shuts in about 10 ms.
+A project plays the TYPE it was saved with (one of the native image's own, on the FM-1: HALL).
 
 ## Scale keyboard
 

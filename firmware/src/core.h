@@ -416,12 +416,19 @@ static inline uint32_t song_bpm(void) { return tempo_ovr ? tempo_ovr : (uint32_t
 static const uint16_t TL_HZ[TL_N] = {0, 40, 60, 80, 120, 160, 240, 320};
 static uint8_t trk_width[NTRK], trk_lowcut[NTRK];
 static inline int tw_has(uint32_t k) { return k >= TW_FIRST && k < NTRK; }
+/* (Fel-Tracker) ducking (SETTINGS' DUCK; project.c version 6): trk_duck[k] 0 OFF, 1..TD_MAX how deep the track is ducked
+ * by the key (TD_MAX: ~24 dB under it at its loudest), TD_KEY the key itself (the kick: the first track so set; its
+ * level ducks the others, an instant attack and a ~90 ms release: fx.c mix_block). None set: nothing done */
+#define TD_MAX 15u
+#define TD_KEY 16u
+static uint8_t trk_duck[NTRK];
 static void trk_mix_defaults(void)
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++) {
         trk_width[k] = (uint8_t)(tw_has(k) ? TW_DEF : 0u);
         trk_lowcut[k] = (uint8_t)(tw_has(k) ? TL_DEF : 0u);
+        trk_duck[k] = 0;
     }
 }
 

@@ -1049,10 +1049,10 @@ bus reset (send `INFO` and `WATCH` again after reconnecting), and a backup in pr
 
 ## 1.5: the tracker (78, 79)
 
-INFO ends with `58 04 pats rows insts ncmd order-lo order-hi vars wfirst` (24, 64, 63, 15, 128 as two 7-bit bytes, 4,
+INFO ends with `58 05 pats rows insts ncmd order-lo order-hi vars wfirst` (24, 64, 63, 16, 128 as two 7-bit bytes, 4,
 then 4 with 8 tracks, 2 with 4): the patterns, their most rows, the instruments, the FX commands, the order list's most
-positions, a pattern's most variations and the first track with WIDTH. Version 04 (Fel-Tracker) adds WIDTH and LOW CUT
-(op 11); 03, one byte shorter, the variations (ops 9, 10, the order entries' letters); 02, one byte shorter still,
+positions, a pattern's most variations and the first track with WIDTH. Version 05 (Fel-Tracker) adds DUCK (op 12)
+and the FX command PLAY (15); 04 (Fel-Tracker), the same length, WIDTH and LOW CUT (op 11); 03, one byte shorter, the variations (ops 9, 10, the order entries' letters); 02, one byte shorter still,
 had the 6-byte cells below without them (01, 4-byte cells without the chord and 32 patterns, was never released: an
 editor that knows only 01 shows no tracker). The firmware side is
 `firmware/src/editor_tracker.c`; the song itself `firmware/src/tracker.c` (see the README's Tracker section).
@@ -1123,6 +1123,7 @@ hex, `T04`:
 | 8 CLEAR | pat | pat (every cell of it empty; the length stays) |
 | 9 VARIATION | pat, var (0..3) [, bpm v14, mute v14, NTRK × chance, NTRK × 7 × value v14] | pat, var, the pattern's count of variations, bpm v14 (0 the song's, 40..240), mute v14 (bit k: track k+1), NTRK × chance (0..100), NTRK × (DIST, CHORUS, DELAY, REVERB, SLICER, SL PAT, SL RATE) v14: −1 KEEP, else 0..127 for the sends, 0..2, 1..16 (not 0) and 0..5 for the SLICER's. A write at var = the count adds it; past that or a value outside its range: rc 1, nothing written. The one playing takes it at once |
 | 11 WIDTH | — (get), or track, width (0 off, 1..20 ms), low cut (0 off, 1..7: 40 60 80 120 160 240 320 Hz) | the first track with WIDTH (wfirst), NTRK × (width, low cut). rc 1: a width on a track before wfirst, a width past 20, a low cut past 7 (nothing written). WIDTH is the Haas effect: the track's highs (over ~250 Hz) late on one side, its lows as they are; the side changes track by track (the first wide track late on the right). LOW CUT: a 12 dB/oct high-pass after DIST and the SLICER |
+| 12 DUCK | — (get), or track, duck (0 off, 1..15 how deep the key ducks it, 16 the key) | NTRK × duck. rc 1: past 16 (nothing written). The KEY track (the first set so; the kick) lowers the tracks with a depth each time it sounds: at once, back over about a quarter of a second, their sends with them (core.h trk_duck) |
 | 10 VARCOUNT | pat [, count 1..4] | pat, count. Fewer: those gone back to the default, the order's entries of them on A (A plays if one of them played). More: each new one a copy of A. rc 1: a count outside 1..4 |
 
 NTRK is the track count (4, or 8 with `TRACKS 8`). A request with the wrong number of bytes, or a pattern, row,

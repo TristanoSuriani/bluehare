@@ -215,13 +215,13 @@ int main(void)
 
     /* the reverbs only the native image has */
     host_tracks_init();
-    ck("REVERB TYPE: ROOM SPRING HALL, then CONCERT CAVERN SHIMMER (a song's loads on the FM-1 as HALL: its last)",
-       GP[G_RTYPE].max == 5 && !strcmp(N_RTYPE[3], "CONCERT") && !strcmp(N_RTYPE[4], "CAVERN") &&
-       !strcmp(N_RTYPE[5], "SHIMMER"));
+    ck("REVERB TYPE: ROOM SPRING HALL GATED, then CONCERT CAVERN SHIMMER (a song's loads on the FM-1 as HALL)",
+       GP[G_RTYPE].max == 6 && !strcmp(N_RTYPE[3], "GATED") && !strcmp(N_RTYPE[4], "CONCERT") &&
+       !strcmp(N_RTYPE[5], "CAVERN") && !strcmp(N_RTYPE[6], "SHIMMER"));
     rev_run(2, &hall, &hall_side, &hall_end);
     for (i = 0; i < 3u; i++) {
         double e2, side, end, db;
-        rev_run(3u + i, &e2, &side, &end);
+        rev_run(4u + i, &e2, &side, &end);
         db = 10 * log10(e2 / hall);
         snprintf(msg, sizeof msg, "%-7s: %+.1f dB against HALL (2 s), side %.0f %% (HALL %.0f %%), silent after %.1f s "
                  "(HALL %.1f s)", RT[i], db, side * 100, hall_side * 100, end, hall_end);

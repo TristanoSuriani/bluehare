@@ -213,6 +213,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     for n in 4 8; do
         $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/width_test$n" tests/width_test.c -lm
         run "WIDTH and LOW CUT ($n tracks): the Haas effect on the last tracks, the lows whole, the cut, the store, the editor" "$OUT/width_test$n"
+        $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/duck_test$n" tests/duck_test.c -lm
+        run "DUCK ($n tracks): the key ducks a pad at once and lets it back, as deep as its DUCK; none without a key; the store, the editor" "$OUT/duck_test$n"
     done
     for n in 4 8; do
         $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/variation_test$n" tests/variation_test.c -lm
@@ -241,6 +243,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_test" tests/reverb_test.c -lm
     mkdir -p build/reverb_demo
     run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, DELAY TYPE, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
+    $CC -O2 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/gated_test" tests/gated_test.c -lm
+    run "REVERB TYPE GATED: HALL's level while it holds, cut after SIZE's hold, a longer SIZE longer, a hit opens it again" "$OUT/gated_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
     run "regression, the IDM distribution (the primary) built with 4 tracks: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
     $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm" tests/regress.c -lm
