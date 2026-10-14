@@ -209,9 +209,9 @@ CONCERT, CAVERN and SHIMMER as HALL, NEBULA as PARTICLE, CANYON as ECHOES, and a
 `tests/native_test.c` checks all of it in each distribution and prints how fast the computer renders every track full
 (about 30 times real time on an M1 Pro).
 
-## Plugin (in progress)
+## Plugin
 
-Fel-Tracker as a VST3 / AU plugin for Ableton Live and Renoise is being built in steps. The first is its core:
+Fel-Tracker as a VST3 / AU / CLAP plugin for Ableton Live and Renoise. Its core:
 
 ```
 ./build.sh
@@ -272,7 +272,18 @@ through a queue the audio thread plays (`fel_host_ui_*`, each button or key chan
 the native image does). `FEL_UI_SHOT=FILE.ppm` writes its first frame with the screen to a file (a look without a
 screen capture: `make -C plugin/src jack` builds it as a standalone app).
 
-Next: the install script, the validators' last checks.
+Installing it on this Mac (the user's plug-in folders, no administrator needed):
+
+```
+plugin/install.sh              # build (universal), sign ad hoc, install VST3, AU and CLAP, run auval
+plugin/install.sh --no-build   # install what build/plugin holds
+plugin/install.sh --remove     # take them out again
+```
+
+Then rescan the plug-ins in the host (Live: Settings > Plug-Ins > Rescan; Renoise: Preferences > Plug/Misc >
+Rescan). The bundles are signed ad hoc (no developer certificate): this Mac loads them; another Mac may ask for them to
+be allowed (System Settings > Privacy & Security). Checked: auval on the AU, pluginval (strictness 8, its editor
+tests too) on the VST3 and the AU, the Intel half under Rosetta (pluginval, strictness 5).
 
 ## Tests
 
