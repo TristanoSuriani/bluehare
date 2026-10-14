@@ -949,23 +949,12 @@ static int as_get(uint32_t chunk)                /* chunk of the complete autosa
 #endif
 
 /* main loop, every pass (after settings_poll) */
-static void autosave_poll(void)
+/* (Fel-Tracker) the autosave written now, the music's signature sig (autosave_poll when the device is quiet; the plugin's
+ * host, plugin/core: a state taken) */
+static void autosave_write(uint32_t sig)
 {
 #if FELUCCA_FLASH
-    uint32_t sig;
     pw_t w;
-    if (!flash_ok || fm1_ms - as.poll < AS_POLL_MS)
-        return;
-    as.poll = fm1_ms;
-    sig = autosave_sig();
-    if (sig != as.seen || !autosave_quiet()) {
-        as.seen = sig;
-        as.t = fm1_ms;
-        return;
-    }
-    if (sig == as.saved || (ui_prefs & PREF_RESTORE_OFF) || fm1_ms - as.t < AS_IDLE_MS ||
-        (as.wrote && fm1_ms - as.last < (as.err ? AS_RETRY_MS : AS_GAP_MS)))
-        return;
     as.last = fm1_ms;
     as.wrote = 1;
     memset(&w, 0, sizeof w);
@@ -999,6 +988,28 @@ static void autosave_poll(void)
         as.saved = sig;
         as.writes++;
     }
+#else
+    (void)sig;
+#endif
+}
+
+static void autosave_poll(void)
+{
+#if FELUCCA_FLASH
+    uint32_t sig;
+    if (!flash_ok || fm1_ms - as.poll < AS_POLL_MS)
+        return;
+    as.poll = fm1_ms;
+    sig = autosave_sig();
+    if (sig != as.seen || !autosave_quiet()) {
+        as.seen = sig;
+        as.t = fm1_ms;
+        return;
+    }
+    if (sig == as.saved || (ui_prefs & PREF_RESTORE_OFF) || fm1_ms - as.t < AS_IDLE_MS ||
+        (as.wrote && fm1_ms - as.last < (as.err ? AS_RETRY_MS : AS_GAP_MS)))
+        return;
+    autosave_write(sig);
 #endif
 }
 

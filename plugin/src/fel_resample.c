@@ -70,6 +70,12 @@ void fel_rs_reset(fel_rs_t *rs)
     memset(rs->buf, 0, sizeof rs->buf);
     rs->fill = rs->taps / 2u - 1u;                   /* the taps before the first input: silence */
     rs->pos = (uint64_t)(rs->taps / 2u - 1u) << 32;
+    rs->pulled = 0;
+}
+
+double fel_rs_where(const fel_rs_t *rs)
+{
+    return (double)rs->pulled - (double)rs->fill + (double)rs->pos / 4294967296.0;   /* (buf[0]: input pulled - fill) */
 }
 
 uint32_t fel_rs_latency(const fel_rs_t *rs)
@@ -79,23 +85,24 @@ uint32_t fel_rs_latency(const fel_rs_t *rs)
 
 static void compact(fel_rs_t *rs)                    /* the frames no output needs again: gone */
 {
-    uint32_t first = (uint32_t)(rs->pos >> 32) + 1u - rs->taps / 2u;
+    uint32_t first = (uint32_t)(rs->pos >> 32) + 1u - rs->taps / 2u, c;
     if (!first)
         return;
-    memmove(rs->buf[0], rs->buf[0] + first, sizeof(float) * (rs->fill - first));
-    memmove(rs->buf[1], rs->buf[1] + first, sizeof(float) * (rs->fill - first));
+    for (c = 0; c < FEL_RS_MAXCH; c++)
+        memmove(rs->buf[c], rs->buf[c] + first, sizeof(float) * (rs->fill - first));
     rs->fill -= first;
     rs->pos -= (uint64_t)first << 32;
 }
 
-void fel_rs_process(fel_rs_t *rs, float *l, float *r, uint32_t n, fel_rs_pull pull, void *ctx)
+void fel_rs_process(fel_rs_t *rs, float *const *out, uint32_t nch, uint32_t n, fel_rs_pull pull, void *ctx)
 {
     const uint32_t taps = rs->taps, h = taps / 2u;
-    uint32_t o = 0;
+    uint32_t o = 0, c;
+    float *in[FEL_RS_MAXCH];
+    nch = nch > FEL_RS_MAXCH ? FEL_RS_MAXCH : nch;
     while (o < n) {
         /* the input the rest of the outputs need, as much as the buffer holds */
-        uint64_t last = rs->pos + rs->step * (uint64_t)(n - o - 1u);
-        uint32_t need = (uint32_t)(last >> 32) + h + 1u;
+        uint32_t need = (uint32_t)((rs->pos + rs->step * (uint64_t)(n - o - 1u)) >> 32) + h + 1u;
         if (need > rs->fill) {
             if (need > FEL_RS_BUF)
                 compact(rs);
@@ -103,7 +110,12 @@ void fel_rs_process(fel_rs_t *rs, float *l, float *r, uint32_t n, fel_rs_pull pu
             if (need > FEL_RS_BUF)
                 need = FEL_RS_BUF;
             if (need > rs->fill) {
-                pull(ctx, rs->buf[0] + rs->fill, rs->buf[1] + rs->fill, need - rs->fill);
+                for (c = 0; c < FEL_RS_MAXCH; c++)
+                    in[c] = rs->buf[c] + rs->fill;
+                for (c = nch; c < FEL_RS_MAXCH; c++)    /* (the channels not asked for: silence, for later) */
+                    memset(in[c], 0, sizeof(float) * (need - rs->fill));
+                pull(ctx, in, nch, need - rs->fill);
+                rs->pulled += need - rs->fill;
                 rs->fill = need;
             }
         }
@@ -113,19 +125,18 @@ void fel_rs_process(fel_rs_t *rs, float *l, float *r, uint32_t n, fel_rs_pull pu
             uint32_t fr = (uint32_t)(rs->pos & 0xFFFFFFFFu), ph = (uint32_t)(((uint64_t)fr * FEL_RS_PHASES) >> 32);
             float a = (float)(((uint64_t)fr * FEL_RS_PHASES) & 0xFFFFFFFFu) * (1.0f / 4294967296.0f);
             const float *k0 = &rs->kernel[ph * taps], *k1 = k0 + taps;
-            const float *x0, *x1;
-            float sl = 0.0f, sr = 0.0f;
+            float k[FEL_RS_MAXTAPS];
             if (i + h >= rs->fill)
                 break;
-            x0 = rs->buf[0] + i + 1u - h;
-            x1 = rs->buf[1] + i + 1u - h;
-            for (j = 0; j < taps; j++) {
-                float k = k0[j] + a * (k1[j] - k0[j]);
-                sl += k * x0[j];
-                sr += k * x1[j];
+            for (j = 0; j < taps; j++)
+                k[j] = k0[j] + a * (k1[j] - k0[j]);
+            for (c = 0; c < nch; c++) {
+                const float *x = rs->buf[c] + i + 1u - h;
+                float s = 0.0f;
+                for (j = 0; j < taps; j++)
+                    s += k[j] * x[j];
+                out[c][o] = s;
             }
-            l[o] = sl;
-            r[o] = sr;
             rs->pos += rs->step;
         }
     }

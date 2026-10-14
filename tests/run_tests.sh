@@ -354,8 +354,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "plugin instances: = the native image, independent (in turn, two threads), flash apart, the four side by side, copies kept and reused" \
         "$OUT/plugin_core_test" "$OUT/cores" "$OUT/plugin_core_ref.f32"
     cc -O2 -std=gnu11 -w -o "$OUT/plugin_host_test" tests/plugin_host_test.c plugin/src/fel_host.c plugin/src/fel_resample.c \
-        plugin/core/fel_loader.c -lpthread -lm
-    run "plugin host: the resampler (48 .. 96 and 32 kHz: flat, clean, not delayed, any blocks), the chooser, notes at their frame, a swap while playing" \
+        plugin/core/fel_loader.c -lpthread -lm -lz
+    run "plugin host: the resampler, the chooser, notes at their frame, a swap while playing; the host's transport (start, 60 s at 48 kHz, a loop), track outputs, the song saved and loaded" \
         "$OUT/plugin_host_test" "$OUT/cores"
 fi
 
@@ -367,7 +367,7 @@ else
     run "plugin: VST3, AU and CLAP build, the cores in their bundles (plugin/build.sh -> build/plugin)" \
         env FEL_ARCH="-arch $(uname -m)" sh plugin/build.sh
     cc -O2 -std=gnu11 -w -Iplugin/dpf/distrho/src -o "$OUT/plugin_clap_test" tests/plugin_clap_test.c -lm
-    run "plugin, as a host loads it (CLAP): an instrument, its latency, notes, its parameters, the distribution in its state, two instances" \
+    run "plugin, as a host loads it (CLAP): an instrument, its latency, 9 stereo buses, notes, a track on its own bus, its parameters, the state, two instances" \
         "$OUT/plugin_clap_test" build/plugin/Fel-Tracker.clap
     PV=${PLUGINVAL:-build/tools/pluginval-dl/pluginval.app/Contents/MacOS/pluginval}
     if [ -x "$PV" ]; then
@@ -383,7 +383,7 @@ if ! command -v sdl2-config >/dev/null 2>&1 || [ ! -f build/gen/felucca_tables.h
     echo "== skip the native image (needs SDL2: brew install sdl2)"
 else
     run "native image: the desktop application builds (native/build.sh -> build/native)" sh native/build.sh
-    run "native image: boots (dummy drivers), the screen draws, the clock follows the audio, HOME lit, a key sounds" \
+    run "native image: boots (dummy drivers), the screen draws, the clock follows the audio, HOME lit, a key sounds, MASTER dragged and scrolled" \
         build/native/fel-tracker-idm --selftest
     run "native image, IDM NATIVE: builds (native/build.sh idm_native)" sh native/build.sh idm_native
     run "native image, IDM NATIVE: boots, the screen draws, the clock follows the audio, HOME lit, a key sounds" \

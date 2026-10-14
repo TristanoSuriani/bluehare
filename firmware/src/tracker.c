@@ -458,6 +458,40 @@ static void tk_next_pattern(void)
     }
 }
 
+#ifdef FELUCCA_NATIVE
+/* (Fel-Tracker) the plugin's host put the song somewhere (seq.c seq_locate, after tk_start): s samples from where PLAY
+ * starts it (LOOP row 0 of the pattern, SONG the position picked), round and round as it plays; the rows' own lengths
+ * (the swing). A place inside a row: that row is not played, the next one is, on time; less than `late` samples
+ * into it, it plays at once (the host's start reaches the device a block or two after it: its first row) */
+static void tk_locate(uint64_t s, uint32_t late)
+{
+    uint64_t cyc = 0;
+    uint32_t i, r, len;
+    if (tk_pl.mode == TK_SONG)
+        for (i = 0; i < tk.norder; i++)
+            for (r = 0; r < tk_len(TK_OPAT(tk.order[i])); r++)
+                cyc += tk_row_len(r);
+    else
+        for (r = 0; r < tk_len(tk_pl.pat); r++)
+            cyc += tk_row_len(r);
+    tk_pl.row = 0;
+    if (!cyc)
+        return;
+    s %= cyc;
+    while (s >= (len = tk_row_len(tk_pl.row))) {
+        s -= len;
+        if (tk_pl.row + 1u >= tk_len(tk_pl.pat)) {
+            tk_pl.row = 0;
+            tk_next_pattern();
+        } else {
+            tk_pl.row++;
+        }
+    }
+    tk_pl.row_pos = (uint32_t)s;
+    tk_pl.fresh = s < late;                     /* (tk_tick plays it, row_pos kept: the next rows on time) */
+}
+#endif
+
 /* MENU > CONTROL > STEP PREVIEW (ui_tracker.c): with the transport stopped, the cell the cursor lands on sounds once,
  * as its row would play it (its instrument, its note) for a 1/16. tk_aud_req: pattern << 16 | row << 8 | track + 1 */
 static volatile uint32_t tk_aud_req;

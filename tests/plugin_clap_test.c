@@ -9,6 +9,7 @@
  * its own.
  *   plugin_clap_test BUNDLE.clap */
 #include "clap/entry.h"
+#include "clap/ext/audio-ports.h"
 #include "clap/ext/latency.h"
 #include "clap/ext/params.h"
 #include "clap/ext/state.h"
@@ -66,33 +67,45 @@ static void param(evlist_t *l, uint32_t frame, clap_id id, double v)
     p->value = v;
 }
 
-/* blocks of 256 frames at 48 kHz: the energy of the n blocks, the events in the first */
-static double run(const clap_plugin_t *p, uint32_t blocks, evlist_t *first)
+/* blocks of 256 frames at 48 kHz, the plugin's 9 stereo buses: the main's energy over the n blocks (the events in
+ * the first), track 1's own pair's into *t1 */
+static double run2(const clap_plugin_t *p, uint32_t blocks, evlist_t *first, double *t1)
 {
-    float l[256], r[256], *ch[2] = {l, r};
-    double e = 0.0;
-    uint32_t b, i;
+    static float bufs[18][256];
+    float *ch[18];
+    double e = 0.0, et = 0.0;
+    uint32_t b, i, k;
     evlist_t none = {0};
-    clap_audio_buffer_t out = {0};
+    clap_audio_buffer_t out[9];
     clap_input_events_t in = {0, ev_size, ev_get};
     clap_output_events_t oe = {0, out_push};
     clap_process_t pr = {0};
-    out.data32 = ch;
-    out.channel_count = 2;
+    memset(out, 0, sizeof out);
+    for (k = 0; k < 18u; k++)
+        ch[k] = bufs[k];
+    for (k = 0; k < 9u; k++) {
+        out[k].data32 = ch + 2u * k;
+        out[k].channel_count = 2;
+    }
     pr.frames_count = 256;
-    pr.audio_outputs = &out;
-    pr.audio_outputs_count = 1;
+    pr.audio_outputs = out;
+    pr.audio_outputs_count = 9;
     pr.in_events = &in;
     pr.out_events = &oe;
     for (b = 0; b < blocks; b++) {
         in.ctx = b == 0 && first ? first : &none;
         pr.steady_time = (int64_t)b * 256;
         p->process(p, &pr);
-        for (i = 0; i < 256; i++)
-            e += (double)l[i] * l[i] + (double)r[i] * r[i];
+        for (i = 0; i < 256; i++) {
+            e += (double)bufs[0][i] * bufs[0][i] + (double)bufs[1][i] * bufs[1][i];
+            et += (double)bufs[2][i] * bufs[2][i] + (double)bufs[3][i] * bufs[3][i];
+        }
     }
+    if (t1)
+        *t1 = et;
     return e;
 }
+static double run(const clap_plugin_t *p, uint32_t blocks, evlist_t *first) { return run2(p, blocks, first, 0); }
 
 typedef struct { char buf[4096]; size_t n, at; } blob_t;
 static int64_t os_write(const clap_ostream_t *s, const void *b, uint64_t n)
@@ -143,6 +156,7 @@ int main(int argc, char **argv)
     const clap_plugin_latency_t *lat;
     const clap_plugin_params_t *par;
     double quiet, loud;
+    setvbuf(stdout, 0, _IONBF, 0);
     if (argc < 2) {
         fprintf(stderr, "usage: plugin_clap_test BUNDLE.clap\n");
         return 2;
@@ -172,11 +186,19 @@ int main(int argc, char **argv)
     snprintf(what, sizeof what, "the latency reported: %u frames (the resampler's taps at 48 kHz)", lat ? lat->get(p) : 0u);
     ck(what, lat && lat->get(p) == 52u);
 
+    {
+        const clap_plugin_audio_ports_t *ap = p->get_extension(p, CLAP_EXT_AUDIO_PORTS);
+        clap_audio_port_info_t a0, a8;
+        int ok = ap && ap->count(p, false) == 9u && ap->get(p, 0, false, &a0) && ap->get(p, 8, false, &a8);
+        snprintf(what, sizeof what, "outputs: %u stereo buses, \"%s\" .. \"%s\"", ap ? ap->count(p, false) : 0u, ok ? a0.name : "?",
+                 ok ? a8.name : "?");
+        ck(what, ok && a0.channel_count == 2u && !strcmp(a0.name, "Main") && !strcmp(a8.name, "Track 8"));
+    }
     par = p->get_extension(p, CLAP_EXT_PARAMS);
     {
         clap_param_info_t info[2];
         char text[64] = "";
-        int ok = par && par->count(p) == 2u && par->get_info(p, 0, &info[0]) && par->get_info(p, 1, &info[1]);
+        int ok = par && par->count(p) == 10u && par->get_info(p, 0, &info[0]) && par->get_info(p, 1, &info[1]);
         if (ok)
             ok = par->value_to_text(p, info[1].id, 2.0, text, sizeof text);
         snprintf(what, sizeof what, "parameters: \"%s\" 0 .. %.0f, \"%s\" 0 .. %.0f (2 = \"%s\")", ok ? info[0].name : "?",
@@ -195,6 +217,25 @@ int main(int argc, char **argv)
     }
     snprintf(what, sizeof what, "silent without notes (%.1e), two MIDI notes sound (%.1f)", quiet, loud);
     ck(what, quiet < 1e-6 && loud > 1.0);
+    {
+        evlist_t e = {0}, on = {0}, off = {0};
+        double t1, m1;
+        midi(&off, 0, 0x80, 60, 0);
+        midi(&off, 1, 0x81, 43, 0);
+        run(p, 400, &off);
+        param(&e, 0, 2, 1.0);                        /* TRACK 1 OUTPUT: OWN */
+        run(p, 1, &e);
+        midi(&on, 0, 0x90, 60, 110);
+        m1 = run2(p, 100, &on, &t1);
+        snprintf(what, sizeof what, "TRACK 1 OUTPUT set to OWN: a note on channel 1 on the Track 1 bus (%.1f), the main has only its FX (%.1f)", t1, m1);
+        ck(what, t1 > 1.0 && m1 < 0.5 * t1);
+        e.n = 0;
+        param(&e, 0, 2, 0.0);
+        off.n = 0;
+        midi(&off, 0, 0x80, 60, 0);
+        run(p, 400, &off);
+        run(p, 1, &e);
+    }
 
     {
         blob_t b = save(p), c;

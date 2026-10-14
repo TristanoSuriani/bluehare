@@ -12,7 +12,7 @@
 #define FEL_CORE_H
 #include <stdint.h>
 
-#define FEL_CORE_ABI 2u                  /* raised when the table changes: a core of another ABI is refused */
+#define FEL_CORE_ABI 3u                  /* raised when the table changes: a core of another ABI is refused */
 
 typedef struct {
     uint32_t abi;                        /* FEL_CORE_ABI */
@@ -48,6 +48,19 @@ typedef struct {
     uint32_t (*now_ms)(void);            /* the device's clock */
     uint32_t (*playing)(void);
     void (*test_heavy)(void);            /* (tests: the emulator's heavy song into the tracks) */
+    /* the host's transport, from the core's frame `frame` on (frames since boot, as render gives them): playing or
+     * not, the tempo, the beat it is at that frame. Once called the device follows it, always: its BPM, its CLOCK
+     * and PLAY are the host's (seq.c host_block); the song from where PLAY starts it, beat 0 */
+    void (*transport)(uint32_t playing, double bpm, double beats, uint64_t frame);
+    /* the tracks' own outputs: bit k = track k into a pair of its own, out of the main mix (fx.c trk_own) */
+    void (*outputs)(uint32_t mask);
+    /* render with them: out[0], out[1] the main, out[2 + 2k], out[3 + 2k] track k (k < tracks; silent if it is not
+     * its own), n frames */
+    void (*render_multi)(float *const *out, uint32_t n);
+    /* the music written to the flash now, as the autosave writes it (project.c autosave_write), if it changed since
+     * it was last: what a saved state then holds (the device itself waits until it is quiet). 1 = written */
+    uint32_t (*save_now)(void);
+    void (*test_ticks)(void);            /* (tests: a short dry closed hat on every row of pattern 0, LOOP) */
 } fel_core_api_t;
 
 typedef const fel_core_api_t *(*fel_core_api_fn)(void);

@@ -159,8 +159,9 @@ Fel-Tracker as a desktop application (`native/felucca_native.c`): the same simul
 (`web/emu/felucca_web.c`), compiled natively, in a window of its own (SDL2; on macOS linked into the program, so the
 `.app` needs nothing installed), the computer's sound out at 44.1 kHz, MIDI in from every source (CoreMIDI on macOS),
 its saves in a file (`~/Library/Application Support/Fel-Tracker/<distribution>/flash.bin` on macOS). The window: the
-screen at three times its size, the knobs (the mouse wheel over one turns it; MASTER the level), the buttons and the
-keys (click and hold), lit as the device lights them; the computer keyboard as on the emulator page (Esc quits). Needs
+screen at three times its size, the knobs (MASTER the level), the buttons and the
+keys (click and hold), lit as the device lights them; a knob turns when dragged up or down, or with the wheel or the
+trackpad over it; the computer keyboard as on the emulator page (Esc quits). Needs
 SDL2: `brew install sdl2` (Linux: libsdl2-dev). It is the base for what the device cannot hold: heavier engines and
 effects run on the computer's CPU and memory, not the FM-1's; a VST built on it is planned.
 
@@ -237,17 +238,32 @@ plugin/build.sh                # -> build/plugin/Fel-Tracker.vst3, .component (A
 plugin/get_pluginval.sh        # (once) pluginval, which tests/run_tests.sh then runs on the VST3
 ```
 
-An instrument: MIDI in, stereo out. Its parameters: MASTER (the device's pot) and DISTRIBUTION, the chooser (IDM
+An instrument: MIDI in, 18 outputs (the main pair, then a pair a track: nine stereo buses, "Main", "Track 1" ..; the
+AU one bus of 18, the main its first pair). Its parameters: MASTER (the device's pot); DISTRIBUTION, the chooser (IDM
 NATIVE first, then IDM, FOUNDRY, WAREHOUSE: the cores found in the bundle's `Contents/Resources/cores`; not
-automatable), the choice kept in its state. A distribution chosen is loaded by a thread of the plugin's own and swapped
-in between two blocks (a state the host loads: at once). `plugin/src/fel_host.c` is the plugin apart from the format:
-the instance, the chooser, MIDI events played at their frame. The core runs at 44.1 kHz; at another host rate
-`plugin/src/fel_resample.c` resamples it (a 96-tap Kaiser-windowed sinc, flat to 19 kHz, images and aliases under
--80 dB), the input pulled 48 core frames ahead: the latency reported to the host (52 frames at 48 kHz).
-`tests/plugin_host_test.c` checks the resampler and the host; `tests/plugin_clap_test.c` loads the built CLAP as a host
-does (notes, latency, parameters, the state, two instances); pluginval (strictness 8) the VST3.
+automatable); TRACK 1 .. 8 OUTPUT, MAIN or OWN: a track on its own pair leaves the main mix, dry, at the level it had
+there (its sends still feed the reverb, delay and chorus, which stay on the main with the bus compressor and the
+limiter). A distribution chosen is loaded by a thread of the plugin's own and swapped in between two blocks.
 
-Next: the host's tempo and transport, the song in the state, eight track outputs, its window, the install script.
+It follows the host's transport, always: its tempo (the delay, the arp, the synced LFOs and the SLICER with it), play
+and stop, and its place (seq.c host_block: the sequencer moved to the host's beat every block, sample exact; put
+there anew when the host starts or jumps, a row that has just begun played at once). The song starts where PLAY
+starts it on the device (LOOP: the pattern from row 0; SONG: the position picked) at the host's beat 0, round and
+round; the panel's PLAY shows the transport and does not change it. The state holds the distribution and the song:
+the device's flash (the song, the user presets, the settings), written at once when the host saves (the device's
+autosave, without waiting for it to be quiet), compressed.
+
+`plugin/src/fel_host.c` is the plugin apart from the format. The core runs at 44.1 kHz; at another host rate
+`plugin/src/fel_resample.c` resamples it (a 96-tap Kaiser-windowed sinc, flat to 19 kHz, images and aliases under
+-80 dB), the input pulled 48 core frames ahead: the latency reported to the host (52 frames at 48 kHz), the
+transport's beat moved by it so the sequencer lands where the host's timeline has it. A row plays in the device's
+block of 32 samples it starts in (0 .. 0.7 ms early, as on the FM-1).
+`tests/plugin_host_test.c` checks the resampler, the host, the transport (a 1/16 grid at 120 BPM, 60 s at 128 BPM and
+48 kHz without drift, a mid-row start, a loop), the track outputs (a track on its pair + the main = the mix) and the
+state (saved, loaded into another instance, played); `tests/plugin_clap_test.c` loads the built CLAP as a host does;
+pluginval (strictness 8) the VST3.
+
+Next: its window, the install script, the validators' last checks.
 
 ## Tests
 

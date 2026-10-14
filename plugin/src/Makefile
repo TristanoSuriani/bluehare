@@ -16,6 +16,7 @@ FILES_DSP = \
 include ../dpf/Makefile.plugins.mk
 
 BUILD_C_FLAGS += -std=gnu11
+LINK_FLAGS += -lz
 
 TARGETS += vst3
 TARGETS += au

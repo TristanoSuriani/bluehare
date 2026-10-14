@@ -291,6 +291,9 @@ static void web_frame(void)
 #define RING 4096u
 static float ring[RING * 2];
 static uint32_t ring_w, ring_r, web_samples_due;
+#ifdef FELUCCA_NATIVE
+static float tring[NTRK][2][RING];      /* (Fel-Tracker) the tracks' own outputs (fx.c trk_out), frame by frame with ring */
+#endif
 
 /* one millisecond of the device: the clock, the audio halves due by now, the main loop */
 static void web_ms(void)
@@ -303,6 +306,15 @@ static void web_ms(void)
         const int32_t *o = &abuf[web_half * HALF_WORDS];
         web_samples_due -= 1000u * HALF_FRAMES;
         fm1_alnk0_irq();
+#ifdef FELUCCA_NATIVE
+        if (trk_own) {                                    /* (the half's frames: trk_out's last HALF_FRAMES) */
+            uint32_t t, c;
+            for (t = 0; t < NTRK; t++)
+                for (c = 0; c < 2u; c++)
+                    for (k = 0; k < HALF_FRAMES; k++)
+                        tring[t][c][(ring_w + k) % RING] = trk_out[t][c][(trk_out_w - HALF_FRAMES + k) % TRK_OUT_N];
+        }
+#endif
         for (k = 0; k < HALF_FRAMES; k++) {
             uint32_t i = (ring_w++ % RING) * 2u;
             ring[i] = (float)o[2u * k] / 8388608.0f;

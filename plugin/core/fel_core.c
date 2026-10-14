@@ -29,6 +29,65 @@ static void core_render(float *l, float *r, uint32_t n)
         }
     }
 }
+static void core_render_multi(float *const *out, uint32_t n)
+{
+    uint32_t k, i, t;
+    for (k = 0; k < n; k += 1024u) {
+        uint32_t m = n - k < 1024u ? n - k : 1024u, r0 = ring_r;
+        web_render(m);                                   /* (ring_r on by m: the frames r0 .. r0 + m) */
+        for (i = 0; i < m; i++) {
+            out[0][k + i] = out_l[i];
+            out[1][k + i] = out_r[i];
+        }
+        for (t = 0; t < NTRK; t++) {
+            float *l = out[2u + 2u * t], *r = out[3u + 2u * t];
+            if (!((trk_own >> t) & 1u)) {
+                for (i = 0; i < m; i++)
+                    l[k + i] = r[k + i] = 0.0f;
+                continue;
+            }
+            for (i = 0; i < m; i++) {
+                l[k + i] = tring[t][0][(r0 + i) % RING];
+                r[k + i] = tring[t][1][(r0 + i) % RING];
+            }
+        }
+    }
+}
+static void core_transport(uint32_t playing, double bpm, double beats, uint64_t frame)
+{
+    host_tr.on = 1;
+    host_tr.playing = (uint8_t)(playing != 0u);
+    host_tr.bpm = bpm < 20.0 ? 20.0 : bpm > 999.0 ? 999.0 : bpm;
+    host_tr.beats0 = beats < 0.0 ? 0.0 : beats;
+    host_tr.frame0 = frame;
+}
+static uint32_t core_save_now(void)
+{
+    uint32_t sig;
+    if (!flash_ok || !web_booted)
+        return 0;
+    sig = autosave_sig();
+    if (sig == as.saved)
+        return 0;
+    as.seen = sig;
+    autosave_write(sig);
+    return !as.err;
+}
+static void core_outputs(uint32_t mask) { trk_own = mask & ((1u << NTRK) - 1u); }
+static void core_test_ticks(void)
+{
+    uint32_t i;
+    uint8_t hat = 42;
+    host_drums(&trk[0]);
+    trk[0].p[P_E2] = 0;                                  /* (KIT's DECAY: a quarter; no sends: a short, dry tick) */
+    trk[0].p[P_E7] = 0;
+    trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = 0;
+    for (i = 0; i < 16u; i++)
+        put_step(&trk[0], i, 1, &hat, ST_NOTE, 0);
+    tk_pl.mode = TK_LOOP;
+    tk_pl.loop_pat = 0;
+    ui.force = 1;
+}
 static const uint16_t *core_screen(void) { return web_fb; }
 static uint32_t core_claimed;
 static uint32_t core_claim(void) { return core_claimed++ == 0u; }
@@ -63,6 +122,11 @@ static const fel_core_api_t CORE = {
     .now_ms = web_now_ms,
     .playing = web_playing,
     .test_heavy = web_test_heavy,
+    .transport = core_transport,
+    .outputs = core_outputs,
+    .render_multi = core_render_multi,
+    .save_now = core_save_now,
+    .test_ticks = core_test_ticks,
 };
 
 __attribute__((visibility("default"))) const fel_core_api_t *fel_core_api(void) { return &CORE; }

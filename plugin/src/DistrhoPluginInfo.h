@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The plugin as DPF builds it (plugin/dpf: VST3, AU, CLAP): an instrument, MIDI in, stereo out. */
+/* The plugin as DPF builds it (plugin/dpf: VST3, AU, CLAP): an instrument, MIDI in, the host's transport, 18 outputs: the
+ * main pair and a pair a track (a bus each; AU: one bus of 18, the main its first pair). */
 #ifndef DISTRHO_PLUGIN_INFO_H_INCLUDED
 #define DISTRHO_PLUGIN_INFO_H_INCLUDED
 
@@ -17,9 +18,10 @@
 #define DISTRHO_PLUGIN_IS_RT_SAFE 1
 #define DISTRHO_PLUGIN_IS_SYNTH 1
 #define DISTRHO_PLUGIN_NUM_INPUTS 0
-#define DISTRHO_PLUGIN_NUM_OUTPUTS 2
+#define DISTRHO_PLUGIN_NUM_OUTPUTS 18
 #define DISTRHO_PLUGIN_WANT_MIDI_INPUT 1
 #define DISTRHO_PLUGIN_WANT_LATENCY 1
+#define DISTRHO_PLUGIN_WANT_TIMEPOS 1
 #define DISTRHO_PLUGIN_WANT_STATE 1
 #define DISTRHO_PLUGIN_WANT_FULL_STATE 1
 

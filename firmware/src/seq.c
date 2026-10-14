@@ -616,11 +616,99 @@ static int32_t click_beat_now(void)
     return clk_pos == CLK_START ? 0 : (int32_t)(clk_step >> 2);
 }
 
+#ifdef FELUCCA_NATIVE
+/* (Fel-Tracker) the plugin's host (plugin/core/fel_core.h transport): its tempo, its transport and its place, always,
+ * over BPM, CLOCK and PLAY. The host says which beat it is at a frame of the device's (frames since power-on, as
+ * events_block counts them) and its tempo; each block the sequencer is moved on to where that puts it at the block's
+ * end (sample exact, whatever the device's whole-sample beat), and put there anew when the host starts or jumps (a
+ * loop, a locate). Tempo alone while it is stopped: the delay, the arp, the LFOs follow it. Off until the host speaks */
+static struct {
+    uint8_t on, playing;
+    double bpm, beats0;                     /* the host's tempo, its beat at frame0 */
+    uint64_t frame0;
+    double at;                              /* the beat the sequencer is at */
+} host_tr;
+static uint64_t dev_frames;                 /* frames rendered since power-on */
+
+/* the transport running from beat b (>= 0): the song there (tracker.c tk_locate), the metronome's, the FX layer's,
+ * the SLICER's and the synced LFOs' places with it */
+static void seq_locate(double b)
+{
+    double lb = 4.0 * div_samples(2), q = b * 4.0, f;
+    uint32_t i, p = div_samples(2), six;
+    b = b < 0.0 ? 0.0 : b;
+    seq_start();
+    tk_locate((uint64_t)(b * lb + 0.5), 2u * HALF_FRAMES);
+    six = (uint32_t)q;
+    f = q - six;
+    if (six & 15u || f > 0.0) {                    /* (on a bar's first 1/16: CLK_START, as PLAY) */
+        clk_step = f > 0.0 ? six & 15u : (six - 1u) & 15u;
+        clk_pos = f > 0.0 ? (uint32_t)(f * p) : p;
+    }
+    beat_pos = (uint32_t)((b - (double)(uint32_t)b) * beat_samples());
+    beat_n = (uint32_t)b & 3u;
+    pf.ph = (uint32_t)(f * (beat_samples() >> 2));
+    pf.sync = 0;
+    for (i = 0; i < NTRK; i++) {
+        track_t *t = &trk[i];
+        double st = b * SL_DEN[(uint32_t)tp_vo(t, VO_SLRATE) % 6u];
+        uint32_t k = (uint32_t)st;
+        sl_t *s = &sl[i];
+        if (st > (double)k) {                      /* inside a step: entered, then on by the part already gone */
+            s->idx = (uint8_t)((k - 1u) & 15u);
+            sl_enter(t, s);
+            s->pos = (uint32_t)((st - k) * s->base);
+            s->pos = s->pos < s->len ? s->pos : s->len - 1u;
+        } else {
+            s->idx = (uint8_t)((k - 1u) & 15u);
+        }
+        if (t->p[P_LTRIG] && t->p[P_LSYNC])        /* (seq_start set the phase: on by the blocks since beat 0) */
+            t->lfo_ph += lfo_sync_inc(t) * (uint32_t)(b * lb / CTL);
+    }
+}
+
+/* the samples the sequencer moves on in this block of n (events_block, the host's transport on) */
+static uint32_t host_block(uint32_t n)
+{
+    double spb = 60.0 * FS / (host_tr.bpm > 1.0 ? host_tr.bpm : 1.0);
+    double now = host_tr.beats0 + (double)(int64_t)(dev_frames - host_tr.frame0) / spb, lb, s;
+    uint32_t k;
+    host_beat_samples = (uint32_t)(spb + 0.5);
+    transport_req = 0;                             /* (PLAY shows the host's transport, does not change it) */
+    if (!host_tr.playing) {
+        if (song.playing)
+            seq_stop();
+        return 0;
+    }
+    if (!song.playing || now < host_tr.at - 1.0 / 64.0 || now > host_tr.at + 1.0) {
+        if (song.playing)
+            seq_stop();
+        seq_locate(now);
+        host_tr.at = now;
+        if (tk_pl.fresh)
+            return 0;                              /* (its row plays now; the block's samples with the next) */
+    }
+    lb = 4.0 * div_samples(2);
+    s = (now + n / spb - host_tr.at) * lb;
+    s = s < 0.0 ? 0.0 : s > 4.0 * n ? 4.0 * n : s;
+    k = (uint32_t)(s + 0.5);
+    host_tr.at += k / lb;
+    return k;
+}
+#endif
+
 /* everything that happens between two rendered blocks */
 static void events_block(uint32_t n)
 {
     uint32_t i, pr, seq_n = n;
     uint32_t clock_mode = (uint32_t)song.g[G_CLOCK];
+#ifdef FELUCCA_NATIVE
+    uint32_t host = host_tr.on;
+    if (host) {
+        clock_mode = 0;                            /* (the host's clock: no other) */
+        seq_n = host_block(n);
+    }
+#endif
     if (midi_clock.mode != clock_mode) {
         seq_stop();
         memset(&midi_clock, 0, sizeof midi_clock);
@@ -725,4 +813,7 @@ static void events_block(uint32_t n)
     }
     if (song.playing)
         song.tick++;
+#ifdef FELUCCA_NATIVE
+    dev_frames += n;
+#endif
 }

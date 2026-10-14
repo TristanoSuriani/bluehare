@@ -243,8 +243,16 @@ static inline void master_out(int32_t *l, int32_t *r)
 /* length of one division (N_DIV order) in samples at the song tempo */
 static const uint8_t DIV_DEN[6] = {1, 2, 4, 8, 3, 6};    /* original IDs stay fixed; slow rates append */
 static uint32_t midi_beat_samples;                    /* zero until an external clock has a measured tempo */
+#ifdef FELUCCA_NATIVE
+static uint32_t host_beat_samples;                    /* (Fel-Tracker) the plugin's host's tempo, over the song's and
+                                                       * CLOCK's (seq.c host_block); zero: no host */
+#endif
 static uint32_t beat_samples(void)
 {
+#ifdef FELUCCA_NATIVE
+    if (host_beat_samples)
+        return host_beat_samples;
+#endif
     return song.g[G_CLOCK] && midi_beat_samples ? midi_beat_samples : (uint32_t)FS * 60u / song_bpm();
 }
 static uint32_t div_samples(uint32_t div)
@@ -1000,6 +1008,34 @@ static __attribute__((noinline)) void bus_comp(int32_t *out, uint32_t n)
     bc_g = g1;
 }
 
+#ifdef FELUCCA_NATIVE
+/* (Fel-Tracker) the plugin's track outputs (plugin/core/fel_core.h outputs): a track whose bit is set in trk_own plays
+ * into a stereo pair of its own, out of the main mix, at the level it has there (MASTER on it; before the bus
+ * compressor and the limiter, which are the main's). Its sends still feed the FX buses, which stay on the main.
+ * trk_out holds the pairs by the frame, the main's frames' order (TRK_OUT_N: a few halves) */
+#define TRK_OUT_N 1024u
+static uint32_t trk_own;
+static float trk_out[NTRK][2][TRK_OUT_N];
+static uint32_t trk_out_w;
+static int32_t trk_pre[2][CTL];
+static __attribute__((noinline)) void mix_own(uint32_t k, uint32_t n, int32_t mg)
+{
+    uint32_t i, w;
+    for (i = 0; i < n; i++) {
+        trk_pre[0][i] = mix_l[i];
+        trk_pre[1][i] = mix_r[i];
+    }
+    mix_part(&trk[k], n);
+    for (i = 0, w = trk_out_w; i < n; i++, w++) {        /* the track's share of the mix, taken back out of it */
+        int32_t dl = mix_l[i] - trk_pre[0][i], dr = mix_r[i] - trk_pre[1][i];
+        mix_l[i] = trk_pre[0][i];
+        mix_r[i] = trk_pre[1][i];
+        trk_out[k][0][w % TRK_OUT_N] = (float)(((dl >> 2) * mg) >> 10) * (1.0f / 65536.0f);   /* (Q15 << OUT_SHIFT, */
+        trk_out[k][1][w % TRK_OUT_N] = (float)(((dr >> 2) * mg) >> 10) * (1.0f / 65536.0f);   /* as the main: 1/2^23) */
+    }
+}
+#endif
+
 static void mix_block(int32_t *out, uint32_t n)
 {
     uint32_t i;
@@ -1009,8 +1045,24 @@ static void mix_block(int32_t *out, uint32_t n)
         send_c[i] = send_d[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
     events_block(n);
     perf = perf_begin(n);                               /* the FX hold layer at work (perform.c) */
+#ifdef FELUCCA_NATIVE
+    for (i = 0; i < NPART; i++) {
+        if ((trk_own >> i) & 1u) {
+            mix_own(i, n, mg);
+            continue;
+        }
+        if (trk_own) {
+            uint32_t j;
+            for (j = 0; j < n; j++)
+                trk_out[i][0][(trk_out_w + j) % TRK_OUT_N] = trk_out[i][1][(trk_out_w + j) % TRK_OUT_N] = 0.0f;
+        }
+        mix_part(&trk[i], n);
+    }
+    trk_out_w += n;
+#else
     for (i = 0; i < NPART; i++)
         mix_part(&trk[i], n);
+#endif
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);
     send_lowcut(send_d, send_r, n);                     /* (Fel-Tracker) */
