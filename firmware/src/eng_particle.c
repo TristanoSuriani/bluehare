@@ -13,7 +13,7 @@
 static const char *const N_PT_QNT[] = {"FREE", "SEMI", "OCT", "5TH", 0};
 static const char *const N_PT_SHAPE[] = {"PERC", "HANN", "REV", 0};
 static const char *const N_PT_WAVE[] = {"SINE", "TRI", "FM", "NOIS", 0};
-#define PT_POLY DEV_NAT(4, 8)
+#define PT_POLY 4
 #define PT_NG 8
 typedef struct {
     uint32_t ph, inc, estep;     /* the phase; its increment; the envelope's step (Q24 per sample: 1 over the length) */

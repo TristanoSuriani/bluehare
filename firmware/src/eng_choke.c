@@ -121,7 +121,7 @@ static const engine_t ENG_CHOKE = {
     },
     .presets = CHOKE_PRESETS,
     .npresets = NELEM(CHOKE_PRESETS),
-    .poly = DEV_NAT(6, 12),
+    .poly = 6,
     .note_on = choke_note_on,
     .render = choke_render,
     .knob = {P_E3, P_E1, P_E6, P_E0},

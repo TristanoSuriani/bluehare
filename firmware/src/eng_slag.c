@@ -105,7 +105,7 @@ static const engine_t ENG_SLAG = {
     },
     .presets = SLAG_PRESETS,
     .npresets = NELEM(SLAG_PRESETS),
-    .poly = DEV_NAT(6, 12),
+    .poly = 6,
     .note_on = slag_note_on,
     .render = slag_render,
     .knob = {P_E3, P_E4, P_E6, P_E2},

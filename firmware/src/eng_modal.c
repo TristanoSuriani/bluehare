@@ -13,7 +13,7 @@
  * coefficients cost divides: worked out when the pitch or a parameter moves, not every block.
  * Voice state: the track's block (engines.c eng_slab, MD_POLY voices a track): the modes, the exciter. */
 #define MD_NM 12
-#define MD_POLY DEV_NAT(4, 8)
+#define MD_POLY 4
 #define MD_FMAX 1846000000u      /* a mode's highest frequency, cycles a sample Q32 (~0.43: ~19 kHz) */
 static const char *const N_MD_MATRL[] = {"BAR", "MRMBA", "BELL", "GLASS", "PLATE", "DRUM", "TUBE", "STRING", 0};
 static const char *const N_MD_EXCIT[] = {"MALLET", "PLUCK", "BOW", "CLICK", 0};

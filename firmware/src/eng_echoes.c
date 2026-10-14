@@ -12,7 +12,7 @@
  * envelope; the velocity sets the level).
  * State: the sounds of a voice in the track's block (engines.c eng_slab, EC_NG at once, the oldest dropped), the voice's s[]:
  * s[0] samples to the next, s[1] the repeats so far, s[2] the next's level (Q15), s[3] the random. */
-#define EC_POLY DEV_NAT(4, 8)
+#define EC_POLY 4
 #define EC_NG 6
 static uint32_t beat_samples(void);                  /* (fx.c: a beat at the song's tempo, or the MIDI clock's) */
 static const char *const N_EC_SRC[] = {"BLIP", "PLUCK", "STAB", "NOISE", "FM", 0};

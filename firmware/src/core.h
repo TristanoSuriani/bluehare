@@ -24,13 +24,14 @@
 
 /* ------------------------------------------------------------ sizes --- */
 #ifdef FELUCCA_NATIVE            /* (Fel-Tracker) the native image (native/felucca_native.c): the computer's CPU and memory,
-                                  * not the device's. Every part has its own voices (no shared budget), the engines'
-                                  * caps that were the device's CPU are lifted (DEV_NAT). Its songs and sounds are the
-                                  * device's: nothing stored changes */
+                                  * not the device's. Every part has its own voices (no shared budget); the device's
+                                  * engines stay as they are, the native image adds its own (engine_ids.h: native), its
+                                  * reverbs (fx_native.c) and a longer delay line (DEV_NAT). Its songs and sounds are
+                                  * stored as the device's */
 #define NVOICE 16                /* voices per part */
 #define VOICE_MAX (NPART * NVOICE)   /* the budget: all of them, whatever the load */
 #define VOICE_BASE VOICE_MAX
-#define DEV_NAT(dev, nat) (nat)  /* a size the device keeps small, larger in the native image */
+#define DEV_NAT(dev, nat) (nat)  /* a buffer the device keeps small, larger in the native image (fx.c DLY_LEN) */
 #else
 #define NVOICE 12                /* voices per part, and the most of the budget shared by all parts (Fel-Tracker: 12) */
 #define VOICE_MAX NVOICE         /* (Fel-Tracker) the budget while the audio's load allows (voice.c voice_limit) */

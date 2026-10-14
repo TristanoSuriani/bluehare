@@ -14,7 +14,8 @@
  * tempo changed: the echoes bend in pitch), the loop low-passed (COLR) and high-passed (thinner each pass) and
  * saturated, so FDBK past ~95 runs away into a bounded howl and settles when turned back. WORN: more wow and flutter,
  * darker, thinner, driven harder. */
-#define DLY_LEN 65536u           /* 1.49 s: 1/4 at 40 BPM fits */
+#define DLY_LEN DEV_NAT(65536u, 1048576u)   /* 1.49 s: 1/4 at 40 BPM fits (native: 23.8 s, 4BAR at 41 BPM; PING's right
+                                              * side 11.9 s) */
 #define CHO_LEN 2048u
 static int16_t dly_buf[DLY_LEN] __attribute__((section(".pool")));
 static int16_t cho_buf[CHO_LEN] __attribute__((section(".pool")));
@@ -31,7 +32,8 @@ static struct {
     int32_t dly_lp;
     uint16_t comb_i[4], ap_i[2];
     int32_t comb_lp[4];
-    uint8_t rtype;                       /* the reverb model running (G_RTYPE: 0 ROOM, 1 SPRING, 2 HALL) */
+    uint8_t rtype;                       /* the reverb model running (G_RTYPE: 0 ROOM, 1 SPRING, 2 HALL; native: 3 CONCERT,
+                                          * 4 CAVERN, 5 SHIMMER, fx_native.c) */
     uint16_t sp_w;                       /* SPRING: the loop's write index (SP_MASK) */
     int32_t sp_lp, sp_hp, sp_he, sp_size;   /* .. its loop low-pass, low cut (and its remainder), the loop
                                              * length (Q8, glides) */
@@ -512,6 +514,13 @@ static __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *o
     hl.side = 1;
 }
 
+#ifdef FELUCCA_NATIVE
+#include "fx_native.c"                                   /* (Fel-Tracker) the native image's reverbs: CONCERT, CAVERN, SHIMMER */
+#define RT_LAST 5
+#else
+#define RT_LAST 2
+#endif
+
 /* the reverb's buffers and states to silence (the model changed) */
 static void rev_clear(void)
 {
@@ -526,6 +535,9 @@ static void rev_clear(void)
         hl.lp[i] = hl.le[i] = 0;
     fx.sp_lp = fx.sp_hp = fx.sp_he = 0;
     hl.x = hl.m = hl.s = hl.hp = hl.he = 0;
+#ifdef FELUCCA_NATIVE
+    rev_native_clear();
+#endif
 }
 
 static int32_t part_buf[CTL];                            /* a part's block (mix_part); the fade of a model change */
@@ -540,6 +552,11 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
     uint32_t i;
     for (i = 0; i < n; i++)
         t[i] = ts[i] = 0;
+#ifdef FELUCCA_NATIVE
+    if (fx.rtype >= 3u)
+        rev_native(fx.rtype, rev_in, t, ts, n);
+    else
+#endif
     if (fx.rtype == 2u)
         rev_hall(rev_in, t, n);
     else if (fx.rtype)
@@ -690,10 +707,14 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     if (fx.dtype)
         dly_tape(dly_in, wet, n, dl, fb, col, dmix);
     rt = song.g[G_RTYPE];
-    rt = rt == 1 || rt == 2 ? rt : 0;
+    rt = rt >= 1 && rt <= RT_LAST ? rt : 0;
     hl.side = 0;
     if (rt != fx.rtype)
         rev_switch(rev_in, wet, n, rt);
+#ifdef FELUCCA_NATIVE
+    else if (rt >= 3)
+        rev_native((uint32_t)rt, rev_in, wet, wside, n);
+#endif
     else if (rt == 2)
         rev_hall(rev_in, wet, n);
     else if (rt)

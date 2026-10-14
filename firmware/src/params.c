@@ -36,7 +36,11 @@ static const char *const N_ROUTE[] = {"CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-1
 #endif
 static const char *const N_NOTE[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const N_DASH[] = {"--"};
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL"};   /* G_RTYPE: the reverb bus's model (fx.c) */
+#ifdef FELUCCA_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "CONCERT", "CAVERN", "SHIMMER"};
+#else
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL"};
+#endif
 static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING"};   /* G_DTYPE: the delay bus's (fx.c dly_tape;
                                                                    * PING: Fel-Tracker's, left and right in turn) */
 static const char *const N_GO[] = {"--", "GO"};

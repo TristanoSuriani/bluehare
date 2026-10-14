@@ -16,7 +16,7 @@
  * s[2] the allpass's state, s[3] the noise generator, s[4] released (MUTE once), s[5] the output's DC blocker, s[6] its
  * last input. */
 static const char *const N_KP_EXCT[] = {"NOIS", "PLUK", "SAW", "CLIK", 0};
-#define KP_POLY DEV_NAT(4, 8)
+#define KP_POLY 4
 #define KP_LEN 768u
 
 static inline __attribute__((always_inline)) int16_t *kp_of(track_t *t, voice_t *v)
