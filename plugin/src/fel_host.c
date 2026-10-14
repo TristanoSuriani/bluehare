@@ -58,6 +58,9 @@ struct fel_host {
     struct { uint8_t kind; uint32_t a; int32_t b; } uiq[256];   /* kind 0 buttons, 1 keys, 2 an encoder */
     atomic_uint uiq_w, uiq_r;
     uint32_t ui_next;                    /* the device's ms the next button or key change may come */
+    atomic_uint runs;                    /* fel_host_run's calls (the idle sees whether the host runs the audio) */
+    uint32_t idle_runs, idle_ms;         /* (fel_host_idle: the runs it saw last, and when; when it last ran the device) */
+    int idle_on;                         /* the device ran on the idle: the resampler starts anew at the next run */
 };
 
 static void lock(atomic_flag *f)
@@ -119,6 +122,7 @@ fel_host_t *fel_host_new(const char *cores_dir, double rate, char *err, unsigned
     atomic_init(&h->outs_want, 0u);
     atomic_init(&h->save_req, 0u);
     atomic_init(&h->view_seq, 0u);
+    atomic_init(&h->runs, 0u);
     atomic_init(&h->uiq_w, 0u);
     atomic_init(&h->uiq_r, 0u);
     snprintf(h->dir, sizeof h->dir, "%s", cores_dir);
@@ -379,6 +383,34 @@ static void view_take(fel_host_t *h)
     atomic_store(&h->view_seq, s + 2u);
 }
 
+#define IDLE_AFTER_MS 150u                       /* no run for this long: the host is not running the audio */
+void fel_host_idle(fel_host_t *h, uint32_t now_ms)
+{
+    static float scratch[2][2048];
+    uint32_t r = atomic_load(&h->runs), ms, n;
+    if (r != h->idle_runs) {                         /* (the host runs it: nothing to do) */
+        h->idle_runs = r;
+        h->idle_ms = now_ms;                         /* (idle_on: the run clears it, under the lock) */
+        return;
+    }
+    if ((!h->idle_on && now_ms - h->idle_ms < IDLE_AFTER_MS) || !trylock(&h->lock))
+        return;
+    ms = h->idle_on ? now_ms - h->idle_ms : 20u;
+    ms = ms > 100u ? 100u : ms;                      /* (a stall: no catching up) */
+    h->idle_ms = now_ms;
+    n = ms * 441u / 10u;
+    ui_apply(h);
+    while (n) {                                      /* the device on, its sound thrown away (core rate) */
+        uint32_t m = n > 2048u ? 2048u : n;
+        h->api->render(scratch[0], scratch[1], m);
+        h->core_frames += m;
+        n -= m;
+    }
+    h->idle_on = 1;
+    view_take(h);
+    unlock(&h->lock);
+}
+
 int fel_host_view(fel_host_t *h, fel_view_t *v, uint32_t *seq)
 {
     uint32_t k;
@@ -448,6 +480,12 @@ void fel_host_run(fel_host_t *h, float *const *out, uint32_t nout, uint32_t n, c
         for (c = 0; c < nout; c++)                    /* (a swap under way) */
             memset(out[c], 0, sizeof(float) * n);
         return;
+    }
+    atomic_fetch_add(&h->runs, 1u);
+    if (h->idle_on) {                                /* (the device ran on the idle: the resampler from here) */
+        h->idle_on = 0;
+        if (!h->direct)
+            fel_rs_reset(&h->rs);
     }
     ui_apply(h);
     want = nout >= FEL_HOST_OUTS ? atomic_load(&h->outs_want) & ((1u << h->api->tracks) - 1u) : 0u;

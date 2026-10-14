@@ -594,6 +594,35 @@ static void test_window(void)
     ck("PLAY pressed in the window while the host is stopped: the device stays stopped", !v.playing);
     fel_host_free(h);
 
+    {   /* a host that does not run the audio (Renoise suspends a silent instrument): the window's idle runs the device */
+        uint32_t t, lit = 0, nonblack = 0;
+        h = fel_host_new(dir, 48000.0, err, sizeof err);
+        seq = 0;
+        for (t = 0; t <= 2000u; t += 16u) {          /* (the window's idle, ~60 a second, 2 s) */
+            fel_host_idle(h, 1000u + t);
+            fel_host_view(h, &v, &seq);
+        }
+        lit = (v.lit_buttons >> 6) & 1u;
+        for (i = 0; i < 240u * 240u; i++)
+            nonblack += v.screen[i] != 0;
+        {
+            fel_event_t on = {0, {0x90, 60, 110}};
+            float l[256], r[256], *o[2] = {l, r};
+            double e = 0.0;
+            uint32_t k, j;
+            fel_host_run(h, o, 2, 256, &on, 1, 0);   /* (the host runs it again: the audio from here) */
+            for (k = 0; k < 40u; k++) {
+                fel_host_run(h, o, 2, 256, 0, 0, 0);
+                for (j = 0; j < 256u; j++)
+                    e += (double)l[j] * l[j];
+            }
+            snprintf(what, sizeof what, "no audio run: the idle boots the device (HOME %s, %u pixels drawn); the audio back, a note sounds (%.2f)",
+                     lit ? "lit" : "dark", nonblack, e);
+            ck(what, lit && nonblack > 1000u && e > 0.01);
+        }
+        fel_host_free(h);
+    }
+
     h = fel_host_new(dir, 48000.0, err, sizeof err);
     ((const fel_core_api_t *)fel_host_core(h))->test_ticks();
     blocks(h, 40, 0);

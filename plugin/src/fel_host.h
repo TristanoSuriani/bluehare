@@ -61,6 +61,10 @@ typedef struct {
     uint16_t screen[240 * 240];          /* RGB565, high byte first, as the device's display takes it */
     uint32_t lit_buttons, lit_keys, dim_buttons, dim_keys, breath_buttons, breath_keys, mid_keys, playing;
 } fel_view_t;
+/* the device kept going while the host does not run the audio (a host that suspends a silent instrument, its engine
+ * off): from the window's idle; the device then runs on its own, its sound thrown away, so it boots, draws and takes
+ * the panel. Does nothing while fel_host_run is called. now_ms: a steady clock */
+void fel_host_idle(fel_host_t *h, uint32_t now_ms);
 /* the view into *v if it changed since *seq (then *seq moves on): 1, else 0 */
 int fel_host_view(fel_host_t *h, fel_view_t *v, uint32_t *seq);
 void fel_host_ui_buttons(fel_host_t *h, uint32_t labels);     /* the buttons held (panel.c's labels: bit = B_*) */

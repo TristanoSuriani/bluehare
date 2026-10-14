@@ -7,11 +7,14 @@
  * question before it switches: the song goes with it) and the eight tracks' outputs (MAIN or OWN).
  * It reads the device through the plugin (DISTRHO_PLUGIN_WANT_DIRECT_ACCESS: fel_host_view, a copy the audio thread
  * keeps) and hands it the panel through fel_host_ui_* (a queue the audio thread plays, each change held 24 ms of the
- * device's time as the native image does). FEL_UI_SHOT=FILE.ppm: the first drawn frame with the screen in it written
- * there (a look at the window without a screen capture). */
+ * device's time as the native image does). A host that stops running the audio (a silent instrument suspended, the
+ * engine off) would leave the device still and its screen dark: the idle then runs it (fel_host_idle).
+ * FEL_UI_SHOT=FILE.ppm: a drawn frame with the screen in it written there (FEL_UI_SHOT_AFTER=N: the Nth; a look at the
+ * window without a screen capture). */
 #include "DistrhoUI.hpp"
 #include "OpenGL-include.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -88,6 +91,9 @@ protected:
 
     void uiIdle() override
     {
+        if (host)                                    /* (a host not running the audio: the device kept going) */
+            fel_host_idle(host, (uint32_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    std::chrono::steady_clock::now().time_since_epoch()).count());
         if (host && fel_host_view(host, &view, &seq)) {
             for (uint32_t i = 0; i < 240u * 240u; i++) {   /* (RGB565, high byte first -> RGBA) */
                 const uint16_t v = (uint16_t)(view.screen[i] >> 8 | view.screen[i] << 8);
@@ -126,7 +132,8 @@ protected:
             drawMenu();
         if (ask >= 0)
             drawAsk();
-        if (screen.isValid() && !shotDone)
+        static int frames;
+        if (screen.isValid() && !shotDone && ++frames > (std::getenv("FEL_UI_SHOT_AFTER") ? std::atoi(std::getenv("FEL_UI_SHOT_AFTER")) : 0))
             shot();
     }
 
