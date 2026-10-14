@@ -53,13 +53,13 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | DUBSIREN (siren with tape echo) | `firmware/src/eng_dubsiren.c` |
 | DUBSIREN8, SIREN8 on the device (its 8-bit cousin) | `firmware/src/eng_dubsiren8.c` |
 | DUBCHORD (the dub-techno chord, a whole chord in one voice) | `firmware/src/eng_dubchord.c` |
-| FMKEYS (FM keyboards) | `firmware/src/eng_fmkeys.c` |
+| BLISS (FM keyboards) | `firmware/src/eng_bliss.c` |
 | WASP (two oscillators, a gritty multimode filter) | `firmware/src/eng_wasp.c` |
 | MODAL (a modal resonator; its resonators PHYS's, DaisySP's) | `firmware/src/eng_modal.c` |
 | VECTOR (vector synthesis over WAVE's frames) | `firmware/src/eng_vector.c` |
 | ECHOES (a note and its repeats, each played anew) | `firmware/src/eng_echoes.c` |
 | GLITCH (a kit of micro-sounds) | `firmware/src/eng_glitch.c` |
-| DARK, HONKS, RAZOR, GUTS, SLAG, VENOM, WAR, CHOKE, RUST, DRILL, ANVIL, SCREAM, FLUIDS, SCRATCH, ABYSS, SHRED (FOUNDRY's) | `firmware/src/eng_dark.c`, `eng_honks.c`, `eng_razor.c`, `eng_guts.c`, `eng_slag.c`, `eng_venom.c`, `eng_war.c`, `eng_choke.c`, `eng_rust.c`, `eng_drill.c`, `eng_anvil.c`, `eng_scream.c`, `eng_fluids.c`, `eng_scratch.c`, `eng_abyss.c`, `eng_shred.c` |
+| DARK, HONKS, RAZOR, GUTS, SLAG, VENOM, WAR, CHOKE, RUST, DRILL, ANVIL, SCREAM, FLUIDS, SCRATCH, ABYSS, SHRED (written for FOUNDRY) | `firmware/src/eng_dark.c`, `eng_honks.c`, `eng_razor.c`, `eng_guts.c`, `eng_slag.c`, `eng_venom.c`, `eng_war.c`, `eng_choke.c`, `eng_rust.c`, `eng_drill.c`, `eng_anvil.c`, `eng_scream.c`, `eng_fluids.c`, `eng_scratch.c`, `eng_abyss.c`, `eng_shred.c` |
 | KIT (an FM drum kit on one part) | `firmware/src/eng_kit.c` |
 | BREAKS (synthesized breakbeat player) | `firmware/src/eng_breaks.c` |
 | RISERS (build-ups and landings) | `firmware/src/eng_risers.c` |

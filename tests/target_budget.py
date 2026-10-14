@@ -24,7 +24,7 @@ FUNCS = ["slicer_track",
          "vosim_render",                                    # VOSIM (1.5: eng_vosim.c; IDM's)
          "particle_render", "chaos_render",                 # PARTICLE, CHAOS (1.5: eng_particle.c, eng_chaos.c; IDM's)
          "sid_render", "dubsiren_render",                   # SID, DUBSIREN (1.5: eng_sid.c, eng_dubsiren.c; IDM's)
-         "fmkeys_render",                                   # FMKEYS (1.5: eng_fmkeys.c; IDM's)
+         "bliss_render",                                   # BLISS (1.5: eng_bliss.c; IDM's)
          "kit_render", "breaks_render", "risers_render",    # KIT, BREAKS, RISERS (1.5; IDM's)
          "fmp_run",                                         # FMPERC's voice (eng_fmperc.c), KIT's and BREAKS' too
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
@@ -52,7 +52,7 @@ ENGINE_OF = {"wave_render": "WAVE",
              "vosim_render": "VOSIM",
              "particle_render": "PARTICLE", "chaos_render": "CHAOS",
              "sid_render": "SID", "dubsiren_render": "DUBSIREN",
-             "fmkeys_render": "FMKEYS", "wasp_render": "WASP", "modal_render": "MODAL",
+             "bliss_render": "BLISS", "wasp_render": "WASP", "modal_render": "MODAL",
              "vector_render": "VECTOR", "echoes_render": "ECHOES", "glitch_render": "GLITCH",
              "risers_render": "RISERS", "dubsiren8_render": "DUBSIREN8", "dubchord_render": "DUBCHORD",
              "kit_render": "KIT", "breaks_render": "BREAKS", "risers_render": "RISERS",

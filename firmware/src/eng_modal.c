@@ -203,13 +203,18 @@ static const preset_t MODAL_PRESETS[] = {
     {"METAL HIT", {4, 0, 30, 80, 75, 10, 115, 40}, {0, 0, 127, 70}, 0, 0, FX(20, 0, 35, 45)},
     {"GLITCH BELL", {2, 3, 110, 90, 85, 20, 127, 127}, {0, 0, 127, 80}, 0, 0, FX(10, 20, 40, 50)},
     {"SUB DRUM", {5, 0, 50, 10, 55, 100, 20, 0}, {0, 0, 127, 50}, 0, 0, FX(0, 0, 10, 15), .oct = -1},
+    /* (FOUNDRY's clean side: chimes and a bowed string) */
+    {"CHIMES", {2, 0, 64, 25, 115, 20, 85, 10}, {0, 0, 127, 110}, 0, 0, FX(0, 20, 35, 65)},
+    {"GLOCKEN", {0, 0, 64, 25, 95, 25, 110, 0}, {0, 0, 127, 90}, 0, 0, FX(0, 10, 30, 55)},
+    {"SOFT MARIMBA", {1, 0, 64, 15, 70, 80, 45, 0}, {0, 0, 127, 75}, 0, 0, FX(0, 10, 20, 35)},
+    {"BOWED STRING", {7, 2, 64, 25, 115, 40, 55, 4}, {50, 0, 127, 100}, 0, 0, FX(0, 40, 30, 75)},
 };
 
 static const engine_t ENG_MODAL = {
     .name = "MODAL",
     .id = EID_MODAL,
     .cc = 0x57,                  /* CC74 DECAY, CC71 BRIGHT */
-    .cats = "KKKKKKKDUUKKPPPFFFFD",
+    .cats = "KKKKKKKDUUKKPPPFFFFDKKKP",
     .page_title = {"BODY", "STRIKE"},
     .edit = {
         {"MATRL", F_ENUM, 0, 7, 1, N_MD_MATRL, 0},

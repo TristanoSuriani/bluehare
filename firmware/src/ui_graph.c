@@ -351,7 +351,7 @@ static const char *eng_abbr(const char *name)
 {
     static const char *const A[][2] = {{"HOOVER", "HOOV"}, {"SPEECH", "SPCH"},
                                        {"FMPERC", "FMPC"}, {"KARPLUS", "KARP"}, {"VOSIM", "VOSM"}, {"PARTICLE", "PART"},
-                                       {"CHAOS", "CHAO"}, {"DUBSIREN", "DUB"}, {"SIREN8", "DUB8"}, {"DUBCHORD", "DCHD"}, {"FMKEYS", "FMKY"}, {"BREAKS", "BRKS"},
+                                       {"CHAOS", "CHAO"}, {"DUBSIREN", "DUB"}, {"SIREN8", "DUB8"}, {"DUBCHORD", "DCHD"}, {"BLISS", "BLIS"}, {"BREAKS", "BRKS"},
                                        {"RISERS", "RISE"}, {"MODAL", "MODL"}, {"VECTOR", "VECT"}, {"ECHOES", "ECHO"}, {"GLITCH", "GLCH"},
                                        {"RAZOR", "RAZR"}, {"VENOM", "VENM"}, {"HONKS", "HONK"},
                                        {"CHOKE", "CHOK"}, {"DRILL", "DRIL"}, {"ANVIL", "ANVL"},

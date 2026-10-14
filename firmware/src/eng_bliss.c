@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* FMKEYS (1.5): FM keyboards (Fel-Tracker's own, in the manner of the 80s FM electric pianos and bells), four operators as
- * two pairs. The body: a sine at the note whose phase a modulator at RATIO times the note moves by INDEX (FDBK feeds
+/* BLISS (1.5; FMKEYS until FOUNDRY took it in): FM keyboards (Fel-Tracker's own, in the manner of the 80s FM electric
+ * pianos and bells), four operators as two pairs. The body: a sine at the note whose phase a modulator at RATIO times the note moves by INDEX (FDBK feeds
  * the modulator back into itself: brassier, reedier); the index falls over DECAY to a quarter, so a note starts
  * bright and mellows, and harder notes start brighter (VEL: how much the velocity counts). The tine: a sine at the
  * note (DTUNE cents off the body: the beating of a real instrument) modulated at 14 times the note, its own fast
@@ -16,7 +16,7 @@ static const char *const N_FK_RATIO[] = {"1/2", "1", "2", "3", "4", "5", "6", "7
 static const uint16_t FK_RATIO[16] = {128, 256, 512, 768, 1024, 1280, 1536, 1792, 2048, 2816, 3584, 361, 707, 896,
                                       1075, 1818};   /* Q8 */
 
-static void fmkeys_note_on(track_t *t, voice_t *v)
+static void bliss_note_on(track_t *t, voice_t *v)
 {
     (void)t;
     v->ph[0] = v->ph[1] = v->ph[2] = 0;
@@ -24,7 +24,7 @@ static void fmkeys_note_on(track_t *t, voice_t *v)
     v->s[2] = 0;
 }
 
-static void fmkeys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+static void bliss_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
     const int16_t *p = t->p;
     uint32_t rm = FK_RATIO[(uint32_t)p[P_E0] & 15u], inc = m->inc, minc, tinc, i;
@@ -61,7 +61,7 @@ static void fmkeys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
 
 /* {RATIO, INDEX, TINE, DECAY, VEL, DTUNE, FDBK, KSCL}; RATIO 0 1/2 1 1 2 2 3 3 .. 8 8, 9 11, 10 14, 11 1.41, 12 2.76,
  * 13 3.5, 14 4.2, 15 7.1 */
-static const preset_t FMKEYS_PRESETS[] = {
+static const preset_t BLISS_PRESETS[] = {
     {"E.PIANO", {1, 40, 70, 60, 90, 4, 0, 60}, {0, 95, 0, 60}, 0, 0, FX(0, 40, 15, 25)},
     {"TINE EP", {1, 30, 110, 55, 100, 6, 0, 50}, {0, 100, 0, 60}, 0, 0, FX(0, 60, 20, 30)},
     {"SOFT EP", {1, 20, 40, 70, 60, 3, 0, 70}, {0, 100, 0, 70}, 0, 0, FX(0, 50, 20, 40)},
@@ -76,13 +76,24 @@ static const preset_t FMKEYS_PRESETS[] = {
     {"KALIMBA", {14, 45, 70, 35, 70, 0, 0, 40}, {0, 75, 0, 60}, 0, 0, FX(0, 10, 25, 40)},
     {"CELESTA", {8, 35, 80, 50, 60, 4, 0, 20}, {0, 90, 0, 80}, 0, 0, FX(0, 30, 30, 60)},
     {"MUSIC BOX", {15, 50, 90, 40, 50, 6, 0, 10}, {0, 85, 0, 75}, 0, 0, FX(0, 20, 40, 60)},
+    /* (FOUNDRY's clean side: the classic FM keys, basses, bells and blown sounds) */
+    {"RHODES MKI", {1, 35, 80, 65, 95, 5, 0, 55}, {0, 100, 0, 65}, 0, 0, FX(0, 50, 20, 30)},
+    {"WURLY", {1, 55, 50, 45, 100, 3, 25, 45}, {0, 85, 0, 45}, 0, 0, FX(8, 30, 15, 25)},
+    {"DX BASS", {1, 70, 20, 30, 90, 0, 30, 20}, {0, 60, 40, 20}, 0, 1, FX(0, 0, 5, 10)},
+    {"LATELY BASS", {0, 80, 0, 25, 100, 0, 50, 10}, {0, 50, 30, 15}, 0, 1, FX(5, 0, 0, 5)},
+    {"FM BELLS", {12, 55, 70, 95, 50, 9, 0, 25}, {0, 120, 0, 110}, 0, 0, FX(0, 25, 35, 70)},
+    {"CRYSTAL", {15, 40, 100, 70, 50, 10, 0, 15}, {0, 100, 0, 90}, 0, 0, FX(0, 30, 40, 75)},
+    {"FM PAD", {2, 25, 0, 127, 20, 8, 10, 30}, {70, 0, 127, 90}, 0, 0, FX(0, 80, 30, 80)},
+    {"BRASS SECT", {1, 75, 0, 127, 80, 6, 45, 30}, {15, 0, 127, 35}, 0, 0, FX(0, 30, 15, 35)},
+    {"FLUTE FM", {2, 20, 0, 127, 50, 4, 0, 60}, {12, 0, 127, 40}, 0, 1, FX(0, 20, 25, 40)},
+    {"PLUCK HARP", {3, 45, 60, 35, 90, 0, 0, 40}, {0, 65, 0, 55}, 0, 0, FX(0, 10, 25, 45)},
 };
 
-static const engine_t ENG_FMKEYS = {
-    .name = "FMKEYS",
-    .id = EID_FMKEYS,
+static const engine_t ENG_BLISS = {
+    .name = "BLISS",
+    .id = EID_BLISS,
     .cc = 0x24,                  /* CC74 INDEX, CC71 DECAY */
-    .cats = "KKKKKKUKKKKUKK",
+    .cats = "KKKKKKUKKKKUKKKKBBKKPLLU",
     .page_title = {"FM", "TOUCH"},
     .edit = {
         {"RATIO", F_ENUM, 0, 15, 1, N_FK_RATIO, 0},
@@ -94,9 +105,9 @@ static const engine_t ENG_FMKEYS = {
         {"FDBK", F_PCT, 0, 127, 0, 0, 0},
         {"KSCL", F_PCT, 0, 127, 60, 0, 0},
     },
-    .presets = FMKEYS_PRESETS,
-    .npresets = NELEM(FMKEYS_PRESETS),
-    .note_on = fmkeys_note_on,
-    .render = fmkeys_render,
+    .presets = BLISS_PRESETS,
+    .npresets = NELEM(BLISS_PRESETS),
+    .note_on = bliss_note_on,
+    .render = bliss_render,
     .knob = {P_E1, P_E2, P_E3, P_DEC},
 };

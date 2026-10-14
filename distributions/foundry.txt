@@ -1,22 +1,23 @@
 # Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
-# FOUNDRY: industrial, neuro, dark bass: the engines in display order, one a line (names: firmware/src/engine_ids.h; at
+# FOUNDRY: industrial, neuro, dark bass, and the clean sounds it lives of in contrast (VOSIM, DUBCHORD, MODAL, BLISS,
+# ECHOES, WAVE): the engines in display order, one a line (names: firmware/src/engine_ids.h; at
 # most 16). TRACKS: the build's track count;
 # PALETTE: the one a device starts with
 TRACKS 8
 PALETTE FOUNDRY
 SCREAM
 DARK
-HONKS
+VOSIM
 WAR
 SCRATCH
 FLUIDS
 RAZOR
-GUTS
+DUBCHORD
 RUST
 ANVIL
 DRILL
 SLAG
-VENOM
-CHOKE
-ABYSS
-SHRED
+MODAL
+BLISS
+ECHOES
+WAVE

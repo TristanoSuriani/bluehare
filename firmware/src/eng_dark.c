@@ -77,13 +77,22 @@ static const preset_t DARK_PRESETS[] = {
     {"SUB SWELL", {110, 80, 20, 0, 0, 40, 20, 40}, {60, 0, 127, 90}, 0, 0, FX(0, 20, 10, 40)},
     {"DEEP PUNCH", {100, 30, 10, 30, 90, 60, 40, 60}, {0, 80, 60, 40}, 0, 1, FX(10, 0, 0, 5)},
     {"WOBBLE SUB", {100, 60, 80, 100, 0, 40, 60, 80}, {0, 60, 110, 25}, 0, 1, FX(20, 0, 0, 5)},
+    /* (the clean block: no fold, no drive, the sines as they are) */
+    {"CLEAN SUB", {100, 0, 0, 0, 0, 40, 0, 40}, {0, 60, 110, 25}, 0, 1, FX(0, 0, 0, 5)},
+    {"ROUND BASS", {90, 50, 4, 10, 10, 40, 0, 55}, {0, 70, 100, 30}, 0, 1, FX(0, 0, 0, 5)},
+    {"SOFT 808", {70, 0, 0, 10, 50, 50, 0, 45}, {0, 100, 50, 60}, 0, 1, FX(0, 0, 0, 5)},
+    {"SINE PAD", {110, 90, 0, 0, 0, 40, 0, 35}, {80, 0, 127, 100}, 0, 0, FX(0, 40, 15, 60)},
+    {"WARM SUB", {110, 60, 0, 0, 0, 40, 0, 50}, {5, 60, 110, 40}, 0, 1, FX(0, 0, 0, 10)},
+    {"DEEP KEYS", {80, 80, 6, 20, 20, 40, 0, 60}, {0, 80, 40, 60}, 0, 0, FX(0, 20, 20, 40)},
+    {"SUB PLUCK", {90, 30, 0, 30, 40, 30, 0, 60}, {0, 40, 0, 30}, 0, 1, FX(0, 0, 10, 10)},
+    {"GLASS SUB", {60, 100, 0, 0, 0, 40, 0, 90}, {20, 0, 127, 60}, 0, 0, FX(0, 30, 20, 50)},
 };
 
 static const engine_t ENG_DARK = {
     .name = "DARK",
     .id = EID_DARK,
     .cc = 0x37,                  /* CC74 FOLD, CC71 DRIVE */
-    .cats = "BBBBBPBBBDBBBPKBBBDBLPBB",
+    .cats = "BBBBBPBBBDBBBPKBBBDBLPBBBBBPBKUP",
     .page_title = {"SUB", "PUNCH"},
     .edit = {
         {"SUB1", F_PCT, 0, 127, 90, 0, 0},

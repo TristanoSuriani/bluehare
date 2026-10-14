@@ -29,7 +29,7 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_dubsiren.c"       /* DUBSIREN: the sound-system siren, its own tape echo (1.5) */
 #include "eng_dubsiren8.c"      /* DUBSIREN8: its 8-bit cousin, every track (1.5) */
 #include "eng_dubchord.c"       /* DUBCHORD: the dub-techno chord, a whole chord in one voice (1.5) */
-#include "eng_fmkeys.c"         /* FMKEYS: FM electric pianos, bells, mallets (1.5) */
+#include "eng_bliss.c"         /* BLISS: FM electric pianos, bells, mallets (1.5) */
 #include "eng_wasp.c"           /* WASP: two oscillators, a gritty multimode filter (1.5) */
 #include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
 #include "eng_vector.c"         /* VECTOR: four sources, a point moving among them (1.5) */
@@ -183,14 +183,21 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
     {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : 0u}
+#define TRK_PICK3(X, p, Y, q, Z, r)                                                                                    \
+    {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : FELUCCA_ENG_##Z ? (uint8_t)ENGI_##Z : 0u,  \
+     FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : FELUCCA_ENG_##Z ? (uint8_t)(r) : 0u}
+/* (FOUNDRY: WAR's WAR KIT and EBM KIT, DARK's SUB WEIGHT, RAZOR's COLD BASS; DUBCHORD, VOSIM; RAZOR LEAD, SCREAM's
+ * SIREN CRY) */
 #if NPART == 8
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(KIT, 0), TRK_PICK2(BREAKS, 0, KIT, 0), TRK_PICK(SID, 0),
-                                          TRK_PICK2(WASP, 7, SID, 10), TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(VOSIM, 13),
-                                          TRK_PICK(SID, 2), TRK_PICK2(DUBSIREN, 0, HOOVER, 5)};   /* (no siren engine:
-                                                                                                    * HOOVER's SIREN) */
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(KIT, 0, WAR, 0), TRK_PICK3(BREAKS, 0, KIT, 0, WAR, 10),
+                                          TRK_PICK2(SID, 0, DARK, 0), TRK_PICK3(WASP, 7, SID, 10, RAZOR, 8),
+                                          TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(VOSIM, 13), TRK_PICK2(SID, 2, RAZOR, 2),
+                                          TRK_PICK3(DUBSIREN, 0, HOOVER, 5, SCREAM, 7)};   /* (no siren engine: HOOVER's
+                                                                                       * SIREN, SCREAM's SIREN CRY) */
 static const int8_t TRK_PAN[NPART] = {0, -8, 0, 0, -24, 24, -16, 16};
 #else
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(KIT, 0), TRK_PICK(SID, 0), TRK_PICK(VOSIM, 13), TRK_PICK(SID, 2)};
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(KIT, 0, WAR, 0), TRK_PICK2(SID, 0, DARK, 0), TRK_PICK(VOSIM, 13),
+                                          TRK_PICK2(SID, 2, RAZOR, 2)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24};
 #endif
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

@@ -231,13 +231,22 @@ static const preset_t ECHOES_PRESETS[] = {
     {"SCATTER", {4, 6, 4, 12, 100, 0, 0, 127}, {0, 0, 127, 20}, 0, 0, FX(0, 20, 0, 45)},
     {"SPIRAL", {0, 5, 1, 16, 105, 1, 10, 20}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 0, 35)},
     {"FOURTHS DOWN", {1, 4, 0, 10, 98, -5, -10, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 0, 35)},
+    /* (FOUNDRY's clean side: soft repeats, fourths up, a halo) */
+    {"SOFT TICKS", {1, 4, 0, 8, 95, 0, -10, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 0, 30)},
+    {"FOURTHS UP", {4, 4, 0, 10, 100, 5, 10, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 20, 0, 45)},
+    {"DOTTED PLUCK", {1, 1, 0, 8, 100, 0, -15, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 0, 35)},
+    {"WARM REPEAT", {1, 1, 0, 6, 90, 0, -30, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 20, 0, 40)},
+    {"ARP ECHO", {0, 4, 0, 8, 100, 3, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 0, 35)},
+    {"TAPE BLIP", {0, 1, 2, 10, 100, 0, -25, 10}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 0, 35)},
+    {"MALLET ECHO", {4, 3, 0, 8, 95, 0, -5, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 0, 40)},
+    {"HALO", {4, 0, 0, 6, 110, 12, 20, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 30, 0, 70)},
 };
 
 static const engine_t ENG_ECHOES = {
     .name = "ECHOES",
     .id = EID_ECHOES,
     .cc = 0x57,                  /* CC74 DECAY, CC71 TONE */
-    .cats = "UFFFUUFFFFFFUFFU",
+    .cats = "UFFFUUFFFFFFUFFUUUUUUUUF",
     .page_title = {"SOURCE", "REPEATS"},
     .edit = {
         {"SRC", F_ENUM, 0, 4, 0, N_EC_SRC, 0},

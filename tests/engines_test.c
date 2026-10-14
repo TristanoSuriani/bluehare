@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as FELUCCA_DIST=idm, which has
- * no HOOVER, BYTE, KARPLUS, FMPERC, DUBSIREN8, FMKEYS, RISERS nor FOUNDRY's engines (Felucca's own ANALOG .. FM6 are
+ * no HOOVER, BYTE, KARPLUS, FMPERC, DUBSIREN8, BLISS, RISERS nor FOUNDRY's engines (Felucca's own ANALOG .. FM6 are
  * retired ids since Fel-Tracker removed them). The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
  * stored sound of an engine left out loads as its substitute (engines.c eng_load_id):
  *   the table      the indices in order, the ids both ways, the left-out ids map to none, the substitutes
@@ -43,7 +43,7 @@ int main(void)
 
     /* the table */
     ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_HOOVER && !FELUCCA_ENG_BYTE && !FELUCCA_ENG_KARPLUS && !FELUCCA_ENG_FMPERC &&
-         !FELUCCA_ENG_DUBSIREN8 && !FELUCCA_ENG_FMKEYS && !FELUCCA_ENG_RISERS && !FELUCCA_ENG_DARK && FELUCCA_ENG_MODAL &&
+         !FELUCCA_ENG_DUBSIREN8 && !FELUCCA_ENG_BLISS && !FELUCCA_ENG_RISERS && !FELUCCA_ENG_DARK && FELUCCA_ENG_MODAL &&
          FELUCCA_ENG_VECTOR && FELUCCA_ENG_ECHOES && FELUCCA_ENG_GLITCH;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
@@ -53,7 +53,7 @@ int main(void)
         ok &= EID_RETIRED(i) && eng_of_id(i) == ENG_NO && str_eq(N_ENGNAME[i], "-");
     bad += check("engines: IDM, 16 in its order from 0, the ids both ways; HOOVER BYTE DARK .. none; 0 .. 13 retired", ok);
     ok = eng_load_id(EID_HOOVER, &sub) == ENGI_SID && sub && eng_load_id(EID_DUBSIREN8, &sub) == ENGI_SID && sub &&
-         eng_load_id(EID_FMKEYS, &sub) == ENGI_WAVE && sub && eng_load_id(EID_RISERS, &sub) == ENGI_CHAOS && sub &&
+         eng_load_id(EID_BLISS, &sub) == ENGI_WAVE && sub && eng_load_id(EID_RISERS, &sub) == ENGI_CHAOS && sub &&
          eng_load_id(EID_KARPLUS, &sub) == ENGI_WEST && sub && eng_load_id(EID_FMPERC, &sub) == ENGI_KIT && sub &&
          eng_load_id(EID_BYTE, &sub) == ENGI_SID && sub && eng_load_id(EID_DARK, &sub) == ENGI_SID && sub &&
          eng_load_id(EID_GUTS, &sub) == ENGI_WASP && sub && eng_load_id(EID_ANVIL, &sub) == ENGI_MODAL && sub &&
@@ -62,7 +62,7 @@ int main(void)
          eng_load_id(EID_WASP, &sub) == ENGI_WASP && !sub && eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub &&
          eng_load_id(0, &sub) == ENG_NO && eng_load_id(12, &sub) == ENG_NO && eng_load_id(13, &sub) == ENG_NO &&
          eng_load_id(27, &sub) == ENG_NO;
-    bad += check("  substitutes: HOOVER, DUBSIREN8, BYTE, DARK -> SID; FMKEYS -> WAVE; RISERS -> CHAOS; KARPLUS -> WEST; FMPERC "
+    bad += check("  substitutes: HOOVER, DUBSIREN8, BYTE, DARK -> SID; BLISS -> WAVE; RISERS -> CHAOS; KARPLUS -> WEST; FMPERC "
                  "-> KIT; GUTS -> WASP; ANVIL -> MODAL; retired (0 .. 13, 27): none", ok);
 
     /* power-on */
@@ -98,7 +98,7 @@ int main(void)
             ok &= !strcmp(n, eng_by_id(i)->name);
     }
     bad += check("INFO: the ids' names, \"-\" for a retired id or an engine left out", ok && !strcmp(N_ENGNAME[EID_HOOVER], "-"));
-    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_FMKEYS) & 127; a[3] = (8192 + EID_FMKEYS) >> 7;
+    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_BLISS) & 127; a[3] = (8192 + EID_BLISS) >> 7;
     request(ED_SET, a, 4);
     ok = TSEL->eng_req == ENGI_WAVE && TSEL->preset == 0u;
     a[0] = EID_HOOVER; a[1] = 3;
@@ -107,7 +107,7 @@ int main(void)
     a[0] = EID_HOOVER;
     request(ED_NAMES, a, 1);
     ok &= host_wire[5] == EID_HOOVER && host_wire[6] == 0;
-    bad += check("  G_ENGSEL FMKEYS: WAVE; PRESET HOOVER 3: SID's first preset (replies its id); NAMES HOOVER: none", ok);
+    bad += check("  G_ENGSEL BLISS: WAVE; PRESET HOOVER 3: SID's first preset (replies its id); NAMES HOOVER: none", ok);
 
     /* OCT (Fel-Tracker): a preset sets it, the next preset puts it back (FMPERC's 6 kicks carry -3: FMPERC is not in this
      * distribution, its table is read as it stands); a tracker instrument sets it too; a song keeps it; a stored value
@@ -250,11 +250,11 @@ int main(void)
 
     /* the song */
     reset();
-    tk.instr[9].src = EID_FMKEYS; tk.instr[9].preset = 3;
+    tk.instr[9].src = EID_BLISS; tk.instr[9].preset = 3;
     fm1_irq_off();
     tk_inst_apply(&trk[2], 10);
     fm1_irq_on();
-    bad += check("instrument of FMKEYS (left out): plays WAVE's first preset", trk[2].eng_req == ENGI_WAVE && trk[2].preset == 0u);
+    bad += check("instrument of BLISS (left out): plays WAVE's first preset", trk[2].eng_req == ENGI_WAVE && trk[2].preset == 0u);
 
     /* sound */
     {

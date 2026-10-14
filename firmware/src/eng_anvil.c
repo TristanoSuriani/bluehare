@@ -53,13 +53,22 @@ static const preset_t ANVIL_PRESETS[] = {
     {"FOUNDRY BELL", {7, 0, 70, 35, 120, 20, 100, 25}, {0, 0, 127, 105}, 0, 0, FX(0, 20, 30, 60)},
     {"CLICK METAL", {6, 3, 60, 50, 70, 50, 110, 10}, {0, 0, 127, 90}, 0, 0, FX(10, 0, 25, 45)},
     {"SUB ANVIL", {0, 0, 50, 30, 100, 40, 70, 10}, {0, 0, 127, 90}, 0, 0, FX(10, 0, 25, 45), .oct = -1},
+    /* (the clean block: bells and pipes ringing true, no beating, no drive) */
+    {"PURE BELL", {7, 0, 64, 30, 120, 20, 70, 0}, {0, 0, 127, 110}, 0, 0, FX(0, 20, 30, 65)},
+    {"SOFT GONG", {2, 0, 64, 30, 118, 30, 45, 8}, {0, 0, 127, 115}, 0, 0, FX(0, 20, 25, 70)},
+    {"CHURCH BELL", {7, 0, 60, 25, 125, 15, 80, 4}, {0, 0, 127, 120}, 0, 0, FX(0, 10, 30, 75)},
+    {"CLEAN PIPE", {1, 0, 64, 20, 100, 40, 70, 0}, {0, 0, 127, 95}, 0, 0, FX(0, 10, 25, 50)},
+    {"STEEL PAN", {4, 0, 60, 45, 90, 40, 80, 2}, {0, 0, 127, 85}, 0, 0, FX(0, 10, 25, 45)},
+    {"BOWED BELL", {7, 2, 64, 30, 122, 25, 55, 4}, {40, 0, 127, 110}, 0, 0, FX(0, 40, 30, 80)},
+    {"GLOCK METAL", {4, 3, 64, 30, 90, 40, 100, 0}, {0, 0, 127, 80}, 0, 0, FX(0, 10, 25, 45)},
+    {"WARM TANK", {5, 0, 64, 30, 105, 60, 40, 4}, {0, 0, 127, 100}, 0, 0, FX(0, 10, 20, 55)},
 };
 
 static const engine_t ENG_ANVIL = {
     .name = "ANVIL",
     .id = EID_ANVIL,
     .cc = 0x57,                  /* CC74 DECAY, CC71 BRIGHT */
-    .cats = "DDFDDFDKFPDFDFKDDKFPFKDD",
+    .cats = "DDFDDFDKFPDFDFKDDKFPFKDDKKKKKPKK",
     .page_title = {"METAL", "STRIKE"},
     .edit = {
         {"MATRL", F_ENUM, 0, 7, 0, N_AV_MATRL, 0},

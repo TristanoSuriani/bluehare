@@ -96,13 +96,22 @@ static const preset_t FLUIDS_PRESETS[] = {
     {"OOZE", {100, 110, 8, 50, 30, 90, 70, 60}, {0, 50, 100, 20}, 20, 1, FX(20, 0, 0, 10)},
     {"GLASS LIQUID", {20, 30, 4, 110, 60, 60, 20, 0}, {0, 60, 50, 40}, 20, 0, FX(0, 30, 30, 40)},
     {"WAVE POOL", {64, 60, 7, 70, 40, 70, 30, 30}, {60, 90, 120, 100}, 0, 0, FX(0, 60, 30, 80)},
+    /* (the clean block: little dispersion, no resonance, slow water) */
+    {"CLEAR PAD", {50, 30, 4, 85, 10, 60, 10, 10}, {80, 90, 120, 100}, 0, 0, FX(0, 60, 25, 80)},
+    {"SOFT WATER", {40, 25, 3, 75, 20, 40, 10, 0}, {30, 0, 127, 70}, 0, 0, FX(0, 40, 25, 60)},
+    {"PURE FLOW", {30, 20, 4, 90, 15, 50, 5, 0}, {60, 90, 120, 100}, 0, 0, FX(0, 60, 30, 85)},
+    {"GLASS KEYS", {30, 20, 3, 100, 30, 30, 10, 0}, {0, 60, 50, 50}, 10, 0, FX(0, 30, 30, 45)},
+    {"CLEAN BASS", {50, 20, 3, 45, 10, 20, 10, 70}, {0, 50, 100, 20}, 10, 1, FX(0, 0, 0, 5)},
+    {"MIST", {40, 40, 5, 80, 8, 90, 5, 10}, {100, 90, 120, 110}, 0, 0, FX(0, 70, 30, 90)},
+    {"DEW LEAD", {30, 20, 3, 95, 40, 30, 15, 0}, {5, 40, 110, 30}, 0, 1, FX(0, 20, 30, 35)},
+    {"STILL WATER", {64, 20, 2, 70, 5, 30, 5, 30}, {90, 90, 120, 110}, 0, 0, FX(0, 50, 25, 85)},
 };
 
 static const engine_t ENG_FLUIDS = {
     .name = "FLUIDS",
     .id = EID_FLUIDS,
     .cc = 0x27,                  /* CC74 DISP, CC71 RES */
-    .cats = "BBPPLBBPKBLBBPBLPKBLBBKP",
+    .cats = "BBPPLBBPKBLBBPBLPKBLBBKPPPPKBPLP",
     .page_title = {"WAVE", "FLOW"},
     .edit = {
         {"WAVE", F_PCT, 0, 127, 64, 0, 0},
