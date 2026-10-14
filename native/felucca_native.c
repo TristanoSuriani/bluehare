@@ -6,7 +6,8 @@
  * computer's (SDL audio, 44.1 kHz), MIDI in from every source (CoreMIDI on macOS), its saves in a file.
  * It is the base the heavier things are built on: no device's CPU, RAM or flash under it, only the computer's. Built
  * FELUCCA_NATIVE (core.h): every track has its own 16 voices (no budget shared, no note taken from another track), the
- * engines' voice caps that were the device's CPU are lifted, and MENU > INFO's CPU is the computer's load.
+ * reverbs CONCERT, CAVERN and SHIMMER (fx_native.c), a 23.8 s delay line, the native engines (NEBULA, CANYON: in a
+ * NATIVE distribution, idm_native), and MENU > INFO's CPU is the computer's load. The device's engines are as they are.
  *   native/build.sh [DIST]  ->  build/native/fel-tracker-<dist> (and Fel-Tracker <DIST>.app on macOS)
  * The window: the screen (3x), the knobs (the mouse wheel over one turns it; MASTER the level), the buttons (a click
  * holds one while the mouse button is down, LEDs as the device lights them) and the 27 keys. The computer keyboard as
@@ -21,8 +22,8 @@
  *                              window as drawn, saved */
 #include <stdint.h>
 #include <time.h>
-#define FELUCCA_NATIVE 1                                  /* (core.h: every track its own 16 voices, the engines' caps
-                                                           * lifted; audio.c: the load meter the computer's) */
+#define FELUCCA_NATIVE 1                                  /* (core.h: every track its own 16 voices; fx.c: the native
+                                                           * reverbs, the long delay; audio.c: the load meter the computer's) */
 static uint32_t native_ticks(void)                        /* the computer's clock in the device's TIMER4 ticks (24 MHz) */
 {
     struct timespec ts;

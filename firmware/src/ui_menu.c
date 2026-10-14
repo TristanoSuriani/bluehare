@@ -366,7 +366,11 @@ static uint32_t info_sig(void)
 }
 static void info_rows(void)                            /* (in screen rows: cv_oy set by the caller) */
 {
+#ifdef FELUCCA_NATIVE                                  /* (the native image: an application, not firmware) */
+    static const char *const LBL[INFO_N] = {"VERSION", "USB", "CPU"};
+#else
     static const char *const LBL[INFO_N] = {"FIRMWARE", "USB", "CPU"};
+#endif
     static const char *const USB_N[5] = {"OFF", "WAIT", "BUS", "ENUM", "MIDI"};
     int32_t h = menu_large() ? 28 : 24;
     uint32_t k;

@@ -60,7 +60,9 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 - **Native image** *(Fel-Tracker)*: Fel-Tracker as a desktop application for each distribution (`native/build.sh`:
   `Fel-Tracker IDM.app` on macOS), the same firmware in a window with the panel, the computer's sound out and MIDI in,
   its saves in a file: the base for heavier engines and effects than the FM-1 can hold. Every track has its own 16
-  voices there, and the engines' voice caps set by the device's CPU are lifted (BUILDING.md "Native image")
+  voices there, three more reverbs (CONCERT: HALL at the full rate and twice the lines; CAVERN: a cave's echoes and
+  a 30 s tail; SHIMMER: a tail climbing in octaves), a 23.8 s delay line, and a distribution of its own, IDM NATIVE,
+  with the native engines NEBULA and CANYON (BUILDING.md "Native image")
 
 - **Sixteen engines** in a distribution (below): IDM, the one a plain build makes, FOUNDRY and WAREHOUSE (BUILDING.md
   "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
@@ -523,6 +525,16 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     PERC), TUNE, DECAY, DRIVE SIREN8 plays on every
   track (there is no DUBSIREN to keep the last one). At power-on: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS,
   DUBCHORD, VOSIM's FORMANT PAD, HOOVER and SIREN8's BIT SIREN
+- **IDM NATIVE** *(Fel-Tracker; the native image's alone: `native/build.sh idm_native`, no FM-1 build)*: IDM with its
+  two most CPU-bound engines as the native engines grown from them, which share their controls (a sound loads on the
+  FM-1 as the engine it grew from): SID, WASP, WAVE, BREAKS, WEST, VECTOR, DUBSIREN, MODAL, DUBCHORD, VOSIM, NEBULA,
+  CHAOS, CANYON, KIT, SPEECH, GLITCH.
+  - **NEBULA**: PARTICLE's cloud whole: 64 grains at once a voice (PARTICLE: 8), 12 voices, the level from the
+    overlap's square root (a dense cloud stays loud); PARTICLE's presets and NEBULA, CHOIR CLOUD, OCEAN, FIFTHS HAZE,
+    BELL MIST, SHEPARD SKY, DEEP SWARM, STATIC FIELD
+  - **CANYON**: ECHOES' repeats, all of them: COUNT up to 64, every repeat ringing to its end (ECHOES keeps 6), 8
+    voices; ECHOES' presets and CANYON, BELL CASCADE, PLUCK STORM, ENDLESS DUB, LONG BOUNCE, FM RAIN, WHOLE TONE,
+    AVALANCHE
 - **FOUNDRY** *(Fel-Tracker; industrial, neuro, dark bass, and the clean sounds it lives of in contrast; 8 tracks,
   its own palette, molten orange)*. Its 16 engines, in their order on the device: SCREAM, DARK, VOSIM, WAR, SCRATCH,
   FLUIDS, RAZOR, DUBCHORD, RUST, ANVIL, DRILL, SLAG, MODAL, BLISS, ECHOES, WAVE. Every one has at least 24 presets.

@@ -182,6 +182,11 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "UI renders: layout lint (every screen and palette, every page, engine and column value), GREY gray, MONO neutral, alignment by ink (1 px fails), draw cost" \
         "$OUT/ui_render" build/ui_new build/ui_slot
     if python3 -c "import PIL" 2>/dev/null; then python3 tests/ui_render.py build/ui_new build/ui_slot; fi
+    $CC -O1 -w -DFELUCCA_NATIVE -DFELUCCA_DIST=idm_native "-DFELUCCA_VERSION=\"$FV\"" -Ibuild/gen -Ifirmware/src -Itests \
+        -o "$OUT/ui_render_native" tests/ui_render.c -lm
+    mkdir -p build/ui_native/ppm build/ui_native_slot
+    run "UI renders, IDM NATIVE (the native image's): its engines, CONCERT CAVERN SHIMMER, its version line: the same lint and alignment" \
+        "$OUT/ui_render_native" build/ui_native build/ui_native_slot
     $CC -w -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test8" tests/ui_test.c -lm
     run "UI built with 8 tracks (step 3c): every check above, the view 1..4 / 5..8, GLO / FX on 8 tracks, MIDI IN blocks of 8" "$OUT/ui_test8"
     $CC -O1 -w "-DFELUCCA_VERSION=\"$FV\"" -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/ui_render8" tests/ui_render.c -lm
@@ -246,10 +251,17 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "regression, the WAREHOUSE distribution: its presets' golden renders and CPU" "$OUT/regress_warehouse" tests/golden.txt tests/cpu_baseline.txt
     $CC -w -DFELUCCA_DIST=warehouse -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/warehouse_test" tests/warehouse_test.c -lm
     run "WAREHOUSE: its engines and order, power-on, SIREN8 on every track" "$OUT/warehouse_test"
-    for d in idm foundry warehouse; do
+    for d in idm foundry warehouse idm_native; do
         $CC -O2 -w -DFELUCCA_NATIVE -DFELUCCA_DIST=$d -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/native_test_$d" tests/native_test.c -lm
-        run "native image's limits ($d): 16 voices on every track, no shared budget, the engines' caps lifted" "$OUT/native_test_$d"
+        run "native image ($d): 16 voices a track, the device's engines as they are, NEBULA CANYON, CONCERT CAVERN SHIMMER, the long delay" "$OUT/native_test_$d"
     done
+    $CC -O2 -w -DFELUCCA_NATIVE -DFELUCCA_DIST=idm_native -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm_native" tests/regress.c -lm
+    run "regression, IDM NATIVE (the native image's): its presets' golden renders (NEBULA, CANYON; the rest as the device's)" "$OUT/regress_idm_native" tests/golden.txt tests/cpu_baseline.txt
+    if ${CC%% *} -fsyntax-only -w -DFELUCCA_DIST=idm_native -Ibuild/gen -Ifirmware/src tests/hostsim.c 2>/dev/null; then
+        echo "== FAILED: a NATIVE distribution builds without FELUCCA_NATIVE"; fail=1
+    else
+        echo "== a NATIVE distribution refuses a device build (core.h: FELUCCA_NATIVE only)"
+    fi
     $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
     mkdir -p build/speech_demo
     run "SPEECH: every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo
@@ -338,6 +350,9 @@ else
     run "native image: the desktop application builds (native/build.sh -> build/native)" sh native/build.sh
     run "native image: boots (dummy drivers), the screen draws, the clock follows the audio, HOME lit, a key sounds" \
         build/native/fel-tracker-idm --selftest
+    run "native image, IDM NATIVE: builds (native/build.sh idm_native)" sh native/build.sh idm_native
+    run "native image, IDM NATIVE: boots, the screen draws, the clock follows the audio, HOME lit, a key sounds" \
+        build/native/fel-tracker-idm_native --selftest
 fi
 
 [ $fail -eq 0 ] && echo "ALL HOST TESTS PASSED" || { echo "HOST TESTS FAILED"; exit 1; }

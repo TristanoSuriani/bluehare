@@ -4,7 +4,8 @@
 # Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 # The native image: Fel-Tracker as a desktop application (native/felucca_native.c: the firmware as the browser
 # emulator runs it, in an SDL2 window, the computer's audio out, MIDI in).
-#   native/build.sh [DIST]   (DIST: a distribution, distributions/<DIST>.txt; the BUILD one, IDM, without)
+#   native/build.sh [DIST]   (DIST: a distribution, distributions/<DIST>.txt; the BUILD one, IDM, without; idm_native:
+#                             IDM with the native image's own engines, NEBULA and CANYON)
 #     -> build/native/fel-tracker-<dist>          the program (SDL2 linked in: nothing else to install)
 #     -> build/native/Fel-Tracker <DIST>.app      on macOS, the same as an application (double-click it)
 # Needs SDL2 (macOS: brew install sdl2; Linux: the libsdl2-dev package) and one ./build.sh before (build/gen: the
@@ -17,7 +18,8 @@ DIST="${1:-$(grep -v '^#' distributions/BUILD | awk 'NF { print $1; exit }')}"
 command -v sdl2-config >/dev/null 2>&1 || { echo "native: no SDL2 (macOS: brew install sdl2)"; exit 1; }
 VERSION=$(sed -n 's/^#define FELUCCA_VERSION "\([^"]*\)".*/\1/p' firmware/src/felucca.c)   # ("v0.10.0")
 PLIST_VERSION=${VERSION#v}
-NAME=$(echo "$DIST" | tr 'a-z' 'A-Z')
+NAME=$(echo "$DIST" | tr 'a-z_' 'A-Z ')   # ("IDM NATIVE": the tag, gen_dist.py's)
+BUNDLE=$(echo "$DIST" | tr '_' '-')
 OUT=build/native
 mkdir -p "$OUT"
 case "$(uname -s)" in
@@ -42,7 +44,7 @@ if [ "$(uname -s)" = Darwin ]; then
 <dict>
   <key>CFBundleName</key><string>Fel-Tracker $NAME</string>
   <key>CFBundleDisplayName</key><string>Fel-Tracker $NAME</string>
-  <key>CFBundleIdentifier</key><string>io.github.tristanosuriani.fel-tracker.$DIST</string>
+  <key>CFBundleIdentifier</key><string>io.github.tristanosuriani.fel-tracker.$BUNDLE</string>
   <key>CFBundleVersion</key><string>$PLIST_VERSION</string>
   <key>CFBundleShortVersionString</key><string>$PLIST_VERSION</string>
   <key>CFBundleExecutable</key><string>fel-tracker</string>

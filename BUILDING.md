@@ -86,6 +86,7 @@ FELUCCA_DIST=foundry ./build.sh    # another one (build/felucca-foundry.fwsc)
 | `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH (16) |
 | `foundry` | 8 | SCREAM DARK VOSIM WAR SCRATCH FLUIDS RAZOR DUBCHORD RUST ANVIL DRILL SLAG MODAL BLISS ECHOES WAVE |
 | `warehouse` | 8 | LINNKIT KIT FLOOR BREAKS FMPERC CHOKE GUTS VENOM HOOVER DUBCHORD STRINGS VOSIM DUBSIREN8 ABYSS SHRED RISERS |
+| `idm_native` | 8 | IDM's, PARTICLE and ECHOES as NEBULA and CANYON: SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM NEBULA CHAOS CANYON KIT SPEECH GLITCH (`NATIVE`: the native image's alone, "Native image" below) |
 
 With 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an
@@ -163,17 +164,49 @@ keys (click and hold), lit as the device lights them; the computer keyboard as o
 SDL2: `brew install sdl2` (Linux: libsdl2-dev). It is the base for what the device cannot hold: heavier engines and
 effects run on the computer's CPU and memory, not the FM-1's; a VST built on it is planned.
 
-It is built with `FELUCCA_NATIVE` (`firmware/src/core.h`), which lifts the limits that were the device's:
+It is built with `FELUCCA_NATIVE` (`firmware/src/core.h`), which lifts the limits that were the device's. The
+device's engines stay exactly as they are (a sound plays as on the FM-1: 0 of their golden renders differ); what the
+native image adds is its own:
 
 | | FM-1 (and the browser emulator) | native image |
 |---|---|---|
 | voices | 12 shared by all the tracks (8 when the CPU is busy); a new note takes one from another track | 16 on every track, its own: nothing taken from another track |
-| engine caps | MODAL, ANVIL, PARTICLE, ECHOES, KARPLUS, SPEECH, DUBCHORD, RAZOR 4; FLUIDS, CHOKE, SLAG, VECTOR 6; GLITCH 8 | 8, 8, 8, 8, 8, 8, 8, 8; 12, 12, 12, 12; 12 |
-| MENU > INFO CPU | the device's audio interrupt | the computer's audio thread |
+| reverb (FX > REVERB TYPE) | ROOM, SPRING, HALL (8 lines at half the rate) | and CONCERT, CAVERN, SHIMMER (`firmware/src/fx_native.c`, below) |
+| delay line | 1.49 s (1/1, 2BAR, 4BAR cut short at most tempos) | 23.8 s: 4BAR down to 41 BPM; PING's right side 11.9 s |
+| engines | the distribution's | and the native engines, in a `NATIVE` distribution (`idm_native`): NEBULA, CANYON |
+| MENU > INFO CPU | the device's audio interrupt | the computer's audio thread (the FIRMWARE line reads VERSION) |
 
-Songs, sounds and presets are the same as the device's: nothing stored changes, and a song made here plays on the
-FM-1 (with the device's voices). `tests/native_test.c` checks the limits in each distribution and prints how fast the
-computer renders every track full (about 30 times real time on an M1 Pro).
+The reverbs, in floating point at the full rate (some 0.7 MB):
+
+- **CONCERT**: HALL without the device's economies: 16 lines instead of 8, at 44.1 kHz instead of 22.05 (the air up to
+  the top), 4 diffusers, every line drifting. SIZE: RT60 0.5 .. 9 s (~4 s at 90, as HALL); DAMP: 16 .. 1.5 kHz.
+- **CAVERN**: a cave: a 70 ms gap, the walls' first six echoes (60 .. 330 ms, left and right in turn), then a slow, dark
+  tail from lines three times as long. SIZE: RT60 1.5 .. 30 s (~12 s at 90); DAMP: 8 .. 0.9 kHz.
+- **SHIMMER**: a long hall whose tail climbs an octave each pass (a pitch shifter in the loop, low-cut at 400 Hz,
+  soft-limited). SIZE: RT60 1 .. 15 s (~7 s at 90); DAMP: the lines' top and the shimmer's.
+
+All three send out what HALL does (a burst of noise, the first 2 s, within 0.1 dB at SIZE 90) and end in exact silence.
+
+The native engines (`engine_ids.h` marks them `/* native: */`; `tools/gen_dist.py` lets only a `NATIVE` distribution
+list them, and `core.h` refuses a device build of one) share the controls of the engine they grew from, their
+substitute, so a sound made with them loads on the FM-1 as that engine:
+
+- **NEBULA** (id 57, PARTICLE's): the cloud whole: 64 grains at once a voice (PARTICLE drops any past 8), 12 voices, the
+  chirp followed every 8 samples, the level from the overlap's square root (a dense cloud keeps its loudness). PARTICLE's
+  12 presets and 8 of its own: NEBULA, CHOIR CLOUD, OCEAN, FIFTHS HAZE, BELL MIST, SHEPARD SKY, DEEP SWARM, STATIC FIELD.
+- **CANYON** (id 58, ECHOES'): up to 64 repeats (COUNT; ECHOES 16, a CANYON sound with more plays 16 there), all of
+  them ringing (ECHOES cuts all but 6), 8 voices. ECHOES' 24 presets and 8 of its own: CANYON, BELL CASCADE, PLUCK
+  STORM, ENDLESS DUB, LONG BOUNCE, FM RAIN, WHOLE TONE, AVALANCHE.
+
+```
+native/build.sh idm_native
+open "build/native/Fel-Tracker IDM NATIVE.app"
+```
+
+Songs, sounds and presets are stored as on the device: a song made here plays on the FM-1 with the device's voices,
+CONCERT, CAVERN and SHIMMER as HALL, NEBULA as PARTICLE, CANYON as ECHOES, and a delay longer than 1.49 s cut short.
+`tests/native_test.c` checks all of it in each distribution and prints how fast the computer renders every track full
+(about 30 times real time on an M1 Pro).
 
 ## Tests
 
