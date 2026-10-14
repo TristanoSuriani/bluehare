@@ -13,6 +13,9 @@ FILES_DSP = \
 	fel_resample.c \
 	../core/fel_loader.c
 
+FILES_UI = \
+	FelTrackerUI.cpp
+
 include ../dpf/Makefile.plugins.mk
 
 BUILD_C_FLAGS += -std=gnu11

@@ -51,6 +51,13 @@ struct fel_host {
     atomic_uint save_req;                /* 1: the main thread asks the audio thread to save now; 2: it did */
     uint8_t *snap;                       /* the flash after the last block that wrote it */
     uint32_t snap_size, snap_writes;
+    /* the window: the view (written by the audio thread under view_seq, odd while it writes), the panel's queue */
+    fel_view_t view;
+    atomic_uint view_seq;
+    uint32_t view_draws;
+    struct { uint8_t kind; uint32_t a; int32_t b; } uiq[256];   /* kind 0 buttons, 1 keys, 2 an encoder */
+    atomic_uint uiq_w, uiq_r;
+    uint32_t ui_next;                    /* the device's ms the next button or key change may come */
 };
 
 static void lock(atomic_flag *f)
@@ -111,6 +118,9 @@ fel_host_t *fel_host_new(const char *cores_dir, double rate, char *err, unsigned
     atomic_flag_clear(&h->snap_lock);
     atomic_init(&h->outs_want, 0u);
     atomic_init(&h->save_req, 0u);
+    atomic_init(&h->view_seq, 0u);
+    atomic_init(&h->uiq_w, 0u);
+    atomic_init(&h->uiq_r, 0u);
     snprintf(h->dir, sizeof h->dir, "%s", cores_dir);
     h->master = 700u;                                 /* (the emulator's) */
     find_dists(h);
@@ -182,6 +192,8 @@ static int start(fel_host_t *h, uint32_t i, const uint8_t *nor, uint32_t nor_n, 
     h->snap_size = api->nor_size();
     h->snap_writes = api->flash_writes();
     h->outs = 0;                                      /* (the new core has none yet: the next block sets them) */
+    h->view_draws = 0xFFFFFFFFu;                      /* (its screen copied at its first block) */
+    h->ui_next = 0;
     h->core_frames = 0;
     if (!h->direct)
         fel_rs_reset(&h->rs);
@@ -300,6 +312,103 @@ void fel_host_master(fel_host_t *h, uint32_t v)
 void fel_host_outputs(fel_host_t *h, uint32_t mask) { atomic_store(&h->outs_want, mask); }
 const void *fel_host_core(const fel_host_t *h) { return h->api; }
 
+/* the window's queue: one writer (the window), one reader (the audio thread) */
+static void ui_push(fel_host_t *h, uint8_t kind, uint32_t a, int32_t b)
+{
+    uint32_t w = atomic_load(&h->uiq_w);
+    if (w - atomic_load(&h->uiq_r) >= 256u)
+        return;
+    h->uiq[w % 256u].kind = kind;
+    h->uiq[w % 256u].a = a;
+    h->uiq[w % 256u].b = b;
+    atomic_store(&h->uiq_w, w + 1u);
+}
+void fel_host_ui_buttons(fel_host_t *h, uint32_t labels) { ui_push(h, 0, labels, 0); }
+void fel_host_ui_keys(fel_host_t *h, uint32_t mask) { ui_push(h, 1, mask, 0); }
+void fel_host_ui_enc(fel_host_t *h, uint32_t role, int32_t n) { ui_push(h, 2, role, n); }
+
+/* (the audio thread, at a block's start) the panel's changes: an encoder at once; a button or a key held at least
+ * HOLD_MS of the device's time before the next one, so the panel's scan sees each (the native image's rule) */
+#define HOLD_MS 24u
+static void ui_apply(fel_host_t *h)
+{
+    uint32_t r = atomic_load(&h->uiq_r), w = atomic_load(&h->uiq_w), now = h->api->now_ms();
+    while (r != w) {
+        const uint8_t kind = h->uiq[r % 256u].kind;
+        if (kind == 2u) {
+            h->api->enc(h->uiq[r % 256u].a, h->uiq[r % 256u].b);
+        } else {
+            if ((int32_t)(now - h->ui_next) < 0)
+                break;
+            if (kind)
+                h->api->keys(h->uiq[r % 256u].a);
+            else
+                h->api->buttons(h->uiq[r % 256u].a);
+            h->ui_next = now + HOLD_MS;
+        }
+        r++;
+    }
+    atomic_store(&h->uiq_r, r);
+}
+
+/* (the audio thread, at a block's end) the view: the LEDs always, the screen when the device drew */
+static void view_take(fel_host_t *h)
+{
+    const fel_core_api_t *a = h->api;
+    uint32_t d = a->screen_draws(), s = atomic_load(&h->view_seq);
+    fel_view_t *v = &h->view;
+    uint32_t lb = a->lit_buttons(), lk = a->lit_keys(), db = a->dim_buttons(), dk = a->dim_keys();
+    uint32_t bb = a->breath_buttons(), bk = a->breath_keys(), mk = a->mid_keys(), pl = a->playing();
+    if (d == h->view_draws && lb == v->lit_buttons && lk == v->lit_keys && db == v->dim_buttons && dk == v->dim_keys &&
+        bb == v->breath_buttons && bk == v->breath_keys && mk == v->mid_keys && pl == v->playing)
+        return;
+    atomic_store(&h->view_seq, s + 1u);               /* (odd: being written) */
+    atomic_thread_fence(memory_order_release);
+    if (d != h->view_draws)
+        memcpy(v->screen, a->screen(), sizeof v->screen);
+    v->lit_buttons = lb;
+    v->lit_keys = lk;
+    v->dim_buttons = db;
+    v->dim_keys = dk;
+    v->breath_buttons = bb;
+    v->breath_keys = bk;
+    v->mid_keys = mk;
+    v->playing = pl;
+    h->view_draws = d;
+    atomic_thread_fence(memory_order_release);
+    atomic_store(&h->view_seq, s + 2u);
+}
+
+int fel_host_view(fel_host_t *h, fel_view_t *v, uint32_t *seq)
+{
+    uint32_t k;
+    for (k = 0; k < 8u; k++) {                        /* (a copy between two writes: a few tries) */
+        uint32_t s0 = atomic_load(&h->view_seq), s1;
+        if (s0 == *seq)
+            return 0;
+        if (s0 & 1u)
+            continue;
+        atomic_thread_fence(memory_order_acquire);
+        memcpy(v, &h->view, sizeof *v);
+        atomic_thread_fence(memory_order_acquire);
+        s1 = atomic_load(&h->view_seq);
+        if (s0 == s1) {
+            *seq = s0;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int fel_host_switch(fel_host_t *h, uint32_t i, char *err, unsigned err_n)
+{
+    uint8_t *blob = 0;
+    size_t n = fel_host_save(h, &blob);
+    int r = n ? fel_host_load(h, i, blob, n, err, err_n) : fel_host_set_dist(h, i, err, err_n);
+    free(blob);
+    return r;
+}
+
 typedef struct { fel_host_t *h; uint32_t keep; } pull_t;   /* keep: the channels the core fills */
 static void pull(void *ctx, float *const *in, uint32_t nch, uint32_t n)
 {
@@ -340,6 +449,7 @@ void fel_host_run(fel_host_t *h, float *const *out, uint32_t nout, uint32_t n, c
             memset(out[c], 0, sizeof(float) * n);
         return;
     }
+    ui_apply(h);
     want = nout >= FEL_HOST_OUTS ? atomic_load(&h->outs_want) & ((1u << h->api->tracks) - 1u) : 0u;
     if (want != h->outs) {
         h->api->outputs(want);
@@ -376,5 +486,6 @@ void fel_host_run(fel_host_t *h, float *const *out, uint32_t nout, uint32_t n, c
         h->snap_writes = w;
         unlock(&h->snap_lock);
     }
+    view_take(h);
     unlock(&h->lock);
 }

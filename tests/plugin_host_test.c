@@ -538,6 +538,84 @@ static void test_state(void)
     fel_host_free(b);
 }
 
+/* ----------------------------------------------------------- the window --- */
+static void blocks(fel_host_t *h, uint32_t n, const fel_transport_t *tr)
+{
+    float l[256], r[256], *o[2] = {l, r};
+    uint32_t k;
+    for (k = 0; k < n; k++)
+        fel_host_run(h, o, 2, 256, 0, 0, tr);
+}
+
+static void test_window(void)
+{
+    char err[256], what[200];
+    fel_host_t *h = fel_host_new(dir, 48000.0, err, sizeof err);
+    static fel_view_t v;
+    uint32_t seq = 0, seq1, i, diff = 0;
+    int got;
+    static uint16_t before[240 * 240];
+    blocks(h, 300, 0);                                   /* (the boot, HOME drawn) */
+    got = fel_host_view(h, &v, &seq);
+    seq1 = seq;
+    ck("the window's view: the screen and the LEDs (HOME lit after the boot)", got && ((v.lit_buttons >> 6) & 1u));
+    ck("... unchanged while the device shows the same: no new view", (blocks(h, 2, 0), !fel_host_view(h, &v, &seq)) && seq == seq1);
+    memcpy(before, v.screen, sizeof before);
+    fel_host_ui_enc(h, 3, 5);                            /* KNOB 1, 5 steps: HOME's first value moves */
+    blocks(h, 60, 0);
+    got = fel_host_view(h, &v, &seq);
+    for (i = 0; i < 240u * 240u; i++)
+        diff += v.screen[i] != before[i];
+    snprintf(what, sizeof what, "KNOB 1 turned from the window: the screen redrawn (%u pixels changed)", diff);
+    ck(what, got && diff > 100u);
+    fel_host_ui_keys(h, 1u << 12);                       /* a key held from the window */
+    blocks(h, 20, 0);
+    fel_host_view(h, &v, &seq);
+    {
+        float l[256], r[256], *o[2] = {l, r};
+        double e = 0.0;
+        uint32_t k, j;
+        for (k = 0; k < 20u; k++) {
+            fel_host_run(h, o, 2, 256, 0, 0, 0);
+            for (j = 0; j < 256u; j++)
+                e += (double)l[j] * l[j];
+        }
+        snprintf(what, sizeof what, "a key pressed in the window sounds (%.2f) and lights (%s)", e, (v.lit_keys >> 12) & 1u ? "lit" : "dark");
+        ck(what, e > 0.01 && ((v.lit_keys >> 12) & 1u));
+    }
+    fel_host_ui_keys(h, 0);
+    fel_host_ui_buttons(h, 1u << 10);                    /* PLAY pressed and let go: the host's transport rules, */
+    fel_host_ui_buttons(h, 0);                           /* stopped: it does not start */
+    {
+        fel_transport_t tr = {1, 0, 120.0, 0.0};
+        blocks(h, 80, &tr);
+    }
+    fel_host_view(h, &v, &seq);
+    ck("PLAY pressed in the window while the host is stopped: the device stays stopped", !v.playing);
+    fel_host_free(h);
+
+    h = fel_host_new(dir, 48000.0, err, sizeof err);
+    ((const fel_core_api_t *)fel_host_core(h))->test_ticks();
+    blocks(h, 40, 0);
+    ck("a distribution switched with the song: IDM NATIVE -> IDM", fel_host_switch(h, 1, err, sizeof err) == 0 && fel_host_dist(h) == 1u);
+    {
+        static float rec[48000u * 2u + 256u];
+        float l[256], r[256], *o[2] = {l, r};
+        uint32_t at, hits[64], nh;
+        blocks(h, 200, 0);
+        for (at = 0; at < 48000u * 2u; at += 256u) {
+            fel_transport_t tr = {1, 1, 120.0, at / 24000.0};
+            fel_host_run(h, o, 2, 256, 0, 0, &tr);
+            for (i = 0; i < 256u; i++)
+                rec[at + i] = l[i];
+        }
+        nh = onsets(rec, 48000u * 2u, 480u, hits, 64u);
+        snprintf(what, sizeof what, "... its song plays there (%u hats in 2 s)", nh);
+        ck(what, nh >= 12u);
+    }
+    fel_host_free(h);
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
@@ -550,6 +628,7 @@ int main(int argc, char **argv)
     test_sync();
     test_outputs();
     test_state();
+    test_window();
     printf(bad ? "plugin host test FAILED (%d)\n" : "plugin host test passed\n", bad);
     return bad != 0;
 }

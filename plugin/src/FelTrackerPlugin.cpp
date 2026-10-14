@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The plugin (DPF): fel_host.h behind the plugin formats.
- *   Parameters: MASTER (the device's pot); DISTRIBUTION (the chooser; not automatable); TRACK 1 .. 8 OUTPUT, MAIN or
+ *   Parameters: MASTER (the device's pot); DISTRIBUTION (the chooser; not automatable; the song goes with it); TRACK 1 .. 8 OUTPUT, MAIN or
  *   OWN (its own pair: out of the main mix, dry; not automatable).
  *   Outputs: the main pair, then a pair a track, each a bus ("Main", "Track 1" ..).
  *   The host's transport, always: its tempo, play and stop, its place (the quarter notes since its start).
@@ -325,16 +325,20 @@ private:
                 char err[512] = "";
                 std::lock_guard<std::mutex> g(applying);
                 const uint32_t w = wanted.load();
-                if (w != fel_host_dist(host) && fel_host_set_dist(host, w, err, sizeof err))
+                if (w != fel_host_dist(host) && fel_host_switch(host, w, err, sizeof err))   /* (the song goes too) */
                     d_stderr2("Fel-Tracker: %s", err);
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
     }
 
+    friend fel_host_t* felPluginHost(void* plugin);
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FelTrackerPlugin)
 };
 
 Plugin* createPlugin() { return new FelTrackerPlugin(); }
+
+/* (the window: the plugin's host, DISTRHO_PLUGIN_WANT_DIRECT_ACCESS) */
+fel_host_t* felPluginHost(void* plugin) { return plugin ? static_cast<FelTrackerPlugin*>(plugin)->host : nullptr; }
 
 END_NAMESPACE_DISTRHO

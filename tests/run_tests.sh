@@ -355,7 +355,7 @@ if [ -f build/gen/felucca_tables.h ]; then
         "$OUT/plugin_core_test" "$OUT/cores" "$OUT/plugin_core_ref.f32"
     cc -O2 -std=gnu11 -w -o "$OUT/plugin_host_test" tests/plugin_host_test.c plugin/src/fel_host.c plugin/src/fel_resample.c \
         plugin/core/fel_loader.c -lpthread -lm -lz
-    run "plugin host: the resampler, the chooser, notes at their frame, a swap while playing; the host's transport (start, 60 s at 48 kHz, a loop), track outputs, the song saved and loaded" \
+    run "plugin host: the resampler, the chooser, notes at their frame, a swap while playing; the host's transport (start, 60 s at 48 kHz, a loop), track outputs, the song saved and loaded; the window's view and panel, a switch with the song" \
         "$OUT/plugin_host_test" "$OUT/cores"
 fi
 

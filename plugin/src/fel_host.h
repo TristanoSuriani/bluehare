@@ -55,6 +55,20 @@ void fel_host_master(fel_host_t *h, uint32_t v);       /* MASTER 0 .. 1023 */
 void fel_host_outputs(fel_host_t *h, uint32_t mask);   /* bit k: track k to its own pair (any thread; the next block) */
 const void *fel_host_core(const fel_host_t *h);         /* (tests: the core playing, a fel_core_api_t) */
 
+/* the window's side (any one thread but the audio's): what the device shows, as the audio thread last copied it (the
+ * screen when it drew, the LEDs every block), and the panel the window presses */
+typedef struct {
+    uint16_t screen[240 * 240];          /* RGB565, high byte first, as the device's display takes it */
+    uint32_t lit_buttons, lit_keys, dim_buttons, dim_keys, breath_buttons, breath_keys, mid_keys, playing;
+} fel_view_t;
+/* the view into *v if it changed since *seq (then *seq moves on): 1, else 0 */
+int fel_host_view(fel_host_t *h, fel_view_t *v, uint32_t *seq);
+void fel_host_ui_buttons(fel_host_t *h, uint32_t labels);     /* the buttons held (panel.c's labels: bit = B_*) */
+void fel_host_ui_keys(fel_host_t *h, uint32_t mask);          /* the keys held (bit k = key k, F3 .. G5) */
+void fel_host_ui_enc(fel_host_t *h, uint32_t role, int32_t n); /* an encoder (EN_*) turned n steps */
+/* change to distribution i, the song going with it (saved, then loaded there). 0 = done */
+int fel_host_switch(fel_host_t *h, uint32_t i, char *err, unsigned err_n);
+
 /* n frames into out[0 .. nout) (the main pair, then the tracks' pairs; nout 2 or FEL_HOST_OUTS), the events (frames in
  * order) played at their place, the host's transport at the block's start (0: none) */
 void fel_host_run(fel_host_t *h, float *const *out, uint32_t nout, uint32_t n, const fel_event_t *ev, uint32_t nev,

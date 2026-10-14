@@ -263,7 +263,16 @@ block of 32 samples it starts in (0 .. 0.7 ms early, as on the FM-1).
 state (saved, loaded into another instance, played); `tests/plugin_clap_test.c` loads the built CLAP as a host does;
 pluginval (strictness 8) the VST3.
 
-Next: its window, the install script, the validators' last checks.
+Its window (`plugin/src/FelTrackerUI.cpp`, DPF's NanoVG): the device's screen at twice its size, the knobs (dragged
+up or down, or the wheel over one; MASTER is the parameter), the buttons and the keys (held while the mouse button is
+down), lit as the device lights them; above them the distribution (a click: the chooser, then a question; the song goes
+with it, its sounds of engines the new one lacks on their substitutes) and the eight tracks' outputs (M main, O own).
+It reads a copy of the screen and the LEDs the audio thread keeps (`fel_host_view`) and hands the device the panel
+through a queue the audio thread plays (`fel_host_ui_*`, each button or key change held 24 ms of the device's time, as
+the native image does). `FEL_UI_SHOT=FILE.ppm` writes its first frame with the screen to a file (a look without a
+screen capture: `make -C plugin/src jack` builds it as a standalone app).
+
+Next: the install script, the validators' last checks.
 
 ## Tests
 
