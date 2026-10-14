@@ -327,4 +327,13 @@ else
         node web/emu/emu_test.mjs build/emu-warehouse/felucca.wasm "$OUT/emu_native_warehouse.f32"
 fi
 
+# (Fel-Tracker) the native image (native/build.sh: SDL2): built, then booted with dummy video and audio drivers
+if ! command -v sdl2-config >/dev/null 2>&1 || [ ! -f build/gen/felucca_tables.h ]; then
+    echo "== skip the native image (needs SDL2: brew install sdl2)"
+else
+    run "native image: the desktop application builds (native/build.sh -> build/native)" sh native/build.sh
+    run "native image: boots (dummy drivers), the screen draws, the clock follows the audio, HOME lit, a key sounds" \
+        build/native/fel-tracker-idm --selftest
+fi
+
 [ $fail -eq 0 ] && echo "ALL HOST TESTS PASSED" || { echo "HOST TESTS FAILED"; exit 1; }

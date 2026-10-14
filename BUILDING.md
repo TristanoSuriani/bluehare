@@ -123,6 +123,8 @@ web/emu/build.sh
 python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 ```
 
+(A desktop application of the same: "Native image" below.)
+
 `web/emu/build.sh` builds the distribution `distributions/BUILD` names (IDM) into `build/emu/`;
 `FELUCCA_DIST=foundry web/emu/build.sh` another one into `build/emu-foundry/` (serve that folder instead). The page
 shows the distribution after the version.
@@ -143,6 +145,23 @@ Emscripten compiles it to WebAssembly (`build/emu/felucca.wasm`, with `index.htm
 keeps the flash's storage sectors (projects, user presets, settings) in the browser. Not emulated: USB (audio,
 MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 <https://hugelton.github.io/Felucca/webapp/try/>.
+
+## Native image
+
+```
+./build.sh
+native/build.sh                # or native/build.sh foundry, native/build.sh warehouse
+open "build/native/Fel-Tracker IDM.app"      # or run build/native/fel-tracker-idm
+```
+
+Fel-Tracker as a desktop application (`native/felucca_native.c`): the same simulated FM-1 the browser emulator runs
+(`web/emu/felucca_web.c`), compiled natively, in a window of its own (SDL2; on macOS linked into the program, so the
+`.app` needs nothing installed), the computer's sound out at 44.1 kHz, MIDI in from every source (CoreMIDI on macOS),
+its saves in a file (`~/Library/Application Support/Fel-Tracker/<distribution>/flash.bin` on macOS). The window: the
+screen at three times its size, the knobs (the mouse wheel over one turns it; MASTER the level), the buttons and the
+keys (click and hold), lit as the device lights them; the computer keyboard as on the emulator page (Esc quits). Needs
+SDL2: `brew install sdl2` (Linux: libsdl2-dev). It is the base for what the device cannot hold: heavier engines and
+effects run on the computer's CPU and memory, not the FM-1's; a VST built on it is planned.
 
 ## Tests
 

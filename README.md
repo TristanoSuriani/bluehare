@@ -57,7 +57,11 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Sixteen engines** in a distribution (below): IDM, the one a plain build makes, and FOUNDRY (BUILDING.md
+- **Native image** *(Fel-Tracker)*: Fel-Tracker as a desktop application for each distribution (`native/build.sh`:
+  `Fel-Tracker IDM.app` on macOS), the same firmware in a window with the panel, the computer's sound out and MIDI in,
+  its saves in a file: the base for heavier engines and effects than the FM-1 can hold (BUILDING.md "Native image")
+
+- **Sixteen engines** in a distribution (below): IDM, the one a plain build makes, FOUNDRY and WAREHOUSE (BUILDING.md
   "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are KIT, BREAKS or WAR);
@@ -635,6 +639,7 @@ sevenths, or a fixed shape) and VOIC the voicing.
 | `tools/` | build script, generators, package maker and installer |
 | `assets/` | UI font, icon names |
 | `web/` | the web installer, the editor with the tracker (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
+| `native/` | *(Fel-Tracker)* the native image: Fel-Tracker as a desktop application (SDL2), BUILDING.md "Native image" |
 | `tests/` | tests that run on the build machine |
 | `LICENSES/` | licence texts of the bundled fonts, icons, ported DSP and SDK files |
 
