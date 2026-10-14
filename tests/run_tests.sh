@@ -328,6 +328,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_test" tests/reverb_test.c -lm
     mkdir -p build/reverb_demo
     slow run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, DELAY TYPE, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
+    compile $CC -O1 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/monolows_test" tests/monolows_test.c -lm
+    run "MONO LOWS: the master's side under ~120 Hz in mono (40 Hz hard left on both), the highs' width kept, silence exact" "$OUT/monolows_test"
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/gated_test" tests/gated_test.c -lm
     run "REVERB TYPE GATED: HALL's level while it holds, cut after SIZE's hold, a longer SIZE longer, a hit opens it again" "$OUT/gated_test"
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm

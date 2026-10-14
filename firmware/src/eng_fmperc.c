@@ -53,7 +53,9 @@ static int32_t fmp_noise_env(int32_t nb, uint32_t type, int32_t blocks)
 
 /* the voice's hit: its 8 values e[] (RATIO .. TONE, as EDIT's), at pitch16 (base_inc its increment, 0: worked out)
  * into y[] (n <= CTL), no amplitude yet; v holds its state (KIT and BREAKS run it on their own lanes too) */
-static void fmp_run(const int16_t *e, voice_t *v, int32_t *y, uint32_t n, int32_t base16, uint32_t base_inc)
+/* (noinline: KIT, BREAKS and FMPERC call it; a build with BREAKS alone would fold it in, its cost then BREAKS's:
+ * tests/target_budget.py counts it on its own) */
+static __attribute__((noinline)) void fmp_run(const int16_t *e, voice_t *v, int32_t *y, uint32_t n, int32_t base16, uint32_t base_inc)
 {
     uint32_t rm = FMP_RATIO[(uint32_t)e[0] & 15u], inc, minc, i, nz = (uint32_t)v->s[4], type = (uint32_t)e[4] % 3u;
     int32_t sw = v->s[0], ix = v->s[1], nb = v->s[3], prev = v->s[2], tf = v->s[5], bl = v->s[7];

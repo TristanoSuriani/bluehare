@@ -35,6 +35,7 @@ FUNCS = ["slicer_track",
          "mod_begin", "mod_voice", "mod_end",                 # the modulation matrix (mod.c), called when active
          "perf_begin", "perf_mute", "perf_pre", "perf_block", "perf_master",   # the FX layer (perform.c), when busy
          "rev_room", "rev_spring", "rev_hall", "rev_side_mix",
+         "mono_lows",                                       # (Fel-Tracker 2026-10) the master's lows in mono (fx.c)
          "dly_tape",
          "dubsiren8_render",
          "dubchord_render",                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)

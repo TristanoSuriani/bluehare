@@ -144,6 +144,7 @@ static int32_t lim_env = LIM_T;
 #define BC_T 9000
 static int32_t bc_env, bc_g = 32768;    /* the level; the gain now (Q15) */
 static void bus_comp(int32_t *out, uint32_t n);   /* (below) */
+static void mono_lows(int32_t *out, uint32_t n);  /* (below) */
 /* MENU > USB LEVEL FIXED (for #42: record over USB with the speaker turned down): the mix goes to master_out at the
  * full MASTER level, USB audio takes that (audio.c uac_tap), and only then does MASTER scale what the DAC gets
  * (usb_fixed_dac). MASTER (0, the default): MASTER before master_out, as always (USB follows the knob) */
@@ -997,12 +998,34 @@ static __attribute__((noinline)) void perf_master(int32_t *out, uint32_t n)
         out[2u * i] = mix_l[i];
         out[2u * i + 1u] = mix_r[i];
     }
+    mono_lows(out, n);                                  /* (Fel-Tracker, 2026-10) */
     bus_comp(out, n);                                   /* (Fel-Tracker) */
     for (i = 0; i < n; i++) {
         int32_t l = out[2u * i], r = out[2u * i + 1u];
         master_out(&l, &r);
         out[2u * i] = l;
         out[2u * i + 1u] = r;
+    }
+}
+
+/* (Fel-Tracker, 2026-10) the lows in mono, as a club's system wants them: the mix's side (L - R) / 2 high-passed at
+ * ~120 Hz, 12 dB/oct (LOW CUT's two one-pole high-passes: tl_pole, so silence ends in exact silence), the rest of it (its
+ * lows) taken out of both sides: 40 Hz a tenth of its width, 60 Hz a fifth, 120 Hz half. The chorus's and the reverbs'
+ * width stays above; a centred track is untouched (its side is nothing) */
+static int32_t ml_s1, ml_s2;            /* (Q8) */
+static uint8_t ml_bypass;               /* (the host tests of a track's own panning: its sides as the track made them) */
+static __attribute__((noinline)) void mono_lows(int32_t *out, uint32_t n)
+{
+    uint32_t i;
+    if (ml_bypass)
+        return;
+    for (i = 0; i < n; i++) {
+        int32_t s = (out[2u * i] - out[2u * i + 1u]) >> 1, hp, lo;
+        hp = s - tl_pole(&ml_s1, s, 555);            /* (Q15 555: 120 Hz, TL_K's) */
+        hp -= tl_pole(&ml_s2, hp, 555);
+        lo = s - hp;
+        out[2u * i] -= lo;
+        out[2u * i + 1u] += lo;
     }
 }
 
@@ -1134,6 +1157,7 @@ static void mix_block(int32_t *out, uint32_t n)
         out[2u * i] = (((mix_l[i] + wet[i] + wside[i]) >> 2) * mg) >> 10;
         out[2u * i + 1u] = (((mix_r[i] + wet[i] - wside[i]) >> 2) * mg) >> 10;
     }
+    mono_lows(out, n);                                  /* (Fel-Tracker, 2026-10) */
     bus_comp(out, n);                                   /* (Fel-Tracker) */
     for (i = 0; i < n; i++) {
         int32_t l = out[2u * i], r = out[2u * i + 1u];

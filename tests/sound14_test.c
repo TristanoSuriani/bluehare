@@ -794,6 +794,7 @@ static int demos(const char *dir)
 
 int main(int argc, char **argv)
 {
+    ml_bypass = 1;                               /* (fx.c MONO LOWS: the tracks' own sides, not the master's) */
     EA = eng_by_name("WASP");
     test_matrix();
     test_matrix_sound();

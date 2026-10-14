@@ -1,10 +1,10 @@
 # FELUCCA target cost budget (tests/target_budget.py): instructions in the loops of each
 # function in build/felucca.dis, x4 per nesting level, divides x9. The check allows +10 %.
 # Rewritten by BUDGET_UPDATE=1.
-slicer_track 632
+slicer_track 560
 wave_render 290
 byte_render 135
-west_render 135
+west_render 140
 hoover_render 380
 speech_render 217
 fmperc_render 20
@@ -16,29 +16,30 @@ sid_render 794
 dubsiren_render 299
 bliss_render 108
 kit_render 28
-breaks_render 190
+breaks_render 188
 risers_render 510
 fmp_run 92
-fm1_alnk0_irq 77039
-fm1_timer5_irq 33387
+fm1_alnk0_irq 80974
+fm1_timer5_irq 34509
 click_render 30
-mod_begin 158
+mod_begin 168
 mod_voice 30
 mod_end 7
 perf_begin 28
 perf_mute 21
 perf_pre 27
-perf_block 814
-perf_master 41
+perf_block 820
+perf_master 42
 rev_room 247
-rev_spring 126
-rev_hall 1995
-rev_side_mix 9
+rev_spring 127
+rev_hall 1994
+rev_side_mix 8
+mono_lows 39
 dly_tape 123
 dubsiren8_render 300
 dubchord_render 840
 wasp_render 578
-modal_render 425
+modal_render 419
 vector_render 195
 echoes_render 4520
-glitch_render 642
+glitch_render 659
