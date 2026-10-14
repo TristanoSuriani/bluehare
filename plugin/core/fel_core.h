@@ -12,7 +12,7 @@
 #define FEL_CORE_H
 #include <stdint.h>
 
-#define FEL_CORE_ABI 3u                  /* raised when the table changes: a core of another ABI is refused */
+#define FEL_CORE_ABI 4u                  /* raised when the table changes: a core of another ABI is refused */
 
 typedef struct {
     uint32_t abi;                        /* FEL_CORE_ABI */
@@ -23,8 +23,8 @@ typedef struct {
     /* 1 the first time it is called in this image, 0 after: an image already an instance's (the loader's check that
      * the library it opened is a fresh one; the host's main thread) */
     uint32_t (*claim)(void);
-    /* the flash (1 MiB NOR: the song, the user presets, the settings). Before boot: erase it, or fill it (a saved
-     * state). After: writes counts the saves, so a state can be taken when it changed */
+    /* the flash (1 MiB NOR: the song, the user presets, the settings), the instance's own; erased before boot. (A
+     * saved state is the song alone: song_get, song_set) */
     uint8_t *(*nor)(void);
     uint32_t (*nor_size)(void);
     void (*nor_erase)(void);
@@ -57,9 +57,12 @@ typedef struct {
     /* render with them: out[0], out[1] the main, out[2 + 2k], out[3 + 2k] track k (k < tracks; silent if it is not
      * its own), n frames */
     void (*render_multi)(float *const *out, uint32_t n);
-    /* the music written to the flash now, as the autosave writes it (project.c autosave_write), if it changed since
-     * it was last: what a saved state then holds (the device itself waits until it is quiet). 1 = written */
-    uint32_t (*save_now)(void);
+    /* the song as the device stores it (project.c proj_write: its chunks, each its header and data, one after the
+     * other): into buf if it fits in cap; the bytes it takes (0: none, not booted). With the audio thread held */
+    uint32_t (*song_get)(uint8_t *buf, uint32_t cap);
+    /* the song song_get gave (any distribution's: a song of more tracks than this one's is refused) made the music,
+     * after boot, with the audio thread held. 0 = loaded, 1 = damaged, 2 = more tracks */
+    uint32_t (*song_set)(const uint8_t *buf, uint32_t n);
     void (*test_ticks)(void);            /* (tests: a short dry closed hat on every row of pattern 0, LOOP) */
 } fel_core_api_t;
 

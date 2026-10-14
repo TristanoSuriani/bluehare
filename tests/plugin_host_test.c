@@ -508,13 +508,13 @@ static void test_state(void)
     for (k = 0; k < 40u; k++)
         fel_host_run(a, buf, 2, 256, 0, 0, 0);
     n = fel_host_save(a, &blob);                  /* (taken at once: the device has not autosaved yet) */
-    snprintf(what, sizeof what, "a state taken: the song in it (the device saved it now), %zu bytes compressed", n);
-    ck(what, n > 8u && n < 200000u);
+    snprintf(what, sizeof what, "a state taken: the song stream alone (no flash image), %zu bytes compressed", n);
+    ck(what, n > 8u && n < 16384u);
     b = fel_host_new(dir, 48000.0, err, sizeof err);
     ck("loaded into another instance, with IDM (the chooser's second)",
        fel_host_load(b, 1, blob, n, err, sizeof err) == 0 && fel_host_dist(b) == 1u);
     n2 = fel_host_save(b, &blob2);
-    for (k = 0; k < 200u; k++)                    /* (its boot, its autosave restored) */
+    for (k = 0; k < 200u; k++)                    /* (its boot) */
         fel_host_run(b, buf, 2, 256, 0, 0, 0);
     nh = 0;
     {

@@ -42,11 +42,11 @@ uint32_t fel_host_tracks(const fel_host_t *h);         /* its tracks (8 or 4) */
 /* change to distribution i: its core loaded, booted on an erased flash (no song), swapped in. 0 = done */
 int fel_host_set_dist(fel_host_t *h, uint32_t i, char *err, unsigned err_n);
 
-/* the song: the device's flash (the song, the presets, the settings) as it stood after the last block that wrote it,
+/* the song: the device's own song stream as it is now (fel_core.h song_get; not the presets or the settings),
  * compressed: *out malloc'd (free it), its size returned; 0 none */
 size_t fel_host_save(fel_host_t *h, uint8_t **out);
-/* distribution i with a flash fel_host_save gave (any distribution's: the device loads what it can): a new core booted
- * on it, swapped in. 0 = done */
+/* distribution i with a song fel_host_save gave (any distribution's; one of more tracks than i has is refused): a new
+ * core booted, the song its music, swapped in. 0 = done */
 int fel_host_load(fel_host_t *h, uint32_t i, const uint8_t *blob, size_t n, char *err, unsigned err_n);
 
 int fel_host_set_rate(fel_host_t *h, double rate);    /* (not while running) */

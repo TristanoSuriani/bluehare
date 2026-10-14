@@ -61,17 +61,73 @@ static void core_transport(uint32_t playing, double bpm, double beats, uint64_t 
     host_tr.beats0 = beats < 0.0 ? 0.0 : beats;
     host_tr.frame0 = frame;
 }
-static uint32_t core_save_now(void)
+/* the song as a stream of the device's chunks (project.c proj_write, as autosave_write counts and writes it) */
+static uint8_t *sg_buf;
+static uint32_t sg_cap, sg_n;
+static int sg_put(uint32_t chunk, uint32_t len)
 {
-    uint32_t sig;
-    if (!flash_ok || !web_booted)
+    (void)chunk;
+    if (sg_n + PROJ_HDR + len > sg_cap)
+        return 1;
+    memcpy(sg_buf + sg_n, proj_wire_u.raw, PROJ_HDR + len);
+    sg_n += PROJ_HDR + len;
+    return 0;
+}
+static uint32_t core_song_get(uint8_t *buf, uint32_t cap)
+{
+    pw_t w;
+    uint32_t n, total;
+    if (!web_booted)
         return 0;
-    sig = autosave_sig();
-    if (sig == as.saved)
+    memset(&w, 0, sizeof w);
+    w.h = 2166136261u;
+    proj_write(&w, proj_name);                           /* (counted) */
+    if (w.n > PROJ_CHUNKS * PROJ_DATA)
         return 0;
-    as.seen = sig;
-    autosave_write(sig);
-    return !as.err;
+    n = (w.n + PROJ_DATA - 1u) / PROJ_DATA;
+    total = w.n + n * PROJ_HDR;
+    if (!buf || cap < total)
+        return total;
+    memset(&w, 0, sizeof w);
+    w.h = 2166136261u;
+    w.put = sg_put;
+    w.count = n;
+    w.gen = 1;
+    sg_buf = buf;
+    sg_cap = cap;
+    sg_n = 0;
+    proj_write(&w, proj_name);
+    return w.err ? 0 : sg_n;
+}
+static const uint8_t *ss_buf;
+static uint32_t ss_off[PROJ_CHUNKS], ss_len[PROJ_CHUNKS];
+static int ss_get(uint32_t chunk)                        /* (project_restore: chunk into st_buf) */
+{
+    if (chunk >= PROJ_CHUNKS || !ss_len[chunk])
+        return 1;
+    memcpy(st_buf, ss_buf + ss_off[chunk], ss_len[chunk]);
+    return 0;
+}
+static uint32_t core_song_set(const uint8_t *buf, uint32_t n)
+{
+    uint32_t at = 0, k = 0;
+    if (!web_booted)
+        return 1;
+    memset(ss_len, 0, sizeof ss_len);
+    while (at < n) {                                     /* (the chunks: each a header, its length, its data) */
+        proj_hdr_t h;
+        if (k >= PROJ_CHUNKS || n - at < PROJ_HDR)
+            return 1;
+        memcpy(&h, buf + at, sizeof h);
+        if (h.magic != PROJ_MAGIC || h.len > PROJ_DATA || n - at - PROJ_HDR < h.len)
+            return 1;
+        ss_off[k] = at;
+        ss_len[k] = PROJ_HDR + h.len;
+        at += PROJ_HDR + h.len;
+        k++;
+    }
+    ss_buf = buf;
+    return k ? (uint32_t)project_restore(ss_get, k) : 1u;
 }
 static void core_outputs(uint32_t mask) { trk_own = mask & ((1u << NTRK) - 1u); }
 static void core_test_ticks(void)
@@ -125,7 +181,8 @@ static const fel_core_api_t CORE = {
     .transport = core_transport,
     .outputs = core_outputs,
     .render_multi = core_render_multi,
-    .save_now = core_save_now,
+    .song_get = core_song_get,
+    .song_set = core_song_set,
     .test_ticks = core_test_ticks,
 };
 
