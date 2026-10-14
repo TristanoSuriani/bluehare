@@ -94,7 +94,10 @@ static int edt_var_put(tk_var_t *x, const uint8_t *a)   /* 1: a value out of its
         }
     return 0;
 }
-static int edt_cell_ok(const uint8_t *c) { return c[1] <= TK_INSTS && c[2] < TKC_N && c[4] <= 15u && c[5] <= 15u; }
+static int edt_cell_ok(const uint8_t *c)
+{
+    return c[1] <= TK_INSTS && c[2] < TKC_N && c[4] <= 15u && c[5] <= 15u && (c[2] != TKC_PLAY || c[3] >> 4 < TKP_N);
+}
 static void edt_inst(const tk_inst_t *in)
 {
     if (in->src == TK_SRC_NONE) {

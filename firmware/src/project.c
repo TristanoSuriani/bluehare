@@ -390,7 +390,8 @@ static int proj_read(pr_t *r, int apply)
             tk_cell_t c = {{0, 0, 0, 0}};
             at = ver >= 3u ? (uint32_t)pr_i16(r) & 0xFFFFu : pr_u8(r);   /* (the place: row * tracks + track) */
             pr_bytes(r, c.b, 3);
-            if ((i && at <= prev) || at >= TK_ROWS * ntr || tk_cmd(&c) >= TKC_N)
+            if ((i && at <= prev) || at >= TK_ROWS * ntr || tk_cmd(&c) >= TKC_N ||
+                (tk_cmd(&c) == TKC_PLAY && tk_val(&c) >> 4 >= TKP_N))   /* (Fel-Tracker: PLAY's 6 commands) */
                 return 1;
             prev = at;
             if (apply)

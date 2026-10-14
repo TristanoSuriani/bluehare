@@ -562,6 +562,7 @@ static __attribute__((noinline)) void spread_sum(int32_t *out)
 /* render one block of a part into out (cleared here); returns the voices rendered */
 /* Channel bend is live performance state, outside projects/presets. Q8 semitones. */
 static int32_t midi_bend_q8[NTRK], midi_bend_target[NTRK];
+static int32_t tk_slide_q8[NTRK];        /* (Fel-Tracker) the tracker's SLIDE UP / DOWN on the track, Q8 semitones (tracker.c) */
 static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
 {
     const engine_t *e = ENGINES[t->engine];
@@ -574,13 +575,13 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     int32_t bend, bend16, bend_fine;
     uint32_t ti = (uint32_t)(t - trk);
     if (eng_idx(t->eng_req) == ENGI_KIT) {
-        midi_bend_q8[ti] = midi_bend_target[ti] = 0;
+        midi_bend_q8[ti] = midi_bend_target[ti] = tk_slide_q8[ti] = 0;
     } else {
         int32_t d = midi_bend_target[ti] - midi_bend_q8[ti];
         /* ~6 ms smoothing, with an exact landing (no permanent small offset). */
         midi_bend_q8[ti] += d > 0 ? (d < 4 ? d : (d + 3) / 4) : (d > -4 ? d : (d - 3) / 4);
     }
-    bend = midi_bend_q8[ti];
+    bend = midi_bend_q8[ti] + tk_slide_q8[ti];
     bend16 = bend >= 0 ? bend / 16 : -((-bend + 15) / 16);
     bend_fine = (bend - bend16 * 16) * 2367 / 2560;
     uint32_t nr = 0, fade = t->xf_on && t->xf;

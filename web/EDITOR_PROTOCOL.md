@@ -1070,7 +1070,7 @@ none, a factory preset of an engine or a user preset. Each track's CUT and RES h
 instrument, or leave it to the instrument (INST).
 
 **A cell** on the wire is 6 bytes: note (0 none, 1..126 a MIDI note, 127 OFF: releases the column's notes), instrument
-(0 none, 1..63), FX command (0..14), its value (0..127), and the chord: two intervals above the note (0 none, 1..15
+(0 none, 1..63), FX command (0..15), its value (0..127), and the chord: two intervals above the note (0 none, 1..15
 semitones each; a note past 126 is left out). The row plays the note and its chord's notes together on a POLY track
 (a MONO, LEGATO or UNISON track: the note alone); the next note or OFF in the column releases them all. The device
 names a chord by its shape when it is one (MAJ 4 7, MIN 3 7, SUS2 2 7, SUS4 5 7, DIM 3 6, AUG 4 8, MAJ6 4 9, MAJ7 4 11,
@@ -1087,10 +1087,23 @@ device shows):
 | 4 | S | SUSTAIN | 12 | E | DELAY send |
 | 5 | R | RELEASE | 13 | W | REVERB send |
 | 6 | C | the engine's cutoff (as MIDI CC 74) | 14 | G | GLIDE |
-| 7 | Q | the engine's resonance (as MIDI CC 71) | | | |
+| 7 | Q | the engine's resonance (as MIDI CC 71) | 15 | * | PLAY (below) |
 
 The value 0..127 spans the parameter's range (64: the middle of a bipolar one). The track's own value comes back on
 its next row.
+
+*(Fel-Tracker)* PLAY (15) changes how the row's note plays, not a parameter: its value is a command in bits 4..6 and its
+amount in bits 0..3, and the device (and the editor's text) writes it with the command's own letter and the amount in
+hex, `T04`:
+
+| bits 4..6 | letter | the row's note |
+| --- | --- | --- |
+| 0 | T | RETRIG: struck again, the amount's hits in the row (2..15; 0, 1 none) |
+| 1 | Y | NOTE DELAY: it starts amount / 16 of the row late |
+| 2 | J | ARPEGGIO: the cell's chord a note at a time, the amount's steps in the row (0: 3) |
+| 3 | U | SLIDE UP: the track's pitch up the amount's semitones over the row, there until its next note |
+| 4 | N | SLIDE DOWN: the same, down |
+| 5 | % | CHANCE: it plays with a chance of amount / 15 (0 never, F always) |
 
 | cmd | Request args | Reply args |
 | --- | --- | --- |

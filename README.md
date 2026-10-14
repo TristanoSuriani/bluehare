@@ -73,7 +73,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 - **Tracker** *(Fel-Tracker, by Tristano Suriani; replaces Felucca's step sequencer)*: 24 patterns of up to 64 rows (a row is a 1/16), a column per
   track; each cell a note (or OFF) with an optional chord (up to three notes: a shape such as MAJ or MIN7, or two
   intervals), an instrument (01..3F, changing the track's sound on any row) and one FX (a parameter set for that row only: LEVEL,
-  ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESONANCE, FLT ENV, PAN, DIST, CHORUS, DELAY, REVERB, GLIDE). PLAY on
+  ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESONANCE, FLT ENV, PAN, DIST, CHORUS, DELAY, REVERB, GLIDE; or *(Fel-Tracker)*
+  how the row's note plays: T RETRIG, Y NOTE DELAY, J ARPEGGIO, U / N SLIDE UP / DOWN, % CHANCE, below). PLAY on
   PATTERN loops the pattern; PLAY on SONG plays the order list (up to 128 positions), each position a pattern in one
   of its variations (A..D: its own tempo, mutes, note chance, sends and SLICER over the tracks'). The instruments are factory or
   user presets; each track's ENV, filter and sends stay its own (SEQ > SETTINGS). Live recording into the rows, step
@@ -218,6 +219,20 @@ Each cell shows the note (`C-4`, `OFF`, `---` none), the instrument (`01`..`3F`,
 value `00`..`7F`, `...` none); a mark between the note and the instrument says the cell has a chord. The footer spells
 out the cell under the cursor ("C-4 MAJ  SAW LEAD  REVERB 7F") and names the pattern ("PATTERN 05").
 
+*(Fel-Tracker)* The last six FX commands change how the row's note plays rather than a parameter; their value is an
+amount `00`..`0F` (KNOB 4), and the footer spells it out ("RETRIG 4", "NOTE DELAY 8/16", "CHANCE 47 %"):
+
+| FX | the row's note |
+| --- | --- |
+| T RETRIG | struck again: the amount's hits in the row, evenly (2..15), the chord's notes too |
+| Y NOTE DELAY | starts amount/16 of the row late (its instrument and FX at once) |
+| J ARPEGGIO | the cell's chord a note at a time (the tracker's 0xy: the chord's two intervals), the amount's steps in the row (0: 3) |
+| U SLIDE UP, N SLIDE DOWN | the track's pitch the amount's semitones up or down over the row; it stays there until the track's next note |
+| % CHANCE | plays with a chance of amount/15 (00 never, 0F always; the same each PLAY from the start) |
+
+They are one FX command on the song's side (the last of the sixteen a cell holds), so songs of before load as they
+were.
+
 The column headers ("1 05 ANLG") show the instrument each track sounds *at that moment* and its engine: any cell's
 instrument can change it. A track whose sound isn't an instrument (the power-on sound, or one loaded with PRESETS
 since, or an instrument changed on INSTR) shows its engine alone ("1 ANLG"). A silent track's header is dim with "M"
@@ -231,7 +246,7 @@ row at once, then a row every second click.
 | KNOB 2 | the note (from none: the last one entered; below the lowest: OFF, then none) |
 | KNOB 3 | the instrument (the keys then record with it) |
 | KNOB 4 | the FX value (a new FX starts at the track's own value) |
-| PRESETS | the FX command (V level, A D S R the envelope, C cutoff, Q resonance, F filter envelope, P pan, X dist, H chorus, E delay, W reverb, G glide; NO FX clears it) |
+| PRESETS | the FX command (V level, A D S R the envelope, C cutoff, Q resonance, F filter envelope, P pan, X dist, H chorus, E delay, W reverb, G glide; then T retrig, Y note delay, J arpeggio, U slide up, N slide down, % chance; NO FX clears it) |
 | EDIT | clears the cell (stopped: the cursor moves EDIT STEP rows on) |
 | SAVE held | undoes the last edit of a pattern; held again, redoes it (below) |
 | keys | play; with the track armed (REC) and stopped they write their note at the cursor; armed and playing they record into the rows. Keys pressed while the first is held add to its cell's chord (stopped or playing) |

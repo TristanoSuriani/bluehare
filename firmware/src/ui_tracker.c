@@ -383,9 +383,23 @@ static void tk_fx_str(char *b, const tk_cell_t *c)
         str_cpy(b, "...", 4);
         return;
     }
+    if (tk_cmd(c) == TKC_PLAY) {                    /* (Fel-Tracker) PLAY: its command's letter, its amount */
+        b[0] = TKP_CHAR[tk_psub(c) % TKP_N];
+        tk_hex2(b + 1, tk_parg(c));
+        return;
+    }
     b[0] = TKC_CHAR[tk_cmd(c) % TKC_N];
     tk_hex2(b + 1, tk_val(c));
 }
+
+/* (Fel-Tracker) the FX commands as PRESETS steps through them: the parameter ones, then PLAY's six as six */
+#define TKV_N (TKC_PLAY + TKP_N)
+static uint32_t tk_vcmd(const tk_cell_t *c)
+{
+    uint32_t sub = tk_psub(c);
+    return tk_cmd(c) < TKC_PLAY ? tk_cmd(c) : TKC_PLAY + (sub < TKP_N ? sub : TKP_N - 1u);
+}
+static const uint8_t TKP_DEF[TKP_N] = {4, 8, 3, 2, 2, 8};   /* (a new one's amount: 4 hits, half a row, 3 steps, ..) */
 
 /* ------------------------------------------------------------ drawing --- */
 static void tk_gaps(void)                        /* full redraw: the BG between the strips (header, info, heads, rows) */
@@ -950,7 +964,7 @@ static void tk_chord_str(char *b, uint32_t n, uint32_t ch)   /* "MAJ", or "+2+9"
 static void tk_foot(char *b, uint32_t n)
 {
     uint32_t g = tk_graph();
-    char h[3], s[16], p[16];
+    char h[4], s[16], p[16];
     b[0] = 0;
     if (g == GR_TKPAT) {
         const tk_cell_t *c = tk_at(tk_view_pat(), tku.row, song.sel);
@@ -965,7 +979,22 @@ static void tk_foot(char *b, uint32_t n)
             str_cpy(b + str_len(b), "  ", n - str_len(b));
             str_cpy(b + str_len(b), p[0] ? p : s, n - str_len(b));
         }
-        if (tk_cmd(c)) {
+        if (tk_cmd(c) == TKC_PLAY) {                /* (Fel-Tracker) "RETRIG 4", "NOTE DELAY 8/16", "CHANCE 53 %" */
+            uint32_t sub = tk_psub(c) % TKP_N, a = tk_parg(c);
+            str_cpy(b + str_len(b), "  ", n - str_len(b));
+            str_cpy(b + str_len(b), TKP_NAME[sub], n - str_len(b));
+            str_cpy(b + str_len(b), " ", n - str_len(b));
+            if (sub == TKP_CHANCE)
+                a = a * 100u / 15u;
+            else if (sub == TKP_ARP && !a)
+                a = 3;
+            h[0] = a >= 100u ? '1' : (char)('0' + a / 10u % 10u);
+            h[1] = (char)('0' + (a >= 100u ? 0u : a % 10u));
+            h[2] = a >= 100u ? '0' : 0;
+            h[3] = 0;
+            str_cpy(b + str_len(b), h[0] == '0' ? h + 1 : h, n - str_len(b));
+            str_cpy(b + str_len(b), sub == TKP_DELAY ? "/16" : sub == TKP_CHANCE ? " %" : sub == TKP_SLUP || sub == TKP_SLDN ? " ST" : sub == TKP_ARP ? " STEPS" : "", n - str_len(b));
+        } else if (tk_cmd(c)) {
             str_cpy(b + str_len(b), "  ", n - str_len(b));
             str_cpy(b + str_len(b), TKC_NAME[tk_cmd(c) % TKC_N], n - str_len(b));
             str_cpy(b + str_len(b), " ", n - str_len(b));
@@ -1055,10 +1084,15 @@ static void tk_knob_pattern(uint32_t k, int32_t s)
             tk_cur_inst = (uint8_t)in;
         tk_cell_set(TKU_INST, n, in, cmd, v);
     } else {                                        /* the FX value (a new FX: the command used last, from the value */
-        if (!cmd) {                                 /* the track has now) */
+        if (!cmd && tku.cmd >= TKC_PLAY) {          /* the track has now; PLAY's: its amount by default) */
+            cmd = TKC_PLAY;
+            v = (tku.cmd - TKC_PLAY) << 4 | TKP_DEF[(tku.cmd - TKC_PLAY) % TKP_N];
+        } else if (!cmd) {
             uint32_t id = tk_param_id(TSEL, tku.cmd);
             cmd = tku.cmd;
             v = id < P_COUNT ? tk_unscale(TSEL, id, TSEL->p[id]) : 64u;
+        } else if (cmd == TKC_PLAY) {               /* (PLAY: its amount, 0..15; the command stays) */
+            v = (v & 0x70u) | (uint32_t)clamp((int32_t)(v & 15u) + accel(EN_K4, s, 15), 0, 15);
         } else {
             v = (uint32_t)clamp((int32_t)v + accel(EN_K4, s, 127), 0, 127);
         }
@@ -1259,12 +1293,15 @@ static int tk_presets(int32_t s)
         return 0;
     if (g == GR_TKPAT) {
         tk_cell_t c = *tk_at(tk_view_pat(), tku.row, song.sel);
-        int32_t from = tk_cmd(&c) ? (int32_t)tk_cmd(&c) : (int32_t)tku.cmd - (s > 0 ? 1 : -1);   /* (none: the last */
-        uint32_t cmd = (uint32_t)clamp(from + s, 0, TKC_N - 1), id, v = tk_val(&c);               /* used first) */
-        tku.field = 2;
-        if (cmd) {
+        int32_t from = tk_cmd(&c) ? (int32_t)tk_vcmd(&c) : (int32_t)tku.cmd - (s > 0 ? 1 : -1);   /* (none: the last */
+        uint32_t vc = (uint32_t)clamp(from + s, 0, TKV_N - 1), cmd = vc < TKC_PLAY ? vc : TKC_PLAY, id, v = tk_val(&c);
+        tku.field = 2;                                                                            /* used first) */
+        if (vc >= TKC_PLAY) {                       /* (Fel-Tracker) PLAY's: its command, its amount by default */
+            tku.cmd = (uint8_t)vc;
+            v = (vc - TKC_PLAY) << 4 | (tk_cmd(&c) == TKC_PLAY ? tk_parg(&c) : TKP_DEF[vc - TKC_PLAY]);
+        } else if (cmd) {
             tku.cmd = (uint8_t)cmd;
-            if (!tk_cmd(&c)) {                      /* (a new FX: from the value the track has now) */
+            if (!tk_cmd(&c) || tk_cmd(&c) == TKC_PLAY) {   /* (a new FX: from the value the track has now) */
                 id = tk_param_id(TSEL, cmd);
                 v = id < P_COUNT ? tk_unscale(TSEL, id, TSEL->p[id]) : 64u;
             }

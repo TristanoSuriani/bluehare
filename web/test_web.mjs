@@ -981,7 +981,8 @@ async function editorTracker() {
   let bad = 0;
   for (let n = 1; n <= 127; n++)
     for (const [i1, i2] of [[0, 0], [4, 7], [7, 4], [2, 9], [12, 0], [15, 15], [1, 0]]) {
-      const c = { note: n, inst: n % 64, cmd: n % TK.FX.length, val: n % 128, i1: n === 127 ? 0 : i1, i2: n === 127 ? 0 : i2 };
+      const cmd = n % TK.FX.length, val = cmd === 15 ? (n % 6) << 4 | n % 16 : n % 128;   /* (PLAY: its 6 commands) */
+      const c = { note: n, inst: n % 64, cmd, val, i1: n === 127 ? 0 : i1, i2: n === 127 ? 0 : i2 };
       const back = TK.parse(TK.text(c));
       const same = (a, b) => a.i1 === b.i1 && a.i2 === b.i2 || (a.i1 === b.i2 && a.i2 === b.i1 && a.i1 && a.i2);   /* (a shape: either order) */
       if (!back || back.note !== c.note || back.inst !== c.inst || back.cmd !== c.cmd || (c.cmd && back.val !== c.val) || !same(back, c)) bad++;
@@ -996,6 +997,10 @@ async function editorTracker() {
   ok(TK.parse("c4 1").note === 60 && TK.parse("bb2").note === 46 && TK.parse("01 C40").inst === 1 && TK.parse("").note === 0 &&
      ["C-4 40", "Z", "C-4 01 C80", "G9 01", "C-4 01 Z10"].every((x) => TK.parse(x) === null),
     "tracker: typing: c4, Bb2, the instrument and FX alone, empty; instrument 40, FX 80, G9 (127) refused");
+  ok(TK.text({ note: 60, inst: 1, cmd: 15, val: 0x04 }) === "C-4 01 T04" && TK.text({ note: 0, inst: 0, cmd: 15, val: 0x58 }) === "--- .. %08" &&
+     TK.parse("C-4 01 Y08").cmd === 15 && TK.parse("C-4 01 Y08").val === 0x18 && TK.parse("c4 maj 01 j03").val === 0x23 &&
+     TK.parse("U0C").val === 0x3C && TK.parse("N02").val === 0x42 && ["C-4 01 T10", "C-4 01 *04"].every((x) => TK.parse(x) === null),
+    "tracker: PLAY's commands as the device writes them: T RETRIG, Y NOTE DELAY, J ARPEGGIO, U / N SLIDE, % CHANCE (amount 0..F)");
 }
 
 /* ------------------------------------- editor v4: TRACK_PARAM and TRACK_CHANGED --- */
