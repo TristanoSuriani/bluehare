@@ -9,7 +9,8 @@
  * reverbs CONCERT, CAVERN and SHIMMER (fx_native.c), a 23.8 s delay line, the native engines (NEBULA, CANYON: in a
  * NATIVE distribution, idm_native), and MENU > INFO's CPU is the computer's load. The device's engines are as they are.
  *   native/build.sh [DIST]  ->  build/native/fel-tracker-<dist> (and Fel-Tracker <DIST>.app on macOS)
- * The window: the screen (3x), the knobs (the mouse wheel over one turns it; MASTER the level), the buttons (a click
+ * The window: the screen (3x), the knobs (dragged up or down, or the wheel or trackpad over one, turns it; MASTER the
+ * level), the buttons (a click
  * holds one while the mouse button is down, LEDs as the device lights them) and the 27 keys. The computer keyboard as
  * on the emulator page: F3 .. A#4 on the Z and A rows, B4 .. G5 on Q .. O, the twelve buttons on the number row in the
  * panel's order, [ ] OCT- OCT+, the arrows KNOB 1 (up, down) and ALGORITHM (left, right), Shift + up / down SELECT,
@@ -32,6 +33,7 @@ static uint32_t native_ticks(void)                        /* the computer's cloc
 }
 #include "../web/emu/felucca_web.c"
 #include <SDL.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -292,8 +294,10 @@ static void sync_input(void)                              /* the union of the ke
     SDL_UnlockAudioDevice(audio_dev);
 }
 static uint32_t master = 700;
+static int knob_pos[8];                                   /* the encoders' steps turned (the pointer drawn) */
 static void turn(int knob, int n)
 {
+    knob_pos[knob] += n;
     SDL_LockAudioDevice(audio_dev);
     if (KNOB_ROLE[knob] < 0) {
         int m = (int)master + n * 24;
@@ -306,6 +310,30 @@ static void turn(int knob, int n)
 }
 
 /* ---------------------------------------------------------------- drawing --- */
+static int knob_hot = -1;                                 /* the knob under the mouse, or being dragged */
+static void disc(SDL_Renderer *r, int cx, int cy, int rad)
+{
+    int dy;
+    for (dy = -rad; dy <= rad; dy++) {
+        int dx = (int)sqrt((double)(rad * rad - dy * dy));
+        SDL_RenderDrawLine(r, cx - dx, cy + dy, cx + dx, cy + dy);
+    }
+}
+static void draw_knob(SDL_Renderer *r, int cx, int cy, int rad, double a, int hot)
+{
+    int k;
+    SDL_SetRenderDrawColor(r, hot ? 120 : 90, hot ? 120 : 90, hot ? 132 : 100, 255);
+    disc(r, cx, cy, rad + 3);                             /* (the ring) */
+    SDL_SetRenderDrawColor(r, 44, 44, 50, 255);
+    disc(r, cx, cy, rad);
+    SDL_SetRenderDrawColor(r, 240, 236, 220, 255);
+    for (k = -1; k <= 1; k++) {                           /* the pointer, from the middle to the edge, 3 px wide */
+        double px = -cos(a) * k, py = -sin(a) * k;        /* (perpendicular) */
+        SDL_RenderDrawLine(r, cx + (int)lround(px), cy + (int)lround(py), cx + (int)lround(sin(a) * (rad - 3) + px),
+                           cy - (int)lround(cos(a) * (rad - 3)) + (int)lround(py));
+    }
+}
+
 static void draw(SDL_Renderer *r, SDL_Texture *tex)
 {
     static uint16_t fb[SCR * SCR];
@@ -325,12 +353,12 @@ static void draw(SDL_Renderer *r, SDL_Texture *tex)
     SDL_SetRenderDrawColor(r, 22, 22, 26, 255);
     SDL_RenderClear(r);
     SDL_RenderCopy(r, tex, 0, &sq);
-    for (i = 0; i < 8u; i++) {                         /* the knobs */
+    for (i = 0; i < 8u; i++) {                         /* the knobs: MASTER's pointer its level, an encoder's its turns */
         SDL_Rect q = knob_rect((int)i);
-        SDL_SetRenderDrawColor(r, 48, 48, 56, 255);
-        SDL_RenderFillRect(r, &q);
+        double a = i ? knob_pos[i] * (M_PI / 12.0) : (master / 1023.0 - 0.5) * 1.5 * M_PI;
+        draw_knob(r, q.x + q.w / 2, q.y + 28, 26, a, (int)i == knob_hot);
         SDL_SetRenderDrawColor(r, 200, 200, 210, 255);
-        text(r, q.x + 6, q.y + q.h - 18, 2, KNOB_NAME[i]);
+        text(r, q.x + (q.w - 12 * (int)strlen(KNOB_NAME[i])) / 2, q.y + q.h - 16, 2, KNOB_NAME[i]);
     }
     for (i = 0; i < 14u; i++) {                        /* the buttons, lit or dim as the LEDs */
         SDL_Rect q = btn_rect((int)i);
@@ -368,6 +396,62 @@ static void draw(SDL_Renderer *r, SDL_Texture *tex)
     SDL_RenderPresent(r);
 }
 
+/* ---------------------------------------------------------------- the mouse --- */
+/* a knob: dragged up or down (a step each 6 px), or the wheel over it (a trackpad's fine steps added up); a button or a
+ * key: held while the button is down */
+#define DRAG_PX 6
+static int drag_knob = -1, drag_y;
+static float wheel_acc;
+static int knob_at(int x, int y)
+{
+    int i;
+    for (i = 0; i < 8; i++)
+        if (in_rect(knob_rect(i), x, y))
+            return i;
+    return -1;
+}
+static void mouse_event(const SDL_Event *e)
+{
+    int i;
+    if (e->type == SDL_MOUSEBUTTONDOWN && e->button.button == SDL_BUTTON_LEFT) {
+        int x = e->button.x, y = e->button.y, k = key_at(x, y);
+        if ((drag_knob = knob_at(x, y)) >= 0) {
+            drag_y = y;
+            knob_hot = drag_knob;
+            return;
+        }
+        for (i = 0; i < 14; i++)
+            if (in_rect(btn_rect(i), x, y))
+                mouse_btn = 1u << BTN_ORDER[i];
+        if (k >= 0)
+            mouse_key = 1u << k;
+        sync_input();
+    } else if (e->type == SDL_MOUSEBUTTONUP && e->button.button == SDL_BUTTON_LEFT) {
+        drag_knob = -1;
+        mouse_btn = mouse_key = 0;
+        sync_input();
+    } else if (e->type == SDL_MOUSEMOTION) {
+        if (drag_knob >= 0) {
+            int n = (drag_y - e->motion.y) / DRAG_PX;    /* (up: clockwise) */
+            if (n) {
+                turn(drag_knob, n);
+                drag_y -= n * DRAG_PX;
+            }
+            return;
+        }
+        knob_hot = knob_at(e->motion.x, e->motion.y);
+    } else if (e->type == SDL_MOUSEWHEEL && knob_hot >= 0) {
+        float d = e->wheel.preciseY != 0.0f ? e->wheel.preciseY : (float)e->wheel.y;
+        if (e->wheel.direction == SDL_MOUSEWHEEL_FLIPPED)
+            d = -d;
+        wheel_acc += d;
+        while (wheel_acc >= 1.0f || wheel_acc <= -1.0f) {
+            turn(knob_hot, wheel_acc > 0.0f ? 1 : -1);
+            wheel_acc += wheel_acc > 0.0f ? -1.0f : 1.0f;
+        }
+    }
+}
+
 /* ---------------------------------------------------------------- the window's loop --- */
 static int selftest(const char *shot);
 static SDL_Renderer *r;
@@ -376,7 +460,7 @@ int main(int argc, char **argv)
 {
     SDL_Window *w;
     SDL_AudioSpec want = {0}, got;
-    int quit = 0, test = argc > 1 && !strcmp(argv[1], "--selftest"), mouse_knob = -1;
+    int quit = 0, test = argc > 1 && !strcmp(argv[1], "--selftest");
     uint32_t t0, last_scan = 0;
     char *pref;
     if (test) {
@@ -468,24 +552,9 @@ int main(int argc, char **argv)
                             kb_btn = down ? kb_btn | 1u << KMAP[i].btn : kb_btn & ~(1u << KMAP[i].btn);
                     }
                 sync_input();
-            } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
-                int x = e.button.x, y = e.button.y, k = key_at(x, y);
-                for (i = 0; i < 14; i++)
-                    if (in_rect(btn_rect(i), x, y))
-                        mouse_btn = 1u << BTN_ORDER[i];
-                if (k >= 0)
-                    mouse_key = 1u << k;
-                sync_input();
-            } else if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
-                mouse_btn = mouse_key = 0;
-                sync_input();
-            } else if (e.type == SDL_MOUSEMOTION) {
-                mouse_knob = -1;
-                for (i = 0; i < 8; i++)
-                    if (in_rect(knob_rect(i), e.motion.x, e.motion.y))
-                        mouse_knob = i;
-            } else if (e.type == SDL_MOUSEWHEEL && mouse_knob >= 0 && e.wheel.y) {
-                turn(mouse_knob, e.wheel.y > 0 ? 1 : -1);
+            } else if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP || e.type == SDL_MOUSEMOTION ||
+                       e.type == SDL_MOUSEWHEEL) {
+                mouse_event(&e);
             }
         }
         draw(r, tex);
@@ -509,6 +578,7 @@ int main(int argc, char **argv)
 static int selftest(const char *shot)
 {
     uint32_t i, t = SDL_GetTicks(), ms0, ms1, draws, lit, cpu;
+    int drag_ok, wheel_ok;
     double e = 0;
     while (SDL_GetTicks() - t < 1500u)
         SDL_Delay(10);
@@ -529,6 +599,35 @@ static int selftest(const char *shot)
     ms1 = web_now_ms();
     cpu = song.cpu_q8 * 1000u / 256u;
     SDL_UnlockAudioDevice(audio_dev);
+    {                                                 /* the mouse on MASTER: dragged up 60 px, then 2 wheel steps down */
+        SDL_Rect q = knob_rect(0);
+        SDL_Event ev;
+        uint32_t m0 = master;
+        memset(&ev, 0, sizeof ev);
+        ev.type = SDL_MOUSEBUTTONDOWN;
+        ev.button.button = SDL_BUTTON_LEFT;
+        ev.button.x = q.x + q.w / 2;
+        ev.button.y = q.y + 28;
+        mouse_event(&ev);
+        ev.type = SDL_MOUSEMOTION;
+        ev.motion.x = q.x + q.w / 2;
+        ev.motion.y = q.y + 28 - 60;
+        mouse_event(&ev);
+        ev.type = SDL_MOUSEBUTTONUP;
+        mouse_event(&ev);
+        drag_ok = master == m0 + 10u * 24u;
+        ev.type = SDL_MOUSEMOTION;
+        ev.motion.y = q.y + 28;
+        mouse_event(&ev);
+        memset(&ev.wheel, 0, sizeof ev.wheel);
+        ev.type = SDL_MOUSEWHEEL;
+        ev.wheel.preciseY = -0.5f;
+        mouse_event(&ev);
+        mouse_event(&ev);
+        mouse_event(&ev);
+        mouse_event(&ev);
+        wheel_ok = drag_ok && master == m0 + 10u * 24u - 2u * 24u;
+    }
     if (shot) {                                       /* (--selftest FILE.bmp: the window as drawn now) */
         SDL_Surface *s = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888);
         draw(r, tex);
@@ -536,9 +635,10 @@ static int selftest(const char *shot)
             SDL_SaveBMP(s, shot);
         SDL_FreeSurface(s);
     }
-    printf("native: %u screen draws, the device's clock %u ms in 1 s, HOME %s, a key's sound %s, CPU %u.%u %%\n", draws,
-           ms1 - ms0, (lit >> B_HOME) & 1u ? "lit" : "dark", e > 1e-6 ? "on" : "silent", cpu / 10u, cpu % 10u);
+    printf("native: %u screen draws, the device's clock %u ms in 1 s, HOME %s, a key's sound %s, CPU %u.%u %%, MASTER %s by a drag, %s by the wheel\n",
+           draws, ms1 - ms0, (lit >> B_HOME) & 1u ? "lit" : "dark", e > 1e-6 ? "on" : "silent", cpu / 10u, cpu % 10u,
+           drag_ok ? "turned" : "NOT turned", wheel_ok ? "turned" : "NOT turned");
     SDL_CloseAudioDevice(audio_dev);
     SDL_Quit();
-    return draws > 2u && ms1 - ms0 > 500u && ((lit >> B_HOME) & 1u) && e > 1e-6 ? 0 : 1;
+    return draws > 2u && ms1 - ms0 > 500u && ((lit >> B_HOME) & 1u) && e > 1e-6 && drag_ok && wheel_ok ? 0 : 1;
 }
