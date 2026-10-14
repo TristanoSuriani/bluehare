@@ -63,6 +63,7 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | KIT (an FM drum kit on one part) | `firmware/src/eng_kit.c` |
 | BREAKS (synthesized breakbeat player) | `firmware/src/eng_breaks.c` |
 | RISERS (build-ups and landings) | `firmware/src/eng_risers.c` |
+| LINNKIT (the 80s sampled drum machine, after the LinnDrum; WAREHOUSE's) | `firmware/src/eng_linnkit.c` |
 | Tests for distributions and SPEECH | `tests/engines_test.c`, `tests/speech_test.c` |
 
 All of these engines are original implementations of published techniques, with no third-party code:

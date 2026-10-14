@@ -52,6 +52,7 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_abyss.c"          /* ABYSS: a cavern that rings (1.5, FOUNDRY) */
 #include "eng_shred.c"          /* SHRED: a sound torn apart as it plays (1.5, FOUNDRY) */
 #include "eng_kit.c"            /* KIT: a drum kit of FMPERC's voices on one part (1.5) */
+#include "eng_linnkit.c"        /* LINNKIT: the 80s sampled drum machine, after the LinnDrum (1.5, WAREHOUSE) */
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */
 

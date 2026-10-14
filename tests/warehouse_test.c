@@ -21,8 +21,8 @@ static uint32_t eng_of(const char *n)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"KIT", "BREAKS", "FMPERC", "CHOKE", "GUTS", "VENOM", "HOOVER", "DUBCHORD",
-                                        "VOSIM", "SIREN8", "ABYSS", "SHRED", "RISERS"};
+    static const char *const ORDER[] = {"LINNKIT", "KIT", "BREAKS", "FMPERC", "CHOKE", "GUTS", "VENOM", "HOOVER", "DUBCHORD",
+                                        "VOSIM", "SIREN8", "ABYSS", "SHRED", "RISERS"};   /* (LINNKIT first) */
     uint32_t e, ok = NENGINES == NELEM(ORDER);
     for (e = 0; ok && e < NENGINES; e++)
         ok &= !strcmp(ENGINES[e]->name, ORDER[e]);

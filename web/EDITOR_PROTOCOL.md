@@ -96,7 +96,7 @@ most; DUBSIREN's 8-bit cousin), 32 DUBCHORD (a whole chord in one voice) 33 WASP
 multimode filter), 34 MODAL (a modal resonator), 35 VECTOR (vector synthesis), 36 ECHOES (a note and its repeats)
 37 GLITCH (micro-sounds) and FOUNDRY's 38 DARK, 39 RAZOR,
 40 GUTS, 41 SLAG, 42 VENOM, 43 HONKS, 44 WAR, 45 CHOKE, 46 RUST, 47 DRILL, 48 ANVIL, 49 SCREAM,
-50 FLUIDS, 51 SCRATCH, 52 ABYSS, 53 SHRED; the user-slot engine of `FAV_GET` / `FAV_SET` is 54. DUBSIREN plays on the last track
+50 FLUIDS, 51 SCRATCH, 52 ABYSS, 53 SHRED, and WAREHOUSE's 54 LINNKIT; the user-slot engine of `FAV_GET` / `FAV_SET` is 55. DUBSIREN plays on the last track
 alone: a `SET` of `G_ENGSEL` or a `PRESET` of it on another track gives DUBSIREN8 with the same preset. `NAMES`, `DESC` and the rest treat them as any
 engine. `INFO`'s version string carries the distribution after the version ("FELUCCA v1.5 IDM"; the default: none).
 

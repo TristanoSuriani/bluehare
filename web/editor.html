@@ -1232,7 +1232,7 @@ function makeMockDevice(opt = {}) {
     E("MIDI", ["USB", "TRS"], 0), E("SYNC", NDASH, 0), E("ROUT", ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"], 0), D("CPU", F.INT, 0, 0, 0),
     D("SLOT", F.INT, 1, 1, 1), E("NAME", NDASH, 0), E("LOAD", NGO, 0), E("SAVE", NGO, 0),   /* (1.5: one song) */
 /*MOCK-ENGSEL-BEGIN*/
-    E("ENG", ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "WAVE", "-", "WEST", "-", "SPEECH", "-", "-", "VOSIM", "PARTICLE", "CHAOS", "SID", "DUBSIREN", "-", "-", "KIT", "BREAKS", "-", "-", "DUBCHORD", "WASP", "MODAL", "VECTOR", "ECHOES", "GLITCH", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"], 0),
+    E("ENG", ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "WAVE", "-", "WEST", "-", "SPEECH", "-", "-", "VOSIM", "PARTICLE", "CHAOS", "SID", "DUBSIREN", "-", "-", "KIT", "BREAKS", "-", "-", "DUBCHORD", "WASP", "MODAL", "VECTOR", "ECHOES", "GLITCH", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"], 0),
   /*MOCK-ENGSEL-END*/
     E("SET", NGO, 0),
     E("CLRSQ", NGO, 0), E("INIT", NGO, 0),
@@ -1733,6 +1733,7 @@ function makeMockDevice(opt = {}) {
     GONE,                                         /* 51 */
     GONE,                                         /* 52 */
     GONE,                                         /* 53 */
+    GONE,                                         /* 54 */
   /*MOCK-ENG-END*/];
   const E_OF = (n) => ENG.findIndex((e) => e.name === n);
   /*MOCK-TRKDEF-BEGIN*/

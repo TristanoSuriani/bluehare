@@ -85,7 +85,7 @@ FELUCCA_DIST=foundry ./build.sh    # another one (build/felucca-foundry.fwsc)
 | --- | --- | --- |
 | `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH (16) |
 | `foundry` | 8 | SCREAM DARK VOSIM WAR SCRATCH FLUIDS RAZOR DUBCHORD RUST ANVIL DRILL SLAG MODAL BLISS ECHOES WAVE |
-| `warehouse` | 8 | KIT BREAKS FMPERC CHOKE GUTS VENOM HOOVER DUBCHORD VOSIM DUBSIREN8 ABYSS SHRED RISERS (13: LINNKIT, STRINGS and FLOOR to come) |
+| `warehouse` | 8 | LINNKIT KIT BREAKS FMPERC CHOKE GUTS VENOM HOOVER DUBCHORD VOSIM DUBSIREN8 ABYSS SHRED RISERS (14: STRINGS and FLOOR to come) |
 
 With 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an

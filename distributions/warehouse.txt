@@ -4,6 +4,7 @@
 # PALETTE: the one a device starts with
 TRACKS 8
 PALETTE RAVE
+LINNKIT
 KIT
 BREAKS
 FMPERC
