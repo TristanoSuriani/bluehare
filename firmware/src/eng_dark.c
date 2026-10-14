@@ -86,13 +86,17 @@ static const preset_t DARK_PRESETS[] = {
     {"DEEP KEYS", {80, 80, 6, 20, 20, 40, 0, 60}, {0, 80, 40, 60}, 0, 0, FX(0, 20, 20, 40)},
     {"SUB PLUCK", {90, 30, 0, 30, 40, 30, 0, 60}, {0, 40, 0, 30}, 0, 1, FX(0, 0, 10, 10)},
     {"GLASS SUB", {60, 100, 0, 0, 0, 40, 0, 90}, {20, 0, 127, 60}, 0, 0, FX(0, 30, 20, 50)},
+    /* (Fel-Tracker) EBM basslines: the arp's figure with the sound (core.h ARP_FIG): hold a note, it plays the line */
+    {"EBM OCTAVES", {100, 30, 10, 50, 30, 30, 40, 70}, {0, 30, 60, 10}, 0, 0, FX(10, 0, 5, 5), .arp = 1},
+    {"EBM ROOT", {110, 20, 20, 60, 40, 25, 50, 60}, {0, 25, 50, 8}, 0, 0, FX(15, 0, 5, 5), .arp = 2},
+    {"EBM GALLOP", {90, 40, 15, 55, 35, 30, 40, 65}, {0, 25, 50, 8}, 0, 0, FX(10, 0, 10, 5), .arp = 3},
 };
 
 static const engine_t ENG_DARK = {
     .name = "DARK",
     .id = EID_DARK,
     .cc = 0x37,                  /* CC74 FOLD, CC71 DRIVE */
-    .cats = "BBBBBPBBBDBBBPKBBBDBLPBBBBBPBKUP",
+    .cats = "BBBBBPBBBDBBBPKBBBDBLPBBBBBPBKUPBBB",
     .page_title = {"SUB", "PUNCH"},
     .edit = {
         {"SUB1", F_PCT, 0, 127, 90, 0, 0},

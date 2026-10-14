@@ -576,6 +576,9 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     bite), PUNCH (the pitch from up to two octaves above, falling over PDEC: an 808's thud), DRIVE, TONE
   - **RAZOR**: up to 7 saws spread apart (VOICES, SPREAD: reeses, supersaws), SUB, NOISE, DRIVE into a resonant
     low-pass (CUT, RES) and EDGE, a high-pass after it (thin, icy, laser cuts)
+  - *(Fel-Tracker)* RAZOR and DARK each have three EBM basslines, presets that set the arp too: EBM OCTAVES (16ths,
+    root and octave), EBM ROOT (16ths on the one note), EBM GALLOP (16th triplets). Hold a key, or a MIDI note, and it
+    plays the line at the tempo (the tracker's notes play as written: the arp plays the keys and MIDI)
   - **SLAG**: hot walls and drones: 2 .. 4 oscillators wandering in tune (DRIFT), HEAT's saturation, a low-pass that
     MELT lets sink over each note, NOISE sparks
   - **WAR**: an industrial kit, a key each from C2 (as DRUM): KICK, HARD, SNARE, CLAP, HAT, OPEN, TOM L, TOM H, METAL,

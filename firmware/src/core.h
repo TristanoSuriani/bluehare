@@ -205,7 +205,13 @@ typedef struct {
     int8_t eshp, lshp;           /* (Fel-Tracker) ENV -> SHAPE and LFO -> SHAPE (P_ED_SHP, P_LD_SHP; -64 .. 63, 0 none):
                                   * a preset that moves its shape (WAVE: a scan through the table) */
     uint8_t lrate, lwave;        /* (Fel-Tracker) the LFO's RATE and WAVE, + 1 (0: the default) */
+    uint8_t arp;                 /* (Fel-Tracker) an arp figure (ARP_FIG; 0: the arp as the track has it, untouched) */
 } preset_t;
+/* (Fel-Tracker) the arp figures a preset may bring (preset_t.arp): MODE, RATE, OCT, GATE as params.c has them. The arp
+ * plays the keys and MIDI (the tracker's notes play as written). 1 the EBM octave bass (16ths, root and octave), 2 its
+ * root bass (16ths on the one note), 3 a gallop (16th triplets) */
+typedef struct { uint8_t mode, rate, oct, gate; } arp_fig_t;
+static const arp_fig_t ARP_FIG[4] = {{0, 0, 0, 0}, {1, 2, 2, 45}, {1, 2, 1, 35}, {1, 5, 1, 40}};   /* (UP; 1/16, 16T) */
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}
 
 struct track;

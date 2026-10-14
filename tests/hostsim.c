@@ -108,6 +108,12 @@ static void host_preset_values(track_t *t, uint32_t e, uint32_t pi, const preset
     t->p[P_LD_SHP] = p->lshp;
     t->p[P_LRATE] = p->lrate ? (int16_t)(p->lrate - 1u) : TP[P_LRATE].def;   /* (ui.c: the defaults first) */
     t->p[P_LWAVE] = p->lwave ? (int16_t)(p->lwave - 1u) : TP[P_LWAVE].def;
+    if (p->arp) {                                 /* (ui.c: the preset's arp figure) */
+        t->p[P_AMODE] = ARP_FIG[p->arp % 4u].mode;
+        t->p[P_ARATE] = ARP_FIG[p->arp % 4u].rate;
+        t->p[P_AOCT] = ARP_FIG[p->arp % 4u].oct;
+        t->p[P_AGATE] = ARP_FIG[p->arp % 4u].gate;
+    }
     for (i = 0; i < 4u; i++)
         t->p[P_DIST + i] = (int16_t)(p->fx[i] ? p->fx[i] - 1 : FX_DEF[i]);
 }

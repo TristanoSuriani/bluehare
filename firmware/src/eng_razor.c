@@ -92,13 +92,17 @@ static const preset_t RAZOR_PRESETS[] = {
     {"TEAR GAS", {5, 110, 75, 60, 30, 90, 0, 60}, {0, 40, 110, 30}, 20, 1, FX(40, 20, 30, 30)},
     {"SUB RAZOR", {2, 30, 35, 30, 0, 40, 127, 0}, {0, 50, 100, 15}, 20, 1, FX(10, 0, 0, 5)},
     {"GLASS LEAD", {4, 30, 120, 60, 110, 20, 0, 10}, {0, 40, 100, 30}, 30, 1, FX(0, 30, 35, 35)},
+    /* (Fel-Tracker) EBM basslines: the arp's figure with the sound (core.h ARP_FIG): hold a note, it plays the line */
+    {"EBM OCTAVES", {2, 40, 55, 40, 0, 50, 70, 0}, {0, 30, 60, 10}, 30, 0, FX(15, 0, 10, 10), .arp = 1},
+    {"EBM ROOT", {2, 30, 50, 45, 0, 60, 80, 0}, {0, 25, 50, 8}, 35, 0, FX(20, 0, 10, 10), .arp = 2},
+    {"EBM GALLOP", {3, 45, 60, 40, 10, 50, 60, 0}, {0, 25, 50, 8}, 30, 0, FX(15, 0, 15, 10), .arp = 3},
 };
 
 static const engine_t ENG_RAZOR = {
     .name = "RAZOR",
     .id = EID_RAZOR,
     .cc = 0x34,                  /* CC74 CUT, CC71 RES */
-    .cats = "BBLLPPLBBKLBBLPLLKBPKLBL",
+    .cats = "BBLLPPLBBKLBBLPLLKBPKLBLBBB",
     .page_title = {"STACK", "EDGE"},
     .edit = {
         {"VOICES", F_INT, 1, 7, 3, 0, 0},

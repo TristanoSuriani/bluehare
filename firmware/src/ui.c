@@ -660,6 +660,13 @@ static void apply_preset_to(track_t *t, uint32_t pi)
         t->p[P_LRATE] = (int16_t)(e->presets[pi].lrate - 1u);
     if (e->presets[pi].lwave)
         t->p[P_LWAVE] = (int16_t)(e->presets[pi].lwave - 1u);
+    if (e->presets[pi].arp) {                         /* (Fel-Tracker) the preset's arp figure */
+        const arp_fig_t *a = &ARP_FIG[e->presets[pi].arp % 4u];
+        t->p[P_AMODE] = a->mode;
+        t->p[P_ARATE] = a->rate;
+        t->p[P_AOCT] = a->oct;
+        t->p[P_AGATE] = a->gate;
+    }
     {   /* the sends */
         static const uint8_t FX_DEF[4] = {0, 24, 28, 36};
         const preset_t *pr = &e->presets[pi];
