@@ -4,6 +4,11 @@ Fel-Tracker (Tristano Suriani's fork of Felucca by Leo Kuroshita) builds the sam
 Felucca's file names (`felucca.bin`, `felucca.fwsc`). The distributions (below) are Fel-Tracker's. Whose work is
 whose: [AUTHORS.md](AUTHORS.md).
 
+**One command per target:** `make help` lists them. `make firmware DIST=foundry`, `make emu DIST=chip`,
+`make native`, `make plugin`, `make quick` (the fast tests, about a minute), `make test` (the whole suite, its
+steps in parallel). The Makefile sets the environment each needs (the venv, `.local-bin`, Emscripten); the scripts
+below still work on their own.
+
 The build makes three files in `build/`:
 
 | File | What |
