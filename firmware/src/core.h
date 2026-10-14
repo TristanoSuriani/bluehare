@@ -38,6 +38,7 @@
 #define VOICE_BASE 8             /* (Fel-Tracker) the budget always there */
 #define DEV_NAT(dev, nat) (dev)
 #endif
+#include "target.h"              /* (Fel-Tracker) what differs between the device and the host targets */
 #define VOICE_LOAD_Q8 192        /* (Fel-Tracker) the load under which voices 9 .. 12 may start: 75 % (song.cpu_q8) */
 #define UNISON_MAX 8             /* UNISON's voices (its level and spread made for 8) */
 #ifndef FELUCCA_NTRK             /* (a test build may set it: tests/run_tests.sh's 8-track one) */
