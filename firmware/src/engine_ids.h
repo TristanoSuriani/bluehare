@@ -10,7 +10,10 @@
  *               removed them: core.h EID_RETIRED), never given again. A new engine takes the next free id and raises
  *               core.h EID_COUNT
  *   substitute  the engine a sound of this one loads as in a distribution without it (and down that one's own, if it
- *               is missing too; at the end the distribution's first engine): engines.c eng_load_id */
+ *               is missing too; at the end the distribution's first engine): engines.c eng_load_id
+ * (Fel-Tracker) An engine marked native (the comment after it) is the native image's alone (FELUCCA_NATIVE: more than
+ * the FM-1's CPU or memory holds): only a NATIVE distribution may list it (tools/gen_dist.py), and on the device its
+ * sounds load as its substitute, which shares its controls */
 ENGINE(WAVE, 14, VECTOR)
 ENGINE(BYTE, 15, SID)
 ENGINE(WEST, 16, KARPLUS)
@@ -53,3 +56,5 @@ ENGINE(SHRED, 53, SCRATCH)
 ENGINE(LINNKIT, 54, KIT)
 ENGINE(STRINGS, 55, WAVE)
 ENGINE(FLOOR, 56, BREAKS)
+ENGINE(NEBULA, 57, PARTICLE)   /* native: PARTICLE's cloud whole, 64 grains a voice */
+ENGINE(CANYON, 58, ECHOES)     /* native: ECHOES' repeats, 64 of them, all ringing */

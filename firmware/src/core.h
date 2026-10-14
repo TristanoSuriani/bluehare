@@ -61,7 +61,7 @@ enum {                           /* the ids */
 #include "engine_ids.h"
 #undef ENGINE
 };
-#define EID_COUNT 57u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+#define EID_COUNT 59u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 /* retired: 1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE (Felucca 1.5), 27 ACID; 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO,
  * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Fel-Tracker removed them): ids 0 .. 13 but 14,
  * and 27 */
@@ -75,6 +75,9 @@ enum {                           /* the indices: the distribution's engines in i
     NENGINES                     /* engines in this build (1 .. 16) */
 };                               /* (the ones left out: ENGI_<NAME> ENG_ABSENT, in the generated header) */
 typedef char eng_count_ok[NENGINES > 0 && NENGINES <= 16 ? 1 : -1];
+#if (FELUCCA_DIST_NATIVE || FELUCCA_ENG_NEBULA || FELUCCA_ENG_CANYON) && !defined(FELUCCA_NATIVE)
+#error "a NATIVE distribution, or a native engine: the native image's alone (native/build.sh)"
+#endif
 #define NENG_SHOWN NENGINES      /* (the engines one can pick: all of the build's, in their order) */
 /* engine index e is engine X (a uint8_t compared without the warning that an engine left out would raise: still false,
  * folded away) */

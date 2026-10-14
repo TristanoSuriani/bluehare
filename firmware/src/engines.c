@@ -57,6 +57,10 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_floor.c"          /* FLOOR: four-on-the-floor beats, as BREAKS the breaks (1.5, WAREHOUSE) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */
+#ifdef FELUCCA_NATIVE           /* (the native image's alone: engine_ids.h, core.h FELUCCA_NATIVE) */
+#include "eng_nebula.c"         /* NEBULA: PARTICLE's cloud whole (native) */
+#include "eng_canyon.c"         /* CANYON: ECHOES' repeats, all of them (native) */
+#endif
 
 /* the block's size: the largest this build's engines ask for (core.h FELUCCA_ENG_*) */
 #define SLAB_MAX(a, b) ((a) > (b) ? (a) : (b))

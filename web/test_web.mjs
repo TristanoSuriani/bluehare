@@ -53,7 +53,7 @@ async function editorMock() {
   {   /* the primary distribution's engines by id (IDM), "-" for the rest: retired (0 .. 13, 27) and left out */
     const IDM = { 14: "WAVE", 16: "WEST", 18: "SPEECH", 21: "VOSIM", 22: "PARTICLE", 23: "CHAOS", 24: "SID", 25: "DUBSIREN",
       28: "KIT", 29: "BREAKS", 32: "DUBCHORD", 33: "WASP", 34: "MODAL", 35: "VECTOR", 36: "ECHOES", 37: "GLITCH" };
-    ok(info.nengines === 57 && info.engines.every((n, e) => n === (IDM[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
+    ok(info.nengines === 59 && info.engines.every((n, e) => n === (IDM[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
   let descs = 0;
@@ -527,7 +527,7 @@ async function editorLibrarian() {
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
   ok(file.format === "felucca-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
     file.paramLabels[83] === "KICK" && file.paramLabels[90] === "BELL" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
-    file.engines.length === 57,
+    file.engines.length === 59,
     "library file: versioned, with P_COUNT, labels and engines");
   const back = E.readLibraryFile(file, ctx);
   ok(back.patches.length === 2 && !back.skipped && eq(back.patches[0].p, cap.p) && eq(back.patches[1].p, bass.p)

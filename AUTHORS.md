@@ -66,6 +66,9 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | LINNKIT (the 80s sampled drum machine, after the LinnDrum; WAREHOUSE's) | `firmware/src/eng_linnkit.c` |
 | STRINGS (a string ensemble, after the Waldorf Streichfett; WAREHOUSE's) | `firmware/src/eng_strings.c` |
 | FLOOR (four-on-the-floor beats; WAREHOUSE's) | `firmware/src/eng_floor.c` |
+| NEBULA (PARTICLE's cloud whole; the native image's) | `firmware/src/eng_nebula.c` |
+| CANYON (ECHOES' repeats, all of them; the native image's) | `firmware/src/eng_canyon.c` |
+| The native image's reverbs CONCERT, CAVERN, SHIMMER | `firmware/src/fx_native.c` |
 | Tests for distributions and SPEECH | `tests/engines_test.c`, `tests/speech_test.c` |
 
 All of these engines are original implementations of published techniques, with no third-party code:
