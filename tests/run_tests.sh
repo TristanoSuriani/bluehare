@@ -353,6 +353,29 @@ if [ -f build/gen/felucca_tables.h ]; then
     cc -O2 -w -o "$OUT/plugin_core_test" tests/plugin_core_test.c plugin/core/fel_loader.c -lpthread
     run "plugin instances: = the native image, independent (in turn, two threads), flash apart, the four side by side, copies kept and reused" \
         "$OUT/plugin_core_test" "$OUT/cores" "$OUT/plugin_core_ref.f32"
+    cc -O2 -std=gnu11 -w -o "$OUT/plugin_host_test" tests/plugin_host_test.c plugin/src/fel_host.c plugin/src/fel_resample.c \
+        plugin/core/fel_loader.c -lpthread -lm
+    run "plugin host: the resampler (48 .. 96 and 32 kHz: flat, clean, not delayed, any blocks), the chooser, notes at their frame, a swap while playing" \
+        "$OUT/plugin_host_test" "$OUT/cores"
+fi
+
+# (Fel-Tracker) the plugin (plugin/build.sh: DPF, plugin/dpf a git submodule): VST3, AU, CLAP; the CLAP driven as a host
+# drives it; pluginval on the VST3 when it is there (build/tools/pluginval-dl/pluginval.app, or PLUGINVAL=path)
+if [ ! -f plugin/dpf/Makefile.plugins.mk ] || [ ! -f build/gen/felucca_tables.h ] || [ "$(uname -s)" != Darwin ]; then
+    echo "== skip the plugin (needs macOS and plugin/dpf: git submodule update --init --recursive)"
+else
+    run "plugin: VST3, AU and CLAP build, the cores in their bundles (plugin/build.sh -> build/plugin)" \
+        env FEL_ARCH="-arch $(uname -m)" sh plugin/build.sh
+    cc -O2 -std=gnu11 -w -Iplugin/dpf/distrho/src -o "$OUT/plugin_clap_test" tests/plugin_clap_test.c -lm
+    run "plugin, as a host loads it (CLAP): an instrument, its latency, notes, its parameters, the distribution in its state, two instances" \
+        "$OUT/plugin_clap_test" build/plugin/Fel-Tracker.clap
+    PV=${PLUGINVAL:-build/tools/pluginval-dl/pluginval.app/Contents/MacOS/pluginval}
+    if [ -x "$PV" ]; then
+        run "plugin: pluginval, strictness 8, on the VST3 (build/plugin/pluginval.log)" sh -c \
+            "\"$PV\" --strictness-level 8 --validate-in-process --skip-gui-tests --timeout-ms 300000 --validate build/plugin/Fel-Tracker.vst3 >build/plugin/pluginval.log 2>&1"
+    else
+        echo "== skip pluginval (plugin/get_pluginval.sh fetches it)"
+    fi
 fi
 
 # (Fel-Tracker) the native image (native/build.sh: SDL2): built, then booted with dummy video and audio drivers

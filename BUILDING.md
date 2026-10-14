@@ -230,7 +230,24 @@ plays the native image's build sample for sample (`tests/plugin_core_ref.c`); tw
 two threads at once, each play exactly what they play alone; their flash is their own; the four distributions load
 side by side; the copies are reused and replaced when the core is rebuilt.
 
-Next: the plugin itself (DPF: VST3, AU), the host's tempo and transport, its state, eight track outputs, its window.
+The plugin itself (`plugin/src`), built by DPF (`plugin/dpf`, a git submodule: `git submodule update --init --recursive`):
+
+```
+plugin/build.sh                # -> build/plugin/Fel-Tracker.vst3, .component (AU), .clap; universal on macOS
+plugin/get_pluginval.sh        # (once) pluginval, which tests/run_tests.sh then runs on the VST3
+```
+
+An instrument: MIDI in, stereo out. Its parameters: MASTER (the device's pot) and DISTRIBUTION, the chooser (IDM
+NATIVE first, then IDM, FOUNDRY, WAREHOUSE: the cores found in the bundle's `Contents/Resources/cores`; not
+automatable), the choice kept in its state. A distribution chosen is loaded by a thread of the plugin's own and swapped
+in between two blocks (a state the host loads: at once). `plugin/src/fel_host.c` is the plugin apart from the format:
+the instance, the chooser, MIDI events played at their frame. The core runs at 44.1 kHz; at another host rate
+`plugin/src/fel_resample.c` resamples it (a 96-tap Kaiser-windowed sinc, flat to 19 kHz, images and aliases under
+-80 dB), the input pulled 48 core frames ahead: the latency reported to the host (52 frames at 48 kHz).
+`tests/plugin_host_test.c` checks the resampler and the host; `tests/plugin_clap_test.c` loads the built CLAP as a host
+does (notes, latency, parameters, the state, two instances); pluginval (strictness 8) the VST3.
+
+Next: the host's tempo and transport, the song in the state, eight track outputs, its window, the install script.
 
 ## Tests
 

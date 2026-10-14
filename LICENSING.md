@@ -66,6 +66,8 @@ All by Hügelton Instruments (Leo Kuroshita), in this tree:
 | DaisySP by Electrosmith, Corp and Emilie Gillet (<https://github.com/electro-smith/DaisySP>): the modal resonator (PHYS's, now MODAL's and ANVIL's), ported to fixed point | MIT | `firmware/src/shared/phys_dsp.c`, `LICENSES/MIT-DaisySP.txt` |
 | X0X by charlesvestal (<https://github.com/charlesvestal/fm1-x0x>), a Felucca fork: the design of the browser emulator (the worklet, the device clock driven by its audio, the exports); its files credit it in their headers | GPL-3.0 | `web/emu/` |
 | DotGothic16 font by The DotGothic16 Project Authors (<https://github.com/fontworks-fonts/DotGothic16>): the browser emulator's knob labels, served with its page (cut to printable ASCII; the font declares no Reserved Font Name) | SIL OFL 1.1 | `web/emu/fonts/DotGothic16-subset.woff`, `LICENSES/OFL-DotGothic16.txt` (also `web/emu/fonts/OFL.txt`) |
+| DPF, the DISTRHO Plugin Framework, by Filipe Coelho (<https://github.com/DISTRHO/DPF>): the plugin's VST3, AU and CLAP wrappers, built into the plugin (a git submodule, not copied into this tree) | ISC | `plugin/dpf`, `LICENSES/ISC-DPF.txt` |
+| The CLAP headers by Alexandre Bique (<https://github.com/free-audio/clap>), as DPF carries them: the plugin's CLAP format and `tests/plugin_clap_test.c` | MIT | `plugin/dpf/distrho/src/clap`, `LICENSES/MIT-CLAP.txt` |
 | JieLi AC79 SDK by JieLi Technology: three of its files go into every `.fwsc` package (below); none are in this tree | Apache-2.0 | `LICENSES/Apache-2.0.txt` |
 
 On the device, HOME held > ABOUT opens the information screen; turning PRESETS scrolls on into
