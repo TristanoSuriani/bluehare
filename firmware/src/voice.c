@@ -654,6 +654,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     }
     if (spread_on)
         spread_sum(out);                                /* out: every voice; spread_buf: the left ones */
+    else if (e->post && nr)
+        e->post(t, out, n);                             /* (Fel-Tracker: the part's sum, STRINGS' ensemble) */
     if (fade) {
         for (i = 0; i < 8u; i++)
             t->p[P_E0 + i] = pe_new[i];

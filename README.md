@@ -502,11 +502,15 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   tracks, its own palette RAVE, acid green and UV violet on concrete)*. The engines no other distribution has (but KARPLUS
   and HONKS; BYTE gave its place to the three to come: LINNKIT, after the LinnDrum, STRINGS, after the Waldorf
   Streichfett, and FLOOR, the four-on-the-floor beats as BREAKS is the breaks), with BREAKS, VOSIM, DUBCHORD and KIT:
-  LINNKIT, KIT, BREAKS, FMPERC, CHOKE, GUTS, VENOM, HOOVER, DUBCHORD, VOSIM, SIREN8, ABYSS, SHRED, RISERS.
+  LINNKIT, KIT, BREAKS, FMPERC, CHOKE, GUTS, VENOM, HOOVER, DUBCHORD, STRINGS, VOSIM, SIREN8, ABYSS, SHRED, RISERS.
   - **LINNKIT**: the 80s sampled drum machine, after the LinnDrum (synthesized, no samples): a key each from C2, KICK,
     SNARE, RIM, CLAP, HAT, OPEN, TOM L, TOM M, TOM H, CONGA, COWBELL, TAMB (the octave above the same again); each a
     body with a falling pitch and noise; TUNE, DECAY, TONE, SNAP (noise against body), BODY (the pitch's fall), GATE
-    (the 80s gated tail), CHAR (the sampler's grit: down towards 12 kHz and 8 bits), VEL SIREN8 plays on every
+    (the 80s gated tail), CHAR (the sampler's grit: down towards 12 kHz and 8 bits), VEL
+  - **STRINGS**: a string ensemble, after the Waldorf Streichfett: saws at 16', 8' and 4' and a square, blended by REG
+    from contrabass through cello, viola and violin to organ (BODY the 16' on top, DTN their looseness), a gentle
+    low-pass (BRITE; ANIM sweeps it slowly), TREM; then the ensemble on the part: three reads of a short line moved by
+    a slow and a fast LFO (SPEED), ENSEM its share. A string machine's shimmer; SPREAD on the track leaves it out SIREN8 plays on every
   track (there is no DUBSIREN to keep the last one). At power-on: KIT, BREAKS, GUTS' GUT ACID, HOOVER's REESE BASS,
   DUBCHORD, VOSIM's FORMANT PAD, HOOVER and SIREN8's BIT SIREN
 - **FOUNDRY** *(Fel-Tracker; industrial, neuro, dark bass, and the clean sounds it lives of in contrast; 8 tracks,

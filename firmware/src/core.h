@@ -49,7 +49,7 @@ enum {                           /* the ids */
 #include "engine_ids.h"
 #undef ENGINE
 };
-#define EID_COUNT 55u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+#define EID_COUNT 56u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 /* retired: 1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE (Felucca 1.5), 27 ACID; 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO,
  * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Fel-Tracker removed them): ids 0 .. 13 but 14,
  * and 27 */
@@ -220,6 +220,9 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
     const param_desc_t *(*desc)(const struct track *t, uint32_t k);
     /* optional: once per block and part, before its voices (also with no voice sounding) */
     void (*block)(struct track *t);
+    /* (Fel-Tracker) optional: once per block and part, after its voices, on their sum (STRINGS: the ensemble); not
+     * while SPREAD splits the voices (voice.c track_render) */
+    void (*post)(struct track *t, int32_t *out, uint32_t n);
     /* optional: the note of key k (0 = the lowest) when the engine maps the keys itself, else -1
      * (then the scale keyboard of seq.c kb_map) */
     int32_t (*keys)(const struct track *t, uint32_t k);
