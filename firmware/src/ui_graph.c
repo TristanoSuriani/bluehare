@@ -357,7 +357,7 @@ static const char *eng_abbr(const char *name)
                                        {"CHOKE", "CHOK"}, {"DRILL", "DRIL"}, {"ANVIL", "ANVL"},
                                        {"SCREAM", "SCRM"}, {"FLUIDS", "FLUD"}, {"SCRATCH", "SCRT"}, {"ABYSS", "ABYS"},
                                        {"SHRED", "SHRD"}, {"LINNKIT", "LINN"}, {"STRINGS", "STRG"}, {"FLOOR", "FLOR"},
-                                       {"NEBULA", "NEBL"}, {"CANYON", "CANY"}, {"CHIPKIT", "CHPK"}};
+                                       {"NEBULA", "NEBL"}, {"CANYON", "CANY"}, {"CHIPKIT", "CHPK"}, {"SANDSTRM", "SAND"}};
     uint32_t i;
     for (i = 0; i < sizeof A / sizeof A[0]; i++)
         if (str_eq(name, A[i][0]))

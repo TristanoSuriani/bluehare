@@ -24,7 +24,7 @@ modification GPL-3.0 section 5(a) asks for, and git history records the changes 
 | --- | --- | --- |
 | The tracker | GPL-3.0-only | `firmware/src/tracker.c`, `ui_tracker.c`, `editor_tracker.c` |
 | Engine ids and distributions | GPL-3.0-only | `firmware/src/engine_ids.h`, `tools/gen_dist.py`, `distributions/` |
-| The engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, DARK, HONKS, RAZOR, GUTS, SLAG, VENOM, WAR, CHOKE, RUST, DRILL, ANVIL, SCREAM, FLUIDS, SCRATCH, ABYSS, SHRED, KIT, BREAKS, RISERS, LINNKIT, STRINGS, FLOOR, NEBULA, CANYON, CHIPKIT; the native image's reverbs | GPL-3.0-only | `firmware/src/eng_*.c` (the list in AUTHORS.md), `firmware/src/fx_native.c`, `tools/gen_wavetables.py`, `tools/gen_speech.py`, `tools/speech/` |
+| The engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, DARK, HONKS, RAZOR, GUTS, SLAG, VENOM, WAR, CHOKE, RUST, DRILL, ANVIL, SCREAM, FLUIDS, SCRATCH, ABYSS, SHRED, KIT, BREAKS, RISERS, LINNKIT, STRINGS, FLOOR, NEBULA, CANYON, CHIPKIT, SANDSTORM; the native image's reverbs | GPL-3.0-only | `firmware/src/eng_*.c` (the list in AUTHORS.md), `firmware/src/fx_native.c`, `tools/gen_wavetables.py`, `tools/gen_speech.py`, `tools/speech/` |
 | Changes to Felucca's files | GPL-3.0-only (the files stay Leo Kuroshita's) | the files marked "Modified by Tristano Suriani" |
 
 Fel-Tracker's engines contain no third-party code. They are original implementations of published techniques; the

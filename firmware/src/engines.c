@@ -13,7 +13,7 @@
  * (as at power-on), so a sound starts on silence; MODAL and ANVIL share theirs (ANVIL plays MODAL's resonator). 0: the
  * track is no part, or the engine needs more than the block (a build without it): it plays nothing */
 enum { SLAB_NONE, SLAB_ABYSS, SLAB_SHRED, SLAB_MODAL, SLAB_ECHOES, SLAB_PARTICLE, SLAB_GLITCH, SLAB_FLUIDS, SLAB_SCREAM,
-       SLAB_KARPLUS, SLAB_SIREN8, SLAB_STRINGS, SLAB_FLOOR };
+       SLAB_KARPLUS, SLAB_SIREN8, SLAB_STRINGS, SLAB_FLOOR, SLAB_SANDSTORM };
 static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_byte.c"           /* BYTE: bytebeat formulas (1.5) */
@@ -58,6 +58,7 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_floor.c"          /* FLOOR: four-on-the-floor beats, as BREAKS the breaks (1.5, WAREHOUSE) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */
 #include "eng_chipkit.c"        /* CHIPKIT: the drums of the 8-bit consoles (1.5, CHIP) */
+#include "eng_sandstorm.c"      /* SANDSTORM: the late-90s trance lead (1.5, WAREHOUSE) */
 #ifdef FELUCCA_NATIVE           /* (the native image's alone: engine_ids.h, core.h FELUCCA_NATIVE) */
 #include "eng_nebula.c"         /* NEBULA: PARTICLE's cloud whole (native) */
 #include "eng_canyon.c"         /* CANYON: ECHOES' repeats, all of them (native) */
@@ -77,8 +78,9 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
                                         SLAB_IF(FELUCCA_ENG_SCREAM, sizeof(sc_t))),                                   \
                                SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_KARPLUS, sizeof(int16_t) * KP_POLY * KP_LEN),    \
                                                  SLAB_IF(FELUCCA_ENG_DUBSIREN8, sizeof(ds8_echo_t))),                 \
-                                        SLAB_MAX(SLAB_IF(FELUCCA_ENG_STRINGS, sizeof(st_ens_t)),                      \
-                                                 SLAB_IF(FELUCCA_ENG_FLOOR, sizeof(fl_part_t)))))))
+                                        SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_STRINGS, sizeof(st_ens_t)),             \
+                                                          SLAB_IF(FELUCCA_ENG_FLOOR, sizeof(fl_part_t))),             \
+                                                 SLAB_IF(FELUCCA_ENG_SANDSTORM, sizeof(ss_voice_t) * SS_POLY))))))
 #define ENG_SLAB_WORDS ((ENG_SLAB_BYTES + 3u) / 4u + 1u)
 static uint32_t eng_slab_mem[NPART][ENG_SLAB_WORDS] __attribute__((section(".pool")));
 static uint8_t eng_slab_key[NPART];
@@ -203,12 +205,12 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
      FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : FELUCCA_ENG_##Z ? (uint8_t)(r) :                 \
      FELUCCA_ENG_##W ? (uint8_t)(u) : 0u}
 /* (FOUNDRY: WAR's WAR KIT and EBM KIT, DARK's SUB WEIGHT, RAZOR's COLD BASS; DUBCHORD, VOSIM; RAZOR LEAD, SCREAM's
- * SIREN CRY. WAREHOUSE: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS; DUBCHORD, VOSIM; HOOVER, SIREN8's BIT SIREN) */
+ * SIREN CRY. WAREHOUSE: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS; DUBCHORD, VOSIM; SANDSTORM's LEAD, SIREN8's BIT SIREN) */
 #if NPART == 8
 static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(KIT, 0, WAR, 0), TRK_PICK4(FLOOR, 0, BREAKS, 0, KIT, 0, WAR, 10),
                                           TRK_PICK3(SID, 0, DARK, 0, GUTS, 0), TRK_PICK4(WASP, 7, SID, 10, RAZOR, 8, HOOVER, 8),
                                           TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(VOSIM, 13),
-                                          TRK_PICK3(SID, 2, RAZOR, 2, HOOVER, 0),
+                                          TRK_PICK4(SID, 2, RAZOR, 2, SANDSTORM, 0, HOOVER, 0),
                                           TRK_PICK4(DUBSIREN, 0, DUBSIREN8, 0, HOOVER, 5, SCREAM, 7)};   /* (no siren:
                                                                                  * HOOVER's SIREN, SCREAM's SIREN CRY) */
 static const int8_t TRK_PAN[NPART] = {0, -8, 0, 0, -24, 24, -16, 16};

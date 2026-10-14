@@ -69,6 +69,7 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 | NEBULA (PARTICLE's cloud whole; the native image's) | `firmware/src/eng_nebula.c` |
 | CANYON (ECHOES' repeats, all of them; the native image's) | `firmware/src/eng_canyon.c` |
 | CHIPKIT (the drums of the 8-bit consoles; CHIP's) | `firmware/src/eng_chipkit.c` |
+| SANDSTORM (the late-90s trance lead, named after Darude's track; WAREHOUSE's) | `firmware/src/eng_sandstorm.c` |
 | The native image's reverbs CONCERT, CAVERN, SHIMMER | `firmware/src/fx_native.c` |
 | Tests for distributions and SPEECH | `tests/engines_test.c`, `tests/speech_test.c` |
 

@@ -505,11 +505,11 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   TICK, ZAP, BITERR, DATA, DROP, FAX, MODEM, CRACKL, SPARK, BLIP, SHARD, BUZZ, SKIP, PING (the octave above: the same,
   an octave up). KIT CLEAN, HARSH, LOFI, BROKEN; PITCH, DECAY, ROLL (a ratchet at the tempo while held, 1/32 ..
   1/128), CRUSH, VARY (each hit different), DENS (extra micro-hits), TONE
-- **WAREHOUSE** *(Fel-Tracker; the warehouse raves: four on the floor, acid, hoovers, sirens, chords and voices; 8
+- **WAREHOUSE** *(Fel-Tracker; the warehouse raves: four on the floor, acid, hoovers, the trance lead, sirens, chords and voices; 8
   tracks, its own palette RAVE, acid green and UV violet on concrete)*. The engines no other distribution has (but KARPLUS
-  and HONKS; BYTE gave its place to three of its own: LINNKIT, STRINGS and FLOOR, below), with BREAKS, VOSIM,
-  DUBCHORD and KIT: LINNKIT, KIT, FLOOR, BREAKS, FMPERC, CHOKE, GUTS, VENOM, HOOVER, DUBCHORD, STRINGS, VOSIM, SIREN8, ABYSS, SHRED,
-  RISERS.
+  and HONKS; BYTE gave its place to three of its own: LINNKIT, STRINGS and FLOOR, below; SHRED, FOUNDRY's, to
+  SANDSTORM), with BREAKS, VOSIM, DUBCHORD and KIT: LINNKIT, KIT, FLOOR, BREAKS, FMPERC, CHOKE, GUTS, VENOM, HOOVER,
+  DUBCHORD, STRINGS, VOSIM, SIREN8, ABYSS, SANDSTORM, RISERS.
   - **LINNKIT**: the 80s sampled drum machine, after the LinnDrum (synthesized, no samples): a key each from C2, KICK,
     SNARE, RIM, CLAP, HAT, OPEN, TOM L, TOM M, TOM H, CONGA, COWBELL, TAMB (the octave above the same again); each a
     body with a falling pitch and noise; TUNE, DECAY, TONE, SNAP (noise against body), BODY (the pitch's fall), GATE
@@ -522,9 +522,14 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     C# HOUSE, D DEEP HOUSE, D# TECH HOUSE, E MINIMAL, F DUB TECHNO, F# TRANCE, G PROGRESSIVE, G# GABBER, A HARD TECHNO,
     A# EDM, B DISCO), looping while held at the song's tempo, each with its own kick (a gabber kick is no disco kick);
     kick, clap, hats (closed, open) and percussion on FMPERC's voices; SWING, the lanes' levels (KICK, CLAP, HATS,
-    PERC), TUNE, DECAY, DRIVE SIREN8 plays on every
+    PERC), TUNE, DECAY, DRIVE
+  - **SANDSTORM** (SANDSTRM on the device): the late-90s trance lead, named after Darude's track of 1999 (nothing of
+    the record): five saws SPRD apart into two resonant low-passes (24 dB, CUT, RES) that every note opens by ENV and
+    lets close over DEC (the pluck); GATE (OFF, 1/8, 1/16, 1/32 at the tempo) plucks it again and chops it every step
+    while the key is held; DIVE lets the pitch fall once the key is let go (up to two octaves over ~400 ms); DRIVE.
+    24 presets (LEAD, STAB, GATE 16, GATE 32, DIVE, ANTHEM, SUPERSAW ..). SIREN8 plays on every
   track (there is no DUBSIREN to keep the last one). At power-on: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS,
-  DUBCHORD, VOSIM's FORMANT PAD, HOOVER and SIREN8's BIT SIREN
+  DUBCHORD, VOSIM's FORMANT PAD, SANDSTORM's LEAD and SIREN8's BIT SIREN
 - **CHIP** *(Fel-Tracker; chiptune, the 8-bit consoles' four channels: 4 tracks, its own palette CHIP, the Game Boy's
   four greens)*. The engines already in the tree that sound the part, and CHIPKIT: CHIPKIT, KIT, GLITCH, SID, BYTE,
   WASP, WAVE, VECTOR, SPEECH, VOSIM, SIREN8, ECHOES, CHAOS, RISERS.
