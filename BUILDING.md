@@ -86,6 +86,7 @@ FELUCCA_DIST=foundry ./build.sh    # another one (build/felucca-foundry.fwsc)
 | `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH (16) |
 | `foundry` | 8 | SCREAM DARK VOSIM WAR SCRATCH FLUIDS RAZOR DUBCHORD RUST ANVIL DRILL SLAG MODAL BLISS ECHOES WAVE |
 | `warehouse` | 8 | LINNKIT KIT FLOOR BREAKS FMPERC CHOKE GUTS VENOM HOOVER DUBCHORD STRINGS VOSIM DUBSIREN8 ABYSS SHRED RISERS |
+| `chip` | 4 | CHIPKIT KIT GLITCH SID BYTE WASP WAVE VECTOR SPEECH VOSIM DUBSIREN8 ECHOES CHAOS RISERS (14) |
 | `idm_native` | 8 | IDM's, PARTICLE and ECHOES as NEBULA and CANYON: SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM NEBULA CHAOS CANYON KIT SPEECH GLITCH (`NATIVE`: the native image's alone, "Native image" below) |
 
 With 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
@@ -151,7 +152,7 @@ MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 
 ```
 ./build.sh
-native/build.sh                # or native/build.sh foundry, native/build.sh warehouse
+native/build.sh                # or native/build.sh foundry, warehouse, chip
 open "build/native/Fel-Tracker IDM.app"      # or run build/native/fel-tracker-idm
 ```
 

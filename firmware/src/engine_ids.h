@@ -58,3 +58,4 @@ ENGINE(STRINGS, 55, WAVE)
 ENGINE(FLOOR, 56, BREAKS)
 ENGINE(NEBULA, 57, PARTICLE)   /* native: PARTICLE's cloud whole, 64 grains a voice */
 ENGINE(CANYON, 58, ECHOES)     /* native: ECHOES' repeats, 64 of them, all ringing */
+ENGINE(CHIPKIT, 59, KIT)

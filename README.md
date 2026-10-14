@@ -11,7 +11,7 @@ What Fel-Tracker adds, all by Tristano Suriani:
 - **The tracker**, in place of the step sequencer.
 - **Distributions:** builds of any set of up to 16 engines, with stable engine ids, on 4 or 8 tracks, each with its
   own palette (the device's and the emulator page's: IDM electric cyan and magenta on indigo, FOUNDRY molten orange,
-  WAREHOUSE acid green and UV violet). The **IDM**
+  WAREHOUSE acid green and UV violet, CHIP the Game Boy's greens). The **IDM**
   distribution is the default, with **8 tracks**: the tracker, the MIXER and the quick layers show the selected
   track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
   into its first four (BUILDING.md "Distributions"). At power-on the rhythm section comes first and sits in the
@@ -64,7 +64,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   a 30 s tail; SHIMMER: a tail climbing in octaves), a 23.8 s delay line, and a distribution of its own, IDM NATIVE,
   with the native engines NEBULA and CANYON (BUILDING.md "Native image")
 
-- **Sixteen engines** in a distribution (below): IDM, the one a plain build makes, FOUNDRY and WAREHOUSE (BUILDING.md
+- **Sixteen engines** in a distribution (below): IDM, the one a plain build makes, FOUNDRY, WAREHOUSE and CHIP (BUILDING.md
   "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are KIT, BREAKS or WAR);
@@ -525,6 +525,16 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     PERC), TUNE, DECAY, DRIVE SIREN8 plays on every
   track (there is no DUBSIREN to keep the last one). At power-on: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS,
   DUBCHORD, VOSIM's FORMANT PAD, HOOVER and SIREN8's BIT SIREN
+- **CHIP** *(Fel-Tracker; chiptune, the 8-bit consoles' four channels: 4 tracks, its own palette CHIP, the Game Boy's
+  four greens)*. The engines already in the tree that sound the part, and CHIPKIT: CHIPKIT, KIT, GLITCH, SID, BYTE,
+  WASP, WAVE, VECTOR, SPEECH, VOSIM, SIREN8, ECHOES, CHAOS, RISERS.
+  - **CHIPKIT**: the drums of the 8-bit consoles, made as their sound chips made them (no chip emulated, no samples):
+    a key each from C2, KICK, SNARE, HAT, OPEN, TOM L, TOM M, TOM H, CRASH, CLAP, ZAP, COIN, NOISE (the octave above
+    the same again); each a 4-bit stepped triangle, a pulse (12.5, 25, 50 %) and the noise register (long: hiss; short:
+    metallic), their pitch, volume (16 steps) and noise rate set once a frame. CHIP the console: NES, GB (darker
+    noise), SMS (squares only, 2 dB volume steps, three noise rates and its tonal periodic noise), C64 (smooth);
+    TUNE, DECAY, SWEEP (the pitch falls), NOISE, RATE (the frames: a quarter .. four times the console's), VARY, VEL.
+    At power-on: CHIPKIT's NES KIT, SID BASS, BYTE ARP and SID's SYNC LEAD
 - **IDM NATIVE** *(Fel-Tracker; the native image's alone: `native/build.sh idm_native`, no FM-1 build)*: IDM with its
   two most CPU-bound engines as the native engines grown from them, which share their controls (a sound loads on the
   FM-1 as the engine it grew from): SID, WASP, WAVE, BREAKS, WEST, VECTOR, DUBSIREN, MODAL, DUBCHORD, VOSIM, NEBULA,

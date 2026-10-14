@@ -58,6 +58,8 @@ PALETTES = [
     ("FOUNDRY", (12, 8, 6),     (42, 26, 18),    (246, 232, 214), (255, 100, 20),  (255, 214, 70)),
     # RAVE (WAREHOUSE's): acid green values, a UV violet for the one active thing, on concrete near-black
     ("RAVE",   (10, 11, 12),    (32, 35, 38),    (232, 236, 228), (176, 255, 48),  (178, 104, 255)),
+    # CHIP: the Game Boy's four greens (the darkest the ground, the lightest the values), a pale cream the active thing
+    ("CHIP",   (10, 26, 10),    (26, 50, 26),    (226, 242, 190), (155, 188, 15),  (250, 248, 210)),
 ]
 BW = "MONO"
 BW_GREY = (82, 82, 82)             # MONO's one mid grey (RGB565 10/20/10): DIM LINE RAISE LANE

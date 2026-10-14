@@ -57,6 +57,7 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_breaks.c"         /* BREAKS: a synthesized breakbeat player (1.5) */
 #include "eng_floor.c"          /* FLOOR: four-on-the-floor beats, as BREAKS the breaks (1.5, WAREHOUSE) */
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */
+#include "eng_chipkit.c"        /* CHIPKIT: the drums of the 8-bit consoles (1.5, CHIP) */
 #ifdef FELUCCA_NATIVE           /* (the native image's alone: engine_ids.h, core.h FELUCCA_NATIVE) */
 #include "eng_nebula.c"         /* NEBULA: PARTICLE's cloud whole (native) */
 #include "eng_canyon.c"         /* CANYON: ECHOES' repeats, all of them (native) */
@@ -186,7 +187,8 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 /* the parts at power-on (engine index, preset). (Fel-Tracker) The rhythm section first, the wide parts last: with 8
  * tracks 1..4 the drums (KIT's FM KIT, BREAKS) and the basses (SID BASS, WASP's FAT BASS), centred, 5..8 the chords
  * (DUBCHORD), the pad (VOSIM's FORMANT PAD), the lead (SID SYNC LEAD) and the siren (the last track's), spread left and
- * right in turn; with 4, the drums and the bass, then the pad and the lead. An engine the build leaves out: the second
+ * right in turn; with 4, the drums and the bass, then the pad (CHIP: BYTE's arpeggio) and the lead. An engine the build
+ * leaves out: the second
  * pick, else its first engine, preset 0 */
 #define TRK_PICK(X, p) {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : 0u, FELUCCA_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
@@ -211,8 +213,9 @@ static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(KIT, 0, WAR, 0), TRK_PICK4(F
                                                                                  * HOOVER's SIREN, SCREAM's SIREN CRY) */
 static const int8_t TRK_PAN[NPART] = {0, -8, 0, 0, -24, 24, -16, 16};
 #else
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(KIT, 0, WAR, 0), TRK_PICK3(SID, 0, DARK, 0, GUTS, 0), TRK_PICK(VOSIM, 13),
-                                          TRK_PICK3(SID, 2, RAZOR, 2, HOOVER, 0)};
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK3(CHIPKIT, 0, KIT, 0, WAR, 0), TRK_PICK3(SID, 0, DARK, 0, GUTS, 0),
+                                          TRK_PICK2(BYTE, 0, VOSIM, 13), TRK_PICK3(SID, 2, RAZOR, 2, HOOVER, 0)};   /* (CHIP:
+                                                                     * CHIPKIT's NES KIT, SID BASS, BYTE ARP, SID's lead) */
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24};
 #endif
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

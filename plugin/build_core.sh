@@ -4,7 +4,7 @@
 # Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 # The plugin's cores (plugin/core/fel_core.c): one shared library a distribution, the native image's build of it,
 # exporting only fel_core_api (plugin/core/fel_core.h). The plugin offers them all (its distribution chooser).
-#   plugin/build_core.sh [DIST ..]   (none: idm foundry warehouse idm_native)
+#   plugin/build_core.sh [DIST ..]   (none: idm foundry warehouse chip idm_native)
 #     -> build/plugin/cores/fel-core-<dist>.dylib (.so on Linux; macOS: universal, arm64 and x86_64)
 #   FEL_CORE_OUT=DIR: there instead; FEL_ARCH="-arch arm64": one architecture (the tests: quicker)
 # Needs one ./build.sh before (build/gen: the tables, the fonts, the distributions' headers).
@@ -24,7 +24,7 @@ Darwin)
     LINK="-shared -fPIC -Wl,--version-script=plugin/core/fel_core.map"
     ARCH="" ;;
 esac
-for d in ${*:-idm foundry warehouse idm_native}; do
+for d in ${*:-idm foundry warehouse chip idm_native}; do
     [ -f "build/gen/dist_$d.h" ] || { echo "build_core: no distribution $d"; exit 1; }
     # shellcheck disable=SC2086
     ${CC:-cc} -O2 -ffp-contract=off -std=gnu99 -w -fvisibility=hidden $ARCH "-DFELUCCA_VERSION=\"$VERSION\"" \

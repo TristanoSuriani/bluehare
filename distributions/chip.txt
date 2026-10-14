@@ -1,0 +1,21 @@
+# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# CHIP: chiptune, the 8-bit consoles' four channels: their drums (CHIPKIT), pulse and noise (SID), bytebeat (BYTE), the
+# 8-bit filter (WASP), wave channels (WAVE, VECTOR), the speech chips (SPEECH, VOSIM), blips and sirens; the engines in
+# display order, one a line (names: firmware/src/engine_ids.h; at most 16). TRACKS: the build's track count;
+# PALETTE: the one a device starts with
+TRACKS 4
+PALETTE CHIP
+CHIPKIT
+KIT
+GLITCH
+SID
+BYTE
+WASP
+WAVE
+VECTOR
+SPEECH
+VOSIM
+DUBSIREN8
+ECHOES
+CHAOS
+RISERS

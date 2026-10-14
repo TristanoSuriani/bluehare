@@ -251,7 +251,11 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "regression, the WAREHOUSE distribution: its presets' golden renders and CPU" "$OUT/regress_warehouse" tests/golden.txt tests/cpu_baseline.txt
     $CC -w -DFELUCCA_DIST=warehouse -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/warehouse_test" tests/warehouse_test.c -lm
     run "WAREHOUSE: its engines and order, power-on, SIREN8 on every track" "$OUT/warehouse_test"
-    for d in idm foundry warehouse idm_native; do
+    $CC -O2 -w -DFELUCCA_DIST=chip -Ibuild/gen -Ifirmware/src -o "$OUT/regress_chip" tests/regress.c -lm
+    run "regression, the CHIP distribution (4 tracks): its presets' golden renders (CHIPKIT) and CPU" "$OUT/regress_chip" tests/golden.txt tests/cpu_baseline.txt
+    $CC -w -DFELUCCA_DIST=chip -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/chip_test" tests/chip_test.c -lm
+    run "CHIP: its engines and order, 4 tracks, its palette, power-on; CHIPKIT's drums sound and end, a console each, RATE" "$OUT/chip_test"
+    for d in idm foundry warehouse chip idm_native; do
         $CC -O2 -w -DFELUCCA_NATIVE -DFELUCCA_DIST=$d -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/native_test_$d" tests/native_test.c -lm
         run "native image ($d): 16 voices a track, the device's engines as they are, NEBULA CANYON, CONCERT CAVERN SHIMMER, the long delay" "$OUT/native_test_$d"
     done
@@ -341,6 +345,12 @@ else
     run "browser emulator, the WAREHOUSE distribution (web/emu/build.sh -> build/emu-warehouse)" env FELUCCA_DIST=warehouse sh web/emu/build.sh
     run "browser emulator, WAREHOUSE: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
         node web/emu/emu_test.mjs build/emu-warehouse/felucca.wasm "$OUT/emu_native_warehouse.f32"
+    cc -O2 -ffp-contract=off -w -DFELUCCA_DIST=chip -Ibuild/gen -Ifirmware/src -o "$OUT/emu_native_chip" \
+        web/emu/native_check.c -lm
+    run "browser emulator: the same song from the native build, CHIP" "$OUT/emu_native_chip" "$OUT/emu_native_chip.f32"
+    run "browser emulator, the CHIP distribution (web/emu/build.sh -> build/emu-chip)" env FELUCCA_DIST=chip sh web/emu/build.sh
+    run "browser emulator, CHIP: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
+        node web/emu/emu_test.mjs build/emu-chip/felucca.wasm "$OUT/emu_native_chip.f32"
 fi
 
 # (Fel-Tracker) the plugin's cores (plugin/build_core.sh: a library a distribution) and their instances (plugin/core)
