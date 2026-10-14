@@ -208,6 +208,30 @@ CONCERT, CAVERN and SHIMMER as HALL, NEBULA as PARTICLE, CANYON as ECHOES, and a
 `tests/native_test.c` checks all of it in each distribution and prints how fast the computer renders every track full
 (about 30 times real time on an M1 Pro).
 
+## Plugin (in progress)
+
+Fel-Tracker as a VST3 / AU plugin for Ableton Live and Renoise is being built in steps. The first is its core:
+
+```
+./build.sh
+plugin/build_core.sh           # -> build/plugin/cores/fel-core-<dist>.dylib, one a distribution (universal on macOS)
+```
+
+A core (`plugin/core/fel_core.c`) is one distribution's native-image build (16 voices a track, the native reverbs,
+the native engines in IDM NATIVE) as a shared library exporting a single table, `fel_core_api()`
+(`plugin/core/fel_core.h`): the flash, boot, render (44.1 kHz, any number of frames), MIDI, the panel's buttons, keys
+and knobs, the screen and the LEDs. The plugin will offer all four (its distribution chooser).
+
+The firmware keeps its state in globals, so an instance is a library of its own (`plugin/core/fel_loader.c`): each
+opens a copy no other instance holds, its globals its own. The copies are kept in `~/Library/Caches/Fel-Tracker/cores`
+and reused, a lock on each while an instance has it: a Mac checks a new executable file the first time it opens it
+(some 0.2 s, more with an endpoint scanner), a known one opens at once. `tests/plugin_core_test.c`: a loaded core
+plays the native image's build sample for sample (`tests/plugin_core_ref.c`); two instances rendered in turn, or on
+two threads at once, each play exactly what they play alone; their flash is their own; the four distributions load
+side by side; the copies are reused and replaced when the core is rebuilt.
+
+Next: the plugin itself (DPF: VST3, AU), the host's tempo and transport, its state, eight track outputs, its window.
+
 ## Tests
 
 ```

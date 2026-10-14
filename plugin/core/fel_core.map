@@ -1,0 +1,2 @@
+/* (Linux: the core exports fel_core_api alone; plugin/build_core.sh) */
+{ global: fel_core_api; local: *; };

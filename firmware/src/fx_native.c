@@ -46,8 +46,9 @@ static struct {
     uint32_t w[RN_NL], apw[4], pw, shw;
     float lp[RN_NL], g[RN_NL], kd, hp, shp, shlp, shhp;
     double ph;
-    int32_t size, damp, model;           /* what g, kd were made for (-1: not yet) */
-} rn = {.model = -1};
+    int32_t size, damp, made;            /* what g, kd were made for: SIZE, DAMP, the model + 1 (0: not yet; zero at
+                                          * start, so all of this is .bss, nothing to load) */
+} rn;
 
 static void rev_native_clear(void)
 {
@@ -57,7 +58,7 @@ static void rev_native_clear(void)
     memset(rn.sh, 0, sizeof rn.sh);
     memset(rn.lp, 0, sizeof rn.lp);
     rn.hp = rn.shp = rn.shlp = rn.shhp = 0;
-    rn.model = -1;
+    rn.made = 0;
 }
 
 static void rn_coefs(uint32_t m)
@@ -70,7 +71,7 @@ static void rn_coefs(uint32_t m)
     rn.kd = 1.0f - expf(-2.0f * (float)M_PI * fc / (float)FS);
     rn.size = song.g[G_RSIZE];
     rn.damp = song.g[G_RDAMP];
-    rn.model = (int32_t)m;
+    rn.made = (int32_t)m + 1;
 }
 
 static inline float rn_flush(float x) { return fabsf(x) < 1e-15f ? 0.0f : x; }
@@ -91,7 +92,7 @@ static __attribute__((noinline)) void rev_native(uint32_t rt, const int32_t *rev
     uint32_t m = rt - 3u, i, k;
     float mod[RN_NL], kd, gout = RN_OUT[m] * 32768.0f, khp = 1.0f - expf(-2.0f * (float)M_PI * 100.0f / (float)FS);
     float ksh = 1.0f - expf(-2.0f * (float)M_PI * 400.0f / (float)FS);
-    if (rn.model != (int32_t)m || rn.size != song.g[G_RSIZE] || rn.damp != song.g[G_RDAMP])
+    if (rn.made != (int32_t)m + 1 || rn.size != song.g[G_RSIZE] || rn.damp != song.g[G_RDAMP])
         rn_coefs(m);
     kd = rn.kd;
     for (k = 0; k < RN_NL; k++) {                     /* the drift, once a block (it moves < 0.02 samples in one) */

@@ -343,6 +343,18 @@ else
         node web/emu/emu_test.mjs build/emu-warehouse/felucca.wasm "$OUT/emu_native_warehouse.f32"
 fi
 
+# (Fel-Tracker) the plugin's cores (plugin/build_core.sh: a library a distribution) and their instances (plugin/core)
+if [ -f build/gen/felucca_tables.h ]; then
+    run "plugin cores: one a distribution, fel_core_api alone exported" \
+        env FEL_CORE_OUT="$OUT/cores" FEL_ARCH="$( [ "$(uname -s)" = Darwin ] && echo "-arch $(uname -m)")" sh plugin/build_core.sh
+    cc -O2 -ffp-contract=off -w -DFELUCCA_DIST=idm_native -Ibuild/gen -Ifirmware/src -Iweb/emu -o "$OUT/plugin_core_ref" \
+        tests/plugin_core_ref.c -lm
+    run "plugin cores: the reference (IDM NATIVE, the native image's build, linked in)" "$OUT/plugin_core_ref" "$OUT/plugin_core_ref.f32"
+    cc -O2 -w -o "$OUT/plugin_core_test" tests/plugin_core_test.c plugin/core/fel_loader.c -lpthread
+    run "plugin instances: = the native image, independent (in turn, two threads), flash apart, the four side by side, copies kept and reused" \
+        "$OUT/plugin_core_test" "$OUT/cores" "$OUT/plugin_core_ref.f32"
+fi
+
 # (Fel-Tracker) the native image (native/build.sh: SDL2): built, then booted with dummy video and audio drivers
 if ! command -v sdl2-config >/dev/null 2>&1 || [ ! -f build/gen/felucca_tables.h ]; then
     echo "== skip the native image (needs SDL2: brew install sdl2)"

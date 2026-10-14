@@ -653,6 +653,7 @@ sevenths, or a fixed shape) and VOIC the voicing.
 | `assets/` | UI font, icon names |
 | `web/` | the web installer, the editor with the tracker (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
 | `native/` | *(Fel-Tracker)* the native image: Fel-Tracker as a desktop application (SDL2), BUILDING.md "Native image" |
+| `plugin/` | *(Fel-Tracker)* the plugin, in progress: its cores (a library a distribution) and their instances, BUILDING.md "Plugin" |
 | `tests/` | tests that run on the build machine |
 | `LICENSES/` | licence texts of the bundled fonts, icons, ported DSP and SDK files |
 
