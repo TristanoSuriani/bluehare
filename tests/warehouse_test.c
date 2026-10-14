@@ -21,7 +21,7 @@ static uint32_t eng_of(const char *n)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"LINNKIT", "KIT", "BREAKS", "FMPERC", "CHOKE", "GUTS", "VENOM", "HOOVER", "DUBCHORD",
+    static const char *const ORDER[] = {"LINNKIT", "KIT", "FLOOR", "BREAKS", "FMPERC", "CHOKE", "GUTS", "VENOM", "HOOVER", "DUBCHORD",
                                         "STRINGS", "VOSIM", "SIREN8", "ABYSS", "SHRED", "RISERS"};   /* (LINNKIT first) */
     uint32_t e, ok = NENGINES == NELEM(ORDER);
     for (e = 0; ok && e < NENGINES; e++)
@@ -29,11 +29,11 @@ int main(void)
     ck("its engines in their order; no KARPLUS, HONKS, BYTE, nor IDM's or FOUNDRY's own",
        ok && !FELUCCA_ENG_KARPLUS && !FELUCCA_ENG_HONKS && !FELUCCA_ENG_BYTE && !FELUCCA_ENG_SID && !FELUCCA_ENG_DARK &&
        !FELUCCA_ENG_DUBSIREN && NPART == 8u);
-    ok = TRK_DEF[0][0] == eng_of("KIT") && TRK_DEF[1][0] == eng_of("BREAKS") && TRK_DEF[2][0] == eng_of("GUTS") &&
+    ok = TRK_DEF[0][0] == eng_of("KIT") && TRK_DEF[1][0] == eng_of("FLOOR") && TRK_DEF[2][0] == eng_of("GUTS") &&
          TRK_DEF[3][0] == eng_of("HOOVER") && !strcmp(ENGINES[TRK_DEF[3][0]]->presets[TRK_DEF[3][1]].name, "REESE BASS") &&
          TRK_DEF[4][0] == eng_of("DUBCHORD") && TRK_DEF[5][0] == eng_of("VOSIM") && TRK_DEF[6][0] == eng_of("HOOVER") &&
          TRK_DEF[7][0] == eng_of("SIREN8");
-    ck("power-on: KIT, BREAKS, GUT ACID, REESE BASS, DUBCHORD, FORMANT PAD, HOOVER, SIREN8", ok);
+    ck("power-on: KIT, FLOOR, GUT ACID, REESE BASS, DUBCHORD, FORMANT PAD, HOOVER, SIREN8", ok);
     ck("SIREN8 on any track (no DUBSIREN to keep the last one)",
        eng_for_track(&trk[0], eng_of("SIREN8")) == eng_of("SIREN8") && eng_for_track(&trk[7], eng_of("SIREN8")) == eng_of("SIREN8"));
     printf("%s\n", bad ? "WAREHOUSE TEST FAILED" : "warehouse test passed");

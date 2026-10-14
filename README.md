@@ -500,9 +500,9 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   1/128), CRUSH, VARY (each hit different), DENS (extra micro-hits), TONE
 - **WAREHOUSE** *(Fel-Tracker; the warehouse raves: four on the floor, acid, hoovers, sirens, chords and voices; 8
   tracks, its own palette RAVE, acid green and UV violet on concrete)*. The engines no other distribution has (but KARPLUS
-  and HONKS; BYTE gave its place to the three to come: LINNKIT, after the LinnDrum, STRINGS, after the Waldorf
-  Streichfett, and FLOOR, the four-on-the-floor beats as BREAKS is the breaks), with BREAKS, VOSIM, DUBCHORD and KIT:
-  LINNKIT, KIT, BREAKS, FMPERC, CHOKE, GUTS, VENOM, HOOVER, DUBCHORD, STRINGS, VOSIM, SIREN8, ABYSS, SHRED, RISERS.
+  and HONKS; BYTE gave its place to three of its own: LINNKIT, STRINGS and FLOOR, below), with BREAKS, VOSIM,
+  DUBCHORD and KIT: LINNKIT, KIT, FLOOR, BREAKS, FMPERC, CHOKE, GUTS, VENOM, HOOVER, DUBCHORD, STRINGS, VOSIM, SIREN8, ABYSS, SHRED,
+  RISERS.
   - **LINNKIT**: the 80s sampled drum machine, after the LinnDrum (synthesized, no samples): a key each from C2, KICK,
     SNARE, RIM, CLAP, HAT, OPEN, TOM L, TOM M, TOM H, CONGA, COWBELL, TAMB (the octave above the same again); each a
     body with a falling pitch and noise; TUNE, DECAY, TONE, SNAP (noise against body), BODY (the pitch's fall), GATE
@@ -510,8 +510,13 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   - **STRINGS**: a string ensemble, after the Waldorf Streichfett: saws at 16', 8' and 4' and a square, blended by REG
     from contrabass through cello, viola and violin to organ (BODY the 16' on top, DTN their looseness), a gentle
     low-pass (BRITE; ANIM sweeps it slowly), TREM; then the ensemble on the part: three reads of a short line moved by
-    a slow and a fast LFO (SPEED), ENSEM its share. A string machine's shimmer; SPREAD on the track leaves it out SIREN8 plays on every
-  track (there is no DUBSIREN to keep the last one). At power-on: KIT, BREAKS, GUTS' GUT ACID, HOOVER's REESE BASS,
+    a slow and a fast LFO (SPEED), ENSEM its share. A string machine's shimmer; SPREAD on the track leaves it out
+  - **FLOOR**: four-on-the-floor beats, as BREAKS is the breaks: the key picks one of 12 one-bar grooves (C TECHNO,
+    C# HOUSE, D DEEP HOUSE, D# TECH HOUSE, E MINIMAL, F DUB TECHNO, F# TRANCE, G PROGRESSIVE, G# GABBER, A HARD TECHNO,
+    A# EDM, B DISCO), looping while held at the song's tempo, each with its own kick (a gabber kick is no disco kick);
+    kick, clap, hats (closed, open) and percussion on FMPERC's voices; SWING, the lanes' levels (KICK, CLAP, HATS,
+    PERC), TUNE, DECAY, DRIVE SIREN8 plays on every
+  track (there is no DUBSIREN to keep the last one). At power-on: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS,
   DUBCHORD, VOSIM's FORMANT PAD, HOOVER and SIREN8's BIT SIREN
 - **FOUNDRY** *(Fel-Tracker; industrial, neuro, dark bass, and the clean sounds it lives of in contrast; 8 tracks,
   its own palette, molten orange)*. Its 16 engines, in their order on the device: SCREAM, DARK, VOSIM, WAR, SCRATCH,
