@@ -186,9 +186,9 @@ int main(int argc, char **argv)
     t0 = now();
     A = load("idm_native");
     first = now() - t0;
-    ck("a core loads: fel_core_api, ABI, IDM NATIVE, 44.1 kHz, 8 tracks",
+    ck("a core loads: fel_core_api, ABI, IDM NATIVE, 44.1 kHz, 4 tracks (every build since the 2026-10 plan)",
        A && fel_api(A)->abi == FEL_CORE_ABI && !strcmp(fel_api(A)->dist, "IDM NATIVE") && fel_api(A)->sample_rate == 44100u &&
-       fel_api(A)->tracks == 8u);
+       fel_api(A)->tracks == 4u);
     if (!A)
         return 1;
     run_init(&ra, A, HEAVY, a1);
@@ -247,7 +247,7 @@ int main(int argc, char **argv)
             api->render(l, r, 4096);                     /* (one call: any length) */
             api->midi(0x90, 60, 100);
             api->render(l, r, 4096);
-            ok &= !strcmp(api->dist, TAG[i]) && api->tracks == 8u && api->now_ms() >= 180u && api->screen_draws() > 0;
+            ok &= !strcmp(api->dist, TAG[i]) && api->tracks == 4u && api->now_ms() >= 180u && api->screen_draws() > 0;
         }
     }
     for (i = 0; i < 4u; i++)

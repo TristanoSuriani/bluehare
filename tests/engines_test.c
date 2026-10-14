@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as FELUCCA_DIST=idm, which has
- * no HOOVER, BYTE, KARPLUS, FMPERC, DUBSIREN8, BLISS, RISERS nor FOUNDRY's engines (Felucca's own ANALOG .. FM6 are
+/* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as FELUCCA_DIST=ref (the
+ * host tests' build: IDM's sixteen engines as they were before the 2026-10 plan; tests/idm_test.c has today's IDM), which
+ * has no HOOVER, BYTE, KARPLUS, FMPERC, DUBSIREN8, BLISS, RISERS nor FOUNDRY's engines (Felucca's own ANALOG .. FM6 are
  * retired ids since Fel-Tracker removed them). The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
  * stored sound of an engine left out loads as its substitute (engines.c eng_load_id):
  *   the table      the indices in order, the ids both ways, the left-out ids map to none, the substitutes

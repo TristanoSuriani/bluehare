@@ -8,10 +8,10 @@
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
 
-#ifndef FELUCCA_DIST             /* (not given: a host test's build, the primary distribution with 4 tracks, the shape
-                                  * the shared tests were written for: their 8-track builds set FELUCCA_NTRK; every
-                                  * image and the emulator name their distribution) */
-#define FELUCCA_DIST idm
+#ifndef FELUCCA_DIST             /* (not given: a host test's build, distributions/ref.txt with 4 tracks, the
+                                  * engines the shared tests were written for: their 8-track builds set FELUCCA_NTRK;
+                                  * every image and the emulator name their distribution) */
+#define FELUCCA_DIST ref
 #ifndef FELUCCA_NTRK
 #define FELUCCA_NTRK 4
 #endif

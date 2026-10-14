@@ -2,7 +2,7 @@
 # IDM NATIVE: IDM for the native image (native/build.sh idm_native), its engines in IDM's order, PARTICLE and ECHOES
 # as their native engines NEBULA and CANYON (their sounds load on the FM-1 as PARTICLE and ECHOES)
 NATIVE
-TRACKS 8
+TRACKS 4
 PALETTE IDM
 SID
 WASP

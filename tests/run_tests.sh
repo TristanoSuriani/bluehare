@@ -303,12 +303,13 @@ if [ -f build/gen/felucca_tables.h ]; then
         compile $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/variation_test$n" tests/variation_test.c -lm
         run "variations ($n tracks): tempo, mutes, chance, sends and SLICER over the tracks', STOP, the store, bounds" "$OUT/variation_test$n"
     done
-    compile $CC -w -DFELUCCA_DIST=idm -DFELUCCA_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test4" tests/engines_test.c -lm
-    run "the IDM distribution built with 4 tracks: the same checks, DUBSIREN on track 4; a version-2 song for the next" "$OUT/engines_test4"
-    compile $CC -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm
+    compile $CC -w -DFELUCCA_DIST=ref -DFELUCCA_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test4" tests/engines_test.c -lm
+    run "a build without some engines (the ref build, 4 tracks): ids, substitutes, protocol, songs, presets; a version-2 song for the next" "$OUT/engines_test4"
+    compile $CC -w -DFELUCCA_DIST=ref -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm
     AFTER=$nj                                           # (it reads the 4-track run's song_v2.bin)
-    run "the IDM distribution (8 tracks): its engines from 0, ids both ways, substitutes in projects / protocol / songs, user presets kept" \
-        "$OUT/engines_test"
+    run "a build without some engines, 8 tracks: the same checks, its power-on, a 4-track song on it" "$OUT/engines_test"
+    compile $CC -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/idm_test" tests/idm_test.c -lm
+    run "IDM: its 8 engines in their order, 4 tracks, power-on, where the engines it lacks load" "$OUT/idm_test"
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/mod_test" tests/mod_test.c -lm
     mkdir -p build/mod_demo
     slow run "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" "$OUT/mod_test" build/mod_demo
@@ -356,7 +357,7 @@ if [ -f build/gen/felucca_tables.h ]; then
     else
         echo "== a NATIVE distribution refuses a device build (core.h: FELUCCA_NATIVE only)"
     fi
-    slow compile $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
+    slow compile $CC -O2 -w -DFELUCCA_DIST=chip -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
     mkdir -p build/speech_demo
     slow run "SPEECH: every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/descdump" tests/descdump.c -lm

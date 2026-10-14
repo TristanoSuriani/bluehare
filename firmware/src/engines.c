@@ -148,9 +148,18 @@ static const uint8_t EID_SUB[EID_COUNT] = {     /* (engine_ids.h: each engine's 
 #include "engine_ids.h"
 #undef ENGINE
 };
+/* (Fel-Tracker, 2026-10: 8 engines a distribution) a chain that finds none of the build's: a kit (an engine of drum
+ * lanes) loads as the kit track's power-on engine, any other sound as the mid track's (track 3: a pad, a chord), not as
+ * the build's first engine (a pad as drums) */
+static uint32_t trk_def_engine(uint32_t i);
+static int eid_kit(uint32_t id)
+{
+    return id == EID_KIT || id == EID_BREAKS || id == EID_FMPERC || id == EID_GLITCH || id == EID_WAR || id == EID_CHOKE ||
+           id == EID_LINNKIT || id == EID_FLOOR || id == EID_CHIPKIT;
+}
 static uint32_t eng_load_id(uint32_t id, int *sub)
 {
-    uint32_t n;
+    uint32_t n, id0 = id;
     if (sub)
         *sub = 0;
     if (id >= EID_COUNT || EID_RETIRED(id))
@@ -159,7 +168,7 @@ static uint32_t eng_load_id(uint32_t id, int *sub)
         id = EID_SUB[id];
     if (sub)
         *sub = n != 0u;
-    return n < EID_COUNT ? eng_of_id(id) : 0u;
+    return n < EID_COUNT ? eng_of_id(id) : trk_def_engine(eid_kit(id0) ? 0u : NPART > 2u ? 2u : 0u);
 }
 
 /* (Fel-Tracker) engine e as track t may play it: one on the last track alone (engine_t.last_track: DUBSIREN) is its
@@ -199,6 +208,11 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 #define TRK_PICK3(X, p, Y, q, Z, r)                                                                                    \
     {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : FELUCCA_ENG_##Z ? (uint8_t)ENGI_##Z : 0u,  \
      FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : FELUCCA_ENG_##Z ? (uint8_t)(r) : 0u}
+#define TRK_PICK5(V, o, X, p, Y, q, Z, r, W, u)                                                                        \
+    {FELUCCA_ENG_##V ? (uint8_t)ENGI_##V : FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y :     \
+     FELUCCA_ENG_##Z ? (uint8_t)ENGI_##Z : FELUCCA_ENG_##W ? (uint8_t)ENGI_##W : 0u,                                   \
+     FELUCCA_ENG_##V ? (uint8_t)(o) : FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) :                 \
+     FELUCCA_ENG_##Z ? (uint8_t)(r) : FELUCCA_ENG_##W ? (uint8_t)(u) : 0u}
 #define TRK_PICK4(X, p, Y, q, Z, r, W, u)                                                                              \
     {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : FELUCCA_ENG_##Z ? (uint8_t)ENGI_##Z :     \
      FELUCCA_ENG_##W ? (uint8_t)ENGI_##W : 0u,                                                                         \
@@ -215,9 +229,15 @@ static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(KIT, 0, WAR, 0), TRK_PICK4(F
                                                                                  * HOOVER's SIREN, SCREAM's SIREN CRY) */
 static const int8_t TRK_PAN[NPART] = {0, -8, 0, 0, -24, 24, -16, 16};
 #else
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK3(CHIPKIT, 0, KIT, 0, WAR, 0), TRK_PICK3(SID, 0, DARK, 0, GUTS, 0),
-                                          TRK_PICK2(BYTE, 0, VOSIM, 13), TRK_PICK3(SID, 2, RAZOR, 2, HOOVER, 0)};   /* (CHIP:
-                                                                     * CHIPKIT's NES KIT, SID BASS, BYTE ARP, SID's lead) */
+/* (Fel-Tracker, 2026-10: 4 tracks everywhere) a role a track: the kit, the bass (both centred), the mid (left), the
+ * high (right). CHIP: CHIPKIT's NES KIT, SID BASS, BYTE ARP, SID's SYNC LEAD; IDM: BREAKS, WASP's FAT BASS, WAVE's
+ * WARM PAD, MODAL's KALIMBA; FOUNDRY: WAR KIT, DARK's SUB WEIGHT, SLAG's EMBER PAD, RAZOR LEAD; WAREHOUSE: FLOOR,
+ * VENOM ACID, DUBCHORD's DUB STAB, SANDSTORM. (KIT and VOSIM first where a build has them: IDM NATIVE, and the host
+ * tests' reference build, as before: KIT's FM KIT, SID BASS, VOSIM's FORMANT PAD, SID's SYNC LEAD) */
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK5(CHIPKIT, 0, KIT, 0, FLOOR, 0, WAR, 0, BREAKS, 0),
+                                          TRK_PICK4(SID, 0, WASP, 7, DARK, 0, VENOM, 0),
+                                          TRK_PICK5(BYTE, 0, VOSIM, 13, WAVE, 8, SLAG, 7, DUBCHORD, 0),
+                                          TRK_PICK4(SID, 2, MODAL, 10, RAZOR, 2, SANDSTORM, 0)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24};
 #endif
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

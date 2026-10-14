@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The WAREHOUSE distribution (cc -DFELUCCA_DIST=warehouse): the engines no other distribution has (but KARPLUS and
- * HONKS, and BYTE: its place went to the new ones; SHRED: SANDSTORM's) with BREAKS, VOSIM, DUBCHORD and KIT, in their
- * order; its power-on sounds; SIREN8 a sound of every track (no DUBSIREN here); SANDSTORM: GATE plucks again at the
- * tempo, DIVE takes the pitch down once let go */
+/* The WAREHOUSE distribution (cc -DFELUCCA_DIST=warehouse), since the 2026-10 plan: its 8 engines in their order, two a
+ * track's role (kit, bass, mid, high; RISERS for any), 4 tracks; its power-on sounds; where a sound of an engine it does
+ * not have loads (the sirens HOOVER, by their substitutes; any other kit FLOOR, any other sound DUBCHORD, the mid
+ * track's); SANDSTORM: GATE plucks again at the tempo, DIVE takes the pitch down once let go */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -22,22 +22,26 @@ static uint32_t eng_of(const char *n)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"LINNKIT", "KIT", "FLOOR", "BREAKS", "FMPERC", "CHOKE", "GUTS", "VENOM", "HOOVER", "DUBCHORD",
-                                        "STRINGS", "VOSIM", "SIREN8", "ABYSS", "SANDSTRM", "RISERS"};   /* (LINNKIT first) */
+    static const char *const ORDER[] = {"FLOOR", "BREAKS", "VENOM", "DUBCHORD", "STRINGS", "HOOVER", "SANDSTRM", "RISERS"};
     uint32_t e, ok = NENGINES == NELEM(ORDER);
     for (e = 0; ok && e < NENGINES; e++)
         ok &= !strcmp(ENGINES[e]->name, ORDER[e]);
-    ck("its engines in their order; no KARPLUS, HONKS, BYTE, nor IDM's or FOUNDRY's own",
-       ok && !FELUCCA_ENG_KARPLUS && !FELUCCA_ENG_HONKS && !FELUCCA_ENG_BYTE && !FELUCCA_ENG_SID && !FELUCCA_ENG_DARK &&
-       !FELUCCA_ENG_DUBSIREN && !FELUCCA_ENG_SHRED && NPART == 8u);
-    ok = TRK_DEF[0][0] == eng_of("KIT") && TRK_DEF[1][0] == eng_of("FLOOR") && TRK_DEF[2][0] == eng_of("GUTS") &&
-         TRK_DEF[3][0] == eng_of("HOOVER") && !strcmp(ENGINES[TRK_DEF[3][0]]->presets[TRK_DEF[3][1]].name, "REESE BASS") &&
-         TRK_DEF[4][0] == eng_of("DUBCHORD") && TRK_DEF[5][0] == eng_of("VOSIM") && TRK_DEF[6][0] == eng_of("SANDSTRM") &&
-         !strcmp(ENGINES[TRK_DEF[6][0]]->presets[TRK_DEF[6][1]].name, "LEAD") &&
-         TRK_DEF[7][0] == eng_of("SIREN8");
-    ck("power-on: KIT, FLOOR, GUT ACID, REESE BASS, DUBCHORD, FORMANT PAD, SANDSTORM's LEAD, SIREN8", ok);
-    ck("SIREN8 on any track (no DUBSIREN to keep the last one)",
-       eng_for_track(&trk[0], eng_of("SIREN8")) == eng_of("SIREN8") && eng_for_track(&trk[7], eng_of("SIREN8")) == eng_of("SIREN8"));
+    ck("8 engines in their order (FLOOR BREAKS, VENOM, DUBCHORD STRINGS, HOOVER SANDSTORM, RISERS), 4 tracks",
+       ok && NPART == 4u);
+    ok = TRK_DEF[0][0] == eng_of("FLOOR") && TRK_DEF[1][0] == eng_of("VENOM") && TRK_DEF[2][0] == eng_of("DUBCHORD") &&
+         TRK_DEF[3][0] == eng_of("SANDSTRM") && !strcmp(ENGINES[TRK_DEF[1][0]]->presets[TRK_DEF[1][1]].name, "VENOM ACID") &&
+         !strcmp(ENGINES[TRK_DEF[3][0]]->presets[TRK_DEF[3][1]].name, "LEAD") && TRK_PAN[2] < 0 && TRK_PAN[3] > 0;
+    ck("power-on: FLOOR, VENOM ACID, DUBCHORD (left), SANDSTORM's LEAD (right)", ok);
+    {
+        static const struct { uint8_t id; const char *to; } SUB[] = {
+            {EID_DUBSIREN, "HOOVER"}, {EID_DUBSIREN8, "HOOVER"}, {EID_KIT, "FLOOR"}, {EID_LINNKIT, "FLOOR"},
+            {EID_GUTS, "DUBCHORD"}, {EID_VOSIM, "DUBCHORD"}};
+        uint32_t i;
+        int sub;
+        for (i = 0, ok = 1; i < NELEM(SUB); i++)
+            ok &= eng_load_id(SUB[i].id, &sub) == eng_of(SUB[i].to) && sub;
+        ck("engines it lacks: the sirens -> HOOVER; kits (KIT, LINNKIT) -> FLOOR; others (GUTS, VOSIM) -> DUBCHORD", ok);
+    }
     {   /* SANDSTORM, GATE 1/16 at 120 BPM: a held note's level falls and rises again every 5512 samples */
         uint32_t b, i, dips = 0, was_loud = 0;
         int32_t o[2 * CTL];

@@ -1040,7 +1040,7 @@ int main(int argc, char **argv)
     int cinfo = getenv("CPU_INFO") != 0;          /* (an 8-track test build: the 4-track baselines for information only) */
     /* a distribution other than the default (FELUCCA_DIST): its presets' renders and costs only, against the same
      * files (the mixes and the checks are written for the default's engines); nothing there is "gone" */
-    const int dist = !FELUCCA_DIST_PRIMARY || NPART != 4;   /* (the full set: the primary distribution, distributions/BUILD's, built with the 4 parts its shared checks are for) */
+    const int dist = !FELUCCA_DIST_REFERENCE || NPART != 4;   /* (the full set: the host tests' reference build, distributions/ref.txt, with the 4 parts its shared checks are for) */
     uint32_t jobs_at_once = getenv("JOBS") ? (uint32_t)atoi(getenv("JOBS")) : 8u;
     static const char *const MN[4] = {"POLY", "MONO", "LEGATO", "UNISON"};
     static const char *const SN[6] = {"dry", "chorus", "delay", "reverb", "all", "dist"};

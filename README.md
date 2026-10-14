@@ -9,15 +9,15 @@ the browser emulator it introduces itself as Fel-Tracker, naming Felucca and its
 What Fel-Tracker adds, all by Tristano Suriani:
 
 - **The tracker**, in place of the step sequencer.
-- **Distributions:** builds of any set of up to 16 engines, with stable engine ids, on 4 or 8 tracks, each with its
-  own palette (the device's and the emulator page's: IDM electric cyan and magenta on indigo, FOUNDRY molten orange,
-  WAREHOUSE acid green and UV violet, CHIP the Game Boy's greens). The **IDM**
-  distribution is the default, with **8 tracks**: the tracker, the MIXER and the quick layers show the selected
-  track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
-  into its first four (BUILDING.md "Distributions"). At power-on the rhythm section comes first and sits in the
-  centre: tracks 1–4 the drums (KIT, BREAKS) and the basses (SID BASS, WASP's FAT BASS); 5–8 the chords (DUBCHORD),
-  the pad (VOSIM's FORMANT PAD), the lead (SID SYNC LEAD) and the siren, panned left and right in turn. On 4 tracks:
-  the kit and the bass, then the pad and the lead apart.
+- **Distributions:** builds of any set of up to 16 engines, with stable engine ids, each with its own palette (the
+  device's and the emulator page's: IDM electric cyan and magenta on indigo, FOUNDRY molten orange, WAREHOUSE acid green
+  and UV violet, CHIP the Game Boy's greens). Since the 2026-10 plan every build has **4 tracks** and at most **8
+  engines**, two for each track's role, for the best sound from fewer engines: IDM (the default) BREAKS GLITCH, WASP
+  WEST, WAVE VECTOR, MODAL PARTICLE; FOUNDRY WAR ANVIL, DARK RAZOR, SLAG RUST, SCREAM DRILL; WAREHOUSE FLOOR BREAKS,
+  VENOM, DUBCHORD STRINGS, HOOVER SANDSTORM, RISERS; CHIP CHIPKIT, SID, WAVE, BYTE, ECHOES, SPEECH, SIREN8. At power-on
+  track 1 is the kit and track 2 the bass, both centred; track 3 the mid (a pad, chords) on the left, track 4 the high
+  (a lead) on the right. A sound of an engine a build lacks loads as its substitute, or else as the kit track's engine
+  (a kit) or the mid track's (anything else) (BUILDING.md "Distributions").
 - **Twenty-three new engines:** WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN,
   DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, KIT, BREAKS and RISERS.
 
@@ -64,7 +64,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   a 30 s tail; SHIMMER: a tail climbing in octaves), a 23.8 s delay line, and a distribution of its own, IDM NATIVE,
   with the native engines NEBULA and CANYON (BUILDING.md "Native image")
 
-- **Sixteen engines** in a distribution (below): IDM, the one a plain build makes, FOUNDRY, WAREHOUSE and CHIP (BUILDING.md
+- **Eight engines** in a distribution (below): IDM, the one a plain build makes, FOUNDRY, WAREHOUSE and CHIP (BUILDING.md
   "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are KIT, BREAKS or WAR);
@@ -524,11 +524,11 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   TICK, ZAP, BITERR, DATA, DROP, FAX, MODEM, CRACKL, SPARK, BLIP, SHARD, BUZZ, SKIP, PING (the octave above: the same,
   an octave up). KIT CLEAN, HARSH, LOFI, BROKEN; PITCH, DECAY, ROLL (a ratchet at the tempo while held, 1/32 ..
   1/128), CRUSH, VARY (each hit different), DENS (extra micro-hits), TONE
-- **WAREHOUSE** *(Fel-Tracker; the warehouse raves: four on the floor, acid, hoovers, the trance lead, sirens, chords and voices; 8
-  tracks, its own palette RAVE, acid green and UV violet on concrete)*. The engines no other distribution has (but KARPLUS
-  and HONKS; BYTE gave its place to three of its own: LINNKIT, STRINGS and FLOOR, below; SHRED, FOUNDRY's, to
-  SANDSTORM), with BREAKS, VOSIM, DUBCHORD and KIT: LINNKIT, KIT, FLOOR, BREAKS, FMPERC, CHOKE, GUTS, VENOM, HOOVER,
-  DUBCHORD, STRINGS, VOSIM, SIREN8, ABYSS, SANDSTORM, RISERS.
+- **WAREHOUSE** *(Fel-Tracker; the warehouse raves: four on the floor and breakbeats, acid, chord stabs and strings,
+  hoovers and the trance lead, build-ups; 4 tracks, its own palette RAVE, acid green and UV violet on concrete)*. Its 8
+  engines: FLOOR, BREAKS, VENOM, DUBCHORD, STRINGS, HOOVER, SANDSTORM, RISERS. At power-on: FLOOR, VENOM ACID,
+  DUBCHORD's DUB STAB, SANDSTORM's LEAD. (LINNKIT, KIT, FMPERC, CHOKE, GUTS, VOSIM, SIREN8 and ABYSS left it in 2026-10;
+  their descriptions stay below.)
   - **LINNKIT**: the 80s sampled drum machine, after the LinnDrum (synthesized, no samples): a key each from C2, KICK,
     SNARE, RIM, CLAP, HAT, OPEN, TOM L, TOM M, TOM H, CONGA, COWBELL, TAMB (the octave above the same again); each a
     body with a falling pitch and noise; TUNE, DECAY, TONE, SNAP (noise against body), BODY (the pitch's fall), GATE
@@ -550,8 +550,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   track (there is no DUBSIREN to keep the last one). At power-on: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS,
   DUBCHORD, VOSIM's FORMANT PAD, SANDSTORM's LEAD and SIREN8's BIT SIREN
 - **CHIP** *(Fel-Tracker; chiptune, the 8-bit consoles' four channels: 4 tracks, its own palette CHIP, the Game Boy's
-  four greens)*. The engines already in the tree that sound the part, and CHIPKIT: CHIPKIT, KIT, GLITCH, SID, BYTE,
-  WASP, WAVE, VECTOR, SPEECH, VOSIM, SIREN8, ECHOES, CHAOS, RISERS.
+  four greens)*. The engines already in the tree that sound the part, and CHIPKIT: CHIPKIT, SID, WAVE, BYTE, ECHOES,
+  SPEECH, SIREN8 (seven since 2026-10: KIT, GLITCH, WASP, VECTOR, VOSIM, CHAOS and RISERS left it).
   - **CHIPKIT**: the drums of the 8-bit consoles, made as their sound chips made them (no chip emulated, no samples):
     a key each from C2, KICK, SNARE, HAT, OPEN, TOM L, TOM M, TOM H, CRASH, CLAP, ZAP, COIN, NOISE (the octave above
     the same again); each a 4-bit stepped triangle, a pulse (12.5, 25, 50 %) and the noise register (long: hiss; short:
@@ -569,13 +569,11 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   - **CANYON**: ECHOES' repeats, all of them: COUNT up to 64, every repeat ringing to its end (ECHOES keeps 6), 8
     voices; ECHOES' presets and CANYON, BELL CASCADE, PLUCK STORM, ENDLESS DUB, LONG BOUNCE, FM RAIN, WHOLE TONE,
     AVALANCHE
-- **FOUNDRY** *(Fel-Tracker; industrial, neuro, dark bass, and the clean sounds it lives of in contrast; 8 tracks,
-  its own palette, molten orange)*. Its 16 engines, in their order on the device: SCREAM, DARK, VOSIM, WAR, SCRATCH,
-  FLUIDS, RAZOR, DUBCHORD, RUST, ANVIL, DRILL, SLAG, MODAL, BLISS, ECHOES, WAVE. Every one has at least 24 presets.
-  The clean side is VOSIM's choirs and voices, DUBCHORD's sine and organ chords, MODAL's chimes and bars, BLISS's FM
-  pianos and bells, ECHOES' soft repeats and WAVE's tables (each described above); DARK, ANVIL and FLUIDS each have a
-  clean block too (pure subs, true bells, still water). At power-on: WAR's kits, a DARK and a RAZOR bass, DUBCHORD,
-  VOSIM's FORMANT PAD, RAZOR LEAD and SCREAM's SIREN CRY. Its own engines:
+- **FOUNDRY** *(Fel-Tracker; industrial and EBM: war drums and struck metal, sub bass and saw stacks, molten walls and
+  corroded noise, screams and power tools; 4 tracks, its own palette, molten orange)*. Its 8 engines, in their order on
+  the device: WAR, ANVIL, DARK, RAZOR, SLAG, RUST, SCREAM, DRILL. Every one has at least 24 presets. At power-on: WAR
+  KIT, DARK's SUB WEIGHT, SLAG's EMBER PAD, RAZOR LEAD. (VOSIM, SCRATCH, FLUIDS, DUBCHORD, MODAL, BLISS, ECHOES and WAVE
+  left it in 2026-10; SCRATCH, FLUIDS and BLISS are in no build now, their code kept.) Its own engines:
   - **DARK**: sub-bass from sines: SUB1 and SUB2 octaves under the note, a sine folder (FOLD, FENV for each note's
     bite), PUNCH (the pitch from up to two octaves above, falling over PDEC: an 808's thud), DRIVE, TONE
   - **RAZOR**: up to 7 saws spread apart (VOICES, SPREAD: reeses, supersaws), SUB, NOISE, DRIVE into a resonant

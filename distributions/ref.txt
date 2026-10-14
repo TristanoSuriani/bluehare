@@ -1,0 +1,22 @@
+# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# REF: the host tests' build (core.h: a test that names no distribution), never an image: IDM's sixteen engines
+# as they were before the 2026-10 plan, so the shared tests (scales, chords, the clock, the mixes, the goldens' full
+# set) keep the engines they were written for. The shipped distributions are tested by their own tests.
+TRACKS 4
+PALETTE IDM
+SID
+WASP
+WAVE
+BREAKS
+WEST
+VECTOR
+DUBSIREN
+MODAL
+DUBCHORD
+VOSIM
+PARTICLE
+CHAOS
+ECHOES
+KIT
+SPEECH
+GLITCH

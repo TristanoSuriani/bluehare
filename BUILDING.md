@@ -88,13 +88,15 @@ FELUCCA_DIST=foundry ./build.sh    # another one (build/felucca-foundry.fwsc)
 
 | Distribution | Tracks | Engines |
 | --- | --- | --- |
-| `idm` | 8 | SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH (16) |
-| `foundry` | 8 | SCREAM DARK VOSIM WAR SCRATCH FLUIDS RAZOR DUBCHORD RUST ANVIL DRILL SLAG MODAL BLISS ECHOES WAVE |
-| `warehouse` | 8 | LINNKIT KIT FLOOR BREAKS FMPERC CHOKE GUTS VENOM HOOVER DUBCHORD STRINGS VOSIM DUBSIREN8 ABYSS SANDSTORM RISERS |
-| `chip` | 4 | CHIPKIT KIT GLITCH SID BYTE WASP WAVE VECTOR SPEECH VOSIM DUBSIREN8 ECHOES CHAOS RISERS (14) |
-| `idm_native` | 8 | IDM's, PARTICLE and ECHOES as NEBULA and CANYON: SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM NEBULA CHAOS CANYON KIT SPEECH GLITCH (`NATIVE`: the native image's alone, "Native image" below) |
+| `idm` | 4 | BREAKS GLITCH WASP WEST WAVE VECTOR MODAL PARTICLE |
+| `foundry` | 4 | WAR ANVIL DARK RAZOR SLAG RUST SCREAM DRILL |
+| `warehouse` | 4 | FLOOR BREAKS VENOM DUBCHORD STRINGS HOOVER SANDSTORM RISERS |
+| `chip` | 4 | CHIPKIT SID WAVE BYTE ECHOES SPEECH DUBSIREN8 |
+| `idm_native` | 4 | the IDM of before 2026-10, PARTICLE and ECHOES as NEBULA and CANYON: SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM NEBULA CHAOS CANYON KIT SPEECH GLITCH (`NATIVE`: the native image's alone, "Native image" below) |
+| `ref` | 4 | the host tests' build, never an image: the IDM of before 2026-10 (SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH), the engines the shared tests were written for |
 
-With 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
+Since the 2026-10 plan every build has 4 tracks and the shipped ones at most 8 engines, two for each track's role (kit,
+bass, mid, high). The code still builds with 8 tracks (`TRACKS 8`, or the tests' `-DFELUCCA_NTRK=8`): with 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an
 8-track song; an 8-track build loads both); the song store and the autosave hold 16 chunks; the SLICER's STUT records
 on tracks 1 .. 4 only; DUBSIREN's echo is the last track's, 8 (elsewhere it plays dry); MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).
