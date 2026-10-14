@@ -1,0 +1,19 @@
+# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# WAREHOUSE: the warehouse raves: four on the floor, acid, hoovers, sirens, chords and voices; the engines in display
+# order, one a line (names: firmware/src/engine_ids.h; at most 16). TRACKS: the build's track count;
+# PALETTE: the one a device starts with
+TRACKS 8
+PALETTE RAVE
+KIT
+BREAKS
+FMPERC
+CHOKE
+GUTS
+VENOM
+HOOVER
+DUBCHORD
+VOSIM
+DUBSIREN8
+ABYSS
+SHRED
+RISERS

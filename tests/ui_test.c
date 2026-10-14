@@ -1095,12 +1095,13 @@ static int test_display_preferences(void)
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
     turn(EN_K1, 1);
     bad += check("COLOR KNOB 1 steps on to HI-CON, NIGHT (#50: true black), MONO (1.0.2: black and white), IDM, SIGNAL, "
-                 "FOUNDRY (Fel-Tracker: the distributions'), then wraps to GREY",
+                 "FOUNDRY, RAVE (Fel-Tracker: the distributions'), then wraps to GREY",
                  settings.palette == 7 && (turn(EN_K1, 1), settings.palette == 8u) && T_BG == 0u &&
                  str_eq(UI_PALETTES[8].name, "NIGHT") && (turn(EN_K1, 1), settings.palette == UI_BW_INDEX) &&
                  str_eq(UI_PALETTES[UI_BW_INDEX].name, "MONO") && T_BG == 0u && T_TEXT == 0xFFFFu &&
                  (turn(EN_K1, 1), settings.palette == UI_PAL_IDM) && (turn(EN_K1, 1), settings.palette == UI_PAL_SIGNAL) &&
                  (turn(EN_K1, 1), settings.palette == UI_PAL_FOUNDRY) &&
+                 (turn(EN_K1, 1), settings.palette == UI_PAL_RAVE) &&
                  (turn(EN_K1, 1), settings.palette == UI_GREY_INDEX) && str_eq(UI_PALETTES[UI_GREY_INDEX].name, "GREY"));
     settings.lowcut = 2;
     ui.menu_sel = MI_LOWCUT;

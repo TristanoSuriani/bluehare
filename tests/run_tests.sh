@@ -242,6 +242,10 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "regression, the FOUNDRY distribution: its presets' golden renders and CPU" "$OUT/regress_foundry" tests/golden.txt tests/cpu_baseline.txt
     $CC -w -DFELUCCA_DIST=foundry -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/foundry_test" tests/foundry_test.c -lm
     run "FOUNDRY: its engines and order, the clean ones among them, 24 presets and more, power-on, where the ones that left load" "$OUT/foundry_test"
+    $CC -O2 -w -DFELUCCA_DIST=warehouse -Ibuild/gen -Ifirmware/src -o "$OUT/regress_warehouse" tests/regress.c -lm
+    run "regression, the WAREHOUSE distribution: its presets' golden renders and CPU" "$OUT/regress_warehouse" tests/golden.txt tests/cpu_baseline.txt
+    $CC -w -DFELUCCA_DIST=warehouse -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/warehouse_test" tests/warehouse_test.c -lm
+    run "WAREHOUSE: its engines and order, power-on, SIREN8 on every track" "$OUT/warehouse_test"
     $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
     mkdir -p build/speech_demo
     run "SPEECH: every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo
@@ -315,6 +319,12 @@ else
     run "browser emulator, the FOUNDRY distribution (web/emu/build.sh -> build/emu-foundry)" env FELUCCA_DIST=foundry sh web/emu/build.sh
     run "browser emulator, FOUNDRY: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
         node web/emu/emu_test.mjs build/emu-foundry/felucca.wasm "$OUT/emu_native_foundry.f32"
+    cc -O2 -ffp-contract=off -w -DFELUCCA_DIST=warehouse -Ibuild/gen -Ifirmware/src -o "$OUT/emu_native_warehouse" \
+        web/emu/native_check.c -lm
+    run "browser emulator: the same song from the native build, WAREHOUSE" "$OUT/emu_native_warehouse" "$OUT/emu_native_warehouse.f32"
+    run "browser emulator, the WAREHOUSE distribution (web/emu/build.sh -> build/emu-warehouse)" env FELUCCA_DIST=warehouse sh web/emu/build.sh
+    run "browser emulator, WAREHOUSE: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
+        node web/emu/emu_test.mjs build/emu-warehouse/felucca.wasm "$OUT/emu_native_warehouse.f32"
 fi
 
 [ $fail -eq 0 ] && echo "ALL HOST TESTS PASSED" || { echo "HOST TESTS FAILED"; exit 1; }

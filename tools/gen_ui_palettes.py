@@ -56,6 +56,8 @@ PALETTES = [
     ("SIGNAL", (14, 12, 10),    (40, 34, 28),    (242, 236, 228), (255, 128, 24),  (40, 220, 255)),
     # FOUNDRY: molten orange, a white-hot yellow for the one active thing, on scorched near-black
     ("FOUNDRY", (12, 8, 6),     (42, 26, 18),    (246, 232, 214), (255, 100, 20),  (255, 214, 70)),
+    # RAVE (WAREHOUSE's): acid green values, a UV violet for the one active thing, on concrete near-black
+    ("RAVE",   (10, 11, 12),    (32, 35, 38),    (232, 236, 228), (176, 255, 48),  (178, 104, 255)),
 ]
 BW = "MONO"
 BW_GREY = (82, 82, 82)             # MONO's one mid grey (RGB565 10/20/10): DIM LINE RAISE LANE

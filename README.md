@@ -10,8 +10,8 @@ What Fel-Tracker adds, all by Tristano Suriani:
 
 - **The tracker**, in place of the step sequencer.
 - **Distributions:** builds of any set of up to 16 engines, with stable engine ids, on 4 or 8 tracks, each with its
-  own palette (the device's and the emulator page's: IDM electric cyan and magenta on indigo, the default signal
-  orange). The **IDM**
+  own palette (the device's and the emulator page's: IDM electric cyan and magenta on indigo, FOUNDRY molten orange,
+  WAREHOUSE acid green and UV violet). The **IDM**
   distribution is the default, with **8 tracks**: the tracker, the MIXER and the quick layers show the selected
   track's four (1 .. 4 or 5 .. 8), every black key of the GLO and FX layers mutes its track, songs of 4 tracks load
   into its first four (BUILDING.md "Distributions"). At power-on the rhythm section comes first and sits in the
@@ -498,6 +498,13 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   TICK, ZAP, BITERR, DATA, DROP, FAX, MODEM, CRACKL, SPARK, BLIP, SHARD, BUZZ, SKIP, PING (the octave above: the same,
   an octave up). KIT CLEAN, HARSH, LOFI, BROKEN; PITCH, DECAY, ROLL (a ratchet at the tempo while held, 1/32 ..
   1/128), CRUSH, VARY (each hit different), DENS (extra micro-hits), TONE
+- **WAREHOUSE** *(Fel-Tracker; the warehouse raves: four on the floor, acid, hoovers, sirens, chords and voices; 8
+  tracks, its own palette RAVE, acid green and UV violet on concrete)*. The engines no other distribution has (but KARPLUS
+  and HONKS; BYTE gave its place to the three to come: LINNKIT, after the LinnDrum, STRINGS, after the Waldorf
+  Streichfett, and FLOOR, the four-on-the-floor beats as BREAKS is the breaks), with BREAKS, VOSIM, DUBCHORD and KIT:
+  KIT, BREAKS, FMPERC, CHOKE, GUTS, VENOM, HOOVER, DUBCHORD, VOSIM, SIREN8, ABYSS, SHRED, RISERS. SIREN8 plays on every
+  track (there is no DUBSIREN to keep the last one). At power-on: KIT, BREAKS, GUTS' GUT ACID, HOOVER's REESE BASS,
+  DUBCHORD, VOSIM's FORMANT PAD, HOOVER and SIREN8's BIT SIREN
 - **FOUNDRY** *(Fel-Tracker; industrial, neuro, dark bass, and the clean sounds it lives of in contrast; 8 tracks,
   its own palette, molten orange)*. Its 16 engines, in their order on the device: SCREAM, DARK, VOSIM, WAR, SCRATCH,
   FLUIDS, RAZOR, DUBCHORD, RUST, ANVIL, DRILL, SLAG, MODAL, BLISS, ECHOES, WAVE. Every one has at least 24 presets.
