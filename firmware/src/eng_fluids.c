@@ -8,7 +8,7 @@
  * FILTER) and SUB a sine an octave down last.
  * Voice state: ph[0] the oscillator, ph[1] MOTION's, ph[2] SUB's, s[0] s[1] the filter; the all-passes in the
  * track's block (engines.c eng_slab; FL_POLY voices a track). */
-#define FL_POLY 6
+#define FL_POLY DEV_NAT(6, 12)
 #define FL_NAP 8
 
 static inline __attribute__((always_inline)) int32_t *fl_of(track_t *t, voice_t *v)

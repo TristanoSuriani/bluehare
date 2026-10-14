@@ -246,6 +246,10 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "regression, the WAREHOUSE distribution: its presets' golden renders and CPU" "$OUT/regress_warehouse" tests/golden.txt tests/cpu_baseline.txt
     $CC -w -DFELUCCA_DIST=warehouse -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/warehouse_test" tests/warehouse_test.c -lm
     run "WAREHOUSE: its engines and order, power-on, SIREN8 on every track" "$OUT/warehouse_test"
+    for d in idm foundry warehouse; do
+        $CC -O2 -w -DFELUCCA_NATIVE -DFELUCCA_DIST=$d -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/native_test_$d" tests/native_test.c -lm
+        run "native image's limits ($d): 16 voices on every track, no shared budget, the engines' caps lifted" "$OUT/native_test_$d"
+    done
     $CC -O2 -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
     mkdir -p build/speech_demo
     run "SPEECH: every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo

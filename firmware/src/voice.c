@@ -93,9 +93,10 @@ static uint32_t trk_vmode(const track_t *t)
 }
 
 /* ------------------------------------------------- the shared voice budget --- */
-static uint32_t voice_limit(void)                       /* (Fel-Tracker) 12 while the load allows, else 8 */
+static uint32_t voice_limit(void)                       /* (Fel-Tracker) 12 while the load allows, else 8 (native:
+                                                         * every part's, always) */
 {
-    return song.cpu_q8 < VOICE_LOAD_Q8 ? NVOICE : VOICE_BASE;
+    return song.cpu_q8 < VOICE_LOAD_Q8 ? VOICE_MAX : VOICE_BASE;
 }
 static uint32_t voices_busy(void)                       /* sounding voices of all parts (not the fading ones) */
 {

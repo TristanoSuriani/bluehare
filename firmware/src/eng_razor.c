@@ -112,7 +112,7 @@ static const engine_t ENG_RAZOR = {
     },
     .presets = RAZOR_PRESETS,
     .npresets = NELEM(RAZOR_PRESETS),
-    .poly = 4,
+    .poly = DEV_NAT(4, 8),
     .note_on = razor_note_on,
     .render = razor_render,
     .knob = {P_E1, P_E2, P_E3, P_E4},

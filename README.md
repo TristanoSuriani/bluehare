@@ -59,7 +59,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 - **Native image** *(Fel-Tracker)*: Fel-Tracker as a desktop application for each distribution (`native/build.sh`:
   `Fel-Tracker IDM.app` on macOS), the same firmware in a window with the panel, the computer's sound out and MIDI in,
-  its saves in a file: the base for heavier engines and effects than the FM-1 can hold (BUILDING.md "Native image")
+  its saves in a file: the base for heavier engines and effects than the FM-1 can hold. Every track has its own 16
+  voices there, and the engines' voice caps set by the device's CPU are lifted (BUILDING.md "Native image")
 
 - **Sixteen engines** in a distribution (below): IDM, the one a plain build makes, FOUNDRY and WAREHOUSE (BUILDING.md
   "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,

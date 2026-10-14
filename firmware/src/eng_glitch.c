@@ -12,7 +12,7 @@
  * DENS scatters extra micro-hits after each one, TONE darkens (down) or thins (up). Its own envelope (engine_t.ownenv:
  * the velocity sets the level); the voice ends when its hits do.
  * State: the track's block (engines.c eng_slab, GL_POLY voices a track). */
-#define GL_POLY 8
+#define GL_POLY DEV_NAT(8, 12)
 static uint32_t beat_samples(void);                  /* (fx.c: a beat at the song's tempo, or the MIDI clock's) */
 static const char *const N_GL_KIT[] = {"CLEAN", "HARSH", "LOFI", "BROKEN", 0};
 static const char *const N_GL_ROLL[] = {"OFF", "1/32", "1/48", "1/64", "1/96", "1/128", 0};

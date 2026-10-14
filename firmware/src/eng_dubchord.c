@@ -123,7 +123,7 @@ static const engine_t ENG_DUBCHORD = {
     },
     .presets = DUBCHORD_PRESETS,
     .npresets = NELEM(DUBCHORD_PRESETS),
-    .poly = 4,
+    .poly = DEV_NAT(4, 8),
     .note_on = dubchord_note_on,
     .render = dubchord_render,
     .knob = {P_E4, P_E5, P_E6, P_E7},

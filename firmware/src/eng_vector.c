@@ -181,7 +181,7 @@ static const engine_t ENG_VECTOR = {
     },
     .presets = VECTOR_PRESETS,
     .npresets = NELEM(VECTOR_PRESETS),
-    .poly = 6,
+    .poly = DEV_NAT(6, 12),
     .note_on = vector_note_on,
     .render = vector_render,
     .knob = {P_E3, P_E4, P_E2, P_E6},

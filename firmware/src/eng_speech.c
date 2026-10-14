@@ -24,7 +24,7 @@
 static const char *const N_SP_BANK[] = {SP_BANK_NAMES_INIT, 0};
 static const char *const N_SP_MODE[] = {"TONE", "WORDS", 0};
 static const char *const N_SP_END[] = {"STOP", "HOLD", "LOOP", 0};
-#define SP_POLY 4
+#define SP_POLY DEV_NAT(4, 8)
 #define SP_CLK 13107u            /* the filter's samples per output sample, Q16: 8820 / 44100 */
 #define SP_MS 1486u              /* an output sample in ms, Q16 (1000 / 44100) */
 #define SP_NCHIRP ((uint32_t)NELEM(SP_CHIRP))

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* I2S output (ALNK0 -> external codec) and the
  * audio ISR: per half buffer, blocks of CTL samples: mix_block (fx.c: events ->
  * each synth part -> dist -> level / pan -> sends -> buses -> master) -> USB audio (uac_tap) -> the metronome's
@@ -23,6 +24,13 @@ struct felucca_dbg {
 static volatile uint32_t audio_halves, audio_max_us;
 static volatile uint32_t t5_nested_ticks;              /* TIMER4 ticks TIMER5 spent nested in this ISR (main.c) */
 static uint32_t audio_cpu_rem;                         /* keep the fractional IIR step: no low-load bias */
+#ifdef FELUCCA_NATIVE
+#define AUDIO_NOW() native_ticks()                     /* (Fel-Tracker) the native image: the computer's clock, in
+                                                        * TIMER4's ticks (the device's stands still while it renders):
+                                                        * the load meter and the overload shed are the computer's */
+#else
+#define AUDIO_NOW() fm1_ticks()
+#endif
 
 static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 -> 24 bit */
 {
@@ -100,7 +108,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
     uint32_t t0;
     felucca_dbg.in_audio = 1;                   /* first: TIMER5 nests from here on (main.c) */
     p = fm1_audio_pending();
-    t0 = fm1_ticks();
+    t0 = AUDIO_NOW();
     t5_nested_ticks = 0;
     fm1_audio_ack_aux(p);
     if (p & FM1_AUDIO_HALF) {
@@ -121,7 +129,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         }
         fm1_audio_ack_half();
         audio_halves++;
-        us = shed_check(fm1_ticks() - t0);
+        us = shed_check(AUDIO_NOW() - t0);
         if (us > audio_max_us)
             audio_max_us = us;
         {

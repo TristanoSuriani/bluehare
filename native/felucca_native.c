@@ -4,7 +4,9 @@
 /* Fel-Tracker as a native desktop application: the firmware, as the browser emulator runs it (web/emu/felucca_web.c:
  * the simulated FM-1, its clock driven by the audio asked for), in a window of its own (SDL2), its sound out of the
  * computer's (SDL audio, 44.1 kHz), MIDI in from every source (CoreMIDI on macOS), its saves in a file.
- * It is the base the heavier things are built on: no device's CPU, RAM or flash under it, only the computer's.
+ * It is the base the heavier things are built on: no device's CPU, RAM or flash under it, only the computer's. Built
+ * FELUCCA_NATIVE (core.h): every track has its own 16 voices (no budget shared, no note taken from another track), the
+ * engines' voice caps that were the device's CPU are lifted, and MENU > INFO's CPU is the computer's load.
  *   native/build.sh [DIST]  ->  build/native/fel-tracker-<dist> (and Fel-Tracker <DIST>.app on macOS)
  * The window: the screen (3x), the knobs (the mouse wheel over one turns it; MASTER the level), the buttons (a click
  * holds one while the mouse button is down, LEDs as the device lights them) and the 27 keys. The computer keyboard as
@@ -17,6 +19,16 @@
  *   fel-tracker [--selftest [FILE.bmp]]   --selftest: boots with dummy video and audio drivers, plays 3 s, checks the
  *                              screen drew and the sound runs, exits 0 or 1 (tests/run_tests.sh); FILE.bmp: the
  *                              window as drawn, saved */
+#include <stdint.h>
+#include <time.h>
+#define FELUCCA_NATIVE 1                                  /* (core.h: every track its own 16 voices, the engines' caps
+                                                           * lifted; audio.c: the load meter the computer's) */
+static uint32_t native_ticks(void)                        /* the computer's clock in the device's TIMER4 ticks (24 MHz) */
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint32_t)((uint64_t)ts.tv_sec * 24000000u + (uint64_t)ts.tv_nsec * 24u / 1000u);
+}
 #include "../web/emu/felucca_web.c"
 #include <SDL.h>
 #include <stdio.h>
@@ -495,7 +507,7 @@ int main(int argc, char **argv)
  * must have drawn (the splash, then HOME), the device's clock moved with the audio, HOME lit, a key sounding */
 static int selftest(const char *shot)
 {
-    uint32_t i, t = SDL_GetTicks(), ms0, ms1, draws, lit;
+    uint32_t i, t = SDL_GetTicks(), ms0, ms1, draws, lit, cpu;
     double e = 0;
     while (SDL_GetTicks() - t < 1500u)
         SDL_Delay(10);
@@ -514,6 +526,7 @@ static int selftest(const char *shot)
     SDL_Delay(1000);
     SDL_LockAudioDevice(audio_dev);
     ms1 = web_now_ms();
+    cpu = song.cpu_q8 * 1000u / 256u;
     SDL_UnlockAudioDevice(audio_dev);
     if (shot) {                                       /* (--selftest FILE.bmp: the window as drawn now) */
         SDL_Surface *s = SDL_CreateRGBSurfaceWithFormat(0, WIN_W, WIN_H, 32, SDL_PIXELFORMAT_ARGB8888);
@@ -522,8 +535,8 @@ static int selftest(const char *shot)
             SDL_SaveBMP(s, shot);
         SDL_FreeSurface(s);
     }
-    printf("native: %u screen draws, the device's clock %u ms in 1 s, HOME %s, a key's sound %s\n", draws, ms1 - ms0,
-           (lit >> B_HOME) & 1u ? "lit" : "dark", e > 1e-6 ? "on" : "silent");
+    printf("native: %u screen draws, the device's clock %u ms in 1 s, HOME %s, a key's sound %s, CPU %u.%u %%\n", draws,
+           ms1 - ms0, (lit >> B_HOME) & 1u ? "lit" : "dark", e > 1e-6 ? "on" : "silent", cpu / 10u, cpu % 10u);
     SDL_CloseAudioDevice(audio_dev);
     SDL_Quit();
     return draws > 2u && ms1 - ms0 > 500u && ((lit >> B_HOME) & 1u) && e > 1e-6 ? 0 : 1;

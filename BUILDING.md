@@ -163,6 +163,18 @@ keys (click and hold), lit as the device lights them; the computer keyboard as o
 SDL2: `brew install sdl2` (Linux: libsdl2-dev). It is the base for what the device cannot hold: heavier engines and
 effects run on the computer's CPU and memory, not the FM-1's; a VST built on it is planned.
 
+It is built with `FELUCCA_NATIVE` (`firmware/src/core.h`), which lifts the limits that were the device's:
+
+| | FM-1 (and the browser emulator) | native image |
+|---|---|---|
+| voices | 12 shared by all the tracks (8 when the CPU is busy); a new note takes one from another track | 16 on every track, its own: nothing taken from another track |
+| engine caps | MODAL, ANVIL, PARTICLE, ECHOES, KARPLUS, SPEECH, DUBCHORD, RAZOR 4; FLUIDS, CHOKE, SLAG, VECTOR 6; GLITCH 8 | 8, 8, 8, 8, 8, 8, 8, 8; 12, 12, 12, 12; 12 |
+| MENU > INFO CPU | the device's audio interrupt | the computer's audio thread |
+
+Songs, sounds and presets are the same as the device's: nothing stored changes, and a song made here plays on the
+FM-1 (with the device's voices). `tests/native_test.c` checks the limits in each distribution and prints how fast the
+computer renders every track full (about 30 times real time on an M1 Pro).
+
 ## Tests
 
 ```
