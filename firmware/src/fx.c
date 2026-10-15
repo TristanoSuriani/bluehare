@@ -520,11 +520,123 @@ static __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *o
     hl.side = 1;
 }
 
+#ifndef FELUCCA_NATIVE
+/* (Fel-Tracker, 2026-10) CONCERT on the device (G_RTYPE 4; the native image has its own, floating point, fx_native.c):
+ * HALL grown into the memory four tracks freed. At half the rate as HALL (22.05 kHz): the send (two samples
+ * averaged, ROOM's level) -> a low cut (~110 Hz) -> a pre-delay (12 ms) -> 4 allpass diffusers -> 16 lines (26 .. 67
+ * ms, mutually prime: twice HALL's lines, twice as long: a denser, smoother, longer tail), each read through its own
+ * slow sine (+-CN_MOD samples, between samples: no line rings at its length), low-passed (DAMP, LOW CUT's poles) and
+ * scaled (SIZE: RT60 0.5 s .. 9 s, as HALL's; rounded to the nearest while loud, towards zero once quiet: the tail
+ * decays as it should and ends in exact silence), then mixed by a 16 x 16 Hadamard matrix
+ * (a fast Walsh transform, / 4: lossless) and written back with the send. Out: the even lines left, the odd right;
+ * the mid to the wet bus, the side to rev_side, as HALL's. In the pool: ~34 KB */
+#define CN_NL 16u
+#define CN_NAP 4u
+#define CN_MOD 3                         /* the taps' swing, samples */
+#define CN_PRE 265u                      /* the pre-delay: 12 ms at 22.05 kHz */
+#define CN_LOUD 64                       /* a line's sample this loud rounds its gain to the nearest (HALL's way) */
+static const uint16_t CN_LEN[CN_NL] = {577, 641, 691, 751, 809, 863, 937, 997, 1061, 1117, 1181, 1237, 1301, 1361, 1423, 1489};
+static const uint16_t CN_AP[CN_NAP] = {71, 53, 191, 139};
+#define CN_SUM (577 + 641 + 691 + 751 + 809 + 863 + 937 + 997 + 1061 + 1117 + 1181 + 1237 + 1301 + 1361 + 1423 + 1489)
+static struct {
+    int16_t buf[CN_SUM];                 /* the lines, one after the other */
+    int16_t ap[71 + 53 + 191 + 139];     /* the diffusers */
+    int16_t pre[512];                    /* the pre-delay */
+    uint16_t i[CN_NL], d[CN_NAP], pw;    /* the lines' write places, the diffusers', the pre-delay's */
+    int32_t lp[CN_NL];                   /* the low-passes (Q8) */
+    int16_t g[CN_NL], sz;                /* the lines' gains (Q15), for SIZE sz - 1 (0: none yet) */
+    int32_t x, hp, he, m, s;             /* the send's last sample, its low cut; the last mid and side out */
+    uint32_t ph;                         /* the drift */
+} cn __attribute__((section(".pool")));
+
+static inline int32_t tl_pole(int32_t *s, int32_t x, int32_t k);   /* (LOW CUT's pole, below) */
+static __attribute__((noinline)) void concert_gains(int32_t sz)   /* (as hall_gains, no matrix factor: the / 4 is its) */
+{
+    uint32_t q = exp2_neg((uint32_t)sz * 65536u / 30u), k, g;
+    for (k = 0; k < CN_NL; k++) {
+        g = exp2_neg((CN_LEN[k] * 59u * q) >> 15);
+        cn.g[k] = (int16_t)(g > 32440u ? 32440u : g);
+    }
+    cn.sz = (int16_t)(sz + 1);
+}
+static void concert_clear(void)
+{
+    memset(&cn, 0, sizeof cn);
+}
+static __attribute__((noinline)) void rev_concert(const int32_t *rev_in, int32_t *out, uint32_t n)
+{
+    uint32_t i, k, off;
+    int32_t kd = HL_KD(song.g[G_RDAMP]), mp = cn.m, sp = cn.s;
+    (void)n;
+    if (cn.sz != song.g[G_RSIZE] + 1)
+        concert_gains(song.g[G_RSIZE]);
+    cn.ph += HL_LFO;
+    for (i = 0; i < HL_NC; i++) {
+        int32_t x = (rev_in[2u * i] + rev_in[2u * i + 1u]) >> 1, v, y[CN_NL], l, r, a, b;
+        uint32_t ao = 0;
+        x = mulq15(clamp(x, -262143, 262143), 2580);    /* (ROOM's level) */
+        v = x - cn.hp + cn.he;                          /* the low cut, its step's remainder kept */
+        cn.he = v & 31;
+        cn.hp += v >> 5;
+        x = x - cn.hp;
+        cn.pre[cn.pw & 511u] = (int16_t)clamp(x, -32768, 32767);
+        x = cn.pre[(cn.pw - CN_PRE) & 511u];
+        cn.pw++;
+        for (k = 0; k < CN_NAP; k++) {                  /* the diffusers (g 0.7) */
+            int16_t *q = cn.ap + ao + cn.d[k];
+            int32_t yy = *q, w = x + sh_tz(yy * 11469, 14);
+            *q = (int16_t)clamp(w, -32768, 32767);
+            x = yy - ((w * 11469 + 8192) >> 14);
+            cn.d[k] = (uint16_t)(cn.d[k] + 1u >= CN_AP[k] ? 0u : cn.d[k] + 1u);
+            ao += CN_AP[k];
+        }
+        for (k = 0, off = 0; k < CN_NL; k++) {          /* the lines' ends: drifting, low-passed, scaled */
+            uint32_t len = CN_LEN[k], r8 = (uint32_t)(((CN_MOD + 2) << 8) +
+                                                     ((osc_sine(cn.ph * (1u + (k & 3u)) + k * 0x1B000000u) * CN_MOD) >> 7));
+            uint32_t p0 = cn.i[k] + (r8 >> 8), p1;
+            int32_t f = (int32_t)(r8 & 255u), z;
+            p0 = p0 >= len ? p0 - len : p0;
+            p1 = p0 + 1u >= len ? 0u : p0 + 1u;
+            z = cn.buf[off + p0] + (((cn.buf[off + p1] - cn.buf[off + p0]) * f + 128) >> 8);
+            z = tl_pole(&cn.lp[k], z, kd);
+            y[k] = z >= CN_LOUD || z <= -CN_LOUD ? (z * cn.g[k] + 16384) >> 15   /* (loud: to the nearest; */
+                                                 : sh_tz(z * cn.g[k], 15);               /* quiet: towards zero) */
+            off += len;
+        }
+        l = y[0] + y[2] + y[4] + y[6] - y[8] - y[10] + y[12] - y[14];   /* the outputs (signs spread) */
+        r = y[1] + y[3] - y[5] + y[7] + y[9] - y[11] + y[13] + y[15];
+        for (k = 1; k < CN_NL; k <<= 1)                 /* the matrix: Hadamard 16, a fast Walsh transform */
+            for (a = 0; a < (int32_t)CN_NL; a += (int32_t)(2u * k))
+                for (b = a; b < a + (int32_t)k; b++) {
+                    int32_t u = y[b], w = y[b + (int32_t)k];
+                    y[b] = u + w;
+                    y[b + (int32_t)k] = u - w;
+                }
+        for (k = 0, off = 0; k < CN_NL; k++) {          /* back into the lines, / 4, with the send */
+            cn.buf[off + cn.i[k]] = (int16_t)clamp(sh_tz(y[k], 2) + ((k & 1u) ? -x : x), -32768, 32767);
+            cn.i[k] = (uint16_t)(cn.i[k] + 1u >= CN_LEN[k] ? 0u : cn.i[k] + 1u);
+            off += CN_LEN[k];
+        }
+        {                                               /* back to 44.1 kHz, between samples */
+            int32_t mm = ((l + r) * 3) >> 1, ss = ((l - r) * 3) >> 1;   /* (x 1.5: HALL's level, tests/concert_test.c) */
+            out[2u * i] += (mp + mm) >> 1;
+            out[2u * i + 1u] += mm;
+            rev_side[2u * i] = (sp + ss) >> 1;
+            rev_side[2u * i + 1u] = ss;
+            mp = mm;
+            sp = ss;
+        }
+    }
+    cn.m = mp, cn.s = sp;
+    hl.side = 1;
+}
+#endif
+
 #ifdef FELUCCA_NATIVE
 #include "fx_native.c"                                   /* (Fel-Tracker) the native image's reverbs: CONCERT, CAVERN, SHIMMER */
 #define RT_LAST 6
 #else
-#define RT_LAST 3
+#define RT_LAST 4                                        /* (2026-10: the device's CONCERT) */
 #endif
 
 /* (Fel-Tracker) GATED (G_RTYPE 3): HALL, dense, cut off sharply: a hit in the send opens the gate, it stays open for
@@ -573,6 +685,8 @@ static void rev_clear(void)
     gt.hold = 0;
 #ifdef FELUCCA_NATIVE
     rev_native_clear();
+#else
+    concert_clear();
 #endif
 }
 
@@ -591,6 +705,10 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
 #ifdef FELUCCA_NATIVE
     if (fx.rtype >= 4u)
         rev_native(fx.rtype, rev_in, t, ts, n);
+    else
+#else
+    if (fx.rtype == 4u)
+        rev_concert(rev_in, t, n);
     else
 #endif
     if (fx.rtype == 3u)
@@ -769,6 +887,9 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
 #ifdef FELUCCA_NATIVE
     else if (rt >= 4)
         rev_native((uint32_t)rt, rev_in, wet, wside, n);
+#else
+    else if (rt == 4)
+        rev_concert(rev_in, wet, n);
 #endif
     else if (rt == 3)
         rev_gated(rev_in, wet, n);

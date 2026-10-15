@@ -273,9 +273,9 @@ async function editorMock() {
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 10)));
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 0)));
     const d26 = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 26)));
-    ok(rd.label === "TYPE" && rd.def === 2 && eq(rd.names, ["ROOM", "SPRING", "HALL", "GATED"]) && r1.value === 3 && r0.value === 0 &&
+    ok(rd.label === "TYPE" && rd.def === 2 && eq(rd.names, ["ROOM", "SPRING", "HALL", "GATED", "CONCERT"]) && r1.value === 4 && r0.value === 0 &&
        d26.label === "-" && d26.max === 0 && info.gcount === 27,
-      "editor: REVERB TYPE (ROOM / SPRING / HALL / GATED, global id 24; 26 still inert)");
+      "editor: REVERB TYPE (ROOM / SPRING / HALL / GATED / CONCERT, global id 24; 26 still inert)");
   }
   {
     /* FX > DLY 2 TYPE (G_DTYPE 25, the old drum level's id, Fel-Tracker 1.5): CLEAN (0, the default) / TAPE / WORN / PING / DUAL;

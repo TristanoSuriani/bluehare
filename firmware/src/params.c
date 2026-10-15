@@ -39,7 +39,8 @@ static const char *const N_DASH[] = {"--"};
 #ifdef FELUCCA_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
 static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "CAVERN", "SHIMMER"};
 #else
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED"};   /* (Fel-Tracker: GATED, every build's) */
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT"};   /* (Fel-Tracker: GATED, every
+                                                                   * build's; CONCERT the device's since 2026-10) */
 #endif
 static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL"};   /* G_DTYPE: the delay bus's (fx.c
                                                                    * dly_tape; PING, DUAL: Fel-Tracker's, stereo) */

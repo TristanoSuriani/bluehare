@@ -19,7 +19,7 @@ kit_render 28
 breaks_render 188
 risers_render 510
 fmp_run 92
-fm1_alnk0_irq 80974
+fm1_alnk0_irq 23233
 fm1_timer5_irq 34509
 click_render 30
 mod_begin 168
@@ -34,8 +34,10 @@ rev_room 247
 rev_spring 127
 rev_hall 1994
 rev_side_mix 8
+mix_track 1360
+rev_concert 1356
 mono_lows 39
-dly_tape 123
+dly_tape 125
 dubsiren8_render 300
 dubchord_render 840
 wasp_render 578

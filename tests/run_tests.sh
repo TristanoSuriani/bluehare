@@ -330,6 +330,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_test" tests/reverb_test.c -lm
     mkdir -p build/reverb_demo
     slow run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, DELAY TYPE, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
+    compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/concert_test" tests/concert_test.c -lm
+    run "REVERB TYPE CONCERT (the device's): HALL's level, longer with SIZE, stable at the corners, exact silence, stereo, model changes" "$OUT/concert_test"
     compile $CC -O1 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/dual_test" tests/dual_test.c -lm
     run "DELAY TYPE DUAL: the left at TIME, the right at 3/4 of it, each its side, the echoes die away, FDBK 127 bounded" "$OUT/dual_test"
     compile $CC -O1 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/monolows_test" tests/monolows_test.c -lm
