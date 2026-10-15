@@ -2303,15 +2303,17 @@ static int test_layer(void)
     ok &= song.g[G_DTYPE] == 1 && str_eq(GP[G_DTYPE].names[song.g[G_DTYPE]], "TAPE");
     turn(EN_K1, 1);
     ok &= song.g[G_DTYPE] == 2 && str_eq(GP[G_DTYPE].names[2], "WORN");
+    turn(EN_K1, 1);
+    ok &= song.g[G_DTYPE] == 3 && str_eq(GP[G_DTYPE].names[3], "PING");
     turn(EN_K1, 5);
-    ok &= song.g[G_DTYPE] == 3 && str_eq(GP[G_DTYPE].names[3], "PING");   /* (Fel-Tracker: the last) */
-    turn(EN_K1, -2);
+    ok &= song.g[G_DTYPE] == 4 && str_eq(GP[G_DTYPE].names[4], "DUAL");   /* (Fel-Tracker 2026-10: the last) */
+    turn(EN_K1, -3);
     song.playing = 0;
     project_save(2);
     turn(EN_K1, -1);
     ok &= song.g[G_DTYPE] == 0;
     project_load(2);
-    bad += check("  DLY 2 page: TYPE CLEAN (power-on) / TAPE / WORN / PING on KNOB 1; a project keeps TAPE", ok && song.g[G_DTYPE] == 1);
+    bad += check("  DLY 2 page: TYPE CLEAN (power-on) / TAPE / WORN / PING / DUAL on KNOB 1; a project keeps TAPE", ok && song.g[G_DTYPE] == 1);
     go_title("CHORUS");
     bad += check("  CHORUS page: CRT CDP", cur_page()->fam == FAM_FX && cur_page()->id[0] == G_CRATE &&
                  cur_page()->id[1] == G_CDEPTH && cur_page()->id[2] == 0xFFu);

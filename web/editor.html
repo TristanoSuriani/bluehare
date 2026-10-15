@@ -1255,7 +1255,7 @@ function makeMockDevice(opt = {}) {
     E("SET", NGO, 0),
     E("CLRSQ", NGO, 0), E("INIT", NGO, 0),
     E("TYPE", ["ROOM", "SPRING", "HALL", "GATED"], 2),   /* G_RTYPE (id 24, was G_DRCH): the reverb's model (HALL: 1.2; GATED: Fel-Tracker) */
-    E("TYPE", ["CLEAN", "TAPE", "WORN", "PING"], 0),   /* G_DTYPE (id 25, was G_DRLVL): the delay's (Fel-Tracker 1.5; PING after) */
+    E("TYPE", ["CLEAN", "TAPE", "WORN", "PING", "DUAL"], 0),   /* G_DTYPE (id 25, was G_DRLVL): the delay's (Fel-Tracker 1.5; PING, DUAL after) */
     D("-", F.INT, 0, 0, 0),                         /* G_DRREV: inert since 1.0 */
   ];
   const NONE = D("-", F.INT, 0, 0, 0);

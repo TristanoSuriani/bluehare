@@ -41,8 +41,8 @@ static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCER
 #else
 static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED"};   /* (Fel-Tracker: GATED, every build's) */
 #endif
-static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING"};   /* G_DTYPE: the delay bus's (fx.c dly_tape;
-                                                                   * PING: Fel-Tracker's, left and right in turn) */
+static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL"};   /* G_DTYPE: the delay bus's (fx.c
+                                                                   * dly_tape; PING, DUAL: Fel-Tracker's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
 static const char *const N_SLCR[] = {"OFF", "GATE", "STUT"};             /* SL_OFF .. SL_STUT (slicer.c) */
 static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"};   /* SL_DEN */

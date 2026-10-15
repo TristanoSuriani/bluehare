@@ -13,7 +13,10 @@
  * (dly_tape): the read wobbles (wow ~0.5 Hz, flutter ~6 Hz, read between samples), the time glides (TIME turned, the
  * tempo changed: the echoes bend in pitch), the loop low-passed (COLR) and high-passed (thinner each pass) and
  * saturated, so FDBK past ~95 runs away into a bounded howl and settles when turned back. WORN: more wow and flutter,
- * darker, thinner, driven harder. */
+ * darker, thinner, driven harder.
+ * DUAL (Fel-Tracker 2026-10): a true stereo delay, two lines in dly_buf's halves (up to 0.74 s each, as PING): the left
+ * echoes at TIME, the right at three quarters of it (a straight time against its dotted one: 1/4 left, 3/16 right),
+ * each its own low-passed loop (COLR, FDBK), a quarter of each fed into the other's (the echoes cross and smear) */
 #define DLY_LEN DEV_NAT(65536u, 1048576u)   /* 1.49 s: 1/4 at 40 BPM fits (native: 23.8 s, 4BAR at 41 BPM; PING's right
                                               * side 11.9 s) */
 #define CHO_LEN 2048u
@@ -29,7 +32,7 @@ static union {                          /* ROOM's allpasses; SPRING's allpass ch
 #define rev_ap (rev_u.ap)
 static struct {
     uint32_t dly_w, cho_w, cho_ph;
-    int32_t dly_lp;
+    int32_t dly_lp, dly_lp2;             /* (dly_lp2: DUAL's right line) */
     uint16_t comb_i[4], ap_i[2];
     int32_t comb_lp[4];
     uint8_t rtype;                       /* the reverb model running (G_RTYPE: 0 ROOM, 1 SPRING, 2 HALL, 3 GATED; native: 4
@@ -662,15 +665,15 @@ static __attribute__((noinline)) void dly_tape(const int32_t *dly_in, int32_t *w
 static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet,
                      uint32_t n)
 {
-    uint32_t i, dl = delay_samples(), dt = (uint32_t)song.g[G_DTYPE], ping = dt == 3u, dl2;
+    uint32_t i, dl = delay_samples(), dt = (uint32_t)song.g[G_DTYPE], ping = dt == 3u, dual = dt == 4u, dl2;
     int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240, fb2;
     int32_t dmix = song.g[G_DMIX] * 258;
     int32_t cdepth = song.g[G_CDEPTH] * 6, rt;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL;
     dt = dt <= 2u ? dt : 0u;                          /* (PING: CLEAN's loop, two reads) */
-    if (ping && dl > (DLY_LEN - 4u) / 2u)
-        dl = (DLY_LEN - 4u) / 2u;                     /* (the right one at twice the time: 0.74 s at most) */
-    dl2 = dl * 2u;
+    if ((ping || dual) && dl > (DLY_LEN - 4u) / 2u)
+        dl = (DLY_LEN - 4u) / 2u;                     /* (PING's right one at twice the time, DUAL's halves: 0.74 s) */
+    dl2 = dual ? dl * 3u / 4u : dl * 2u;
     fb2 = mulq15(fb, fb);                             /* PING's loop: a pair of echoes a pass */
     if (dt && !fx.dtype) {                            /* CLEAN -> TAPE / WORN: the read starts where CLEAN's is */
         fx.tp_d8 = (int32_t)(dl << 8);
@@ -725,6 +728,23 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             fx.dly_w++;
             el = mulq15(xl << 1, dmix);
             er = mulq15(mulq15(xr, fb) << 1, dmix);
+            wet[i] = y + ((el + er) >> 1);
+            wside[i] = sd + ((el - er) >> 1);
+            continue;
+        }
+        if (dual) {                                   /* DUAL: two lines, the left at dl, the right at 3/4 of it */
+            const uint32_t H = DLY_LEN / 2u;
+            int32_t xl = dly_buf[(fx.dly_w - dl) & (H - 1u)], xr = dly_buf[H + ((fx.dly_w - dl2) & (H - 1u))];
+            int32_t el, er, ml, mr;
+            fx.dly_lp += mulq15(xl - fx.dly_lp, col);
+            fx.dly_lp2 += mulq15(xr - fx.dly_lp2, col);
+            ml = fx.dly_lp - (fx.dly_lp >> 2) + (fx.dly_lp2 >> 2);   /* (3/4 its own, 1/4 the other's) */
+            mr = fx.dly_lp2 - (fx.dly_lp2 >> 2) + (fx.dly_lp >> 2);
+            dly_buf[fx.dly_w & (H - 1u)] = (int16_t)clamp((dly_in[i] >> 1) + mulq15(ml, fb), -32768, 32767);
+            dly_buf[H + (fx.dly_w & (H - 1u))] = (int16_t)clamp((dly_in[i] >> 1) + mulq15(mr, fb), -32768, 32767);
+            fx.dly_w++;
+            el = mulq15(xl << 1, dmix);
+            er = mulq15(xr << 1, dmix);
             wet[i] = y + ((el + er) >> 1);
             wside[i] = sd + ((el - er) >> 1);
             continue;
