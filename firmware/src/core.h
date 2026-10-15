@@ -424,6 +424,12 @@ static inline int tw_has(uint32_t k) { return k >= TW_FIRST && k < NTRK; }
 #define TD_MAX 15u
 #define TD_KEY 16u
 static uint8_t trk_duck[NTRK];
+/* (Fel-Tracker, 2026-10) PAN MODE (SETTINGS' PAN MODE; project.c version 7): trk_pmode[k] TP_ALT the voices left, right,
+ * left .. of PAN by SPRD (SPREAD as it was: POLY and UNISON), TP_RND each new voice on a side picked at random, in every
+ * voice mode, by SPRD (half the width at SPRD 0): hats, plucks, arps that move. A sounding voice keeps its side */
+#define TP_ALT 0u
+#define TP_RND 1u
+static uint8_t trk_pmode[NTRK];
 static void trk_mix_defaults(void)
 {
     uint32_t k;
@@ -431,6 +437,7 @@ static void trk_mix_defaults(void)
         trk_width[k] = (uint8_t)(tw_has(k) ? TW_DEF : 0u);
         trk_lowcut[k] = (uint8_t)(tw_has(k) ? TL_DEF : 0u);
         trk_duck[k] = 0;
+        trk_pmode[k] = TP_ALT;
     }
 }
 

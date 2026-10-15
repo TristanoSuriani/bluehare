@@ -886,7 +886,15 @@ async function editorTracker() {
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const tk = info.tracker;
   ok(tk && tk.pats === 24 && tk.rows === 64 && tk.insts === 63 && tk.ncmd === TK.FX.length && tk.order === 128 && tk.vars === 4 &&
-     tk.wfirst === 2 && tk.duck && info.ratchet === 4, "tracker: INFO 58 05 24 64 63 16 (128) 4 2, the last tag (05: DUCK)");
+     tk.wfirst === 2 && tk.duck && tk.pan && info.ratchet === 4, "tracker: INFO 58 06 24 64 63 16 (128) 4 2, the last tag (05: DUCK, 06: PAN MODE)");
+  {   /* (Fel-Tracker 2026-10) PAN MODE (op 13) */
+    let pm = P(await rq(E.req.tkPan()));
+    ok(pm.op === TK.PAN && eq(pm.pan, [0, 0, 0, 0]), "tracker: PAN MODE: ALT everywhere at power-on");
+    pm = P(await rq(E.req.tkPan(3, 1)));
+    ok(!pm.rc && eq(pm.pan, [0, 0, 0, 1]) && eq(m.tracker.pan, [0, 0, 0, 1]), "tracker: PAN MODE: track 4 RND");
+    ok(P(await rq([C.TRACKER, [TK.PAN, 1, 2]])).rc === 1, "tracker: PAN MODE 2: rc 1");
+    await rq(E.req.tkPan(3, 0));
+  }
   {   /* (Fel-Tracker) DUCK (op 12) */
     let dk = P(await rq(E.req.tkDuck()));
     ok(dk.op === TK.DUCK && eq(dk.duck, [0, 0, 0, 0]), "tracker: DUCK: none at power-on");

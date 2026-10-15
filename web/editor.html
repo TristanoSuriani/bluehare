@@ -473,10 +473,11 @@ const parse = {
                                                      vars (03, Fel-Tracker: the variations; 02 without them: cells with a
                                                      chord; 01 was never released) */
     const tk4 = trailer.length - 10, tk = trailer.length - 9, tk2 = trailer.length - 8;
-    if (o.uiCaps && tk4 > 0 && trailer[tk4] === 0x58 && (trailer[tk4 + 1] === 4 || trailer[tk4 + 1] === 5))   /* 04: WIDTH (op 11)
-                                                       * from track wfirst; 05 (Fel-Tracker): DUCK (op 12) too */
+    if (o.uiCaps && tk4 > 0 && trailer[tk4] === 0x58 && (trailer[tk4 + 1] >= 4 && trailer[tk4 + 1] <= 6))   /* 04: WIDTH (op 11)
+                                                       * from track wfirst; 05 (Fel-Tracker): DUCK (op 12) too; 06: PAN MODE (op 13) */
       o.tracker = { pats: trailer[tk4 + 2], rows: trailer[tk4 + 3], insts: trailer[tk4 + 4], ncmd: trailer[tk4 + 5],
-        order: trailer[tk4 + 6] | trailer[tk4 + 7] << 7, vars: trailer[tk4 + 8], wfirst: trailer[tk4 + 9], duck: trailer[tk4 + 1] >= 5 };
+        order: trailer[tk4 + 6] | trailer[tk4 + 7] << 7, vars: trailer[tk4 + 8], wfirst: trailer[tk4 + 9], duck: trailer[tk4 + 1] >= 5,
+        pan: trailer[tk4 + 1] >= 6 };
     else if (o.uiCaps && tk > 0 && trailer[tk] === 0x58 && trailer[tk + 1] === 3)
       o.tracker = { pats: trailer[tk + 2], rows: trailer[tk + 3], insts: trailer[tk + 4], ncmd: trailer[tk + 5],
         order: trailer[tk + 6] | trailer[tk + 7] << 7, vars: trailer[tk + 8] };
@@ -635,6 +636,10 @@ const parse = {
         o.duck = [];
         while (r.i < a.length) o.duck.push(r.b());
         break;
+      case TK.PAN:                                /* (Fel-Tracker 2026-10) NTRK x PAN MODE: 0 ALT, 1 RND */
+        o.pan = [];
+        while (r.i < a.length) o.pan.push(r.b());
+        break;
     }
     return o;
   },
@@ -645,11 +650,13 @@ const parse = {
    1..63), FX command (TK.FX's letters; 0 none) and its value 0..127, and a chord: two intervals above the note (i1, i2:
    0 none, 1..15 semitones). As the device shows it: "C-4 01 C40", "C-4 MAJ 01 C40", "C-4 +2+9 01 ..." */
 const TK = {
-  STATUS: 0, PATTERN: 1, CELLS: 2, LENGTH: 3, ORDER: 4, INSTR: 5, FILTER: 6, PLAY: 7, CLEAR: 8, VAR: 9, VARCOUNT: 10, WIDTH: 11, DUCK: 12,
+  STATUS: 0, PATTERN: 1, CELLS: 2, LENGTH: 3, ORDER: 4, INSTR: 5, FILTER: 6, PLAY: 7, CLEAR: 8, VAR: 9, VARCOUNT: 10, WIDTH: 11, DUCK: 12, PAN: 13,
   /* (Fel-Tracker) a track's WIDTH (0 off, 1..20 ms) and LOW CUT (an index into LOWCUT_HZ; core.h TL_HZ) */
   WIDTH_MAX: 20, LOWCUT_HZ: [0, 40, 60, 80, 120, 160, 240, 320],
   /* (Fel-Tracker) a track's DUCK (core.h trk_duck): 0 off, 1..15 how deep the key ducks it, DUCK_KEY the key */
   DUCK_MAX: 15, DUCK_KEY: 16,
+  /* (Fel-Tracker 2026-10) a track's PAN MODE (core.h trk_pmode): ALT the voices left, right, .. by SPRD; RND each a side at random */
+  PAN_MODES: ["ALT", "RND"],
   OFF: 127, ROWS_MAX: 16, CELLS_MAX: 64,
   /* (Fel-Tracker) an order entry: the pattern in bits 0..4, its variation A..D in 5..6 ("03B") */
   VLET: "ABCD", opat: (x) => x & 31, ovar: (x) => (x >> 5) & 3, oent: (p, v) => (p & 31) | (v & 3) << 5,
@@ -811,6 +818,7 @@ const req = {
   /* (Fel-Tracker) variation v of pattern p, x {bpm, mute, chance[NTRK], vo[NTRK][7]} to write it (v = the count: added) */
   tkVar: (p, v, x) => [CMD.TRACKER, x == null ? [TK.VAR, p & 0x7F, v & 3] : [TK.VAR, p & 0x7F, v & 3, ...v14enc(x.bpm), ...v14enc(x.mute),
     ...x.chance.map((c) => Math.max(0, Math.min(100, c | 0))), ...x.vo.flatMap((t) => t.flatMap((y) => v14enc(y)))]],
+  tkPan: (track, mode) => [CMD.TRACKER, track == null ? [TK.PAN] : [TK.PAN, track & 7, Math.max(0, Math.min(1, mode | 0))]],
   tkDuck: (track, duck) => [CMD.TRACKER, track == null ? [TK.DUCK] : [TK.DUCK, track & 7, Math.max(0, Math.min(16, duck | 0))]],
   tkWidth: (track, width, lowcut) => [CMD.TRACKER, track == null ? [TK.WIDTH] : [TK.WIDTH, track & 7, Math.max(0, Math.min(20, width | 0)), Math.max(0, Math.min(7, lowcut | 0))]],
   tkVarCount: (p, n) => [CMD.TRACKER, n == null ? [TK.VARCOUNT, p & 0x7F] : [TK.VARCOUNT, p & 0x7F, Math.max(1, Math.min(4, n | 0))]],
@@ -1869,6 +1877,7 @@ function makeMockDevice(opt = {}) {
     nvar: new Array(TKP).fill(1), vars: Array.from({ length: TKP }, () => Array.from({ length: 4 }, () => TK.varDefault(4))),
     width: [0, 0, 12, 12], lowcut: [0, 0, 4, 4],    /* (core.h trk_width, trk_lowcut: the last two tracks of four) */
     duck: [0, 0, 0, 0],                             /* (core.h trk_duck) */
+    pan: [0, 0, 0, 0],                              /* (core.h trk_pmode) */
   };
   /* instruments 01..04: the power-on sounds (tracker.c tk_defaults: engines.c TRK_DEF) */
   TRK_DEF.slice(0, 4).forEach(([e, p], i) => { tk.instr[i] = { kind: 1, a: e, b: p }; });
@@ -2051,7 +2060,7 @@ function makeMockDevice(opt = {}) {
           b(16);
           if (st.uiCaps) { b(0x55); b(1); b(st.uiCaps); b(0x4d); b(1); b(64); b(1); 
             if (syncCaps()) { b(0x53); b(1); b(syncCaps()); if (ratchetOn()) { b(0x52); b(1); b(4); } }
-            if (tkOn()) { b(0x58); b(5); b(TKP); b(TKR); b(TKI); b(TK.FX.length); b(TKO); b(TKO >> 7); b(4); b(2); } }   /* 1.5: the tracker, last */
+            if (tkOn()) { b(0x58); b(6); b(TKP); b(TKR); b(TKI); b(TK.FX.length); b(TKO); b(TKO >> 7); b(4); b(2); } }   /* 1.5: the tracker, last */
         }
         break;
       case CMD.GET: case CMD.SET: {
@@ -2260,6 +2269,13 @@ function makeMockDevice(opt = {}) {
             else tk.duck[x[0]] = x[1];
           }
           b(op); b(rc); for (let k = 0; k < 4; k++) b(tk.duck[k]);
+        } else if (op === TK.PAN) {                 /* (Fel-Tracker 2026-10) editor_tracker.c EDT_PAN */
+          if (x.length && (x.length !== 2 || x[0] >= 4)) return null;
+          if (x.length) {
+            if (x[1] > 1) rc = 1;
+            else tk.pan[x[0]] = x[1];
+          }
+          b(op); b(rc); for (let k = 0; k < 4; k++) b(tk.pan[k]);
         } else return null;
         break;
       }
@@ -3619,6 +3635,7 @@ async function tkReadSong(d = dev) {
   d.tk.filter = (await tkRq(d, req.tkFilter())).filter;
   if (d.info.tracker.wfirst != null) d.tk.width = await tkRq(d, req.tkWidth());   /* (Fel-Tracker) WIDTH, LOW CUT */
   if (d.info.tracker.duck) d.tk.duck = await tkRq(d, req.tkDuck());               /* (Fel-Tracker) DUCK */
+  if (d.info.tracker.pan) d.tk.pan = await tkRq(d, req.tkPan());                  /* (Fel-Tracker 2026-10) PAN MODE */
   if (tkVarsOn(d)) {                               /* (Fel-Tracker) the patterns' counts, the variation shown */
     for (let p = 0; p < d.info.tracker.pats; p++) d.tk.nvar[p] = (await tkRq(d, req.tkVarCount(p))).nvar;
     if (tkUI.vvar >= (d.tk.nvar[tkUI.vpat] || 1)) tkUI.vvar = 0;
@@ -3852,6 +3869,19 @@ function renderTkSettings() {
       sel.addEventListener("change", async () => {
         const dd = dev;
         try { dd.tk.duck = tkFail(await tkRq(dd, req.tkDuck(k, +sel.value))); } catch (err) { report(err); }
+        if (dd === dev) renderTkSettings();
+      });
+      return el("td", {}, sel);
+    })));
+  }
+  if (d.tk.pan) {                                  /* (Fel-Tracker 2026-10) PAN MODE: ALT, RND */
+    rows.push(el("tr", {}, el("th", { text: "PAN MODE" }), ...tkCols(d).map((k) => {
+      const sel = el("select", { "aria-label": `PAN MODE ${t("tkTrack")} ${k + 1}` },
+        ...TK.PAN_MODES.map((name, i) => el("option", { value: i, text: name })));
+      sel.value = String(d.tk.pan.pan[k] || 0);
+      sel.addEventListener("change", async () => {
+        const dd = dev;
+        try { dd.tk.pan = tkFail(await tkRq(dd, req.tkPan(k, +sel.value))); } catch (err) { report(err); }
         if (dd === dev) renderTkSettings();
       });
       return el("td", {}, sel);

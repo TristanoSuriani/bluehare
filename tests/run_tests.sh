@@ -299,6 +299,8 @@ if [ -f build/gen/felucca_tables.h ]; then
         compile $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/duck_test$n" tests/duck_test.c -lm
         run "DUCK ($n tracks): the key ducks a pad at once and lets it back, as deep as its DUCK; none without a key; the store, the editor" "$OUT/duck_test$n"
     done
+    compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/panmode_test" tests/panmode_test.c -lm
+    run "PAN MODE: ALT at power-on (SPREAD in turn), RND a side at random (POLY, and MONO at half width), the store, the editor" "$OUT/panmode_test"
     for n in 4 8; do
         compile $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/variation_test$n" tests/variation_test.c -lm
         run "variations ($n tracks): tempo, mutes, chance, sends and SLICER over the tracks', STOP, the store, bounds" "$OUT/variation_test$n"

@@ -835,6 +835,8 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     int32_t *d = spread_buf;
     uint32_t i;
     int32_t lvl = LEVEL_Q12[t->p[P_LEVEL] & 127], pan = t->p[P_PAN], s = (t->p[P_SPRD] + 1) >> 1;
+    if (!s)
+        s = 32;                                         /* (PAN MODE RND at SPRD 0: half the width) */
     int32_t pa = clamp(pan - s, -64, 63), pb = clamp(pan + s, -64, 63);
     int32_t gla = 4096 - (pa > 0 ? pa * 64 : 0), gra = 4096 + (pa < 0 ? pa * 64 : 0);
     int32_t glb = 4096 - (pb > 0 ? pb * 64 : 0), grb = 4096 + (pb < 0 ? pb * 64 : 0);
@@ -939,7 +941,8 @@ static void mix_part(track_t *t, uint32_t n)
     int32_t *b = part_buf;
     uint32_t i;
     mod_begin(t);                                       /* the matrix's per-block values into t->p (mod.c) */
-    spread_on = t->p[P_SPRD] > 0 && (trk_vmode(t) == V_POLY || trk_vmode(t) == V_UNISON);   /* (SPREAD, mix_spread) */
+    spread_on = (t->p[P_SPRD] > 0 && (trk_vmode(t) == V_POLY || trk_vmode(t) == V_UNISON)) ||   /* (SPREAD, mix_spread; */
+                trk_pmode[(uint32_t)(t - trk) % NTRK] == TP_RND;                                   /* PAN MODE RND: any) */
     if (track_render(t, b, n))
         t->tail = 16;                                   /* blocks of DIST state to run out after the last voice */
     else if ((!t->tail || !tp_vo(t, VO_DIST) || !--t->tail) && !slicer_busy(t)) {

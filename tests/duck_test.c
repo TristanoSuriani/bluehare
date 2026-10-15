@@ -88,7 +88,7 @@ int main(void)
     project_new();
     ok &= !trk_duck[0] && !trk_duck[NTRK - 1u];
     project_load(0);
-    ok &= proj_ram[0][PROJ_HDR] == 6u && trk_duck[0] == TD_KEY && trk_duck[NTRK - 1u] == 9u;
+    ok &= proj_ram[0][PROJ_HDR] >= 6u && trk_duck[0] == TD_KEY && trk_duck[NTRK - 1u] == 9u;
     bad += check("the store: version 6 keeps DUCK; a new song has none", ok);
 
     /* the editor's DUCK (op 12) */

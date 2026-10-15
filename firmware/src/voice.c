@@ -285,8 +285,17 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     if (!sounding) {
         v->env = 0;
         v->env_out = 0;
-        v->side = t->sp_alt;                            /* SPREAD: left, right, left .. (UNISON: mono_play); a */
-        t->sp_alt ^= 1u;                                /* sounding voice keeps its side (no jump) */
+        uint32_t k = (uint32_t)(t - trk);
+        if (k < NTRK && trk_pmode[k] == TP_RND) {       /* (Fel-Tracker: PAN MODE RND) a side at random */
+            static uint32_t pm_rng = 0x9E3779B9u;
+            pm_rng ^= pm_rng << 13;
+            pm_rng ^= pm_rng >> 17;
+            pm_rng ^= pm_rng << 5;
+            v->side = (uint8_t)(pm_rng >> 31);
+        } else {
+            v->side = t->sp_alt;                        /* SPREAD: left, right, left .. (UNISON: mono_play); a */
+            t->sp_alt ^= 1u;                            /* sounding voice keeps its side (no jump) */
+        }
     }                                                   /* sounding: the attack starts from the current level */
     e->note_on(t, v);
     if (sounding && !e->sampled) {                     /* retrigger / steal: keep phases and filter */
@@ -326,7 +335,9 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
                 continue;                                   /* no room for this extra UNISON voice */
             /* level: about the same sum for 8 or 4 voices at random phases */
             voice_start(t, v, note, nv >= UNISON_MAX ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
-            v->side = (uint8_t)(i & 1u);                    /* SPREAD: the detuned voices alternate */
+            if (nv > 1u || (t - trk < (int32_t)NTRK && trk_pmode[t - trk] != TP_RND))
+                v->side = (uint8_t)(i & 1u);                /* SPREAD: the detuned voices alternate (RND, one voice: */
+                                                            /* voice_start's side) */
             if (nv > 1u && i && !ENGINES[t->engine]->sampled) {   /* random start phases: */
                 static uint32_t seed = 0x1234567u;          /* in phase they stack, evenly spread they cancel */
                 seed = seed * 1664525u + 1013904223u;

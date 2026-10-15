@@ -630,12 +630,13 @@ static void tk_draw_song(void)
 #define TKS_WIDTH 0xFCu                  /* (Fel-Tracker) core.h trk_width, trk_lowcut: the track's place in the mix */
 #define TKS_LOWCUT 0xFBu
 #define TKS_DUCK 0xFAu                   /* (Fel-Tracker) core.h trk_duck: OFF, 1..15 ducked that deep, KEY the one that ducks */
+#define TKS_PMODE 0xF9u                  /* (Fel-Tracker 2026-10) core.h trk_pmode: ALT, RND */
 static const struct { const char *label; uint8_t id; } TK_SET[] = {
     {"ATTACK", P_ATK}, {"DECAY", P_DEC}, {"SUSTAIN", P_SUS}, {"RELEASE", P_REL},
     {"CUTOFF", TKS_CUT}, {"RESO", TKS_RES}, {"FLT ENV", P_ED_FLT},
     {"DIST", P_DIST}, {"CHORUS", P_CHOR}, {"DELAY", P_DLY}, {"REVERB", P_REV},
     {"LEVEL", P_LEVEL}, {"PAN", P_PAN}, {"WIDTH", TKS_WIDTH}, {"LOW CUT", TKS_LOWCUT},
-    {"DUCK", TKS_DUCK},
+    {"DUCK", TKS_DUCK}, {"PAN MODE", TKS_PMODE},
 };
 #define TK_NSET ((uint32_t)NELEM(TK_SET))
 static void tk_set_value(uint32_t row, uint32_t k, char *val)     /* track k's value of setting row (val: 8) */
@@ -651,6 +652,10 @@ static void tk_set_value(uint32_t row, uint32_t k, char *val)     /* track k's v
             fmt_int(val, trk_width[k % NTRK]);
             str_cpy(val + str_len(val), "MS", 8 - str_len(val));
         }
+        return;
+    }
+    if (id == TKS_PMODE) {                          /* ALT, RND */
+        str_cpy(val, trk_pmode[k % NTRK] == TP_RND ? "RND" : "ALT", 8);
         return;
     }
     if (id == TKS_DUCK) {                           /* OFF, "1" .. "15" (how deep), KEY */
@@ -1185,6 +1190,10 @@ static void tk_knob_set(uint32_t k, int32_t s)
 {
     uint32_t id = TK_SET[tku.srow % TK_NSET].id;
     track_t *t = &trk[k % NTRK];
+    if (id == TKS_PMODE) {                          /* (Fel-Tracker 2026-10) ALT, RND */
+        trk_pmode[k % NTRK] = s > 0 ? TP_RND : TP_ALT;
+        return;
+    }
     if (id == TKS_DUCK) {                           /* (Fel-Tracker) OFF, 1..15, then KEY */
         trk_duck[k % NTRK] = (uint8_t)clamp((int32_t)trk_duck[k % NTRK] + (s > 0 ? 1 : -1), 0, TD_KEY);
         return;
@@ -1383,6 +1392,8 @@ static int tk_edit_tap(void)
             trk_lowcut[song.sel] = (uint8_t)(tw_has(song.sel) ? TL_DEF : 0u);
         else if (id == TKS_DUCK)
             trk_duck[song.sel] = 0;
+        else if (id == TKS_PMODE)
+            trk_pmode[song.sel] = TP_ALT;
         else if (id == TKS_CUT || id == TKS_RES)
             (id == TKS_CUT ? tk.cut : tk.res)[song.sel] = TK_INST_VAL;
         else
