@@ -931,13 +931,6 @@ static void confirm_text(char *a, char *b)
     case CF_INIT_SOUND:
         str_cpy(a, "INITIALIZE SOUND?", 24);
         break;
-    case CF_DEL_VAR: {                                /* (Fel-Tracker) "DELETE VARIATION 03B?" */
-        static const char HX[] = "0123456789ABCDEF";
-        str_cpy(a, "DELETE VARIATION ", 24);
-        a[17] = HX[(k >> 2) >> 4 & 15u]; a[18] = HX[(k >> 2) & 15u]; a[19] = (char)('A' + (k & 3u)); a[20] = '?'; a[21] = 0;
-        str_cpy(b, "ITS POSITIONS PLAY A", 24);
-        break;
-    }
     case CF_OVR_USER:
         str_cpy(a, "OVERWRITE ", 24);
         up_slot_label(a + str_len(a), k);

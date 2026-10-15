@@ -440,11 +440,10 @@ static void tk_info(void)
     } else if (g == GR_TKVAR) {
         uint32_t vp, vv;
         tk_vtarget(&vp, &vv);
-        str_cpy(a, "VARIATION ", sizeof a);
+        (void)vv;
+        str_cpy(a, "PAT SET ", sizeof a);
         tk_hex2(h, vp);
         str_cpy(a + str_len(a), h, sizeof a - str_len(a));
-        a[str_len(a) + 1u] = 0;
-        a[str_len(a)] = TK_VLET[vv];
         str_cpy(b, tku.pos < tk.norder ? "POS " : "LOOP", sizeof b);
         if (tku.pos < tk.norder) {
             tk_hex2(h, tku.pos);
@@ -608,8 +607,7 @@ static void tk_draw_song(void)
             str_cpy(b, "PATTERN ", sizeof b);
             tk_hex2(h, TK_OPAT(tk.order[q]));
             str_cpy(b + 8, h, sizeof b - 8);
-            b[10] = TK_VLET[TK_OVAR(tk.order[q])];       /* (Fel-Tracker: its variation, "03B") */
-            b[11] = 0;
+            b[10] = 0;
             cv_text(40, 1, &AF_S, b, fg);
             str_cpy(b, "LEN ", sizeof b);
             tk_hex2(h, tk_len(TK_OPAT(tk.order[q])));
@@ -742,18 +740,15 @@ static void tk_vtarget(uint32_t *p, uint32_t *v)
         *v = tk_pl.loop_var % TK_VARS;
     }
 }
-enum { TV_TEMPO, TV_MUTE, TV_CHANCE, TV_VO };   /* the rows: then one a VO_* (the sends, the SLICER), then DELETE */
-#define TV_DEL (TV_VO + VO_N)
-#define TK_NVROW (TV_DEL + 1u)
+enum { TV_TEMPO, TV_MUTE, TV_CHANCE, TV_VO };   /* the rows: then one a VO_* (the sends, the SLICER) */
+#define TK_NVROW (TV_VO + VO_N)
 static const char *const TV_LABEL[TK_NVROW] = {"TEMPO", "MUTE", "CHANCE", "DIST", "CHORUS", "DELAY", "REVERB",
-                                               "SLICER", "SL PAT", "SL RATE", "DELETE"};
+                                               "SLICER", "SL PAT", "SL RATE"};
 static void tk_var_value(const tk_var_t *x, uint32_t row, uint32_t k, char *val)   /* (val: 8) */
 {
     uint32_t v;
     const char *unit;
-    if (row == TV_DEL) {
-        val[0] = 0;
-    } else if (row == TV_TEMPO) {
+    if (row == TV_TEMPO) {
         if (x->bpm)
             fmt_int(val, x->bpm);
         else
@@ -780,10 +775,8 @@ static void tk_draw_var(void)
         char val[VIEW_N][8];
         if (q < TK_NVROW)
             for (k = 0; k < VIEW_N; k++) {          /* (8 tracks: the view's four; TEMPO: one) */
-                if ((q == TV_TEMPO && k) || (q == TV_DEL && k))
+                if (q == TV_TEMPO && k)
                     val[k][0] = 0;
-                else if (q == TV_DEL)                   /* (DELETE: what EDIT deletes) */
-                    str_cpy(val[k], v ? "EDIT" : "-", 8);
                 else
                     tk_var_value(x, q, trk_view() + k, val[k]);
                 sig = str_hash(sig, val[k]);
@@ -832,9 +825,7 @@ static void tk_knob_var(uint32_t k, int32_t s)
     tk_var_t *x;
     tk_vtarget(&p, &v);
     x = &tk_var[p][v];
-    if (row == TV_DEL) {
-        return;
-    } else if (row == TV_TEMPO) {                   /* SONG, then 40 .. 240 (from the song's tempo) */
+    if (row == TV_TEMPO) {                          /* SONG, then 40 .. 240 (from the song's tempo) */
         int32_t b = x->bpm ? (int32_t)x->bpm + accel(EN_K1 + k, s, 200) : s > 0 ? song.g[G_BPM] : 0;
         if (k)
             return;
@@ -1019,10 +1010,9 @@ static void tk_foot(char *b, uint32_t n)
             str_cpy(b + str_len(b), h, n - str_len(b));
         }
     } else if (g == GR_TKSONG) {
-        str_cpy(b, "K2 PATTERN  K3 VARIATION  K4 INS/DEL", n);
+        str_cpy(b, "K2 PATTERN  K4 INS/DEL", n);
     } else if (g == GR_TKVAR) {
-        str_cpy(b, tku.vrow == TV_TEMPO ? "K1 TEMPO  EDIT SONG" : tku.vrow == TV_DEL ? "EDIT DELETES THIS VARIATION" :
-                   "K1-K4 TRACKS  EDIT KEEP", n);
+        str_cpy(b, tku.vrow == TV_TEMPO ? "K1 TEMPO  EDIT SONG" : "K1-K4 TRACKS  EDIT KEEP", n);
     } else if (g == GR_TKSET) {
         str_cpy(b, "K1-K4 TRACK 1-4  EDIT INST", n);
     } else {
@@ -1163,18 +1153,6 @@ static void tk_knob_song(uint32_t k, int32_t s)
             uint32_t p = (uint32_t)clamp((int32_t)TK_OPAT(tk.order[q]) + s, 0, TK_PATS - 1), v = TK_OVAR(tk.order[q]);
             tk.order[q] = TK_OENT(p, v < tk_nvar[p] ? v : 0u);   /* (its variation if the pattern has it, else A) */
         }
-    } else if (k == 2u && q < tk.norder) {          /* its variation (past the pattern's last: a new one, A's copy) */
-        uint32_t p = TK_OPAT(tk.order[q]), v = TK_OVAR(tk.order[q]);
-        int32_t nv = clamp((int32_t)v + (s > 0 ? 1 : -1), 0, TK_VARS - 1);
-        if ((uint32_t)nv >= tk_nvar[p]) {
-            nv = tk_nvar[p];
-            if ((uint32_t)nv >= TK_VARS)
-                return;
-            tk_var[p][nv] = tk_var[p][0];
-            tk_nvar[p] = (uint8_t)(nv + 1);
-            ui_message("NEW VARIATION");
-        }
-        tk.order[q] = TK_OENT(p, (uint32_t)nv);
     } else if (k == 3u && q < tk.norder) {          /* right: a copy after it; left: it goes */
         if (s > 0) {
             tk_order_insert(q + 1u, tk.order[q]);
@@ -1368,13 +1346,6 @@ static int tk_edit_tap(void)
         tk_var_t *x;
         tk_vtarget(&p, &v);
         x = &tk_var[p][v];
-        if (row == TV_DEL) {                        /* (A stays: the dialog for the others) */
-            if (v)
-                confirm_open(CF_DEL_VAR, p << 2 | v);
-            else
-                ui_message("A STAYS");
-            return 1;
-        }
         if (row == TV_TEMPO)
             x->bpm = 0;
         else if (row == TV_MUTE)

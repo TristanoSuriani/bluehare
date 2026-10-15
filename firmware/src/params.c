@@ -388,7 +388,8 @@ static const page_t PAGES[] = {
     /* 1.5: the tracker (ui_tracker.c). SEQ opens PATTERN, its taps go round these; GLO opens SONG */
     {"PATTERN", FAM_SEQ, SC_GLOBAL, GR_TKPAT, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"SONG", FAM_SEQ, SC_GLOBAL, GR_TKSONG, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"VARIATION", FAM_SEQ, SC_GLOBAL, GR_TKVAR, {0xFF, 0xFF, 0xFF, 0xFF}},   /* (Fel-Tracker) */
+    {"PAT SET", FAM_SEQ, SC_GLOBAL, GR_TKVAR, {0xFF, 0xFF, 0xFF, 0xFF}},   /* (Fel-Tracker: a pattern's own settings; the
+                                                                           * variations' A, the only one since 2026-10) */
     {"SETTINGS", FAM_SEQ, SC_GLOBAL, GR_TKSET, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"INSTR", FAM_SEQ, SC_GLOBAL, GR_TKINST, {0xFF, 0xFF, 0xFF, 0xFF}},
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5

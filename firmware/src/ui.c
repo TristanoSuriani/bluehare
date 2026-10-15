@@ -163,7 +163,7 @@ static struct {
 } ui;
 
 enum { CF_NONE, CF_CLEAR_SEQ, CF_CLEAR_TRK, CF_OVR_PROJ, CF_OVR_USER,
-       CF_DEL_ROW, CF_CLEAR_SONG, CF_INIT_SOUND, CF_ERASE_USER, CF_DEL_VAR };   /* (CF_DEL_VAR: Fel-Tracker) */   /* ui.confirm: TOOLS' clears; SAVE over a used
+       CF_DEL_ROW, CF_CLEAR_SONG, CF_INIT_SOUND, CF_ERASE_USER };   /* ui.confirm: TOOLS' clears; SAVE over a used
                                    * slot; USER ERASE */
 
 /* MENU > DISPLAY > SCREEN OFF (1.1.5): after a while with no input on the panel the screen goes dark (the backlight

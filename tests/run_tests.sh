@@ -302,8 +302,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/panmode_test" tests/panmode_test.c -lm
     run "PAN MODE: ALT at power-on (SPREAD in turn), RND a side at random (POLY, and MONO at half width), the store, the editor" "$OUT/panmode_test"
     for n in 4 8; do
-        compile $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/variation_test$n" tests/variation_test.c -lm
-        run "variations ($n tracks): tempo, mutes, chance, sends and SLICER over the tracks', STOP, the store, bounds" "$OUT/variation_test$n"
+        compile $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/patset_test$n" tests/patset_test.c -lm
+        run "a pattern's settings ($n tracks): tempo, mutes, chance, sends and SLICER over the tracks', STOP, the store, bounds, the editor" "$OUT/patset_test$n"
     done
     compile $CC -w -DFELUCCA_DIST=ref -DFELUCCA_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test4" tests/engines_test.c -lm
     run "a build without some engines (the ref build, 4 tracks): ids, substitutes, protocol, songs, presets; a version-2 song for the next" "$OUT/engines_test4"

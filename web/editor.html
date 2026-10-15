@@ -3599,7 +3599,8 @@ $("clearseq").addEventListener("click", async () => {
    transport. TRACKER_CHANGED (79) says what the device changed; STATUS is polled while the tab shows. */
 const tkHas = (d = dev) => !!d && !!d.info && !!d.info.tracker;
 const tkUI = { pat: 0, lastPlayPat: -1, reading: new Set(), vpat: 0, vvar: 0 };   /* (vpat, vvar: the variation shown) */
-const tkVarsOn = (d = dev) => tkHas(d) && (d.info.tracker.vars || 1) > 1;
+const tkVarsOn = (d = dev) => tkHas(d) && (d.info.tracker.vars || 0) >= 1;   /* (a pattern's settings: the variations' A) */
+const tkMultiVars = (d = dev) => tkVarsOn(d) && d.info.tracker.vars > 1;   /* (B .. D: firmware before the 2026-10 plan) */
 const tkRq = async (d, r, o) => parse[CMD.TRACKER](await sessionRequest(d, r, o));
 const tkFail = (r) => { if (r.rc) throw new Error(t(r.rc === 2 ? "tkBusy" : "tkBad")); return r; };
 async function tkLoad(d = dev) {
@@ -3779,7 +3780,7 @@ function renderTkOrder() {
       tkSetOrder(order.map((x, j) => (j === i ? TK.oent(q, w < (d.tk.nvar[q] || 1) ? w : 0) : x)));
     });
     /* (Fel-Tracker) its variation: those the pattern has, then + a new one (a copy of A) */
-    const vs = el("select", { "aria-label": `${t("tkPos")} ${TK.hex2(i)} ${t("tkVars")}`, hidden: !tkVarsOn(d) },
+    const vs = el("select", { "aria-label": `${t("tkPos")} ${TK.hex2(i)} ${t("tkVars")}`, hidden: !tkMultiVars(d) },
       ...Array.from({ length: nv }, (_, k) => el("option", { value: k, text: TK.VLET[k] })),
       ...(nv < 4 ? [el("option", { value: nv, text: "+" })] : []));
     vs.value = String(w);
@@ -3945,6 +3946,7 @@ function renderTkVars() {
     class: k === tkUI.vvar ? "on" : "", "aria-pressed": String(k === tkUI.vvar), onclick: () => op(() => tkShowVar(tkUI.vpat, k)) })));
   $("tkvadd").disabled = nv >= 4;
   $("tkvdel").disabled = nv <= 1;
+  for (const id of ["tkvvar", "tkvadd", "tkvdel"]) $(id).hidden = !tkMultiVars(d);   /* (one set a pattern: no letters) */
   $("tkvbpm").value = x.bpm ? String(x.bpm) : "";
   $("tkvbpm").placeholder = "SONG";
   const put = (f) => { const y = JSON.parse(JSON.stringify({ bpm: x.bpm, mute: x.mute, chance: x.chance, vo: x.vo })); f(y); tkPutVar(y); };
@@ -3974,7 +3976,7 @@ function renderTkVars() {
       return el("td", {}, c);
     }))),
   ];
-  $("tkvtab").replaceChildren(el("tr", {}, el("th", { text: TK.hex2(tkUI.vpat) + TK.VLET[tkUI.vvar] }),
+  $("tkvtab").replaceChildren(el("tr", {}, el("th", { text: TK.hex2(tkUI.vpat) + (tkMultiVars(d) ? TK.VLET[tkUI.vvar] : "") }),
     ...cols.map((k) => el("th", { text: `${t("tkTrack")} ${k + 1}` }))), ...rows);
 }
 async function tkPlay(r) {

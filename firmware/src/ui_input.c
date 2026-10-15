@@ -786,11 +786,6 @@ static void ui_input(void)
                 up_ui(1u, ui.confirm_trk);
             } else if (kind == CF_CLEAR_SONG) {
                 if (!transport_busy()) { project_new(); tku.row = tku.pos = 0; ui_message("NEW SONG"); }
-            } else if (kind == CF_DEL_VAR) {            /* (Fel-Tracker) VARIATION's DELETE: pattern, variation */
-                fm1_irq_off();
-                tk_var_delete(ui.confirm_trk >> 2, ui.confirm_trk & 3u);
-                fm1_irq_on();
-                ui_message("VARIATION DELETED");
             } else if (kind == CF_INIT_SOUND) {
                 set_engine(TSEL->eng_req); ui_message("SOUND INIT");
             } else if (kind == CF_CLEAR_TRK) {            /* (REC > CLEAR: the track's column of the pattern) */

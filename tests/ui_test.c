@@ -4611,7 +4611,7 @@ static int test_layer_lock(void)
     btn_down(B_SEQ); frames(500);
     ok &= ui.layer == LAYER_SEQ && !ui.lock;
     btn_up(B_SEQ); frame();
-    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "VARIATION");
+    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "PAT SET");
     press(B_GLO); frames(400);
     ok &= str_eq(cur_page()->title, "SONG") && !ui.lock;
     press(B_GLO);
@@ -6235,10 +6235,8 @@ static int test_tracker_pages(void)
     ok &= tk.norder == 2u && tk.order[1] == 0u;
     turn(EN_K2, 5);
     ok &= tk.order[1] == 5u;
-    turn(EN_K3, 1);                                     /* its variation: B, new (a copy of A) */
-    ok &= tk.order[1] == TK_OENT(5, 1) && tk_nvar[5] == 2u;
-    turn(EN_K3, -1);                                    /* .. back to A */
-    ok &= tk.order[1] == TK_OENT(5, 0) && tk_nvar[5] == 2u;
+    turn(EN_K3, 1);                                     /* (KNOB 3: nothing since the variations went) */
+    ok &= tk.order[1] == TK_OENT(5, 0) && tk_nvar[5] == 1u;
     turn(EN_K4, 1);                                     /* a copy after it */
     ok &= tk.norder == 3u && tk.order[2] == 5u && tku.pos == 2u;
     turn(EN_K4, -1);                                    /* deleted */
@@ -6247,81 +6245,54 @@ static int test_tracker_pages(void)
     ok &= tk.norder == 1u && tk.order[0] == 0u;
     press(B_EDIT);
     ok &= tk.norder == 1u;                              /* (the last one stays) */
-    bad += check("SONG: KNOB 1 the position (+ ADD), 2 its pattern (adds one), 3 its variation (a new one), 4 copy / delete; EDIT deletes",
+    bad += check("SONG: KNOB 1 the position (+ ADD), 2 its pattern (adds one), 3 nothing, 4 copy / delete; EDIT deletes",
                  ok);
 
-    /* VARIATION (Fel-Tracker): the SONG position's variation, edited row by row */
+    /* PAT SET (Fel-Tracker: the SONG position's pattern's own settings, the variations' A), edited row by row */
     ui_power_on();
-    go_page(GR_TKSONG); frame();
-    turn(EN_K3, 1);                                     /* position 00: 00B, a new one */
     go_page(GR_TKVAR); frame();
-    ok = tk.order[0] == TK_OENT(0, 1) && tk_nvar[0] == 2u && tku.vrow == 0u;
+    ok = tku.vrow == 0u && tk_nvar[0] == 1u && TK_NVROW == TV_VO + VO_N;
     turn(EN_K1, 1);                                     /* TEMPO: from SONG to the song's BPM, then up */
-    ok &= tk_var[0][1].bpm == (uint8_t)song.g[G_BPM];
+    ok &= tk_var[0][0].bpm == (uint8_t)song.g[G_BPM];
     turn(EN_K1, 3);
-    ok &= tk_var[0][1].bpm == (uint8_t)(song.g[G_BPM] + 3);
+    ok &= tk_var[0][0].bpm == (uint8_t)(song.g[G_BPM] + 3);
     turn(EN_K2, 5);                                     /* (TEMPO: KNOB 1 alone) */
-    ok &= tk_var[0][1].bpm == (uint8_t)(song.g[G_BPM] + 3);
+    ok &= tk_var[0][0].bpm == (uint8_t)(song.g[G_BPM] + 3);
     press(B_EDIT);
-    ok &= !tk_var[0][1].bpm;
+    ok &= !tk_var[0][0].bpm;
     turn(EN_PRESET, 1);                                 /* MUTE */
     turn(EN_K2, 1);
-    ok &= tku.vrow == 1u && tk_var[0][1].mute == 2u;
+    ok &= tku.vrow == 1u && tk_var[0][0].mute == 2u;
     turn(EN_PRESET, 1);                                 /* CHANCE */
     turn(EN_K1, -30);
-    ok &= tk_var[0][1].chance[0] < 100u;
+    ok &= tk_var[0][0].chance[0] < 100u;
     turn(EN_PRESET, 4);                                 /* REVERB: from KEEP, the track's own value; below it KEEP */
     trk[0].p[P_REV] = 40;
     turn(EN_K1, 1);
-    ok &= tku.vrow == 6u && tk_var[0][1].vo[0][VO_REV] == 41u;
+    ok &= tku.vrow == 6u && tk_var[0][0].vo[0][VO_REV] == 41u;
     turn(EN_K1, -127);
-    ok &= tk_var[0][1].vo[0][VO_REV] == 0u;
+    ok &= tk_var[0][0].vo[0][VO_REV] == 0u;
     turn(EN_K1, 1);
     press(B_EDIT);                                      /* EDIT: the selected track's back to KEEP */
-    ok &= tk_var[0][1].vo[0][VO_REV] == 0u && trk[0].p[P_REV] == 40;
-    bad += check("VARIATION: 00B from SONG's KNOB 3; TEMPO SONG / BPM on KNOB 1, MUTE, CHANCE, REVERB KEEP / a value; "
-                 "EDIT: SONG / KEEP; the tracks' own values untouched", ok);
-    {   /* DELETE (the last row): A stays; B deleted after the dialog, C moved up to B, the order's entries with it */
-        ui_power_on();
-        tk.order[0] = TK_OENT(0, 1); tk.order[1] = TK_OENT(0, 2); tk.order[2] = TK_OENT(0, 0); tk.norder = 3;
-        tk_nvar[0] = 3;
-        tk_var[0][1].bpm = 80; tk_var[0][2].bpm = 150;
-        tku.pos = 2;                                    /* (00A) */
-        go_page(GR_TKVAR); frame();
-        turn(EN_PRESET, 20);                            /* DELETE */
-        ok = tku.vrow == TK_NVROW - 1u;
-        press(B_EDIT);
-        ok &= ui.confirm == CF_NONE && msg_is("A STAYS") && tk_nvar[0] == 3u;
-        tku.pos = 0;                                    /* 00B */
-        press(B_EDIT);
-        ok &= ui.confirm == CF_DEL_VAR;
-        press(B_OCTDN);
-        ok &= ui.confirm == CF_NONE && tk_nvar[0] == 3u;
-        press(B_EDIT);
-        press(B_OCTUP);
-        ok &= ui.confirm == CF_NONE && tk_nvar[0] == 2u && tk_var[0][1].bpm == 150u && tk_var_is_default(&tk_var[0][2]) &&
-              tk.order[0] == TK_OENT(0, 0) && tk.order[1] == TK_OENT(0, 1) && tk.order[2] == TK_OENT(0, 0) &&
-              msg_is("VARIATION DELETED");
-        bad += check("  DELETE: A stays; B after OCT+ (OCT- keeps it): C is B now, B's positions play A", ok);
-        ui_power_on();
-        go_page(GR_TKSONG); frame();
-        turn(EN_K3, 1);
-        go_page(GR_TKVAR); frame();
-    }
-    {   /* PLAY on VARIATION: its pattern under it (LOOP); an edit while it plays reaches the sound now */
-        tk_var[0][1].mute = 0;
+    ok &= tk_var[0][0].vo[0][VO_REV] == 0u && trk[0].p[P_REV] == 40;
+    turn(EN_PRESET, 20);                                /* (the last row: SL RATE, no DELETE) */
+    ok &= tku.vrow == TK_NVROW - 1u;
+    bad += check("PAT SET: pattern 00's TEMPO SONG / BPM on KNOB 1, MUTE, CHANCE, REVERB KEEP / a value; EDIT: SONG / KEEP; "
+                 "the tracks' own values untouched; no DELETE row", ok);
+    {   /* PLAY on PAT SET: its pattern under it (LOOP); an edit while it plays reaches the sound now */
+        tk_var[0][0].mute = 0;
         press(B_PLAY);                                  /* (the audio starts it: here the request) */
-        ok = transport_req == 1u && tk_pl.mode == TK_LOOP && tk_pl.loop_pat == 0u && tk_pl.loop_var == 1u;
+        ok = transport_req == 1u && tk_pl.mode == TK_LOOP && tk_pl.loop_pat == 0u;
         transport_req = 0;
         song.playing = 1;                               /* (as the audio ISR has it then) */
-        tk_var_enter(0, 1);
+        tk_var_enter(0, 0);
         turn(EN_PRESET, -10);                           /* TEMPO */
         turn(EN_K1, 1);
-        ok &= tku.vrow == 0u && tk_var[0][1].bpm && tempo_ovr == tk_var[0][1].bpm && song_bpm() == tk_var[0][1].bpm;
+        ok &= tku.vrow == 0u && tk_var[0][0].bpm && tempo_ovr == tk_var[0][0].bpm && song_bpm() == tk_var[0][0].bpm;
         song.playing = 0;
         tk_var_leave();
         ok &= !tempo_ovr;
-        bad += check("  PLAY there: LOOP of 00 under B; its TEMPO turned while it plays: at once; STOP: the song's", ok);
+        bad += check("  PLAY there: LOOP of 00; its TEMPO turned while it plays: at once; STOP: the song's", ok);
     }
 
     /* SETTINGS */
