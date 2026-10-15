@@ -92,16 +92,20 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   or FREE, **POL** bipolar or unipolar (LFO > LFO 2)
 - **Modulation matrix:** 4 slots per track, MIDI controllers as sources, **S&H** and **SLEW** (a random value per
   LFO cycle, held or gliding), and **DEPTH** as a destination, so the matrix can modulate the LFO itself
-- **SPREAD** (EDIT > VOICE 3): the voices of a POLY or UNISON track alternate left and right of its PAN; **OCT** beside it moves
+- **SPREAD** (EDIT > VOICE 3): the voices of a POLY or UNISON track alternate left and right of its PAN (or land on a
+  side at random: SETTINGS' **PAN MODE** RND, below); **OCT** beside it moves
   the whole sound up or down by octaves (a preset can set it: FMPERC's kicks play 3 octaves under the note)
 - **Effects:** distortion and the SLICER per track; chorus, delay and reverb sends (the reverb as
-  **HALL**, ROOM, SPRING or *(Fel-Tracker)* **GATED**; HALL is a smooth stereo reverb, the default on a fresh start; the delay **CLEAN**,
-  **TAPE**, **WORN** or **PING** on DLY 2: TAPE and WORN a tape echo with wow and flutter, repeats that darken and
-  saturate and run away into a howl past FDBK ~95; PING echoes left, then right, and so on, up to 0.74 s); master
-  limiter. *(Fel-Tracker)* The chorus and ROOM are stereo (the chorus's two sides sweep in opposition; SPRING and the
+  **HALL**, ROOM, SPRING or *(Fel-Tracker)* **GATED** or **CONCERT**; HALL is a smooth stereo reverb, the default on a
+  fresh start; the delay **CLEAN**, **TAPE**, **WORN**, **PING** or **DUAL** on DLY 2: TAPE and WORN a tape echo with
+  wow and flutter, repeats that darken and saturate and run away into a howl past FDBK ~95; PING echoes left, then
+  right, and so on, up to 0.74 s; DUAL a true stereo delay, the left at TIME and the right at three quarters of it,
+  each its own loop, a quarter fed across); master limiter. *(Fel-Tracker)* The chorus and ROOM are stereo (the chorus's two sides sweep in opposition; SPRING and the
   tape echoes stay mono, as the real ones are), and the delay's and the reverb's sends lose their lows below about
   220 Hz first, so the bass and the kick stay dry and the tails stay clear. A gentle bus compressor (3:1, slow) sits in
-  front of the master limiter, so a full mix keeps its punch at the top of MASTER instead of being held down all the time
+  front of the master limiter, so a full mix keeps its punch at the top of MASTER instead of being held down all the time.
+  *(Fel-Tracker, 2026-10)* **MONO LOWS**: before it, the mix's stereo difference under about 120 Hz is taken out (40 Hz
+  hard left plays on both sides), as a club's system wants the bass; the width above stays
 - **FX layer:** hold FX for repeat, reverse, filter sweeps, tape stop, freeze, a harmonizer
   (OCT UP / OCT DN with shimmer), and mutes on the black keys;
   any white key can hold any effect (hold the key in the layer and turn PRESETS); MENU > FX LATCH makes them toggle,
@@ -309,7 +313,7 @@ once, and PLAY on this page loops its pattern in it. The tracks' own settings ne
 new variation starts as a copy of A; the web editor also removes them (its entries then play A).
 
 **SETTINGS**: each track's ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESO, FLT ENV, DIST, CHORUS, DELAY, REVERB, LEVEL,
-PAN, WIDTH, LOW CUT and DUCK. PRESETS picks the row, KNOB 1–4 set it for tracks 1–4. CUTOFF and RESO hold the engine's filter
+PAN, WIDTH, LOW CUT, DUCK and PAN MODE. PRESETS picks the row, KNOB 1–4 set it for tracks 1–4. CUTOFF and RESO hold the engine's filter
 over every instrument; INST (EDIT) leaves it to the instrument. *(Fel-Tracker)* **WIDTH** (OFF, 1–20 ms; the last four
 tracks only, or the last two of four, so the rhythm section stays in the middle) is the Haas effect: the track's highs,
 above about 250 Hz, play a little late on one side and its lows as they are on both, so it widens without hollowing
@@ -321,6 +325,10 @@ neither; EDIT puts that back. The song keeps them.
 each time it sounds, at once and back over about a quarter of a second (15: some 24 dB under at its loudest, 5: about
 a third down): the pump of industrial, EBM and techno, and room for the kick. Their sends go down with them; the
 reverb's and delay's tails already playing do not. Off on every track at power-on (EDIT: OFF); the song keeps it.
+**PAN MODE** *(Fel-Tracker, 2026-10)* (ALT, RND): ALT is SPREAD as it always was, the voices left, right, left .. of PAN
+by SPRD on a POLY or UNISON track; RND puts each new note on a side picked at random, in any voice mode, by SPRD (half
+the width at SPRD 0): hats, plucks and arps that move without an LFO. A sounding note keeps its side. ALT at power-on;
+the song keeps it.
 
 **INSTR**: the instruments 01..3F. KNOB 1 the slot, KNOB 2 its engine (or USER), KNOB 3 its preset; the selected
 track plays it at once. EDIT empties the slot. A row's instrument sets the track's engine, its EDIT values and voice
@@ -658,6 +666,9 @@ shows empty, a song's instrument of one is dropped. The plain build is IDM.
 other with slowly drifting taps, stereo, SIZE the decay up to about 4.5 s, DAMP how fast the highs die), **ROOM** (the
 default up to 1.1.5), **SPRING** and *(Fel-Tracker)* **GATED**: HALL cut off sharply, the 80s gated snare. A hit in
 the send opens it; it holds for SIZE (about 60 ms at 0 to 500 ms at 127) after the last one, then shuts in about 10 ms.
+*(Fel-Tracker, 2026-10)* **CONCERT**: HALL grown into the memory four tracks freed, sixteen longer lines instead of
+eight, a 12 ms pre-delay and four diffusers: a denser, smoother, wider tail at HALL's level (SIZE and DAMP as HALL's;
+the native image plays its own floating-point CONCERT).
 A project plays the TYPE it was saved with (one of the native image's own, on the FM-1: HALL).
 
 ## Scale keyboard
