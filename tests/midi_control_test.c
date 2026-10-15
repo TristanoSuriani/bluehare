@@ -129,12 +129,12 @@ static int clock_test(uint32_t source)
     bad += check("lost clock times out and releases transport notes", !song.playing && !tk_pl.note[0]);
     clock_packet(source, 0xFA, 700); clock_to(source, 700, 7);
     bad += check("Start after timeout restarts cleanly at the master's phase", song.playing && tk_pl.row == 1u);
-    /* a row's FX sounds under the external clock; Stop puts the track's own value back */
-    trk[0].p[P_REV] = 23; *tk_at(0, 0, 0) = tk_pack(60, 0, TKC_REV, 127);
+    /* a row's RETRIG under the external clock; Stop ends it */
+    *tk_at(0, 0, 0) = tk_pack(60, 0, TKC_RETRIG, 4);
     clock_packet(source, 0xFA, 1000); clock_packet(source, 0xF8, 1000);
-    bad += check("external-clock playback applies a row's FX", trk[0].p[P_REV] == TP[P_REV].max);
+    bad += check("external-clock playback plays a row's RETRIG", tk_pl.pcmd[0] && tk_pl.parg[0] == 4u);
     clock_packet(source, 0xFC, 1010);
-    bad += check("external Stop puts the track's own value back", trk[0].p[P_REV] == 23);
+    bad += check("external Stop ends it", !tk_pl.pcmd[0]);
     return bad;
 }
 static int clock_arp_and_boundaries(void)

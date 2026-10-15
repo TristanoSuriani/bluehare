@@ -68,11 +68,11 @@ static int projects(void)
     project_load(0);
     refused &= msg_is_ed("LOAD ERROR");
     tk.len[5] = TK_ROWS;
-    *tk_at(3, 3, 3) = tk_pack(60, 0, TKC_PLAY, 6u << 4);   /* (Fel-Tracker: PLAY's command 6: none such) */
+    *tk_at(3, 3, 3) = tk_pack(60, 0, TKC_RETRIG, 16u);   /* (Fel-Tracker: RETRIG past its 15 hits) */
     project_save(0);
     project_load(0);
     refused &= msg_is_ed("LOAD ERROR");
-    bad += check("no position, a pattern of no row, a PLAY command past the last: refused", refused);
+    bad += check("no position, a pattern of no row, a RETRIG past 15 hits: refused", refused);
     reset();
     trk[1].p[P_LEVEL] = 999;
     tk.instr[7].src = EID_COUNT;                        /* (no engine, no user preset) */

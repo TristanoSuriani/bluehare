@@ -173,7 +173,7 @@ static void ui_power_on(void)
     memset(&tku, 0, sizeof tku);
     tku.step = 1;
     tku.note = 60;
-    tku.cmd = TKC_LEVEL;
+    tku.cmd = TKC_RETRIG;
     tk_aud_req = 0;
     tk_aud_note = 0;
     memset(&ui, 0, sizeof ui);
@@ -1852,8 +1852,8 @@ static int test_presets_knob(void)
         {
             int same_snd = TSEL->preset == before.preset && TSEL->eng_req == before.eng_req &&
                            !memcmp(TSEL->p, before.p, sizeof before.p);
-            if (g == GR_TKPAT) {                       /* (the tracker: the cursor cell's FX command, the last used) */
-                cur_ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_LEVEL && same_snd && ui.page == i;
+            if (g == GR_TKPAT) {                       /* (the tracker: the cursor cell's RETRIG on) */
+                cur_ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_RETRIG && same_snd && ui.page == i;
                 n_cur++;
             } else if (g == GR_USER) {
                 sel_ok &= ui.uslot == uslot + 1u && same_snd;
@@ -4729,7 +4729,7 @@ static int test_rec_layer(void)
     ui_power_on();
     song.sel = 1;
     tk_put(0, 0, 1, tk_pack(60, 1, 0, 0));
-    tk_put(0, 9, 1, tk_pack(64, 0, TKC_CUT, 30));
+    tk_put(0, 9, 1, tk_pack(64, 0, TKC_RETRIG, 3));
     tk_put(0, 9, 2, tk_pack(67, 0, 0, 0));
     rec_down(); frame();
     key_down(white(0)); frame();                        /* a combo: the map at once, cleared */
@@ -4797,14 +4797,14 @@ static int test_rec_layer(void)
     ui_power_on();
     ui_rec_prefs = 0; rp_apply();
     song.sel = 1;
-    tk_put(0, 2, 1, tk_pack(60, 1, TKC_CUT, 40));
+    tk_put(0, 2, 1, tk_pack(60, 1, TKC_RETRIG, 4));
     tk_put(0, 7, 1, tk_pack(TK_OFF, 0, 0, 0));
     rec_down(); frames(512);
     key_down(white(1)); frame(); key_up(white(1)); frame();
     key_down(white(0)); frame(); key_up(white(0)); frame();
     ok = !rec_clearable() && click_mode == 1u;
     press(B_OCTDN);
-    ok &= cell_is(0, 2, 1, tk_pack(60, 1, TKC_CUT, 40)) && cell_is(0, 7, 1, tk_pack(TK_OFF, 0, 0, 0)) &&
+    ok &= cell_is(0, 2, 1, tk_pack(60, 1, TKC_RETRIG, 4)) && cell_is(0, 7, 1, tk_pack(TK_OFF, 0, 0, 0)) &&
           ui_rec_prefs == 0u && click_mode == 0u &&
           msg_is("REC PUT BACK") && song.octave == 0 && ui.layer == LAYER_REC;
     rec_up();
@@ -6121,8 +6121,7 @@ static int test_tracker_play(void)
     rev = t0->p[P_REV];
     tk_put(0, 0, 0, tk_pack(36, 5, 0, 0));               /* (GM 36: the kick) */
     tk_put(0, 1, 0, tk_pack(60, 1, 0, 0));               /* 01: track 1's power-on sound */
-    tk_put(0, 2, 0, tk_pack(0, 0, TKC_REV, 127));
-    tk_put(0, 3, 0, tk_pack(0, 0, TKC_CUT, 0));
+    tk_put(0, 2, 0, tk_pack(0, 0, TKC_RETRIG, 4));      /* (RETRIG with no note: nothing) */
     go_page(GR_TKPAT); frame();
     press(B_PLAY);
     events_block(CTL);
@@ -6133,13 +6132,10 @@ static int test_tracker_play(void)
     ok &= t0->eng_req == UT_DEF[0][0] && t0->preset == UT_DEF[0][1] && t0->p[P_ATK] == atk && t0->p[P_REV] == rev;
     bad += check("tracker: a row's instrument is the track's sound from it on (engine, EDIT values); its ENV, sends stay", ok);
     events_block(row);
-    ok = t0->p[P_REV] == TP[P_REV].max;
-    events_block(row);
+    ok = t0->p[P_REV] == rev && !tk_pl.pcmd[0];
     id = tk_filter_id(t0, TKP_CUT);
-    ok &= t0->p[P_REV] == rev && id < P_COUNT && t0->p[id] == param_desc_of(t0->eng_req, id)->min;
-    events_block(row);
-    ok &= t0->p[id] == ENGINES[UT_DEF[0][0]]->presets[UT_DEF[0][1]].e[id - P_E0];
-    bad += check("  a row's FX: that parameter for that row only (REVERB 7F the top, CUTOFF 00 the engine's lowest)", ok);
+    bad += check("  a row's RETRIG with no note: nothing at work, the track's values its own (no parameter FX since 2026-10)",
+                 ok && id < P_COUNT);
     transport_req = 2;
     events_block(CTL);
     tk.cut[0] = 10;
@@ -6190,14 +6186,16 @@ static int test_tracker_pages(void)
     ok &= tk_note(tk_at(0, 0, 0)) == 62u;
     turn(EN_K3, 3);                                     /* instrument 03, the one the keys record with now */
     ok &= tk_inst(tk_at(0, 0, 0)) == 3u && tk_cur_inst == 3u;
-    turn(EN_K4, 1);                                     /* a new FX: LEVEL (the last), from the track's value */
-    v = TSEL->p[P_LEVEL];
-    ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_LEVEL && tk_val(tk_at(0, 0, 0)) == tk_unscale(TSEL, P_LEVEL, v);
+    turn(EN_K4, 1);                                     /* a new FX: RETRIG, 4 hits */
+    ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_RETRIG && tk_val(tk_at(0, 0, 0)) == 4u;
     turn(EN_K4, 5);
-    ok &= tk_val(tk_at(0, 0, 0)) == tk_unscale(TSEL, P_LEVEL, v) + 5u;
-    turn(EN_PRESET, 1);
-    ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_ATK && tku.cmd == TKC_ATK;
-    bad += check("PATTERN: KNOB 2 the note (from none: the last), 3 the instrument, 4 the FX value, PRESETS its command", ok);
+    ok &= tk_val(tk_at(0, 0, 0)) == 9u;
+    turn(EN_K4, 20);
+    ok &= tk_val(tk_at(0, 0, 0)) == TKC_RT_MAX;
+    turn(EN_PRESET, 1);                                 /* (on already: as it was) */
+    ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_RETRIG && tk_val(tk_at(0, 0, 0)) == TKC_RT_MAX;
+    (void)v;
+    bad += check("PATTERN: KNOB 2 the note (from none: the last), 3 the instrument, 4 RETRIG's hits (2 .. 15), PRESETS it on", ok);
     turn(EN_PRESET, -2);
     ok = tk_cmd(tk_at(0, 0, 0)) == TKC_NONE && tk_val(tk_at(0, 0, 0)) == 0u && tk_note(tk_at(0, 0, 0)) == 62u;
     turn(EN_K1, 1);
@@ -6407,7 +6405,7 @@ static int test_tracker_tools(void)
     ui_power_on();
     tk_clip.has = 0;
     go_page(GR_TKPAT); frame();
-    tk_put(0, 0, 0, tk_pack_ch(60, 1, TKC_CUT, 20, 0x74));
+    tk_put(0, 0, 0, tk_pack_ch(60, 1, TKC_RETRIG, 2, 0x74));
     tk_put(0, 1, 0, tk_pack(62, 0, 0, 0));
     tk_put(0, 3, 0, tk_pack(TK_OFF, 0, 0, 0));
     tk_put(0, 2, 1, tk_pack(48, 2, 0, 0));
@@ -6604,10 +6602,10 @@ static int test_tracker_project(void)
     tk_song_t keep;
     ui_power_on();
     tk_put(0, 0, 0, tk_pack_ch(60, 1, 0, 0, 0x74));     /* (a chord: MAJ) */
-    tk_put(7, 3, 2, tk_pack(TK_OFF, 0, TKC_DLY, 99));
+    tk_put(7, 3, 2, tk_pack(TK_OFF, 0, TKC_RETRIG, 9));
     tk_put(TK_LO - 1u, 63, 3, tk_pack_ch(36, 0, 0, 0, 0xF1));   /* (the last pattern in .noinit, the first in .bss) */
-    tk_put(TK_LO, 0, 1, tk_pack(0, 9, TKC_PAN, 0));
-    tk_put(TK_PATS - 1u, 31, 0, tk_pack_ch(127u - 1u, 63, TKC_GLIDE, 127, 0x0C));
+    tk_put(TK_LO, 0, 1, tk_pack(0, 9, TKC_RETRIG, 0));
+    tk_put(TK_PATS - 1u, 31, 0, tk_pack_ch(127u - 1u, 63, TKC_RETRIG, 15, 0x0C));
     tk.order[1] = 7; tk.order[2] = TK_PATS - 1u; tk.order[3] = TK_LO; tk.norder = 4;
     tk.len[7] = 12; tk.len[TK_PATS - 1u] = 1;
     tk.instr[8].src = EID_VECTOR; tk.instr[8].preset = 3;
@@ -6638,7 +6636,7 @@ static int test_tracker_project(void)
     for (p = 0; p < TK_PATS; p++)
         for (r = 0; r < TK_ROWS; r++)
             for (k = 0; k < NTRK; k++)
-                *tk_at(p, r, k) = tk_pack(40u + r % 40u, 1u + k, TKC_LEVEL, r);
+                *tk_at(p, r, k) = tk_pack(40u + r % 40u, 1u + k, TKC_RETRIG, r % 16u);
     ok = project_save(0) == 2 && msg_is("SONG TOO BIG");
     project_load(0);
     ok &= str_eq(proj_name, "MYSONG") && tk_note(tk_at(0, 0, 0)) == 60u && tk_pat_empty(1);

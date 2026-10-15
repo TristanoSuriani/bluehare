@@ -13,8 +13,8 @@
  * table) becomes the track's sound from that row on: the engine and its EDIT values, the voice mode, an FM6 patch;
  * never the track's own settings (the ENV, the filter envelope, the sends, LEVEL and PAN: the SETTINGS page), which
  * the instruments leave alone. The track's CUT / RES settings, when set, hold the engine's filter over every
- * instrument (TK_INST_VAL: the instrument's own). The row's FX sets one parameter of the track for that row only,
- * over the instrument and the settings, and puts the value back on the next row of that track (tk_fx_restore).
+ * instrument (TK_INST_VAL: the instrument's own). The row's FX (since the 2026-10 plan RETRIG alone) strikes its
+ * notes again inside the row.
  *
  * A cell's chord (core.h: two intervals above its note) plays with it: up to three notes in the column, released
  * together. A track that is not POLY (the instrument's voice mode) plays the note alone.
@@ -85,40 +85,21 @@ static tk_cell_t *tk_row(uint32_t p, uint32_t r)
 static tk_cell_t *tk_at(uint32_t p, uint32_t r, uint32_t k) { return &tk_row(p, r)[k % NTRK]; }
 static uint32_t tk_len(uint32_t p) { return tk.len[p % TK_PATS] ? tk.len[p % TK_PATS] : 1u; }
 
-/* the FX commands: the letter a cell shows, the name the footer shows, the parameter (TKP_CUT / TKP_RES: the engine's
- * filter, as MIDI CC74 / CC71 reach it). Append-only: a stored command keeps its meaning */
-enum { TKC_NONE, TKC_LEVEL, TKC_ATK, TKC_DEC, TKC_SUS, TKC_REL, TKC_CUT, TKC_RES, TKC_FENV, TKC_PAN, TKC_DIST,
-       TKC_CHOR, TKC_DLY, TKC_REV, TKC_GLIDE, TKC_PLAY, TKC_N };
-#define TKP_CUT 0xFEu
+/* the FX command (the 2026-10 plan: a cell is its note, and RETRIG alone of the commands; the parameter ones and PLAY's
+ * NOTE DELAY, ARPEGGIO, SLIDE and CHANCE went): T RETRIG, the row's notes struck again, its value the hits in the row
+ * (2 .. TKC_RT_MAX; 0, 1: none) */
+enum { TKC_NONE, TKC_RETRIG, TKC_N };
+#define TKC_RT_MAX 15u
+#define TKP_CUT 0xFEu                    /* (the track's CUT / RES settings: the engine's filter, tk_filter_id) */
 #define TKP_RES 0xFDu
-static const char TKC_CHAR[TKC_N] = {'.', 'V', 'A', 'D', 'S', 'R', 'C', 'Q', 'F', 'P', 'X', 'H', 'E', 'W', 'G', '*'};
-static const char *const TKC_NAME[TKC_N] = {"NO FX", "LEVEL", "ATTACK", "DECAY", "SUSTAIN", "RELEASE", "CUTOFF",
-                                            "RESONANCE", "FLT ENV", "PAN", "DIST", "CHORUS", "DELAY", "REVERB",
-                                            "GLIDE", "PLAY"};
-static const uint8_t TKC_PARAM[TKC_N] = {0xFF, P_LEVEL, P_ATK, P_DEC, P_SUS, P_REL, TKP_CUT, TKP_RES, P_ED_FLT, P_PAN,
-                                         P_DIST, P_CHOR, P_DLY, P_REV, P_GLIDE, 0xFF};
-/* (Fel-Tracker) PLAY (the last of the 16 commands a cell holds): how the row's note plays, its value the command (bits 4..6)
- * and its amount (bits 0..3), shown as the command's own letter and the amount: T RETRIG (the note struck again: the
- * amount's hits in the row, 2..15), Y DELAY (it starts amount/16 of the row late), J ARPEGGIO (the cell's chord played
- * a note at a time: the amount's steps in the row, 0: 3), U SLIDE UP and N SLIDE DOWN (the track's pitch moves the
- * amount's semitones over the row; it stays there until the track's next note), % CHANCE (it plays with a chance of
- * amount/15: 0 never, 15 always). Append-only, as the commands are */
-enum { TKP_RETRIG, TKP_DELAY, TKP_ARP, TKP_SLUP, TKP_SLDN, TKP_CHANCE, TKP_N };
-static const char TKP_CHAR[TKP_N] = {'T', 'Y', 'J', 'U', 'N', '%'};   /* (T: R is RELEASE) */
-static const char *const TKP_NAME[TKP_N] = {"RETRIG", "NOTE DELAY", "ARPEGGIO", "SLIDE UP", "SLIDE DOWN", "CHANCE"};
-static inline uint32_t tk_psub(const tk_cell_t *c) { return tk_cmd(c) == TKC_PLAY ? tk_val(c) >> 4 : TKP_N; }
-static inline uint32_t tk_parg(const tk_cell_t *c) { return tk_val(c) & 15u; }
+static const char TKC_CHAR[TKC_N] = {'.', 'T'};
+static const char *const TKC_NAME[TKC_N] = {"NO FX", "RETRIG"};
 
 /* the parameter id the engine's filter is (TKP_CUT / TKP_RES on track t's engine), 0xFF: it has none */
 static uint32_t tk_filter_id(const track_t *t, uint32_t which)
 {
     uint32_t e = ENGINES[eng_idx(t->eng_req)]->cc >> (which == TKP_CUT ? 4 : 0) & 15u;
     return e ? P_E0 + e - 1u : 0xFFu;
-}
-static uint32_t tk_param_id(const track_t *t, uint32_t cmd)
-{
-    uint32_t id = cmd < TKC_N ? TKC_PARAM[cmd] : 0xFFu;
-    return id == TKP_CUT || id == TKP_RES ? tk_filter_id(t, id) : id;
 }
 /* 0..127 over parameter id's range (64: the middle of a bipolar one), as a MIDI CC sets it */
 static int16_t tk_scale(const track_t *t, uint32_t id, uint32_t v)
@@ -232,34 +213,21 @@ static struct {
     uint32_t row_pos;            /* samples into the row */
     uint8_t note[NTRK];          /* the note each column sounds, 0 none */
     uint8_t ch[NTRK][TK_CHORD - 1u];   /* .. and its chord's other notes, 0 none */
-    uint8_t ovr[NTRK];           /* the parameter a row's FX holds (id + 1), 0 none */
-    int16_t ovr_v[NTRK];         /* .. the track's own value, back on its next row */
     uint8_t skip[NTRK];          /* live recording: the row (+ 1) whose note sounds already (it does not play again) */
     uint8_t rec_row[NTRK], rec_note[NTRK];   /* live recording: the row (+ 1) and the note recorded last (its OFF) */
     volatile uint8_t var;        /* the variation playing now (of tk_pl.pat) */
     volatile uint8_t loop_var;   /* LOOP: the variation the UI edits (the pattern plays under it) */
     uint8_t vmute;               /* .. its mutes */
     uint32_t rnd;                /* the chance's random numbers (from the same seed at every PLAY: renders repeat) */
-    /* (Fel-Tracker) a PLAY command at work in its row: the command + 1 (0 none), its amount, the row's sample of its
-     * next step, the steps done; DELAY's cell; ARPEGGIO's notes; SLIDE's start (the track's tk_slide_q8) */
-    uint8_t pcmd[NTRK], parg[NTRK], pstep[NTRK], parp[NTRK][TK_CHORD], pn[NTRK];
+    /* (Fel-Tracker) RETRIG at work in its row: on (0 none), its hits, the row's sample of the next one, the hits done */
+    uint8_t pcmd[NTRK], parg[NTRK], pstep[NTRK];
     uint32_t pnext[NTRK];
-    tk_cell_t pcell[NTRK];
-    int32_t pslide[NTRK];
 } tk_pl;
 static volatile uint8_t tk_cur_inst;   /* the instrument the keys record with (the UI's last one), 0 none */
 static volatile uint32_t tk_ext_gen;   /* writes not by hand: live recording, the editor (they end an undo's turn) */
 
 static uint32_t tk_row_len(uint32_t row) { return swing_step_len(&trk[0], div_samples(2), row); }   /* (core.h: the
                                                                                                  * SLICER's too) */
-
-static void tk_fx_restore(uint32_t k)
-{
-    if (tk_pl.ovr[k]) {
-        trk[k].p[tk_pl.ovr[k] - 1u] = tk_pl.ovr_v[k];
-        tk_pl.ovr[k] = 0;
-    }
-}
 
 static void tk_release(uint32_t k)
 {
@@ -291,17 +259,8 @@ static uint32_t tk_row_notes(const track_t *t, const tk_cell_t *c, uint8_t *out)
 }
 
 static int tk_var_plays(uint32_t k);
-static uint32_t tk_rand(void)                       /* (the chance's random numbers: tk_pl.rnd) */
-{
-    tk_pl.rnd ^= tk_pl.rnd << 13;
-    tk_pl.rnd ^= tk_pl.rnd >> 17;
-    tk_pl.rnd ^= tk_pl.rnd << 5;
-    return tk_pl.rnd;
-}
-static int tk_chance(uint32_t a) { return a >= 15u || tk_rand() % 15u < a; }   /* PLAY CHANCE: a / 15 */
-/* the notes of cell c (its note n: OFF releases the column) on column k; arp: only the chord's first, the others kept
- * for ARPEGGIO (tk_pl.parp). The notes it plays */
-static uint32_t tk_col_play(uint32_t k, const tk_cell_t *c, uint32_t n, int arp)
+/* the notes of cell c (its note n: OFF releases the column) on column k. The notes it plays */
+static uint32_t tk_col_play(uint32_t k, const tk_cell_t *c, uint32_t n)
 {
     track_t *t = &trk[k];
     uint8_t nw[TK_CHORD], old[TK_CHORD] = {tk_pl.note[k], tk_pl.ch[k][0], tk_pl.ch[k][1]};
@@ -311,12 +270,6 @@ static uint32_t tk_col_play(uint32_t k, const tk_cell_t *c, uint32_t n, int arp)
         return 0;
     }
     m = tk_row_notes(t, c, nw);
-    if (arp && m > 1u) {                            /* ARPEGGIO: the first note now, the others in turn */
-        for (i = 0; i < m; i++)
-            tk_pl.parp[k][i] = nw[i];
-        tk_pl.pn[k] = (uint8_t)m;
-        m = 1;
-    }
     for (i = 0; i < TK_CHORD; i++)                  /* (a note sounding again: released first, so it starts again) */
         for (j = 0; old[i] && j < m; j++)
             if (old[i] == nw[j]) {
@@ -331,37 +284,24 @@ static uint32_t tk_col_play(uint32_t k, const tk_cell_t *c, uint32_t n, int arp)
     tk_pl.note[k] = nw[0];
     tk_pl.ch[k][0] = m > 1u ? nw[1] : 0u;
     tk_pl.ch[k][1] = m > 2u ? nw[2] : 0u;
-    tk_slide_q8[k] = 0;                             /* (a note: the slide starts again from its pitch) */
     return m;
 }
 
-/* the row tk_pl.row of tk_pl.pat starts: each column's FX ends, its instrument, its FX, its note (not inlined: out
- * of the audio ISR's loop over the blocks) */
+/* the row tk_pl.row of tk_pl.pat starts: each column's instrument, its note, its RETRIG (not inlined: out of the audio
+ * ISR's loop over the blocks) */
 static __attribute__((noinline)) void tk_play_row(void)
 {
-    uint32_t k, id, n, sub, arg, len = tk_row_len(tk_pl.row);
+    uint32_t k, n, len = tk_row_len(tk_pl.row);
     tk_cell_t c;
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         c = *tk_at(tk_pl.pat, tk_pl.row, k);
-        tk_fx_restore(k);
-        if (tk_pl.pcmd[k] == TKP_SLUP + 1u || tk_pl.pcmd[k] == TKP_SLDN + 1u)   /* (the last row's slide: all the way) */
-            tk_slide_q8[k] = tk_pl.pslide[k] + (tk_pl.pcmd[k] == TKP_SLUP + 1u ? 256 : -256) * (int32_t)tk_pl.parg[k];
         tk_pl.pcmd[k] = 0;
         if (tk_inst(&c))
             tk_inst_apply(t, tk_inst(&c));
-        if (tk_cmd(&c) && (id = tk_param_id(t, tk_cmd(&c))) < P_COUNT) {
-            tk_pl.ovr_v[k] = t->p[id];
-            tk_pl.ovr[k] = (uint8_t)(id + 1u);
-            t->p[id] = tk_scale(t, id, tk_val(&c));
-        }
         n = tk_note(&c);
-        sub = tk_psub(&c);
-        arg = tk_parg(&c);
         if (n && n != TK_OFF && !tk_var_plays(k))
-            n = 0;                                  /* (the variation: muted, or its chance said no: as an empty row) */
-        if (n && n != TK_OFF && sub == TKP_CHANCE && !tk_chance(arg))
-            n = 0;                                  /* (PLAY CHANCE said no) */
+            n = 0;                                  /* (the pattern's settings: muted, or its chance said no) */
         if (tk_pl.skip[k] == tk_pl.row + 1u) {      /* (live recording: it sounds from the keys already) */
             tk_pl.skip[k] = 0;
             if (n && n != TK_OFF) {
@@ -370,71 +310,37 @@ static __attribute__((noinline)) void tk_play_row(void)
                 continue;
             }
         }
-        if (sub == TKP_DELAY && n && arg) {         /* NOTE DELAY: the note later in the row (tk_play_tick) */
-            tk_pl.pcmd[k] = TKP_DELAY + 1u;
-            tk_pl.pcell[k] = c;
-            tk_pl.pnext[k] = len * arg / 16u;
-            continue;
-        }
         if (n)
-            tk_col_play(k, &c, n, sub == TKP_ARP);
-        tk_pl.parg[k] = (uint8_t)arg;
-        tk_pl.pstep[k] = 1;
-        if (sub == TKP_RETRIG && n && n != TK_OFF && arg >= 2u) {
-            tk_pl.pcmd[k] = TKP_RETRIG + 1u;
-            tk_pl.pnext[k] = len / arg;
-        } else if (sub == TKP_ARP && n && n != TK_OFF && tk_pl.pn[k] > 1u) {
-            tk_pl.parg[k] = (uint8_t)(arg ? arg : 3u);
-            tk_pl.pcmd[k] = TKP_ARP + 1u;
+            tk_col_play(k, &c, n);
+        if (tk_cmd(&c) == TKC_RETRIG && n && n != TK_OFF && tk_val(&c) >= 2u) {
+            tk_pl.pcmd[k] = 1;
+            tk_pl.parg[k] = (uint8_t)(tk_val(&c) > TKC_RT_MAX ? TKC_RT_MAX : tk_val(&c));
+            tk_pl.pstep[k] = 1;
             tk_pl.pnext[k] = len / tk_pl.parg[k];
-        } else if ((sub == TKP_SLUP || sub == TKP_SLDN) && arg) {
-            tk_pl.pcmd[k] = (uint8_t)(sub + 1u);
-            tk_pl.pslide[k] = tk_slide_q8[k];
         }
     }
     tk_pl.rows++;
 }
 
-/* (Fel-Tracker) the PLAY commands inside their row, row_pos samples into it (tk_tick, every block) */
+/* (Fel-Tracker) RETRIG inside its row, row_pos samples into it (tk_tick, every block): the notes sounding, struck again */
 static __attribute__((noinline)) void tk_play_tick(void)
 {
     uint32_t k, len = tk_row_len(tk_pl.row), pos = tk_pl.row_pos;
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
-        uint32_t cmd = tk_pl.pcmd[k];
-        if (!cmd--)
+        if (!tk_pl.pcmd[k])
             continue;
-        if (cmd == TKP_RETRIG) {                    /* the notes sounding, struck again */
-            while (tk_pl.pstep[k] < tk_pl.parg[k] && pos >= tk_pl.pnext[k]) {
-                uint8_t ns[TK_CHORD] = {tk_pl.note[k], tk_pl.ch[k][0], tk_pl.ch[k][1]};
-                uint32_t j;
-                for (j = 0; j < TK_CHORD; j++)
-                    if (ns[j])
-                        trk_note_off(t, ns[j]);
-                for (j = 0; j < TK_CHORD; j++)
-                    if (ns[j])
-                        trk_note_on(t, ns[j], 100);
-                tk_pl.pstep[k]++;
-                tk_pl.pnext[k] = len * tk_pl.pstep[k] / tk_pl.parg[k];
-            }
-        } else if (cmd == TKP_DELAY) {              /* the note, now */
-            if (pos >= tk_pl.pnext[k]) {
-                tk_pl.pcmd[k] = 0;
-                tk_col_play(k, &tk_pl.pcell[k], tk_note(&tk_pl.pcell[k]), 0);
-            }
-        } else if (cmd == TKP_ARP) {                /* the chord's next note */
-            while (tk_pl.pstep[k] < tk_pl.parg[k] && pos >= tk_pl.pnext[k]) {
-                uint8_t nx = tk_pl.parp[k][tk_pl.pstep[k] % tk_pl.pn[k]];
-                if (tk_pl.note[k])
-                    trk_note_off(t, tk_pl.note[k]);
-                trk_note_on(t, nx, 100);
-                tk_pl.note[k] = nx;
-                tk_pl.pstep[k]++;
-                tk_pl.pnext[k] = len * tk_pl.pstep[k] / tk_pl.parg[k];
-            }
-        } else {                                    /* SLIDE UP / DOWN: on through the row */
-            int32_t d = 256 * (int32_t)tk_pl.parg[k] * (int32_t)(pos < len ? pos : len) / (int32_t)(len ? len : 1u);
-            tk_slide_q8[k] = tk_pl.pslide[k] + (cmd == TKP_SLUP ? d : -d);
+        while (tk_pl.pstep[k] < tk_pl.parg[k] && pos >= tk_pl.pnext[k]) {
+            uint8_t ns[TK_CHORD] = {tk_pl.note[k], tk_pl.ch[k][0], tk_pl.ch[k][1]};
+            uint32_t j;
+            for (j = 0; j < TK_CHORD; j++)
+                if (ns[j])
+                    trk_note_off(t, ns[j]);
+            for (j = 0; j < TK_CHORD; j++)
+                if (ns[j])
+                    trk_note_on(t, ns[j], 100);
+            tk_pl.pstep[k]++;
+            tk_pl.pnext[k] = len * tk_pl.pstep[k] / tk_pl.parg[k];
         }
     }
 }
@@ -500,11 +406,9 @@ static void tk_start(void)
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++) {
-        tk_fx_restore(k);
         tk_release(k);
         tk_pl.skip[k] = tk_pl.rec_row[k] = 0;
-        tk_pl.pcmd[k] = 0;                          /* (Fel-Tracker: no PLAY command at work, no slide) */
-        tk_slide_q8[k] = 0;
+        tk_pl.pcmd[k] = 0;                          /* (Fel-Tracker: no RETRIG at work) */
     }
     if (tk_pl.mode == TK_SONG) {
         tk_pl.pos = (uint8_t)(tk_pl.start_pos < tk.norder ? tk_pl.start_pos : 0u);
@@ -527,11 +431,9 @@ static void tk_stop(void)
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++) {
-        tk_fx_restore(k);
         tk_release(k);
         tk_pl.skip[k] = tk_pl.rec_row[k] = 0;
-        tk_pl.pcmd[k] = 0;                          /* (Fel-Tracker: no PLAY command at work, no slide) */
-        tk_slide_q8[k] = 0;
+        tk_pl.pcmd[k] = 0;                          /* (Fel-Tracker: no RETRIG at work) */
     }
     tk_pl.fresh = 0;
     tk_var_leave();

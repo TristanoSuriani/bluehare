@@ -304,12 +304,12 @@ static int tracker_protocol(void)
     a[0] = 2; a[1] = 3; a[2] = 62; a[3] = 2; a[4] = 6;           /* CELLS: pattern 3, row 62 col 2, 6 cells (into row 63) */
     for (i = 0; i < 6u; i++) {
         uint8_t *c = a + 5 + 6 * i;
-        c[0] = (uint8_t)(48 + i); c[1] = 2; c[2] = TKC_CUT; c[3] = 0x40; c[4] = i == 5u ? 4 : 0; c[5] = i == 5u ? 7 : 0;
+        c[0] = (uint8_t)(48 + i); c[1] = 2; c[2] = TKC_RETRIG; c[3] = 4; c[4] = i == 5u ? 4 : 0; c[5] = i == 5u ? 7 : 0;
     }
     n = request(ED_TRACKER, a, 5 + 6 * 6);
     ok = n == 12u && host_wire[6] == 0 && tk_note(tk_at(3, 62, 2)) == 48 && tk_note(tk_at(3, 62, 3)) == 49 &&
          tk_note(tk_at(3, 63, 0)) == 50 && tk_note(tk_at(3, 63, 3)) == 53 && tk_inst(tk_at(3, 63, 3)) == 2 &&
-         tk_cmd(tk_at(3, 63, 3)) == TKC_CUT && tk_val(tk_at(3, 63, 3)) == 0x40 && tk_chord(tk_at(3, 63, 3)) == 0x74 &&
+         tk_cmd(tk_at(3, 63, 3)) == TKC_RETRIG && tk_val(tk_at(3, 63, 3)) == 4 && tk_chord(tk_at(3, 63, 3)) == 0x74 &&
          !tk_chord(tk_at(3, 63, 2));
     bad += check("TRACKER CELLS: six cells row-major from row 62 / column 3, into row 63 (the last with a chord, +4 +7)", ok);
     a[4] = 7; for (i = 0; i < 7u; i++) { a[5 + 6 * i] = 1; a[9 + 6 * i] = a[10 + 6 * i] = 0; }
@@ -327,7 +327,7 @@ static int tracker_protocol(void)
     bad += check("TRACKER PATTERN: rows 60..63 (the count cut at the end), 24 bytes a row, the chord's intervals last",
                  n == 12u + 4u * 24u && host_wire[7] == 3 && host_wire[8] == TK_ROWS && host_wire[10] == 4 &&
                  host_wire[11 + 2 * 24 + 2 * 6] == 48 && host_wire[11 + 3 * 24 + 3 * 6] == 53 &&
-                 host_wire[11 + 3 * 24 + 3 * 6 + 2] == TKC_CUT && host_wire[11 + 3 * 24 + 3 * 6 + 4] == 4 &&
+                 host_wire[11 + 3 * 24 + 3 * 6 + 2] == TKC_RETRIG && host_wire[11 + 3 * 24 + 3 * 6 + 4] == 4 &&
                  host_wire[11 + 3 * 24 + 3 * 6 + 5] == 7);
     a[3] = 17;
     bad += check("  17 rows: no reply (16 at most)", !request(ED_TRACKER, a, 4));

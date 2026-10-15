@@ -35,7 +35,7 @@ int main(int argc, char **argv)
         uint32_t pats = 1u + rnd() % 8u, n = rnd() % 3000u;
         tk_defaults();
         for (j = 0; j < n; j++)                         /* a random song (any field, raw) */
-            *tk_at(rnd() % pats, rnd() % TK_ROWS, rnd() % NTRK) = tk_pack(rnd(), rnd(), rnd() % TKC_N, rnd());
+            *tk_at(rnd() % pats, rnd() % TK_ROWS, rnd() % NTRK) = tk_pack(rnd(), rnd(), rnd() % TKC_N, rnd() % (TKC_RT_MAX + 1u));
         tk.norder = (uint8_t)(1u + rnd() % TK_ORDER);
         for (j = 0; j < tk.norder; j++) tk.order[j] = (uint8_t)(rnd() % TK_PATS);
         for (j = 0; j < TK_INSTS; j++) { tk.instr[j].src = (uint8_t)rnd(); tk.instr[j].preset = (uint8_t)rnd(); }

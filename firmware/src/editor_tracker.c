@@ -30,7 +30,7 @@
  *  13 PAN      [track, mode]                  -> NTRK x mode (Fel-Tracker 2026-10, INFO 58 06): PAN MODE, 0 ALT, 1 RND
  *              (core.h trk_pmode); past 1: rc 1
  * A cell is 6 bytes: note (0 none, 1..126 a MIDI note, 127 OFF), instrument (0 none, 1..TK_INSTS), FX command
- * (0..TKC_N-1), FX value (0..127), the chord's two intervals above the note (0 none, 1..15 semitones each). rc: 0 ok, 1 arguments (nothing written), 2 busy. A write is the editor's own: no
+ * (0 none, 1 RETRIG: 2026-10, the only one), FX value (RETRIG's hits: 0..15), the chord's two intervals above the note (0 none, 1..15 semitones each). rc: 0 ok, 1 arguments (nothing written), 2 busy. A write is the editor's own: no
  * TRACKER_CHANGED for it (the shadow takes it). TRACKER_CHANGED (79, pushed with WATCH bit 2): kind (0 a pattern, 1
  * the song: order, instruments, CUT / RES), index. */
 enum { EDT_STATUS, EDT_PATTERN, EDT_CELLS, EDT_LENGTH, EDT_ORDER, EDT_INSTR, EDT_FILTER, EDT_PLAY, EDT_CLEAR,
@@ -100,7 +100,7 @@ static int edt_var_put(tk_var_t *x, const uint8_t *a)   /* 1: a value out of its
 }
 static int edt_cell_ok(const uint8_t *c)
 {
-    return c[1] <= TK_INSTS && c[2] < TKC_N && c[4] <= 15u && c[5] <= 15u && (c[2] != TKC_PLAY || c[3] >> 4 < TKP_N);
+    return c[1] <= TK_INSTS && c[2] < TKC_N && c[4] <= 15u && c[5] <= 15u && (c[2] != TKC_RETRIG || c[3] <= TKC_RT_MAX);
 }
 static void edt_inst(const tk_inst_t *in)
 {

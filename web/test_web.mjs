@@ -917,16 +917,16 @@ async function editorTracker() {
   let s = P(await rq(E.req.tkStatus()));
   ok(s.op === TK.STATUS && !s.rc && !s.playing && s.norder === 1, "tracker: STATUS stopped, one position");
   let p = P(await rq(E.req.tkPattern(0, 0, 32)));
-  ok(p.len === 16 && p.rows.length === 16 && TK.text(p.rows[0][0]) === "A-2 01 ..." && TK.text(p.rows[2][0]) === "A-3 01 C50" &&
-     TK.text(p.rows[0][1]) === "C-4 MAJ 02 W60",
-    "tracker: PATTERN 00 (the mock's demo): 16 rows a request at most; A-2 01, A-3 01 C50, C-4 MAJ 02 W60");
-  const cells = ["C-4 01 C40", "OFF", "", "D#5 +2+9 3F W7F", "C#- .. ...", "01 V20"].map((x) => TK.parse(x));
+  ok(p.len === 16 && p.rows.length === 16 && TK.text(p.rows[0][0]) === "A-2 01 ..." && TK.text(p.rows[2][0]) === "A-3 01 T03" &&
+     TK.text(p.rows[0][1]) === "C-4 MAJ 02 T06",
+    "tracker: PATTERN 00 (the mock's demo): 16 rows a request at most; A-2 01, A-3 01 T03, C-4 MAJ 02 T06");
+  const cells = ["C-4 01 T04", "OFF", "", "D#5 +2+9 3F T0F", "C#- .. ...", "01 T02"].map((x) => TK.parse(x));
   let w = P(await rq(E.req.tkCells(5, 63, 2, cells.slice(0, 3))));
   ok(w.rc === 1 && TK.empty(m.tracker.pats[5][63][2]), "tracker: CELLS past the pattern's end: rc 1, nothing written");
   w = P(await rq(E.req.tkCells(5, 62, 2, cells)));
   p = P(await rq(E.req.tkPattern(5, 62, 2)));
   ok(!w.rc && p.count === 2 && p.rows.flat().slice(2).map(TK.text).join("|") ===
-    "C-4 01 C40|OFF .. ...|--- .. ...|D#5 +2+9 3F W7F|C#- .. ...|--- 01 V20" && m.tracker.pats[5][63][1].i2 === 9,
+    "C-4 01 T04|OFF .. ...|--- .. ...|D#5 +2+9 3F T0F|C#- .. ...|--- 01 T02" && m.tracker.pats[5][63][1].i2 === 9,
     "tracker: CELLS row-major from row 3E column 3 (a chord +2 +9 with them); PATTERN reads them back (the count cut at the end)");
   ok(P(await rq(E.req.tkLength(5, 24))).len === 24 && P(await rq(E.req.tkLength(5))).len === 24, "tracker: LENGTH 24");
   let o = P(await rq(E.req.tkOrder([0, 5, 5, 1])));
@@ -999,26 +999,25 @@ async function editorTracker() {
   let bad = 0;
   for (let n = 1; n <= 127; n++)
     for (const [i1, i2] of [[0, 0], [4, 7], [7, 4], [2, 9], [12, 0], [15, 15], [1, 0]]) {
-      const cmd = n % TK.FX.length, val = cmd === 15 ? (n % 6) << 4 | n % 16 : n % 128;   /* (PLAY: its 6 commands) */
+      const cmd = n % TK.FX.length, val = n % 16;   /* (RETRIG alone since 2026-10) */
       const c = { note: n, inst: n % 64, cmd, val, i1: n === 127 ? 0 : i1, i2: n === 127 ? 0 : i2 };
       const back = TK.parse(TK.text(c));
       const same = (a, b) => a.i1 === b.i1 && a.i2 === b.i2 || (a.i1 === b.i2 && a.i2 === b.i1 && a.i1 && a.i2);   /* (a shape: either order) */
       if (!back || back.note !== c.note || back.inst !== c.inst || back.cmd !== c.cmd || (c.cmd && back.val !== c.val) || !same(back, c)) bad++;
     }
-  ok(!bad && TK.text({ note: 60, inst: 1, cmd: 6, val: 64 }) === "C-4 01 C40" && TK.text({ note: 0, inst: 0, cmd: 0, val: 0 }) === "--- .. ..." &&
+  ok(!bad && TK.text({ note: 60, inst: 1, cmd: 1, val: 4 }) === "C-4 01 T04" && TK.text({ note: 0, inst: 0, cmd: 0, val: 0 }) === "--- .. ..." &&
      TK.text({ note: 127, inst: 0, cmd: 0, val: 0 }) === "OFF .. ..." && TK.text({ note: 5, inst: 0, cmd: 0, val: 0 }) === "F-- .. ...",
-    "tracker: a cell's text as the device shows it (C-4 01 C40, OFF, octave -1 F--), chords too, read back exactly");
+    "tracker: a cell's text as the device shows it (C-4 01 T04, OFF, octave -1 F--), chords too, read back exactly");
   ok(TK.text({ note: 60, inst: 1, cmd: 0, val: 0, i1: 4, i2: 7 }) === "C-4 MAJ 01 ..." && TK.text({ note: 60, inst: 0, cmd: 0, val: 0, i1: 2, i2: 9 }) === "C-4 +2+9 .. ..." &&
      TK.text({ note: 127, inst: 0, cmd: 0, val: 0, i1: 4, i2: 7 }) === "OFF .. ..." && TK.parse("C-4 min7 02").i2 === 10 &&
      TK.parse("c4 +5").i1 === 5 && ["C-4 +16", "C-4 +0", "MAJ 01", "C-4 MAJ MIN"].every((x) => TK.parse(x) === null),
     "tracker: chords: MAJ, +2+9, none on OFF; typed as a shape or +i+i (1..15), only after a note");
-  ok(TK.parse("c4 1").note === 60 && TK.parse("bb2").note === 46 && TK.parse("01 C40").inst === 1 && TK.parse("").note === 0 &&
-     ["C-4 40", "Z", "C-4 01 C80", "G9 01", "C-4 01 Z10"].every((x) => TK.parse(x) === null),
-    "tracker: typing: c4, Bb2, the instrument and FX alone, empty; instrument 40, FX 80, G9 (127) refused");
-  ok(TK.text({ note: 60, inst: 1, cmd: 15, val: 0x04 }) === "C-4 01 T04" && TK.text({ note: 0, inst: 0, cmd: 15, val: 0x58 }) === "--- .. %08" &&
-     TK.parse("C-4 01 Y08").cmd === 15 && TK.parse("C-4 01 Y08").val === 0x18 && TK.parse("c4 maj 01 j03").val === 0x23 &&
-     TK.parse("U0C").val === 0x3C && TK.parse("N02").val === 0x42 && ["C-4 01 T10", "C-4 01 *04"].every((x) => TK.parse(x) === null),
-    "tracker: PLAY's commands as the device writes them: T RETRIG, Y NOTE DELAY, J ARPEGGIO, U / N SLIDE, % CHANCE (amount 0..F)");
+  ok(TK.parse("c4 1").note === 60 && TK.parse("bb2").note === 46 && TK.parse("01 T04").inst === 1 && TK.parse("").note === 0 &&
+     ["C-4 40", "Z", "C-4 01 T10", "G9 01", "C-4 01 C40"].every((x) => TK.parse(x) === null),
+    "tracker: typing: c4, Bb2, the instrument and FX alone, empty; instrument 40, RETRIG 10 (16 hits), a gone FX (C), G9 (127) refused");
+  ok(TK.text({ note: 60, inst: 1, cmd: 1, val: 0x04 }) === "C-4 01 T04" && TK.parse("C-4 01 T0F").cmd === 1 &&
+     TK.parse("C-4 01 T0F").val === 15 && ["C-4 01 Y08", "C-4 01 *04"].every((x) => TK.parse(x) === null),
+    "tracker: RETRIG as the device writes it (T and its hits, 0..F); the other PLAY commands gone (2026-10)");
 }
 
 /* ------------------------------------- editor v4: TRACK_PARAM and TRACK_CHANGED --- */

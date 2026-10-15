@@ -367,7 +367,7 @@ static void song_fill(uint32_t seed, uint32_t pats)      /* a song over `pats` p
     for (p = 0; p < pats; p++)
         for (r = 0; r < TK_ROWS; r += 1u + (p + seed) % 2u)
             for (k = 0; k < NTRK; k++)
-                *tk_at(p, r, k) = tk_pack(24u + (r * 7u + k * 5u + seed) % 90u, (k + seed) % 4u, (r + seed) % 3u, r);
+                *tk_at(p, r, k) = tk_pack(24u + (r * 7u + k * 5u + seed) % 90u, (k + seed) % 4u, (r + seed) % TKC_N, r % 16u);
     tk.order[1] = (uint8_t)(seed % TK_PATS);
     tk.norder = 2;
     song.g[G_BPM] = (int16_t)(60 + seed);

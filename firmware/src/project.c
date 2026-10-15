@@ -399,7 +399,7 @@ static int proj_read(pr_t *r, int apply)
             at = ver >= 3u ? (uint32_t)pr_i16(r) & 0xFFFFu : pr_u8(r);   /* (the place: row * tracks + track) */
             pr_bytes(r, c.b, 3);
             if ((i && at <= prev) || at >= TK_ROWS * ntr || tk_cmd(&c) >= TKC_N ||
-                (tk_cmd(&c) == TKC_PLAY && tk_val(&c) >> 4 >= TKP_N))   /* (Fel-Tracker: PLAY's 6 commands) */
+                (tk_cmd(&c) == TKC_RETRIG && tk_val(&c) > TKC_RT_MAX))   /* (Fel-Tracker: RETRIG alone, 2026-10) */
                 return 1;
             prev = at;
             if (apply)

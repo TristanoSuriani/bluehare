@@ -594,16 +594,16 @@ static void tk_scene(int s)
     tk.instr[3].src = ENGI_KIT;
 #if NTRK == 8                                           /* (TRACKS 8: notes on 5 .. 8; track 6 selected below) */
     for (r = 0; r < TK_ROWS; r += 3u)
-        *tk_at(0, r, 4u + r % 4u) = tk_pack(48 + r % 24u, 5 + r % 3u, r % 2u ? TKC_PAN : 0, r);
+        *tk_at(0, r, 4u + r % 4u) = tk_pack(48 + r % 24u, 5 + r % 3u, r % 2u ? TKC_RETRIG : 0, 2u + r % 14u);
 #endif
     for (r = 0; r < TK_ROWS; r++) {
         if (r % 4u == 0u) *tk_at(0, r, 3) = tk_pack(36, 4, 0, 0);
-        else if (r % 2u == 0u) *tk_at(0, r, 3) = tk_pack(42, 4, TKC_LEVEL, 0x50);
-        if (r % 8u == 3u) *tk_at(0, r, 0) = tk_pack(39 + r % 12u, 1, TKC_CUT, 0x10 + r);
-        if (r % 16u == 0u) *tk_at(0, r, 1) = tk_pack_ch(60, 2, TKC_REV, 0x7F, 0x74);   /* (a chord: MAJ) */
+        else if (r % 2u == 0u) *tk_at(0, r, 3) = tk_pack(42, 4, TKC_RETRIG, 3);
+        if (r % 8u == 3u) *tk_at(0, r, 0) = tk_pack(39 + r % 12u, 1, TKC_RETRIG, 2u + r % 14u);
+        if (r % 16u == 0u) *tk_at(0, r, 1) = tk_pack_ch(60, 2, TKC_RETRIG, 15, 0x74);   /* (a chord: MAJ) */
         if (r % 8u == 3u) tk_at(0, r, 0)->b[3] = 0x73;                                  /* (MIN) */
         if (r % 16u == 14u) *tk_at(0, r, 1) = tk_pack(TK_OFF, 0, 0, 0);
-        if (r % 5u == 1u) *tk_at(0, r, 2) = tk_pack(72 + r % 7u, 3, TKC_DLY, 0x33);
+        if (r % 5u == 1u) *tk_at(0, r, 2) = tk_pack(72 + r % 7u, 3, TKC_RETRIG, 8);
     }
     *tk_at(1, 0, 0) = tk_pack(48, 0, 0, 0);
     tk.order[1] = 1; tk.order[2] = 0; tk.order[3] = 2; tk.norder = 4; tk.len[1] = 32;

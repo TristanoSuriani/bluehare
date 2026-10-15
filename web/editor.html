@@ -647,7 +647,7 @@ const parse = {
 };
 
 /* 1.5: the tracker (firmware/src/tracker.c, editor_tracker.c). A cell: note (0 none, 1..126, 127 OFF), instrument (0 none,
-   1..63), FX command (TK.FX's letters; 0 none) and its value 0..127, and a chord: two intervals above the note (i1, i2:
+   1..63), FX command (TK.FX's letters; 0 none: RETRIG alone since 2026-10) and its value (its hits, 0..15), and a chord: two intervals above the note (i1, i2:
    0 none, 1..15 semitones). As the device shows it: "C-4 01 C40", "C-4 MAJ 01 C40", "C-4 +2+9 01 ..." */
 const TK = {
   STATUS: 0, PATTERN: 1, CELLS: 2, LENGTH: 3, ORDER: 4, INSTR: 5, FILTER: 6, PLAY: 7, CLEAR: 8, VAR: 9, VARCOUNT: 10, WIDTH: 11, DUCK: 12, PAN: 13,
@@ -668,14 +668,10 @@ const TK = {
   SETTINGS: [[1, "ATTACK"], [2, "DECAY"], [3, "SUSTAIN"], [4, "RELEASE"], [5, "FLT ENV"], [33, "DIST"], [34, "CHORUS"],
     [35, "DELAY"], [36, "REVERB"], [0, "LEVEL"], [39, "PAN"]],
   varDefault: (n) => ({ bpm: 0, mute: 0, chance: new Array(n).fill(100), vo: Array.from({ length: n }, () => new Array(7).fill(-1)) }),
-  FX: ".VADSRCQFPXHEWG*",                            /* tracker.c TKC_CHAR (append-only) */
-  FX_NAMES: ["NO FX", "LEVEL", "ATTACK", "DECAY", "SUSTAIN", "RELEASE", "CUTOFF", "RESONANCE", "FLT ENV", "PAN", "DIST",
-    "CHORUS", "DELAY", "REVERB", "GLIDE", "PLAY"],
-  /* (Fel-Tracker) PLAY (FX 15): its command in the value's bits 4..6, its amount in 0..3, written with the command's own
-     letter (tracker.c TKP_CHAR): T RETRIG, Y NOTE DELAY, J ARPEGGIO, U SLIDE UP, N SLIDE DOWN, % CHANCE ("T04") */
-  PLAY_FX: "TYJUN%",
-  PLAY_FX_NAMES: ["RETRIG", "NOTE DELAY", "ARPEGGIO", "SLIDE UP", "SLIDE DOWN", "CHANCE"],
-  fxText: (c) => !c.cmd ? "..." : c.cmd === 15 ? (TK.PLAY_FX[c.val >> 4] || "*") + TK.hex2(c.val & 15) : TK.FX[c.cmd] + TK.hex2(c.val),
+  FX: ".T",                                        /* tracker.c TKC_CHAR: since 2026-10 RETRIG alone, its hits 0..15 ("T04") */
+  FX_NAMES: ["NO FX", "RETRIG"],
+  RT_MAX: 15,
+  fxText: (c) => !c.cmd ? "..." : TK.FX[c.cmd] + TK.hex2(c.val),
   /* the chord shapes (ui_tracker.c TK_SHAPES): [name, i1, i2] */
   SHAPES: [["MAJ", 4, 7], ["MIN", 3, 7], ["SUS2", 2, 7], ["SUS4", 5, 7], ["DIM", 3, 6], ["AUG", 4, 8], ["MAJ6", 4, 9],
     ["MAJ7", 4, 11], ["DOM7", 4, 10], ["MIN7", 3, 10], ["5TH", 7, 0], ["5+OCT", 7, 12], ["OCT", 12, 0]],
@@ -727,14 +723,9 @@ const TK = {
       i++;
     }
     if (i < toks.length) {
-      const t = toks[i], k = TK.FX.indexOf(t[0]), q = TK.PLAY_FX.indexOf(t[0]);
+      const t = toks[i], k = TK.FX.indexOf(t[0]);
       if (/^\.+$/.test(t)) { i++; }
-      else if (q >= 0 && /^[0-9A-F]{1,2}$/.test(t.slice(1))) {   /* (PLAY's commands by their letter: "T04") */
-        const a = parseInt(t.slice(1), 16);
-        if (a > 15) return null;
-        c.cmd = 15; c.val = q << 4 | a; i++;
-      }
-      else if (k > 0 && k < 15 && /^[0-9A-F]{1,2}$/.test(t.slice(1))) { c.cmd = k; c.val = parseInt(t.slice(1), 16); if (c.val > 127) return null; i++; }
+      else if (k > 0 && /^[0-9A-F]{1,2}$/.test(t.slice(1))) { c.cmd = k; c.val = parseInt(t.slice(1), 16); if (c.val > TK.RT_MAX) return null; i++; }
       else return null;
     }
     return i === toks.length ? c : null;
@@ -1883,9 +1874,9 @@ function makeMockDevice(opt = {}) {
   TRK_DEF.slice(0, 4).forEach(([e, p], i) => { tk.instr[i] = { kind: 1, a: e, b: p }; });
   /* the mock's demo (the device powers on empty): pattern 00, 16 rows of bass (01), pads (02) and drums (04) */
   tk.len[0] = 16;
-  [45, 0, 57, 45, 0, 48, 45, 55, 45, 0, 57, 52, 45, 48, 0, 50].forEach((n, r) => { if (n) tk.pats[0][r][0] = { ...tkBlank(), note: n, inst: 1, cmd: r % 8 === 2 ? 6 : 0, val: r % 8 === 2 ? 0x50 : 0 }; });
-  tk.pats[0][0][1] = { note: 60, inst: 2, cmd: 13, val: 0x60, i1: 4, i2: 7 }; tk.pats[0][8][1] = { ...tkBlank(), note: 127 };
-  for (let r = 0; r < 16; r++) if (r % 2 === 0) tk.pats[0][r][3] = { ...tkBlank(), note: r % 4 === 0 ? 36 : 42, inst: 4, cmd: r % 4 ? 1 : 0, val: r % 4 ? 0x50 : 0 };
+  [45, 0, 57, 45, 0, 48, 45, 55, 45, 0, 57, 52, 45, 48, 0, 50].forEach((n, r) => { if (n) tk.pats[0][r][0] = { ...tkBlank(), note: n, inst: 1, cmd: r % 8 === 2 ? 1 : 0, val: r % 8 === 2 ? 3 : 0 }; });
+  tk.pats[0][0][1] = { note: 60, inst: 2, cmd: 1, val: 6, i1: 4, i2: 7 }; tk.pats[0][8][1] = { ...tkBlank(), note: 127 };
+  for (let r = 0; r < 16; r++) if (r % 2 === 0) tk.pats[0][r][3] = { ...tkBlank(), note: r % 4 === 0 ? 36 : 42, inst: 4, cmd: r % 4 ? 1 : 0, val: r % 4 ? 2 : 0 };
   function tkAdvance() {                         /* a row played (tracker.c tk_tick) */
     const pl = tk.pl;
     if (!pl.playing || ++pl.row < tk.len[pl.pat]) return;
@@ -2173,7 +2164,7 @@ function makeMockDevice(opt = {}) {
           const [p, r0, c0, n] = x;
           if (x.length < 4 || p >= TKP || r0 >= TKR || c0 >= 4 || !n || n > TK.CELLS_MAX || x.length !== 4 + 6 * n) return null;
           if (r0 * 4 + c0 + n > TKR * 4) rc = 1;
-          for (let i = 0; !rc && i < n; i++) { const q = x.slice(4 + 6 * i, 10 + 6 * i); if (q[1] > TKI || q[2] >= TK.FX.length || (q[2] === 15 && q[3] >> 4 >= TK.PLAY_FX.length) || q[4] > 15 || q[5] > 15) rc = 1; }
+          for (let i = 0; !rc && i < n; i++) { const q = x.slice(4 + 6 * i, 10 + 6 * i); if (q[1] > TKI || q[2] >= TK.FX.length || (q[2] === 1 && q[3] > TK.RT_MAX) || q[4] > 15 || q[5] > 15) rc = 1; }
           for (let i = 0; !rc && i < n; i++) {
             const at = r0 * 4 + c0 + i, q = x.slice(4 + 6 * i, 10 + 6 * i);
             tk.pats[p][at >> 2][at & 3] = { note: q[0], inst: q[1], cmd: q[2], val: q[3], i1: q[4], i2: q[5] };
