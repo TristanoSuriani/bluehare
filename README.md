@@ -103,6 +103,9 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   tape echoes stay mono, as the real ones are), and the delay's and the reverb's sends lose their lows below about
   220 Hz first, so the bass and the kick stay dry and the tails stay clear. A gentle bus compressor (3:1, slow) sits in
   front of the master limiter, so a full mix keeps its punch at the top of MASTER instead of being held down all the time.
+  *(Fel-Tracker, 2026-10)* **2x oversampling** around the drives of RAZOR, VENOM and SANDSTORM and GUTS's fold: what a
+  hard drive adds above the band no longer folds back into it (6 to 7 dB fewer aliases on a high, driven note); a voice
+  of RAZOR costs ~17 % more, of VENOM ~31 %.
   *(Fel-Tracker, 2026-10)* **MONO LOWS**: before it, the mix's stereo difference under about 120 Hz is taken out (40 Hz
   hard left plays on both sides), as a club's system wants the bass; the width above stays
 - **FX layer:** hold FX for repeat, reverse, filter sweeps, tape stop, freeze, a harmonizer

@@ -19,6 +19,7 @@ static void guts_note_on(track_t *t, voice_t *v)
 
 static void guts_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
+    os2_t *os = os2_of(t, v);                         /* (Fel-Tracker 2026-10: the shaper's 2x, dsp.c) */
     const int16_t *p = t->p;
     uint32_t wave = (uint32_t)p[P_E0] % 3u, i, ph = v->ph[0], inc = m->inc;
     int32_t g = 256 + p[P_E1] * 14, bias = p[P_E2] * 120, fe = v->s[2], ic1 = v->s[0], ic2 = v->s[1];
@@ -29,7 +30,14 @@ static void guts_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     tsvf_coef(&flt, cut, p[P_E4]);
     for (i = 0; i < n; i++) {
         int32_t x = wave == 0u ? osc_saw(ph, inc) : wave == 1u ? osc_tri(ph) : osc_pulse(ph, inc, 0x80000000u), y;
-        y = sine_i((uint32_t)((((x >> 1) * g) >> 8) + bias) << 15);   /* the lopsided fold (32768: a quarter turn) */
+        if (os2_off)
+            y = sine_i((uint32_t)((((x >> 1) * g) >> 8) + bias) << 15);   /* the lopsided fold (32768: a quarter turn) */
+        else {                                        /* (Fel-Tracker 2026-10: the fold at twice the rate, dsp.c os2) */
+            int32_t xa, xb;
+            os2_up(os, x, &xa, &xb);
+            y = os2_down(os, sine_i((uint32_t)((((xa >> 1) * g) >> 8) + bias) << 15),
+                         sine_i((uint32_t)((((xb >> 1) * g) >> 8) + bias) << 15));
+        }
         x = y - x1 + y1 - (y1 >> 9);                  /* (the DC: ASYM's) */
         x1 = y;
         y1 = x;

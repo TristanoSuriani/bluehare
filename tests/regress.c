@@ -1303,8 +1303,29 @@ mixes_done:
     }
     if (!J[c0].r.ipc)
         printf("regress: CPU: no instruction counter on this host (proc_pid_rusage); the budget is not checked\n");
-    else if (cupd && dist) {
-        printf("regress: BUDGET_UPDATE with a distribution other than the default: not written (add its lines by hand)\n");
+    else if (cupd && dist) {                       /* (Fel-Tracker) its own engines' lines updated, the rest kept */
+        FILE *f = fopen(cpath, "w");
+        uint32_t nw = 0;
+        if (!f) {
+            perror(cpath);
+            return 2;
+        }
+        fprintf(f, "# FELUCCA host CPU baseline (tests/regress.c): instructions per 44.1 kHz sample, cc -O2 on\n"
+                   "# the Mac (kernel-counted, ~1 %% run to run). The check allows +%.0f %%. Rewritten by BUDGET_UPDATE=1.\n",
+                CPU_TOL * 100);
+        for (i = 0; i < nc; i++) {
+            uint32_t j, hit = 0;
+            for (j = c0; j < c1 && !hit; j++)
+                if (!strncmp(J[j].name, "cpu/", 4) && strncmp(J[j].name, "cpu/mix/", 8) && !strcmp(J[j].name, cpu[i].name)) {
+                    fprintf(f, "%s %.0f\n", J[j].name, J[j].r.ipc);
+                    hit = 1;
+                    nw++;
+                }
+            if (!hit)
+                fprintf(f, "%s %s\n", cpu[i].name, cpu[i].val);
+        }
+        fclose(f);
+        printf("regress: CPU baseline %s: this distribution's %u entries rewritten, the others kept\n", cpath, nw);
     } else if (cupd) {
         FILE *f = fopen(cpath, "w");
         if (!f) {

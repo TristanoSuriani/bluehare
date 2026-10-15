@@ -47,6 +47,7 @@ static void sandstorm_note_on(track_t *t, voice_t *v)
 
 static void sandstorm_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
+    os2_t *os = os2_of(t, v);                         /* (Fel-Tracker 2026-10: the shaper's 2x, dsp.c) */
     const int16_t *p = t->p;
     ss_voice_t *s = ss_voice(t, v);
     int32_t pluck = v->s[0], into = v->s[1], dive = v->s[2], chop = v->s[3], k, cut, drive = p[P_E7];
@@ -86,8 +87,13 @@ static void sandstorm_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, c
         x = (x * 6554) >> 15;                         /* (a fifth each) */
         y = tsvf_lp(&flt, x >> 1, &s->f[0], &s->f[1]);
         y = tsvf_lp(&flt, y, &s->f[2], &s->f[3]);
-        if (drive)
+        if (drive && os2_off)
             y = softclip(y * (64 + drive) >> 6);
+        else if (drive) {                             /* (Fel-Tracker 2026-10: the drive at twice the rate, dsp.c os2) */
+            int32_t ya, yb;
+            os2_up(os, y, &ya, &yb);
+            y = os2_down(os, softclip(ya * (64 + drive) >> 6), softclip(yb * (64 + drive) >> 6));
+        }
         else
             y = soft_knee(y, 16000);
         if (step)

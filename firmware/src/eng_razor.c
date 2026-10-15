@@ -23,6 +23,7 @@ static void razor_note_on(track_t *t, voice_t *v)
 
 static void razor_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
+    os2_t *os = os2_of(t, v);                         /* (Fel-Tracker 2026-10: the shaper's 2x, dsp.c) */
     const int16_t *p = t->p;
     uint32_t nv = (uint32_t)clamp(p[P_E0], 1, RZ_N), inc[RZ_N], ph[RZ_N], i, k, sph = (uint32_t)v->s[7], sinc;
     int32_t lvl = RZ_LVL[nv], sub = p[P_E6] * 258, noise = p[P_E7] * 100, drive = 256 + p[P_E5] * 8;
@@ -48,7 +49,13 @@ static void razor_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         sph += sinc;
         if (noise)
             s += ((int32_t)(int16_t)((ph[0] * 2654435761u) >> 16) * noise) >> 15;
-        s = softclip(((s >> 1) * drive) >> 8);        /* DRIVE: into the filter */
+        if (os2_off)
+            s = softclip(((s >> 1) * drive) >> 8);    /* DRIVE: into the filter */
+        else {                                        /* (Fel-Tracker 2026-10: at twice the rate, dsp.c os2) */
+            int32_t sa, sb;
+            os2_up(os, s >> 1, &sa, &sb);
+            s = os2_down(os, softclip((sa * drive) >> 8), softclip((sb * drive) >> 8));
+        }
         y = tsvf_lp(&flt, s >> 1, &ic1, &ic2);
         hp += ((y - hp) * ek) >> 15;                  /* EDGE: the lows taken off after it */
         y -= ek ? hp : 0;

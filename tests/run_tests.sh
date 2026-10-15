@@ -330,6 +330,10 @@ if [ -f build/gen/felucca_tables.h ]; then
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_test" tests/reverb_test.c -lm
     mkdir -p build/reverb_demo
     slow run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, DELAY TYPE, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
+    for d in foundry warehouse; do
+        slow compile $CC -O2 -w -DFELUCCA_DIST=$d -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/os2_test_$d" tests/os2_test.c -lm
+        slow run "2x OVERSAMPLING ($d): the pair transparent to 15 kHz, silence exact; the drives' aliases under 15 kHz lower" "$OUT/os2_test_$d"
+    done
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/concert_test" tests/concert_test.c -lm
     run "REVERB TYPE CONCERT (the device's): HALL's level, longer with SIZE, stable at the corners, exact silence, stereo, model changes" "$OUT/concert_test"
     compile $CC -O1 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/dual_test" tests/dual_test.c -lm

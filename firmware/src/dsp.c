@@ -68,6 +68,44 @@ static inline int32_t softclip(int32_t x)
     return x < 0 ? -y : y;
 }
 
+/* (Fel-Tracker, 2026-10) 2x oversampling around a shaper (a drive, a fold): what a curve adds above the band then folds
+ * back over 22 kHz instead of into it. A polyphase IIR halfband (two paths, a first-order allpass each, 2 coefficients:
+ * hiir's design for a 0.16 transition), each way: flat to 18 kHz (-0.04 dB), what would fold under 15 kHz 46 dB down;
+ * two multiplies up, two down, a sample or two late (its phase not linear: no matter around a distortion; for shapers
+ * outside a feedback loop only). os2_up gives the two samples at twice the rate for one in; the caller shapes both;
+ * os2_down gives one back. 32-bit: the input held to +-2^17 (the engines' shapers take less), the coefficients Q12, the
+ * products rounded towards zero (silence ends in zeros). State per voice: os2_of */
+#define OS2_C0 739                       /* Q12: 0.18034 (path 0), 0.64678 (path 1) */
+#define OS2_C1 2649
+#define OS2_MAX 131071
+typedef struct { int32_t ux[2], uy[2], dx[2], dy[2]; } os2_t;
+static uint8_t os2_off;                  /* (the host tests: the engines as before, for the aliasing comparison) */
+static inline int32_t os2_ap(int32_t x, int32_t c, int32_t *xo, int32_t *yo)   /* y = c (x - y') + x' */
+{
+    int32_t q = (x - *yo) * c, y = ((q + ((q >> 31) & 4095)) >> 12) + *xo;   /* (towards zero) */
+    *xo = x;
+    *yo = y;
+    return y;
+}
+static inline void os2_up(os2_t *s, int32_t in, int32_t *a, int32_t *b)
+{
+    in = in > OS2_MAX ? OS2_MAX : in < -OS2_MAX ? -OS2_MAX : in;
+    *a = os2_ap(in, OS2_C0, &s->ux[0], &s->uy[0]);
+    *b = os2_ap(in, OS2_C1, &s->ux[1], &s->uy[1]);
+}
+static os2_t os2_v[NTRK][NVOICE] __attribute__((section(".pool")));   /* (a voice's: its engine's shaper; 1.5 KB) */
+static os2_t *os2_of(const track_t *t, const voice_t *v)
+{
+    uint32_t k = (uint32_t)(t - trk), j = (uint32_t)(v - t->v);
+    return &os2_v[k < NTRK ? k : 0u][j < NVOICE ? j : 0u];
+}
+static inline int32_t os2_down(os2_t *s, int32_t a, int32_t b)
+{
+    a = a > OS2_MAX ? OS2_MAX : a < -OS2_MAX ? -OS2_MAX : a;   /* (a shaper's output: Q15, held all the same) */
+    b = b > OS2_MAX ? OS2_MAX : b < -OS2_MAX ? -OS2_MAX : b;
+    return (os2_ap(b, OS2_C0, &s->dx[0], &s->dy[0]) + os2_ap(a, OS2_C1, &s->dx[1], &s->dy[1])) >> 1;
+}
+
 /* xorshift32 */
 static inline uint32_t noise32(int32_t *st)
 {
