@@ -89,7 +89,8 @@ SEQ page says TODO). `TRACKER` (78) gets no reply, `TRACKER_CHANGED` (79) is nev
 the `58` tag, and `WATCH` does not take bit 2 (7 answers 3). `PROJECT` keeps the tracks' sounds and their places in
 the mix (WIDTH, LOW CUT, DUCK, PAN MODE), no song. The MENU's CLICK is OFF / ON (REC, while a track was armed, is
 gone: there is no recording) and STEP PREVIEW (id 19) is gone: MENU_DESC lists 21 items. `TRACK`'s armed byte is
-always 0. The section on the tracker below describes what 1.5 had.
+always 0. The arpeggiator is gone too: track parameters 17..24 (ARP and ARP 2) are inert (`-`, 0..0; a stored
+value loads as 0), their ids kept. The section on the tracker below describes what 1.5 had.
 
 **1.5 (engines):** the engine byte everywhere (`INFO`'s names, `DUMP` / `RELOAD` / `TRACK`, `PRESET`, `NAMES`,
 `G_ENGSEL`, `UP_*`, `FAV_*`, the tracker's instruments, projects) is the engine's **id**, fixed for good: NENGINES (in

@@ -11,7 +11,7 @@
  *    a fixed phrase (notes, an overlap, a chord, note-offs, the release tail) and is reduced to a
  *    64-bit FNV-1a hash of its output samples, compared with GOLDEN_FILE (tests/golden.txt).
  *    Every render runs in its own fork()ed child of a process that never touched the DSP state, so
- *    all state starts as at boot: the noise / RAND / unison-phase / arp seeds (libc.c rng_state,
+ *    all state starts as at boot: the noise / RAND / unison-phase seeds (libc.c rng_state,
  *    eng_formant.c formant_nz, voice.c's unison seed), the FX buffers, the limiter.
  * 2. health checks on every render: no sample beyond 16 bits, none near full scale, DC offset, the
  *    peak level, every voice free after the release, silence at the end. Fails with the numbers.
@@ -23,7 +23,7 @@
  *    allows: chk_load_budget), stolen voices fade (no step), MONO / LEGATO /
  *    UNISON keep their note under pressure, the VOICE engine's 4-voice cap, release frees voices, and
  *    no hanging note after the note-offs on any routing (USB channels 1..4, others while the
- *    selected track changes, the keys while the selected track changes, with ARP and the voice modes).
+ *    selected track changes, the keys while the selected track changes, with the voice modes).
  * env: GOLDEN_UPDATE=1 rewrites GOLDEN_FILE, BUDGET_UPDATE=1 rewrites CPU_FILE (on purpose: review the
  * diff), VERBOSE=1 prints every render's numbers, JOBS=n children at once (default 8). */
 #define main hostsim_main
@@ -135,7 +135,7 @@ static void finish(void)
 
 /* --------------------------------------------------------- the phrase --- */
 /* notes (with an overlap: legato / steal), a 5-note chord, note-offs, the tail. Through input_on /
- * input_off (the keys' and MIDI's way in: a preset's ARP plays). */
+ * input_off (the keys' and MIDI's way in). */
 static void phrase(track_t *t, uint32_t base)
 {
     static const uint8_t CH[5] = {0, 7, 12, 16, 19};
@@ -181,13 +181,12 @@ static void job_preset(const job_t *j)
     phrase(t, 60);
 }
 
-static void job_mode(const job_t *j)            /* arg: the voice mode, ARP off, glide on for MONO / LEGATO */
+static void job_mode(const job_t *j)            /* arg: the voice mode, glide on for MONO / LEGATO */
 {
     track_t *t = &trk[0];
     host_tracks_init();
     host_preset(t, j->e, j->pi);
     t->p[P_VOICE] = j->arg;
-    t->p[P_AMODE] = 0;
     t->p[P_GLIDE] = j->arg == V_MONO || j->arg == V_LEGATO ? 30 : 0;
     t->p[P_DETUNE] = 40;
     phrase(t, 60);
@@ -201,7 +200,6 @@ static void job_sends(const job_t *j)           /* arg: 0 dry, 1 chorus, 2 delay
     uint32_t i;
     host_tracks_init();
     host_preset(t, j->e, j->pi);
-    t->p[P_AMODE] = 0;
     for (i = 0; i < 4u; i++)
         t->p[P_DIST + i] = S[j->arg][i];
     phrase(t, 60);
@@ -243,7 +241,6 @@ static void job_slicer(const job_t *j)
     uint32_t i;
     host_tracks_init();
     host_preset(t, j->e, j->pi);
-    t->p[P_AMODE] = 0;
     for (i = 0; i < 4u; i++)
         t->p[P_SLCR + i] = S[j->arg][i];
     phrase(t, 60);
@@ -312,7 +309,7 @@ static void job_song(const job_t *j)
     finish();
 }
 
-/* CPU: parts[k] = {engine, preset, notes} (POLY, SUS 127, no ARP; SLICE: MODE LOOP; DRUM, an engine of hits:
+/* CPU: parts[k] = {engine, preset, notes} (POLY, SUS 127; SLICE: MODE LOOP; DRUM, an engine of hits:
  * the notes are its 8 lanes, struck again every 46 ms, else they ring out); notes DRUM_HITS on part 4:
  * drum_hit (hostsim.c) on 16ths;
  * 0.5 s to settle, then 1 s counted */
@@ -339,7 +336,6 @@ static void job_cpu(const job_t *j)
             continue;
         trk[p].p[P_VOICE] = V_POLY;
         trk[p].p[P_SUS] = 127;
-        trk[p].p[P_AMODE] = 0;
         for (i = 0; i < parts[p][2]; i++)
             trk_note_on(&trk[p], ENGINES[parts[p][0]]->oneshot ? KIT[i] : NOTES[i] + 12u * p, 100);
     }
@@ -446,12 +442,6 @@ static int held_gates(char *who, size_t wn)
     uint32_t p, i, n = 0;
     who[0] = 0;
     for (p = 0; p < NPART; p++)
-        if (trk[p].nheld) {                        /* a key the ARP still thinks is down: it plays on */
-            if (!n)
-                snprintf(who, wn, "part %u ARP still holds %u notes (first %u)", p + 1u, trk[p].nheld, trk[p].held[0]);
-            n++;
-        }
-    for (p = 0; p < NPART; p++)
         for (i = 0; i < NVOICE; i++)
             if (trk[p].v[i].active && trk[p].v[i].gate) {
                 if (!n)
@@ -479,7 +469,6 @@ static int chk_budget(char *msg, uint32_t n)
     for (p = 0; p < NPART; p++) {
         host_preset(&trk[p], E[p][0], E[p][1]);
         trk[p].p[P_VOICE] = V_POLY;
-        trk[p].p[P_AMODE] = 0;
         trk[p].p[P_SUS] = 100;
     }
     for (k = 0; k < 6u * FS / CTL; k++) {
@@ -528,7 +517,6 @@ static int chk_load_budget(char *msg, uint32_t n)
         memset(trk[p].v, 0, sizeof trk[p].v);
         host_preset(&trk[p], 0, 0);
         trk[p].p[P_VOICE] = V_POLY;
-        trk[p].p[P_AMODE] = 0;
         trk[p].p[P_SUS] = 127;
     }
     song.cpu_q8 = 0;                                  /* light */
@@ -568,7 +556,6 @@ static int chk_retrigger_budget(char *msg, uint32_t n)
             memset(trk[p].v, 0, sizeof trk[p].v);
             host_preset(&trk[p], p == 0 && round ? 5u : 0u, 0);
             trk[p].p[P_VOICE] = p >= 2u ? V_MONO : V_POLY;
-            trk[p].p[P_AMODE] = 0;
             trk[p].p[P_SUS] = 127;
         }
         for (i = 0; i < NELEM(NOTES); i++)
@@ -613,7 +600,6 @@ static int chk_cap_mode_budget(char *msg, uint32_t n)
             trk[p].rr = 0;                              /* (the chord from slot 0: the lead's, v[0]) */
             host_preset(&trk[p], 0, 0);
             trk[p].p[P_VOICE] = p ? V_MONO : V_POLY;
-            trk[p].p[P_AMODE] = 0;
             trk[p].p[P_SUS] = 127;
         }
         for (i = 0; i < VOICE_BASE; i++)            /* (the budget filled) */
@@ -664,7 +650,6 @@ static int chk_mode_budget(char *msg, uint32_t n)
                 trk[p].rr = 0;                          /* (the chord from slot 0: the lead's, v[0]) */
                 host_preset(&trk[p], 0, 0);
                 trk[p].p[P_VOICE] = V_MONO;
-                trk[p].p[P_AMODE] = 0;
             }
             trk[0].p[P_VOICE] = initial ? V_UNISON : V_POLY;
             if (initial)
@@ -694,7 +679,7 @@ static void mode_release_reset(uint32_t engine, uint32_t mode)
     for (p = 0; p < NPART; p++) {
         host_preset(&trk[p], p ? 0u : engine, 0);
         trk[p].p[P_VOICE] = p ? V_POLY : mode;
-        trk[p].p[P_AMODE] = trk[p].p[P_REL] = 0;
+        trk[p].p[P_REL] = 0;
         trk[p].p[P_SUS] = 127;
     }
 }
@@ -822,12 +807,10 @@ static int chk_keep(char *msg, uint32_t n, uint32_t mode)
     host_tracks_init();
     host_preset(&trk[0], 0, 0);
     trk[0].p[P_VOICE] = (int16_t)mode;
-    trk[0].p[P_AMODE] = 0;
     trk[0].p[P_SUS] = 100;
     for (k = 1; k < NPART; k++) {
         host_preset(&trk[k], ENGI_VECTOR, 1);
         trk[k].p[P_VOICE] = V_POLY;
-        trk[k].p[P_AMODE] = 0;
         trk[k].p[P_SUS] = 100;
     }
     trk_note_on(&trk[0], 40, 100);
@@ -857,7 +840,6 @@ static int chk_voice_cap(char *msg, uint32_t n)
         host_tracks_init();
         host_preset(t, ENGI_DUBCHORD, 0);
         t->p[P_VOICE] = mode ? V_UNISON : V_POLY;
-        t->p[P_AMODE] = 0;
         for (k = 0; k < 8u; k++)
             trk_note_on(t, 60u + 2u * k, 100);
         for (k = 0; k < FS / 2u / CTL; k++) {
@@ -883,8 +865,8 @@ static int chk_voice_cap(char *msg, uint32_t n)
  * with ROUT CH1-4, the selected track with SEL), and keys, while the selected track changes; round 1 with ROUT
  * CH1-4, round 2 SEL, round 3 switching ROUT every 0.5 s (CH1-4 lets go of channels 5..16's notes,
  * seq.c events_block); the parts in random voice modes,
- * some with ARP, SUS 127 (a hanging note keeps sounding). A channel's note-off goes to the same channel
- * as its note-on. Then every held note off: no gate may stay on, no ARP may still hold a key, every voice
+ * SUS 127 (a hanging note keeps sounding). A channel's note-off goes to the same channel
+ * as its note-on. Then every held note off: no gate may stay on, every voice
  * must be free (also the same note held on two "selected track" channels across a selection change). */
 static int chk_hang(char *msg, uint32_t n)
 {
@@ -899,8 +881,6 @@ static int chk_hang(char *msg, uint32_t n)
         for (k = 0; k < NPART; k++) {
             host_preset(&trk[k], rnd(NENGINES), rnd(4));
             trk[k].p[P_VOICE] = (int16_t)rnd(4);
-            trk[k].p[P_AMODE] = rnd(3) == 0 ? (int16_t)(1 + rnd(4)) : 0;
-            trk[k].p[P_AHOLD] = 0;
             trk[k].p[P_SUS] = 127;
         }
         for (k = 0; k < 6u * FS / CTL; k++) {
@@ -933,7 +913,7 @@ static int chk_hang(char *msg, uint32_t n)
                     midi_pkt(0x80u | CHS[c], k, 64);
                     on[c][k] = 0;
                 }
-        run_to(fpos + FS / 2u);                    /* (an ARP note-off: within its gate) */
+        run_to(fpos + FS / 2u);
         if (held_gates(who, sizeof who))
             bad = 1;
         rel_at = fpos;

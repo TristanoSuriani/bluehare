@@ -56,7 +56,7 @@ static void tgt_mix_end(uint32_t n) { trk_out_w += n; }
  * over BPM, CLOCK and PLAY. The host says which beat it is at a frame of the device's (frames since power-on, as
  * events_block counts them) and its tempo; each block the sequencer is moved on to where that puts it at the block's
  * end (sample exact, whatever the device's whole-sample beat), and put there anew when the host starts or jumps (a
- * loop, a locate). Tempo alone while it is stopped: the delay, the arp, the LFOs follow it. Off until the host speaks */
+ * loop, a locate). Tempo alone while it is stopped: the delay and the LFOs follow it. Off until the host speaks */
 static struct {
     uint8_t on, playing;
     double bpm, beats0;                     /* the host's tempo, its beat at frame0 */
@@ -80,8 +80,6 @@ static int seq_locate(double b, uint32_t late)
         clk_step = f > 0.0 ? six & 15u : (six - 1u) & 15u;
         clk_pos = f > 0.0 ? (uint32_t)(f * p) : p;
     }
-    beat_pos = (uint32_t)((b - (double)(uint32_t)b) * beat_samples());
-    beat_n = (uint32_t)b & 3u;
     pf.ph = (uint32_t)(f * (beat_samples() >> 2));
     pf.sync = 0;
     for (i = 0; i < NTRK; i++) {

@@ -109,8 +109,8 @@ enum {                          /* per-track parameters */
                                                 * outside -4 .. 4 (ENV DEST FX in the web editor) loads as 0 (param_oct) */
     P_LRATE, P_LWAVE, P_LPHASE, P_LFADE,
     P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP,
-    P_AMODE, P_ARATE, P_AOCT, P_AGATE,
-    P_ASWING, P_APROB, P_AHOLD, P_AORDER,
+    P_RSV17, P_RSV18, P_RSV19, P_RSV20,        /* (17 .. 24: the arpeggiator's, 1.0 .. 2026-10; inert, the ids kept: */
+    P_RSV21, P_RSV22, P_RSV23, P_RSV24,        /* the stored formats and the editor protocol name parameters by id) */
     P_ROOT, P_SCALE, P_QUANT, P_TRANS,
     P_SLEN, P_SDIV, P_SSWING, P_SGATE,
     P_DIST, P_CHOR, P_DLY, P_REV,
@@ -202,18 +202,12 @@ typedef struct {
     int8_t fenv;                 /* ENV -> FILTER amount (-64..63) */
     uint8_t mono;                /* 1 = MONO (bass / lead), 0 = POLY */
     /* the rest of the patch; each value is stored + 1, 0 = the default */
-    uint8_t fx[4];               /* DIST, CHORUS, DELAY, REVERB sends (the arp is the track's: a preset does not set it) */
+    uint8_t fx[4];               /* DIST, CHORUS, DELAY, REVERB sends */
     int8_t oct;                  /* (Fel-Tracker) OCT, the sound's octave (P_OCT; 0, the default, for most) */
     int8_t eshp, lshp;           /* (Fel-Tracker) ENV -> SHAPE and LFO -> SHAPE (P_ED_SHP, P_LD_SHP; -64 .. 63, 0 none):
                                   * a preset that moves its shape (WAVE: a scan through the table) */
     uint8_t lrate, lwave;        /* (Fel-Tracker) the LFO's RATE and WAVE, + 1 (0: the default) */
-    uint8_t arp;                 /* (Fel-Tracker) an arp figure (ARP_FIG; 0: the arp as the track has it, untouched) */
 } preset_t;
-/* (Fel-Tracker) the arp figures a preset may bring (preset_t.arp): MODE, RATE, OCT, GATE as params.c has them. The arp
- * plays the keys and MIDI. 1 the EBM octave bass (16ths, root and octave), 2 its
- * root bass (16ths on the one note), 3 a gallop (16th triplets) */
-typedef struct { uint8_t mode, rate, oct, gate; } arp_fig_t;
-static const arp_fig_t ARP_FIG[4] = {{0, 0, 0, 0}, {1, 2, 2, 45}, {1, 2, 1, 35}, {1, 5, 1, 40}};   /* (UP; 1/16, 16T) */
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}
 
 struct track;
@@ -274,18 +268,6 @@ typedef struct track {
     int32_t lfo_fade;            /* Q15 ramp after note-on */
     uint32_t lfo_rnd;
     int16_t lfo_prev;            /* the S&H value of the cycle before (mod.c SLEW glides from it to lfo_rnd's) */
-    /* keyboard / arp input: held notes in press order */
-    uint8_t held[16];
-    uint8_t nheld;
-    uint8_t arp_phys;            /* keys physically held for the arp */
-    uint8_t latched;             /* HOLD: keep notes after release */
-    /* arp runtime */
-    uint32_t arp_pos;            /* q8 samples into the current arp step */
-    uint32_t arp_idx;
-    uint8_t arp_note;            /* sounding arp note, 0 = none */
-    uint8_t arp_walk;            /* WALK: the place in the note list it stands on */
-    uint8_t arp_ch[3];           /* CHORD: the other notes sounding with arp_note, 0 = none */
-    uint32_t arp_off;            /* q8 sample time of its note-off */
     /* mono */
     uint8_t mono_stack[8];
     uint8_t nmono;
@@ -295,7 +277,6 @@ typedef struct track {
     int32_t peak;
     int32_t dist_hp, dist_lp1, dist_lp2;   /* DIST insert state (fx.c) */
     uint8_t tail;                /* blocks to mix after the last voice (the DIST tail) */
-    int16_t armp, aholdp;        /* P_AMODE / P_AHOLD as last seen by the ISR */
     /* engine switch (voice.c engine_block): the old engine's voices fade out, then it switches */
     uint8_t xf_on, xf;           /* fading; blocks of the fade still to render */
     int16_t pe_old[8];           /* P_E0..P_E7 of the sounding engine: the fade renders with these */

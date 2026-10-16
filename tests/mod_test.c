@@ -468,7 +468,6 @@ static double cost(const uint8_t parts[NPART][3], int on)
         host_preset(t, parts[p][0], parts[p][1]);
         t->p[P_VOICE] = V_POLY;
         t->p[P_SUS] = 127;
-        t->p[P_AMODE] = 0;
         t->mw = 90;
         if (on && parts[p][2]) {
             slot(t, 0, MS_LFO, MD_CUT, 30);
@@ -594,7 +593,6 @@ static int demos(const char *dir)
     fresh(e, preset_by_name(e, "ARP LEAD"));
     t->p[P_LRATE] = 45;
     t->p[P_LWAVE] = 1;
-    t->p[P_AMODE] = 0;
     t->p[P_VOICE] = V_POLY;
     slot(t, 0, MS_LFO, MD_E1 + (int32_t)edit_by_label(e, "PW", 7), 40);
     if ((f = demo_open(dir, "lfo_trio_pw", 5u * FS / CTL * CTL))) {

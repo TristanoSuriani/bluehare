@@ -156,14 +156,14 @@ static const char *shown(const param_desc_t *d, int32_t v)
 static int test_display(void)
 {
     int ok = 1;
-    const param_desc_t *sw[3] = {&TP[P_SSWING], &GP[G_SWING], &TP[P_ASWING]};
+    const param_desc_t *sw[2] = {&TP[P_SSWING], &GP[G_SWING]};
     uint32_t k;
-    for (k = 0; k < 3u; k++)
+    for (k = 0; k < 2u; k++)
         ok &= sw[k]->fmt == F_PCT && sw[k]->min == 0 && sw[k]->max == 100 && !strcmp(shown(sw[k], 100), "100") &&
               !strcmp(shown(sw[k], 50), "50") && !strcmp(shown(sw[k], 0), "0");
     ok &= !strcmp(shown(&TP[P_SUS], 127), "100") && !strcmp(shown(&TP[P_SUS], 64), "50") &&
           !strcmp(shown(&TP[P_DLY], 0), "0");
-    return check("display: SWG / global SWG / ARP SWG 100 -> 100 %, 50 -> 50 %; 0..127 percents unchanged", ok);
+    return check("display: SWG / global SWG 100 -> 100 %, 50 -> 50 %; 0..127 percents unchanged", ok);
 }
 
 int main(void)

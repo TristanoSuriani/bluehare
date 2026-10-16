@@ -605,12 +605,12 @@ static void undo_swap(void)
 }
 
 /* the track's settings, not the sound's: what a sound load (factory or user preset, an engine jump,
- * TOOLS INIT) leaves alone. The mix (LEVEL, PAN, MUTE: the TRACKS faders), the arpeggiator (ARP, ARP 2),
- * the scale and key map (SCL), the old step sequencer's LEN DIV SWING GATE QUANTIZE (kept in the stored formats) and
- * the SLICER insert */
+ * TOOLS INIT) leaves alone. The mix (LEVEL, PAN, MUTE: the TRACKS faders), the scale and key map (SCL), the inert
+ * ids (17 .. 24, the arpeggiator's until 2026-10; the old step sequencer's LEN DIV SWING GATE QUANTIZE, kept in the
+ * stored formats) and the SLICER insert */
 static int param_kept(uint32_t i)
 {
-    return i == P_LEVEL || i == P_PAN || i == P_MUTE || (i >= P_AMODE && i <= P_SGATE) ||
+    return i == P_LEVEL || i == P_PAN || i == P_MUTE || (i >= P_RSV17 && i <= P_SGATE) ||
            (i >= P_SLCR && i <= P_SLDEPTH) || i == P_CHRD || i == P_VOIC || i == P_SQNT;
 }
 
@@ -651,13 +651,6 @@ static void apply_preset_to(track_t *t, uint32_t pi)
         t->p[P_LRATE] = (int16_t)(e->presets[pi].lrate - 1u);
     if (e->presets[pi].lwave)
         t->p[P_LWAVE] = (int16_t)(e->presets[pi].lwave - 1u);
-    if (e->presets[pi].arp) {                         /* (Fel-Tracker) the preset's arp figure */
-        const arp_fig_t *a = &ARP_FIG[e->presets[pi].arp % 4u];
-        t->p[P_AMODE] = a->mode;
-        t->p[P_ARATE] = a->rate;
-        t->p[P_AOCT] = a->oct;
-        t->p[P_AGATE] = a->gate;
-    }
     {   /* the sends */
         static const uint8_t FX_DEF[4] = {0, 24, 28, 36};
         const preset_t *pr = &e->presets[pi];

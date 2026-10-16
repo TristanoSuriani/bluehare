@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Chord keys (firmware/src/chord.c; SCL > CHORD: CHRD, VOIC) against the real keyboard, MIDI IN, arp and voice
+/* Chord keys (firmware/src/chord.c; SCL > CHORD: CHRD, VOIC) against the real keyboard, MIDI IN and voice
  * code: the diatonic triads and sevenths of several scales and roots as music theory has them, the
  * fixed shapes, the voicings, at most 4 notes, the names, MONO plays the root, a key's or a MIDI note's release
- * ends exactly the notes it started (CHRD / VOIC changed while held too), shared notes, the ARP gets the chord as held notes, QNT WHITE maps the key first, a kit (the DRUM engine)
+ * ends exactly the notes it started (CHRD / VOIC changed while held too), shared notes, QNT WHITE maps the key first, a kit (the DRUM engine)
  * ignores CHRD, MIDI OUT of the keys, and OFF plays exactly as before.
  * Run by tests/run_tests.sh (needs build/gen from one firmware build). */
 #define UI_TEST_NO_MAIN 1
@@ -222,21 +222,6 @@ static int keys(void)
     return bad;
 }
 
-static int arp(void)
-{
-    int bad = 0;
-    track_t *t = &trk[0];
-    reset();
-    t->p[P_CHRD] = CH_DIA7;
-    t->p[P_AMODE] = 1;
-    key_down(K_C4);
-    bad += check("ARP: one key, the chord as held notes (C E G B)", t->nheld == 4u && t->held[0] == 60 && t->held[1] == 64 &&
-                 t->held[2] == 67 && t->held[3] == 71);
-    key_up(K_C4);
-    bad += check("  key up: nothing held", !t->nheld && !t->arp_phys);
-    t->p[P_AMODE] = 0;
-    return bad;
-}
 
 static int midi_in(void)
 {
@@ -293,7 +278,7 @@ static int kits(void)
 
 int main(void)
 {
-    int bad = theory() + shapes_voicings() + keys() + arp() + midi_in() + kits();
+    int bad = theory() + shapes_voicings() + keys() + midi_in() + kits();
     printf("%s\n", bad ? "CHORD TEST FAILED" : "chord keys test passed");
     return bad != 0;
 }

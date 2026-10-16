@@ -378,7 +378,7 @@ function mockTables() {
      slr.some((d) => shown(d).join() === "1/8,8T,1/16,16T,1/32,32T") && div.names[2] === "1/16",
      "editor: #48 DIV / RATE / TIME longest first (values unchanged: 2 is still 1/16)");
   const swg = [T.TP, T.GP].flatMap((tb) => tb.filter((d) => d.label === "SWG"));
-  ok(swg.length === 3 && swg.every((d) => E.fmtValue(d, 100)[0] === "100" && E.fmtValue(d, 50)[0] === "50") &&
+  ok(swg.length === 2 && swg.every((d) => E.fmtValue(d, 100)[0] === "100" && E.fmtValue(d, 50)[0] === "50") &&
      E.fmtValue({ fmt: swg[0].fmt, min: 0, max: 127 }, 127)[0] === "100" && E.fmtValue({ fmt: swg[0].fmt, min: 0, max: 127 }, 64)[0] === "50",
      "editor: SWG 100 shows 100 % (not 79), 0..127 percents unchanged");
 }
@@ -467,14 +467,14 @@ async function editorLibrarian() {
   /* another engine, an empty sequencer, then UP_LOAD brings the sound back, not the stored pattern */
   await rq(E.req.preset(33, 0));
   for (let i = 0; i < info.nstep; i++) await rq(E.req.stepSet(i, emptyStep));
-  await rq(E.req.set(0, 17, 3));                 /* the track's own: ARP MODE */
+  await rq(E.req.set(0, 25, 3));                 /* the track's own: ROOT */
   rc = await E.bank.load(rq, 10);
   const d2 = E.parse[C.DUMP](await rq(E.req.dump()), info);
   const st = [];
   for (let i = 0; i < 16; i++) st.push(E.parse[C.STEP_GET](await rq(E.req.stepGet(i))));
-  ok(rc === 0 && d2.engine === 24 && eq(d2.p.filter((_, i) => i !== 17), cap.p.filter((_, i) => i !== 17)) && d2.p[17] === 3
-    && st.every((x) => !x.n) && cap.pattern, "librarian: UP_LOAD applies the sound only (steps and the track's ARP stay)");
-  await rq(E.req.set(0, 17, 0));
+  ok(rc === 0 && d2.engine === 24 && eq(d2.p.filter((_, i) => i !== 25), cap.p.filter((_, i) => i !== 25)) && d2.p[25] === 3
+    && st.every((x) => !x.n) && cap.pattern, "librarian: UP_LOAD applies the sound only (steps and the track's ROOT stay)");
+  await rq(E.req.set(0, 25, 0));
   for (let i = 0; i < 16; i++) await rq(E.req.stepSet(i, E.stepsFromPattern(cap.pattern)[i]));   /* (for the captures below) */
 
   rc = await E.bank.erase(rq, 11);
@@ -485,8 +485,8 @@ async function editorLibrarian() {
   /* audition: a WASP patch that holds a pattern; the sound only, the sequence (with notes) stays */
   const bass = await E.bank.get(rq, info, 2);   /* WASP RESO BASS */
   await rq(E.req.stepSet(20, { n: 1, notes: [50, 0, 0, 0], time: 0, flags: 0, vel: 90 }));
-  await rq(E.req.set(0, 29, 24));               /* the track's own: LEN 24, ARP MODE 2 */
-  await rq(E.req.set(0, 17, 2));
+  await rq(E.req.set(0, 29, 24));               /* the track's own: LEN 24, ROOT 2 */
+  await rq(E.req.set(0, 25, 2));
   await rq(E.req.set(0, 81, 1));                /* CHRD DIA3: the track's too */
   const seqBefore = [];
   for (let i = 0; i < 24; i++) seqBefore.push(E.parse[C.STEP_GET](await rq(E.req.stepGet(i))));
@@ -497,8 +497,8 @@ async function editorLibrarian() {
   for (let i = 0; i < 24; i++) st3.push(E.parse[C.STEP_GET](await rq(E.req.stepGet(i))));
   const own = new Set([0, 39, 40, ...Array.from({ length: 16 }, (_, i) => 17 + i), 45, 46, 47, 48, 81, 82]);
   ok(d3.engine === bass.engine && eq(d3.p.filter((_, i) => !own.has(i)), bass.p.filter((_, i) => !own.has(i)))
-    && d3.p[29] === 24 && d3.p[81] === 1 && d3.p[17] === 2 && js(st3) === js(seqBefore) && st3[20].notes[0] === 50 && js(m.state.bank) === flashBefore,
-    "librarian: audition = G_ENGSEL + SETs of the sound; steps, LEN and ARP stay; no flash write");
+    && d3.p[29] === 24 && d3.p[81] === 1 && d3.p[25] === 2 && js(st3) === js(seqBefore) && st3[20].notes[0] === 50 && js(m.state.bank) === flashBefore,
+    "librarian: audition = G_ENGSEL + SETs of the sound; steps, LEN and ROOT stay; no flash write");
   /* the next audition: the same rule */
   const bell = await E.bank.get(rq, info, 1);
   await E.auditionPatch(rq, info, bell, { gEng: 20 });

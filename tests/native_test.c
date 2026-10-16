@@ -70,7 +70,6 @@ static void play(uint32_t e, uint32_t pi, uint32_t k)
     uint32_t i;
     host_preset(t, e, pi);
     t->p[P_VOICE] = V_POLY;
-    t->p[P_AMODE] = 0;
     t->p[P_SUS] = 127;
     for (i = 0; i < k; i++)
         trk_note_on(t, 48u + 3u * i, 100);
@@ -140,7 +139,6 @@ int main(void)
         track_t *t = &trk[p];
         host_preset(t, TRK_DEF[p][0], TRK_DEF[p][1]);
         t->p[P_VOICE] = V_POLY;
-        t->p[P_AMODE] = 0;
         t->p[P_SUS] = 127;
         want += ENGINES[t->engine]->oneshot ? 0u : trk_nvoice(t);   /* (a kit: a voice a lane hit) */
     }

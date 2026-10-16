@@ -121,18 +121,8 @@ static uint32_t oct_leds(void)
     return (song.octave < 0 ? 1u : 0u) | (song.octave > 0 ? 2u : 0u);
 }
 
-/* an ARP playing on any part flashes the ARP button on the beat, the bar's first beat longer: 1 lit, 0 dark,
- * 2 no ARP playing */
-static uint32_t arp_led(void)
-{
-    uint32_t k, on = 0, b = beat_samples();
-    for (k = 0; k < NPART; k++)
-        on |= trk[k].p[P_AMODE] && trk[k].nheld;
-    return !on ? 2u : beat_pos < (beat_n ? b / 6u : b / 2u);
-}
-
-/* Discussion #81: the keys of the notes MIDI IN (USB and TRS, routed by ROUT) holds on track t, bit k = key k: as
- * play_leds, where the keys play that note at the octave now, the lowest key that gives it; a note no key plays is
+/* Discussion #81: the keys of the notes MIDI IN (USB and TRS, routed by ROUT) holds on track t, bit k = key k (#38):
+ * where the keys play that note at the octave now (kb_map: TRN, QNT, an engine's own map), the lowest key that gives it; a note no key plays is
  * not shown. Read from midi_control.c's own state (midi_note_held: the notes each channel holds for the track, the
  * pedal's too, and the tones of MIDI chords): no state here; nothing to do while MIDI holds none of the track's */
 static uint32_t midi_leds(const track_t *t)
@@ -148,32 +138,6 @@ static uint32_t midi_leds(const track_t *t)
         m |= (uint32_t)midi_note_held(t, note) << k;
     }
     return m;
-}
-
-/* the keys of the notes the selected track's ARP sounds now (#38), bit k = key k: where the keys play that note
- * (kb_map: the octave, TRN, QNT, an engine's own map), the lowest key that gives it (QNT SNAP rounds the keys above
- * down onto it); a note no key plays is not shown. A snapshot of the ISR's arp_note (arp_ch): no state of its own,
- * nothing to do while nothing sounds */
-static uint32_t play_leds(void)
-{
-    const track_t *t = TSEL;
-    uint8_t s[4];
-    uint32_t n = 0, i, k, note, used = 0, m = 0, hit;
-    if (t->arp_note)
-        s[n++] = t->arp_note;
-    for (i = 0; i < 3u; i++)                            /* (the ARP's CHORD) */
-        if (t->arp_ch[i])
-            s[n++] = t->arp_ch[i];
-    for (k = 0; n && k < 27u; k++) {
-        note = kb_map(t, k);
-        for (i = 0, hit = 0; i < n; i++)
-            if (s[i] == note && !((used >> i) & 1u)) {
-                used |= 1u << i;
-                hit = 1;
-            }
-        m |= hit << k;
-    }
-    return m | midi_leds(t);
 }
 
 /* 1: the keys show a map of their own (NAME, a layer's map: SCL's scale, FX; SLICES), lit or
@@ -229,7 +193,7 @@ static int idle_leds(void)
 {
     int due = (ui_idle & 1u) && !(ui_prefs & PREF_ANIM_OFF) && !song.playing &&
               !transport_req && !ui.layer && !ui.lock && !ui.menu && !ui.confirm && !ui.uboot && !name_on() &&
-              !(fm1_in.notes | fm1_in.buttons) && !panel_moved && !play_leds() && fm1_ms - scrn.idle >= IDLE_LEDS_MS;
+              !(fm1_in.notes | fm1_in.buttons) && !panel_moved && !midi_leds(TSEL) && fm1_ms - scrn.idle >= IDLE_LEDS_MS;
     if (!due) {
         if (fm1_led_idle_on())
             fm1_led_anim_stop();
@@ -246,7 +210,7 @@ static uint32_t key_leds(uint32_t *br)                 /* (*br: a layer's keys t
     uint32_t c;
     if (br)
         *br = 0;
-    c = name_on() && !ui.menu ? name_leds() : ui.layer ? layer_leds(br) : (fm1_in.notes & ~kb_layer) | play_leds();
+    c = name_on() && !ui.menu ? name_leds() : ui.layer ? layer_leds(br) : (fm1_in.notes & ~kb_layer) | midi_leds(TSEL);
     return c;
 }
 
@@ -282,8 +246,6 @@ static void ui_leds(void)
     }
     if (!ui.layer || FAM_BTN[fam] != layer_btn())
         led_put(nl, panel.btn[FAM_BTN[fam]], 1);
-    if ((k = arp_led()) != 2u && (!ui.layer || layer_btn() != B_ARP))
-        led_put(nl, panel.btn[B_ARP], FAM_BTN[fam] == B_ARP ? !k : (int)k);   /* (on ARP's page: dark flashes) */
     if (!ui.layer && (perf_latched || perf_k[0] || perf_k[1] || perf_k[2] || perf_k[3]))
         led_put(nl, panel.btn[B_FX], 1);                /* FX LATCH: lit while an effect or a macro is on */
     if (ui.layer)                                       /* the layer's button breathes while its map is up */

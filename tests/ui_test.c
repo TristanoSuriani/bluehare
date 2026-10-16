@@ -3,12 +3,11 @@
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Host test of the UI (firmware/src/ui*.c with the sound sources of hostsim.c;
  * the display and the HAL are stubs, the buttons and knobs are driven through them):
- *   SOUNDS     a sound load (PRESETS knob / page, TOOLS INIT, user preset) changes the sound only: ARP, SCL,
- *              the SLICER and the mix stay the track's. Power-on: the tracker's song empty.
+ *   SOUNDS     a sound load (PRESETS knob / page, TOOLS INIT, user preset) changes the sound only: SCL,
+ *              the SLICER and the mix stay the track's.
  *   UNDO       a load keeps a copy of the track's sound; SAVE held swaps it back (again: redo); browsing keeps
  *              the copy from before the first load; power-on and projects: none.
- *   REC        a tap on every screen arms (or disarms) the selected track, without navigation; it never starts
- *              PLAY. Long REC never clears. With the ARP on, the arp's notes are recorded, not the keys.
+ *   REC        nothing for now (no recording): a tap on every screen changes nothing, never starts PLAY.
  *   MIDI IN    MENU > MIDI > MIDI IN (ROUT): CH1-4 (channels 5..16 ignored) / SEL, note-offs follow their note-ons.
  *   SAVE       refused while playing ("STOP TO SAVE"); a used slot asks OVERWRITE? (OCT+ / OCT-).
  *   ACTIONS    USER, PROJECT, TOOLS: the knobs pick, OCT+ does it, OCT- cancels or goes
@@ -329,7 +328,7 @@ static int same_sound(const track_t *a, const track_t *b)
 }
 
 
-/* a sound load: the sound only; the arp, the scale, the SLICER and the mix are the track's */
+/* a sound load: the sound only; the scale, the SLICER and the mix are the track's */
 static int test_sound_loads(void)
 {
     int bad = 0;
@@ -339,9 +338,8 @@ static int test_sound_loads(void)
     bad += check("power-on: the four sounds, no undo copy", undo.trk == 0 && undo_depth == 0 &&
                  trk[3].eng_req == ENGI_KIT && trk[3].preset == 0u && trk[0].preset == UT_DEF[0][1]);
     t->p[P_E0 + 1] = 77;                          /* a sound edit */
-    t->p[P_AMODE] = 2;                            /* and the track's own settings */
-    t->p[P_AOCT] = 3;
-    t->p[P_SCALE] = 2;
+    t->p[P_SCALE] = 2;                            /* and the track's own settings */
+    t->p[P_ROOT] = 3;
     t->p[P_TRANS] = 5;
     t->p[P_SLCR] = SL_GATE;
     t->p[P_SLPAT] = 4;
@@ -351,19 +349,18 @@ static int test_sound_loads(void)
     turn(EN_PRESET, 1);                           /* HOME: the next preset */
     bad += check("PRESETS on HOME loads the sound (DIV, kept in the formats, untouched)",
                  t->preset == (uint8_t)((before.preset + 1u) % ENGINES[0]->npresets) && t->p[P_SDIV] == 1);
-    bad += check("..ARP, SCL, the SLICER and the mix stay the track's", t->p[P_AMODE] == 2 && t->p[P_AOCT] == 3 && t->p[P_SCALE] == 2 &&
+    bad += check("..SCL, the SLICER and the mix stay the track's", t->p[P_ROOT] == 3 && t->p[P_SCALE] == 2 &&
                  t->p[P_TRANS] == 5 && t->p[P_SLCR] == SL_GATE && t->p[P_SLPAT] == 4 && t->p[P_LEVEL] == 90);
     i = ENGINES[0]->npresets - 2u;                /* (ANALOG's RAVE until Fel-Tracker: a preset near the end) */
-    t->p[P_AMODE] = 0;
     t->preset = (uint8_t)(i - 1u);
     turn(EN_PRESET, 1);
-    bad += check("a factory preset leaves the arp off", t->preset == i && t->p[P_AMODE] == 0);
-    t->p[P_AMODE] = 2;
+    bad += check("a factory preset loads", t->preset == i);
+    t->p[P_TRANS] = 7;
     before = *t;
     for (i = 0; i < 6u; i++)                      /* several loads, into the next engine */
         turn(EN_PRESET, 1);
-    bad += check("browsing on, into another engine: the arp still the track's", t->eng_req != before.eng_req &&
-                 t->p[P_AMODE] == 2);
+    bad += check("browsing on, into another engine: TRN still the track's", t->eng_req != before.eng_req &&
+                 t->p[P_TRANS] == 7);
     bad += check("browsing keeps the copy from before the first load", undo.trk == 1u &&
                  undo.p[P_E0 + 1] == before.p[P_E0 + 1] && undo.eng == before.eng_req && undo.preset == before.preset);
     hold(B_SAVE);
@@ -458,21 +455,7 @@ static int test_midi(void)
     midi_event(0x80, 0, 61, 0);
     bad += check("same channel/pitch across a ROUT change cannot leave its previous part held",
                  !gated_notes(&trk[2]) && !gated_notes(&trk[0]) && !midi_sel_on[0][61]);
-    {
-        uint32_t hold;
-        for (hold = 0; hold < 2u; hold++) {
-            ui_power_on();
-            song.g[G_ROUTE] = 1;
-            trk[0].p[P_AMODE] = 1; trk[0].p[P_AHOLD] = (int16_t)hold;
-            midi_event(0x90, 0, 60, 100);
-            song.sel = 1;
-            midi_event(0x90, 0, 60, 100);
-            bad += check("MIDI ownership transfer releases old ARP keys and respects explicit HOLD",
-                         !trk[0].arp_phys && trk[0].nheld == hold && midi_sel_on[0][60] == 2u);
-        }
-    }
     ui_power_on();
-    trk[1].p[P_AMODE] = trk[1].p[P_AHOLD] = 1;
     midi_event(0x90, 0, 60, 100);
     midi_event(0x90, 1, 64, 100);
     song.playing = 1;
@@ -482,8 +465,8 @@ static int test_midi(void)
         midi_in_event(0x003C8908u);                      /* note-off lost to a full ring */
         events_block(CTL);
         for (i = 0; i < NTRK * NVOICE; i++) held += trk[i / NVOICE].v[i % NVOICE].gate;
-        bad += check("MIDI overflow releases held notes and latched ARP, keeps transport running",
-                     !held && !trk[1].nheld && !trk[1].arp_phys && !midi_sel_on[0][60] &&
+        bad += check("MIDI overflow releases held notes, keeps transport running",
+                     !held && !midi_sel_on[0][60] &&
                      !midi_sel_on[1][64] && !midi_in_overflow && mi_r == mi_w && song.playing);
         midi_in_event(0x643D9009u);
         events_block(CTL);
@@ -763,7 +746,7 @@ static int test_favorites(void)
     uint32_t total, pos;
     track_t before;
     ui_power_on();
-    TSEL->p[P_AMODE] = 2;
+    TSEL->p[P_TRANS] = 2;
     go_page(GR_BROWSE);
     before = *TSEL;
     turn(EN_K3, 1);
@@ -780,9 +763,9 @@ static int test_favorites(void)
     bad += check("a DRUM sound can be a favorite on any track", preset_favorite() &&
                  favorite_has(EID_KIT, 0) && !memcmp(TSEL, &before, sizeof before));
     turn(EN_PRESET, 1);
-    bad += check("filtered browsing crosses DRUM and synth sounds while retaining the track's pattern and ARP",
+    bad += check("filtered browsing crosses DRUM and synth sounds while retaining the track's TRN",
                  TSEL->eng_req == 0 && preset_favorite() &&
-                 TSEL->p[P_AMODE] == 2);
+                 TSEL->p[P_TRANS] == 2);
     turn(EN_K3, -1);
     pos = preset_pos(&total);
     bad += check("unmarking the current sound leaves it loaded even when outside the filtered list",
@@ -2239,7 +2222,7 @@ static int test_layer(void)
     /* release-act: every page button acts when let go */
     {
         static const uint8_t PB[6] = {B_ENV, B_LFO, B_SCL, B_ARP, B_GLO, B_EDIT};
-        static const uint8_t PF[6] = {FAM_ENV, FAM_LFO, FAM_SCL, FAM_ARP, FAM_SEQ, FAM_EDIT};   /* (GLO: the tracker's SONG) */
+        static const uint8_t PF[6] = {FAM_ENV, FAM_LFO, FAM_SCL, FAM_ARP, FAM_SEQ, FAM_EDIT};   /* (GLO: SEQ's placeholder) */
         ok = 1;
         for (i = 0; i < 6u; i++) {
             ui_power_on();
@@ -2812,22 +2795,6 @@ static int test_bughunt_ui(void)
     ok = ui.confirm == CF_OVR_USER && !transport_req;
     press(B_OCTUP);
     bad += check("REC in the OVERWRITE? dialog does nothing; OCT+ then opens NAME", ok && name_on());
-    {   /* the ARP button flashes on the beat while an ARP plays (the bar's first beat longer); dark otherwise */
-        uint32_t q, b, r[5];
-        ui_power_on(); frame();
-        b = beat_samples();
-        r[0] = arp_led();                               /* no ARP playing */
-        trk[2].p[P_AMODE] = 1; trk[2].nheld = 1; trk[2].held[0] = 60;
-        beat_n = 1; beat_pos = 0; r[1] = arp_led();
-        beat_pos = b / 3u; r[2] = arp_led();
-        beat_n = 0; r[3] = arp_led();
-        beat_pos = b * 3u / 4u; r[4] = arp_led();
-        bad += check("ARP LED: none without an ARP; flashes on the beat, the bar's first beat longer",
-                     r[0] == 2u && r[1] == 1u && r[2] == 0u && r[3] == 1u && r[4] == 0u);
-        for (q = 0; q < 4u * b / 128u + 4u; q++) events_block(128);
-        bad += check("  the beat counter runs (a bar of blocks wraps the beat of the bar)", beat_n < 4u && beat_pos < b);
-        trk[2].p[P_AMODE] = 0; trk[2].nheld = 0;
-    }
     /* 3: USER ERASE asks first (ERASE U02?): OCT- keeps the preset, OCT+ erases it */
     ui_power_on();
     go_page(GR_USER); ui.uslot = 1;
@@ -3206,63 +3173,6 @@ static int test_retired_engines(void)
     return bad;
 }
 
-/* #38: the keys of the notes the selected track's ARP sounds light while it plays (the sequencer: a placeholder) */
-static int test_play_leds(void)
-{
-    int bad = 0, ok;
-    track_t *t = &trk[0];
-    uint32_t i;
-    ui_power_on();
-    song.sel = 0;
-    bad += check("stopped, nothing held: no key lit", key_leds(0) == 0u && play_leds() == 0u);
-    t->arp_note = 60;                                  /* (the ARP's notes as arp_step leaves them) */
-    trk[1].arp_note = 67;
-    bad += check("the ARP's C4 lights key 8 (from F3), track 2's G4 does not", key_leds(0) == 1u << 7);
-    song.sel = 1;
-    bad += check("the selected track's notes: track 2's G4 on key 15", play_leds() == 1u << 14);
-    song.sel = 0;
-    trk[1].arp_note = 0;
-    fm1_in.notes = 1u << 0;
-    bad += check("a key held still lights with them", key_leds(0) == (1u << 0 | 1u << 7));
-    fm1_in.notes = 0;
-    song.octave = -1;
-    ok = play_leds() == 1u << 19;
-    song.octave = 1;
-    ok &= play_leds() == 0u;                           /* (C4 below the keys an octave up) */
-    song.octave = 0;
-    t->p[P_TRANS] = 2;
-    ok &= play_leds() == 1u << 5;
-    t->p[P_TRANS] = 0;
-    bad += check("the keys follow the octave and TRN; notes off the keyboard are not shown", ok);
-    t->p[P_QUANT] = 1;                                 /* SNAP in C major: C#4 rounds down to C4 too */
-    t->p[P_SCALE] = 1;
-    t->p[P_ROOT] = 0;
-    ok = kb_map(t, 8) == 60u && play_leds() == 1u << 7;
-    t->p[P_QUANT] = t->p[P_SCALE] = 0;
-    bad += check("QNT SNAP: only the key of the note itself lights, not the keys rounding onto it", ok);
-    t->arp_ch[0] = 65;
-    bad += check("the ARP's CHORD notes light their keys too", play_leds() == (1u << 7 | 1u << 12));
-    t->arp_ch[0] = 0;
-    t->arp_note = 100;
-    bad += check("a note above the keyboard (E7) lights nothing", play_leds() == 0u);
-    t->arp_note = 0;
-    bad += check("none sounding: the keys dark", key_leds(0) == 0u);
-    /* the layer keeps its keys; a kit's hit lights the key that plays it */
-    t->arp_note = 60;
-    ui.layer = 1;
-    ok = key_leds(0) == layer_leds(0);
-    ui.layer = 0;
-    set_engine_of(t, ENGI_KIT);
-    t->engine = t->eng_req;
-    t->arp_note = 36;                                  /* (GM 36: the kick) */
-    i = play_leds();
-    ok &= i != 0u && kb_map(t, (uint32_t)__builtin_ctz(i)) == 36u;
-    bad += check("the layer's map keeps its keys; a kit's hit lights the key that plays it", ok);
-    t->arp_note = 0;
-    return bad;
-}
-
-
 /* Discussion #81: the notes MIDI IN holds on the selected track light their keys as the sequencer's do: USB and TRS,
  * routed by ROUT; at the octave now, the lowest key; off the keyboard nothing; the pedal holds them; the layer's map
  * and the DRUM grid keep their keys */
@@ -3285,7 +3195,7 @@ static int test_midi_leds(void)
     song.sel = 0;
     usb_note(0, 60, 100);                              /* channel 1 -> T1 (ROUT CH1-4) */
     bad += check("#81 USB MIDI C4 into the selected track lights key 8 (C4)", midi_sel_on[0][60] == 1u &&
-                 key_leds(0) == 1u << 7 && play_leds() == 1u << 7);
+                 key_leds(0) == 1u << 7 && midi_leds(TSEL) == 1u << 7);
     usb_note(1, 67, 100);                              /* channel 2 -> T2: not the selected track */
     ok = key_leds(0) == 1u << 7;
     song.sel = 1;
@@ -3334,14 +3244,11 @@ static int test_midi_leds(void)
     ok = key_leds(0) == 1u << 12;
     midi_event(0xB0, 0, 64, 0);
     bad += check("  a note the pedal holds stays lit until the pedal is up", ok && key_leds(0) == 0u);
-    fm1_in.notes = 1u << 0;                            /* with a key held and the ARP */
+    fm1_in.notes = 1u << 0;                            /* with a key held */
     usb_note(0, 60, 100);
     ok = key_leds(0) == (1u << 0 | 1u << 7);
     fm1_in.notes = 0;
-    trk[0].arp_note = 64;
-    ok &= key_leds(0) == (1u << 7 | 1u << 11);
-    trk[0].arp_note = 0;
-    bad += check("  with a key held and the ARP's notes: all of them lit", ok);
+    bad += check("  with a key held: both lit", ok);
     ui.layer = LAYER_SCL;
     {
         uint32_t b1, b2;
@@ -4041,7 +3948,7 @@ static int test_scale_leds(void)
 
 /* #39: KNOB 1..4 with a layer's button held are the layer's only, also as it is let go: a knob turned in the frame
  * the button is let go, while its map still shows (an effect key held after FX), or just after: the page under the
- * layer (ARP: ARP MODE on) or HOME kept its values. GLO / SCL / EDIT change only what their own knobs edit */
+ * layer (ENV: its ATTACK) or HOME kept its values. GLO / SCL / EDIT change only what their own knobs edit */
 static int16_t lk_p[NTRK][P_COUNT], lk_g[G_COUNT];
 static void lk_snap(void)
 {
@@ -4057,7 +3964,7 @@ static int lk_same(uint32_t l)                      /* nothing changed but the l
         for (j = 0; j < P_COUNT; j++) {
             int own = (l == LAYER_GLO && j == P_LEVEL) ||
                       (l == LAYER_SCL && i == 0u && (j == P_ROOT || j == P_SCALE || j == P_CHRD || j == P_VOIC)) ||
-                      (l == LAYER_EDIT && i == 0u && (j < P_AMODE || j > P_AORDER));   /* (a load keeps the ARP) */
+                      (l == LAYER_EDIT && i == 0u && !param_kept(j));   /* (a load: the sound, not the track's own) */
             if (lk_p[i][j] != trk[i].p[j] && !own)
                 return 0;
         }
@@ -4076,7 +3983,7 @@ static int test_layer_knob_leak(void)
 {
     static const uint8_t LB[4] = {B_FX, B_GLO, B_SCL, B_EDIT};
     static const uint8_t LL[4] = {LAYER_FX, LAYER_GLO, LAYER_SCL, LAYER_EDIT};
-    uint32_t b, sc, pg, fails = 0, arp_fx = 0;
+    uint32_t b, sc, pg, fails = 0, env_fx = 0;
     int bad = 0, ok;
     for (b = 0; b < 4u; b++)
         for (sc = 0; sc < 4u; sc++)
@@ -4101,28 +4008,31 @@ static int test_layer_knob_leak(void)
                         printf("ui:   leak: %s scenario %u page %s\n", B_NAME[LB[b]], sc,
                                pg < NPAGES ? PAGES[pg].title : "HOME");
                 }
-                if (b == 0u && pg < NPAGES && PAGES[pg].graph == GR_ARP && trk[0].p[P_AMODE] == lk_p[0][P_AMODE])
-                    arp_fx++;
+                if (b == 0u && pg < NPAGES && PAGES[pg].graph == GR_ADSR && trk[0].p[P_ATK] == lk_p[0][P_ATK])
+                    env_fx++;
             }
     bad += check("#39 FX / GLO / SCL / EDIT + KNOB 1..4, let go while turning: no page under the layer changes",
-                 !fails && arp_fx == 4u);
+                 !fails && env_fx == 4u);
     /* the quiet time is short: KNOB 1 edits the page again 0.3 s after FX */
     ui_power_on();
-    go_page(GR_ARP);
+    go_page(GR_ADSR);
     {
-        int16_t m = TSEL->p[P_AMODE];
+        int16_t m = TSEL->p[P_ATK];
         btn_down(B_FX); frame(); turn(EN_K1, 4); btn_up(B_FX); frame();
         frames(320);
         turn(EN_K1, 1);
-        ok = TSEL->p[P_AMODE] == m + 1 && !perf_k[0] && str_eq(cur_page()->title, "ARP");
+        ok = TSEL->p[P_ATK] == m + 1 && !perf_k[0] && str_eq(cur_page()->title, "ENV");
     }
-    bad += check("  0.3 s after FX is let go KNOB 1 is ARP MODE again; a knob turned with FX opened no FX page", ok);
+    bad += check("  0.3 s after FX is let go KNOB 1 is ENV's ATTACK again; a knob turned with FX opened no FX page", ok);
     /* a tap of FX with a knob turned in that frame: a combo, no FX page */
     ui_power_on();
-    go_page(GR_ARP);
-    btn_down(B_FX); frame(); lk_turn(1); btn_up(B_FX); frame(); frames(100);
-    bad += check("  FX tapped while a knob turns: no FX page, no ARP change", str_eq(cur_page()->title, "ARP") &&
-                 TSEL->p[P_AMODE] == 0);
+    go_page(GR_ADSR);
+    {
+        int16_t a = TSEL->p[P_ATK];
+        btn_down(B_FX); frame(); lk_turn(1); btn_up(B_FX); frame(); frames(100);
+        bad += check("  FX tapped while a knob turns: no FX page, no ATTACK change", str_eq(cur_page()->title, "ENV") &&
+                     TSEL->p[P_ATK] == a);
+    }
     return bad;
 }
 
@@ -4690,12 +4600,12 @@ static int test_fx_latch(void)
 }
 
 /* #48: the note divisions step by their length, longest first (triplets between their neighbours), on every list
- * that has them (SEQ DIV, ARP RATE, the delay's TIME, the SLICER's RATE); the stored values and their sound stay */
+ * that has them (SEQ DIV, the delay's TIME, the SLICER's RATE); the stored values and their sound stay */
 static int test_div_order(void)
 {
     int bad = 0, ok = 1;
     uint32_t id, c, k, found = 0;
-    static const param_desc_t *const LISTS[] = {&TP[P_SDIV], &TP[P_ARATE], &GP[G_DTIME], &TP[P_SLRATE]};
+    static const param_desc_t *const LISTS[] = {&TP[P_SDIV], &GP[G_DTIME], &TP[P_SLRATE]};
     ui_power_on();
     for (k = 0; k < NELEM(LISTS); k++) {           /* left end -> right end: each one shorter than the one before */
         const param_desc_t *d = LISTS[k];
@@ -4736,7 +4646,7 @@ static int test_div_order(void)
             turn(EN_K1 + c, -2);
             ok &= *vp == (d->names == N_DIV ? 4 : 3);  /* 8T */
         }
-    bad += check("#48 the pages' knobs step the divisions by length (ARP, DLY, SLICER)", ok && found >= 3u);
+    bad += check("#48 the pages' knobs step the divisions by length (DLY, SLICER)", ok && found >= 2u);
     return bad;
 }
 
@@ -4877,8 +4787,7 @@ static int test_knob_accel(void)
 }
 
 /* #51 ("a melody appears when I change presets"): browsing every sound in the list (every engine's presets, then user
- * presets), on HOME and the PRESETS page, stopped and playing: no cell of the tracker's song is written, the ARP stays
- * off, nothing is held, the transport is not started */
+ * presets), on HOME and the PRESETS page, stopped and playing: no note is held, the transport is not started */
 static int test_browse_no_pattern(void)
 {
     int bad = 0, ok = 1;
@@ -4895,16 +4804,19 @@ static int test_browse_no_pattern(void)
         for (n = 0; n < total + 2u; n++) {
             turn(EN_PRESET, 1);
             loads++;
-            if (t->p[P_AMODE] || t->nheld || (!(pass & 1u) && (song.playing || transport_req))) {
-                printf("  pass %u, sound %u (%s %u): ARP %d held %u playing %d\n", pass, n,
-                       ENGINES[t->eng_req % NENGINES]->name, t->preset, t->p[P_AMODE], t->nheld, song.playing);
+            uint32_t v, held = 0;
+            for (v = 0; v < NVOICE; v++)
+                held += t->v[v].gate;
+            if (held || (!(pass & 1u) && (song.playing || transport_req))) {
+                printf("  pass %u, sound %u (%s %u): held %u playing %d\n", pass, n,
+                       ENGINES[t->eng_req % NENGINES]->name, t->preset, held, song.playing);
                 ok = 0;
                 break;
             }
         }
     }
     if (!ok || loads < 200u) printf("  ok %d loads %u\n", ok, loads);
-    bad += check("#51 every sound browsed (HOME, PRESETS; stopped, playing): no cell, ARP off, nothing held, no start",
+    bad += check("#51 every sound browsed (HOME, PRESETS; stopped, playing): nothing held, no start",
                  ok && loads >= 200u);
     return bad;
 }
@@ -5962,7 +5874,6 @@ int main(void)
     bad += test_chord_page();
     bad += test_bughunt_ui();
     bad += test_bughunt_ui2();
-    bad += test_play_leds();
     bad += test_midi_leds();
     bad += test_idle_glow();
     bad += test_breath();

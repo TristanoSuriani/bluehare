@@ -87,11 +87,9 @@ static void key_events_test(void)
     mo_w = mo_r = 0;
     t->p[P_QUANT] = 2;
     t->p[P_SCALE] = 2;                      /* C minor: E key plays Eb */
-    t->p[P_AMODE] = 1;
-    song.playing = 1;
     fm1_in.notes = 1u << 8;                /* C# is silent */
     keyboard_block();
-    assert(t->arp_phys == 0 && t->nheld == 0 && mo_w == 0);
+    assert(mo_w == 0);
     t->p[P_QUANT] = 0;                    /* releasing a muted key stays silent */
     fm1_in.notes = 0;
     keyboard_block();
@@ -99,8 +97,6 @@ static void key_events_test(void)
     t->p[P_QUANT] = 2;
     fm1_in.notes = (1u << 11) | (1u << 10); /* E and D#: only Eb sounds */
     keyboard_block();
-    assert(t->arp_phys == 1 && t->nheld == 1 && t->held[0] == 63);
-    arp_tick(t, 1);
     assert(mo_w == 1 && ((midi_out_q[0] >> 16) & 127u) == 63);
     t->p[P_SCALE] = 9;
     t->p[P_ROOT] = 6;
@@ -109,7 +105,6 @@ static void key_events_test(void)
     song.sel = 1;                          /* key-up follows the original note/part */
     fm1_in.notes = 0;
     keyboard_block();
-    assert(t->arp_phys == 0 && t->nheld == 0);
     assert(mo_w == 2 && ((midi_out_q[1] >> 16) & 127u) == 63);
     assert(((midi_out_q[1] >> 8) & 255u) == 0x80u);
     song.sel = 0;
@@ -117,12 +112,11 @@ static void key_events_test(void)
     fm1_in.notes = 1u << 8;                /* held black key must release after enabling mode */
     keyboard_block();
     before = mo_w;
-    assert(t->arp_phys == 1);
     t->p[P_QUANT] = 2;
     fm1_in.notes = 0;
     keyboard_block();
-    assert(t->arp_phys == 0 && t->nheld == 0 && mo_w == before + 1);
-    puts("scales: silent keys, arp, MIDI out and held-note changes ok");
+    assert(mo_w == before + 1);
+    puts("scales: silent keys, MIDI out and held-note changes ok");
 }
 
 int main(void)

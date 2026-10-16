@@ -118,7 +118,7 @@ static const icon_map_t ICON_MAP[] = {
     {"REL", ICON_RELEASE}, {"FLT", ICON_CUTOFF}, {"PIT", ICON_PITCH}, {"SHP", ICON_SHAPE},
     {"FX", ICON_MOD}, {"RATE", ICON_RATE}, {"WAVE", ICON_WAVE}, {"PHS", ICON_PHASE},
     {"FADE", ICON_FADE}, {"AMP", ICON_LEVEL},
-    /* arp, scale, pattern */
+    /* modes, scale, pattern (by label: an engine's MODE, GATE ..)*/
     {"MODE", ICON_ARP}, {"OCT", ICON_OCTAVE}, {"GATE", ICON_GATE}, {"SWG", ICON_SWING},
     {"PROB", ICON_PROB}, {"HOLD", ICON_HOLD}, {"ORD", ICON_ORDER}, {"ROOT", ICON_PITCH},
     {"SCL", ICON_SCALE}, {"QNT", ICON_QUANTIZE}, {"TRN", ICON_TRANSPOSE}, {"LEN", ICON_LENGTH},
@@ -193,8 +193,8 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v)
                 return WAVE_ICON[i].icon;
     if (d == &TP[P_LWAVE])
         return ICON_LFO_WAVE;                 /* "WAVE" is also the oscillator wave */
-    if (d == &TP[P_ARATE] || d == &TP[P_SLRATE])
-        return ICON_DIVISION;                 /* arp / SLICER RATE is a note division, not Hz */
+    if (d == &TP[P_SLRATE])
+        return ICON_DIVISION;                 /* SLICER RATE is a note division, not Hz */
     return icon_for_label(d->label);
 }
 

@@ -71,15 +71,14 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 - **Four tracks**, one synth part each with its own engine and sound (drums are KIT, BREAKS or WAR);
   12 voices shared between them (Fel-Tracker; 8 when the device is busy: voices 9 .. 12 start only while the audio's
   measured load is under 75 %, a heavy song keeps to 8 on its own). ALGORITHM selects the track on every page
-- **Sequencer:** a placeholder for now: SEQ (and GLO) show TODO. PLAY runs the transport (the ARP, the click, the
+- **Sequencer:** a placeholder for now: SEQ (and GLO) show TODO. PLAY runs the transport (the click, the
   SLICER, the FX layer's grid follow it). See [Sequencer](#sequencer)
 - **Metronome:** CLICK (OFF or ON) with three levels; the click goes to the headphones and speaker only, never to
   USB audio. There is no count-in: PLAY starts at once
 - **Chord keys:** one finger plays an in-key chord (triads or sevenths of the scale, or fixed chord
-  shapes), with voicings; on the keys, MIDI in and the arpeggiator
-- **Arpeggiator** with UP, DN, UPDN, RND, ORD (the notes in the order you pressed them), REPEAT and, for chords,
-  DNUP, UP+8, CONV, DIVG, PINKY, THUMB, WALK and CHORD; a beat LED; 16 scales with a white-key mode, glide,
-  MONO / LEGATO / UNISON
+  shapes), with voicings; on the keys and MIDI in
+- **Scales and voices:** 16 scales with a white-key mode, glide, MONO / LEGATO / UNISON. The arpeggiator is gone
+  (2026-10): ARP shows a TODO page for now
 - **LFO:** RATE or **SYNC** to a note value (4 bars to 1/32, following the tempo or an external clock), **TRIG** NOTE
   or FREE, **POL** bipolar or unipolar (LFO > LFO 2)
 - **Modulation matrix:** 4 slots per track, MIDI controllers as sources, **S&H** and **SLEW** (a random value per
@@ -124,7 +123,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   screen can go dark when the panel is left alone (MENU > SCREEN OFF)
 - **LEDs:** idle buttons and keys glow dim so the panel can be found in the dark (MENU > LEDS: OFF,
   DIM LO, DIM HI or INV, the official firmware's look); PLAY turns green while playing; the keys show
-  the notes the ARP and MIDI IN play; MENU > SCALE LEDS shows the track's scale on the keys;
+  the notes MIDI IN plays; MENU > SCALE LEDS shows the track's scale on the keys;
   a soft light sweeps over the keys at power-on, and with MENU > ANIM IDLE drifts over them while the FM-1 waits
 - **USB:** class-compliant MIDI in and out, and a stereo audio input ("Felucca") at 44.1 or 48 kHz
   (the computer picks) that records the master output on the computer, no driver needed (at a fixed level with MENU > USB LEVEL FIXED;
@@ -202,14 +201,15 @@ The pages by button:
 | SAVE | USER, PROJECT, TOOLS (INIT SOUND), PRESETS | UNDO |
 | LFO | LFO, LFO 2, LFO DEST, MOD | MOMENTARY (with a knob) |
 | EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
-| FX, SCL, ENV, ARP | their pages, as before | FX and SCL: their layers |
+| FX, SCL, ENV | their pages, as before | FX and SCL: their layers |
+| ARP | a placeholder (TODO): the arpeggiator is gone | (as a tap) |
 | REC | nothing for now (no recording) | nothing |
 
 ## Sequencer
 
 A placeholder for now: SEQ (and GLO, which opened the song) show a page that says TODO. Felucca's step sequencer, its
 automation, PHRASES and the A–D song are gone, and so is the tracker that took their place until 2026-10 (git
-history keeps it). PLAY still runs the transport: the ARP, the click, the SLICER and the FX layer's grid follow it,
+history keeps it). PLAY still runs the transport: the click, the SLICER and the FX layer's grid follow it,
 on the internal, USB or TRS clock or the plugin's host. REC does nothing for now.
 
 A project (SAVE > PROJECT, the autosave, the plugin's state) holds the tracks' sounds, the globals and each track's
@@ -435,9 +435,8 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     bite), PUNCH (the pitch from up to two octaves above, falling over PDEC: an 808's thud), DRIVE, TONE
   - **RAZOR**: up to 7 saws spread apart (VOICES, SPREAD: reeses, supersaws), SUB, NOISE, DRIVE into a resonant
     low-pass (CUT, RES) and EDGE, a high-pass after it (thin, icy, laser cuts)
-  - *(Fel-Tracker)* RAZOR and DARK each have three EBM basslines, presets that set the arp too: EBM OCTAVES (16ths,
-    root and octave), EBM ROOT (16ths on the one note), EBM GALLOP (16th triplets). Hold a key, or a MIDI note, and it
-    plays the line at the tempo (the arp plays the keys and MIDI)
+  - *(Fel-Tracker)* RAZOR and DARK each have three EBM bass sounds: EBM OCTAVES, EBM ROOT, EBM GALLOP (until 2026-10
+    they set the arpeggiator's figure too)
   - **SLAG**: hot walls and drones: 2 .. 4 oscillators wandering in tune (DRIFT), HEAT's saturation, a low-pass that
     MELT lets sink over each note, NOISE sparks
   - **WAR**: an industrial kit, a key each from C2 (as DRUM): KICK, HARD, SNARE, CLAP, HAT, OPEN, TOM L, TOM H, METAL,

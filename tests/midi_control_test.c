@@ -66,7 +66,7 @@ static int sustain_test(void)
     queued(0x93, 36, 100, 1); queued(0xB3, 64, 127, 1); queued(0x83, 36, 0, 1);
     bad += check("drum note-offs do not accumulate pedal-held owners", !midi_notes[3][36] && !midi_owners[3]);
     queued(0x90, 67, 100, 1); queued(0xB0, 64, 127, 1); queued(0x80, 67, 0, 1); queued(0xB0, 120, 0, 1);
-    bad += check("All Sound Off ignores pedal and discards all track ownership", !midi_notes[0][67] && !midi_owners[0] && !t->nheld && !gate_note(t, 67));
+    bad += check("All Sound Off ignores pedal and discards all track ownership", !midi_notes[0][67] && !midi_owners[0] && !gate_note(t, 67));
     return bad;
 }
 static int ownership_test(void)
@@ -132,15 +132,14 @@ static int clock_test(uint32_t source)
     bad += check("Start after timeout restarts cleanly at the master's phase", song.playing && hs.row == 1u);
     return bad;
 }
-static int clock_arp_and_boundaries(void)
+static int clock_source_and_boundaries(void)
 {
-    int bad = 0; clock_setup(1); trk[0].p[P_AMODE] = 1; trk[0].p[P_ARATE] = 2;
-    queued(0x90, 60, 100, 1); queued(0x90, 64, 100, 1);
-    clock_packet(1, 0xFA, 10); clock_to(1, 10, 1); uint32_t before = trk[0].arp_idx;
+    int bad = 0; clock_setup(1);
+    clock_packet(1, 0xFA, 10); clock_to(1, 10, 1); uint32_t before = hs.row;   /* (its 1/16) */
     clock_to(2, 20, 7);
-    bad += check("wrong-source clocks cannot advance the ARP", trk[0].arp_idx == before);
+    bad += check("wrong-source clocks cannot advance the transport a 1/16", hs.row == before);
     clock_to(1, 10, 7);
-    bad += check("selected-source MIDI clock advances the ARP", trk[0].arp_idx > before);
+    bad += check("selected-source MIDI clock advances the transport a 1/16", hs.row > before);
     clock_setup(2); fm1_ms = 100; um_byte(0x90); um_byte(60); um_byte(0xFA); um_byte(100); events_block(CTL);
     bad += check("TRS realtime interleaving preserves the incomplete note message", gate_note(&trk[0], 60) && song.playing);
     /* Millisecond counter wraps naturally during external-clock operation. */
@@ -151,51 +150,10 @@ static int clock_arp_and_boundaries(void)
     bad += check("local PLAY waiting for missing external clock also times out", !song.playing);
     return bad;
 }
-/* ARP HOLD latched on an external clock: a Stop, a lost clock or a tap while stopped must not leave the arp note
- * sounding; Continue plays the latched chord again; the internal clock's free-running arp is unchanged by STOP */
-static void arp_latch(uint32_t mode)
-{
-    midi_test_reset(); song.g[G_CLOCK] = (int16_t)mode; events_block(CTL);
-    trk[0].p[P_AMODE] = 1; trk[0].p[P_AHOLD] = 1; trk[0].p[P_ARATE] = 2; trk[0].p[P_AGATE] = 120; trk[0].p[P_AOCT] = 2;
-    events_block(CTL);
-}
-static uint32_t arp_ext_run(uint32_t ms)       /* Start, tap 60 (latched), clocks until the arp plays 72 */
-{
-    uint32_t i;
-    clock_packet(1, 0xFA, ms); queued(0x90, 60, 100, 1); queued(0x80, 60, 0, 1);
-    for (i = 0; i < 400 && trk[0].arp_note != 72; i++) clock_packet(1, 0xF8, ms + i * 21u);
-    return ms + i * 21u;
-}
 static void idle_ms(uint32_t ms)               /* about ms of audio blocks, no MIDI */
 {
     uint32_t i, ms0 = fm1_ms;
     for (i = 0; i < ms * 23u / 16u; i++) { fm1_ms = ms0 + i * 16u / 23u; events_block(CTL); }
-}
-static int arp_ext_stop_test(void)
-{
-    int bad = 0; uint32_t ms, i, off;
-    arp_latch(1); ms = arp_ext_run(10);
-    bad += check("ARP HOLD on the external clock plays the upper octave", trk[0].arp_note == 72 && gate_note(&trk[0], 72));
-    clock_packet(1, 0xFC, ms + 5); idle_ms(2000);
-    bad += check("external Stop ends the sounding ARP note", !trk[0].arp_note && !gate_note(&trk[0], 72) && !gate_note(&trk[0], 60));
-    bad += check("external Stop keeps the latched HOLD chord", trk[0].nheld == 1u && trk[0].held[0] == 60u);
-    ms = fm1_ms; clock_packet(1, 0xFB, ms);
-    for (i = 1; i < 40 && !trk[0].arp_note; i++) clock_packet(1, 0xF8, ms + i * 21u);
-    bad += check("Continue plays the latched chord again", trk[0].arp_note != 0);
-    arp_latch(1); arp_ext_run(10); idle_ms(2000);
-    bad += check("a lost external clock stops the transport and ends the ARP note", !song.playing && !trk[0].arp_note && !gate_note(&trk[0], 72));
-    arp_latch(1); queued(0x90, 64, 100, 1); queued(0x80, 64, 0, 1);
-    bad += check("a tap while the external transport is stopped sounds", trk[0].arp_note == 64);
-    idle_ms(2000);
-    bad += check("its ARP gate still ends in real time", !trk[0].arp_note && !gate_note(&trk[0], 64));
-    arp_latch(0); transport_req = 1; events_block(CTL); queued(0x90, 60, 100, 1); queued(0x80, 60, 0, 1);
-    for (i = 0; i < 4000 && trk[0].arp_note != 72; i++) events_block(CTL);
-    off = trk[0].arp_off;
-    transport_req = 2; events_block(CTL);
-    bad += check("internal clock: STOP leaves the free-running ARP note to its gate", trk[0].arp_note == 72 && gate_note(&trk[0], 72) && trk[0].arp_off == off - CTL);
-    for (i = 0; i < 4000 && (!trk[0].arp_note || trk[0].arp_note == 72); i++) events_block(CTL);
-    bad += check("internal clock: the ARP keeps stepping after STOP", trk[0].arp_note && trk[0].arp_note != 72 && trk[0].nheld == 1u);
-    return bad;
 }
 /* USB-MIDI back-pressure: full 64-byte bulk packets (16 events) faster than the audio ISR drains the ring are
  * left in the endpoint (NAK) instead of overflowing it, which would panic every sounding note */
@@ -418,7 +376,7 @@ static int cc_map_test(void)
 }
 int main(void)
 {
-    int bad = controls_test() + sustain_test() + ownership_test() + clock_test(1) + clock_test(2) + clock_arp_and_boundaries() +
-              arp_ext_stop_test() + usb_burst_test() + route_test() + route_block_test() + cc_map_test();
+    int bad = controls_test() + sustain_test() + ownership_test() + clock_test(1) + clock_test(2) + clock_source_and_boundaries() +
+              usb_burst_test() + route_test() + route_block_test() + cc_map_test();
     printf("%s\n", bad ? "MIDI CONTROL/CLOCK TEST FAILED" : "MIDI control/clock integration tests passed"); return bad != 0;
 }

@@ -38,7 +38,7 @@ int main(void)
     for (e = 0, ok = 1; e < NENGINES; e++)
         ok &= ENGINES[e]->npresets >= 24u && ENGINES[e]->cats && strlen(ENGINES[e]->cats) == ENGINES[e]->npresets;
     ck("every engine 24 presets or more, a category for each", ok);
-    {   /* (Fel-Tracker) the EBM basslines: RAZOR's and DARK's, each with its arp figure */
+    {   /* (Fel-Tracker) the EBM basses: RAZOR's and DARK's */
         static const char *const EBM[3] = {"EBM OCTAVES", "EBM ROOT", "EBM GALLOP"};
         uint32_t k, x, ok2 = 1;
         for (k = 0; k < 2u; k++) {
@@ -46,13 +46,12 @@ int main(void)
             for (x = 0; x < 3u; x++) {
                 uint32_t j, found = 0;
                 for (j = 0; j < ENGINES[en]->npresets; j++)
-                    if (!strcmp(ENGINES[en]->presets[j].name, EBM[x]) && ENGINES[en]->presets[j].arp == x + 1u &&
-                        ARP_FIG[x + 1u].rate == (x == 2u ? 5u : 2u))
+                    if (!strcmp(ENGINES[en]->presets[j].name, EBM[x]))
                         found = 1;
                 ok2 &= found;
             }
         }
-        ck("RAZOR and DARK: EBM OCTAVES, ROOT, GALLOP, each its arp figure (16ths, octave / root; 16th triplets)", ok2);
+        ck("RAZOR and DARK: EBM OCTAVES, ROOT, GALLOP", ok2);
     }
     ck("DARK, ANVIL: a clean block of 8 more (CLEAN SUB, PURE BELL ..), DARK's EBM 3",
        ENGINES[eng_of("DARK")]->npresets == 35u && ENGINES[eng_of("ANVIL")]->npresets == 32u &&

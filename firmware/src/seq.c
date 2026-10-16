@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Keyboard, scale, arpeggiator, sequencer and transport.
+/* Keyboard, scale and transport (the sequencer: a placeholder).
  * Everything here runs in the audio ISR, once per CTL-sample block, and
  * ends in trk_note_on / trk_note_off: engines never see where a note came from.
  * Four tracks, one transport: every track's pattern loops on its own LEN / DIV /
@@ -9,8 +9,8 @@
  * CH1-4 (0) channels 1..4 play parts 1..4, channels 5..16 are ignored (midi_control.c midi_event); SEL (1)
  * every channel the selected track; 1.2: CH5-8, CH9-12, CH13-16 as CH1-4 on those four channels (midi_base). Their CC1 (mod wheel), CC11 (expression) and channel aftertouch go to
  * the same track's modulation matrix (mod.c; the selected track: the one selected then).
- * The sequencer is a placeholder (SEQ shows TODO): PLAY runs the transport alone (the ARP, the click, the SLICER,
- * the FX layer's grid). A key or MIDI note plays a
+ * The sequencer is a placeholder (SEQ shows TODO): PLAY runs the transport alone (the click, the SLICER, the FX
+ * layer's grid, the synced LFOs). A key or MIDI note plays a
  * chord when the track's CHRD is on (chord.c): its notes go through the same input as so many keys. */
 static const uint16_t SCALE_MASK[] = {
     0xFFF,                                   /* CHR */
@@ -124,135 +124,6 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
 
 #include "chord.c"
 
-/* ------------------------------------------------------------- arp --- */
-static void arp_add(track_t *t, uint32_t note)
-{
-    uint32_t i;
-    if (t->p[P_AHOLD] && t->arp_phys == 0u)
-        t->nheld = 0;                               /* new chord replaces the latched one */
-    t->arp_phys++;                                  /* every key-down: arp_remove counts every key-up */
-    for (i = 0; i < t->nheld; i++)
-        if (t->held[i] == note)
-            return;                                 /* repeated note-on: not a new note */
-    if (t->nheld < 16u)
-        t->held[t->nheld++] = (uint8_t)note;
-    if (t->nheld == 1u) {
-        t->arp_pos = 0xFFFFFFF;                     /* fire on this block */
-        t->arp_idx = 0xFFFFFFFFu;
-    }
-}
-
-static void arp_remove(track_t *t, uint32_t note)
-{
-    uint32_t i, k = 0;
-    if (t->arp_phys)
-        t->arp_phys--;
-    if (t->p[P_AHOLD])
-        return;
-    for (i = 0; i < t->nheld; i++)
-        if (t->held[i] != note)
-            t->held[k++] = t->held[i];
-    t->nheld = (uint8_t)k;
-}
-
-/* the ARP's modes (P_AMODE). Append-only: a stored value keeps its meaning. ORD (1.2, it played as UP before) plays
- * the held notes in the order they were pressed, whatever ARP 2's ORD switch says (that switch orders the list of the
- * other modes). 1.2 (Discussion #95), over the note list (the held notes low to high, or as played,
- * across OCT octaves), C E G held: DNUP G E C E; UP+8 C E G C' (the first note again an octave above the top);
- * CONV C G E (outside in); DIVG E G C (inside out); PINKY C G E G (the top note between the others); THUMB
- * C E C G (the bottom one); WALK a random step up or down the list (bouncing off its ends); CHORD all the held
- * notes together (the first 4), an octave higher each step through OCT */
-enum { AM_OFF, AM_UP, AM_DN, AM_UPDN, AM_RND, AM_ORD, AM_REPEAT, AM_DNUP, AM_UP8, AM_CONV, AM_DIVG, AM_PINKY,
-       AM_THUMB, AM_WALK, AM_CHORD };
-
-static void arp_forget(track_t *t)               /* (its notes ended otherwise: trk_all_off) */
-{
-    t->arp_note = t->arp_ch[0] = t->arp_ch[1] = t->arp_ch[2] = 0;
-}
-
-/* CHORD's notes. Not inlined: they run once an arp step, and kept out of the audio ISR's loop over the tracks
- * (tests/target_budget.py) */
-static __attribute__((noinline)) void arp_chord_off(track_t *t)   /* the other notes end */
-{
-    uint32_t i;
-    for (i = 0; i < 3u; i++)
-        if (t->arp_ch[i]) {
-            trk_note_off(t, t->arp_ch[i]);
-            t->arp_ch[i] = 0;
-        }
-}
-
-static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list, uint32_t n)
-{
-    uint32_t i, nt, top = 0, o = t->arp_idx % (uint32_t)(t->p[P_AOCT] > 0 ? t->p[P_AOCT] : 1);
-    if (n > 4u)
-        n = 4u;
-    for (i = 0; i < n; i++) {                       /* the held notes (sorted or as played), o octaves up */
-        nt = (uint32_t)clamp((int32_t)list[i] + 12 * (int32_t)o, 0, 127);
-        if (nt == 127u && top++)
-            continue;                               /* (notes clamped onto the top one: once) */
-        if (!t->arp_note)
-            t->arp_note = (uint8_t)nt;
-        else
-            t->arp_ch[i - 1u] = (uint8_t)nt;
-        trk_note_on(t, nt, 100);
-    }
-}
-
-static void arp_off(track_t *t)                  /* the sounding arp note(s) end */
-{
-    if (t->arp_ch[0] | t->arp_ch[1] | t->arp_ch[2])
-        arp_chord_off(t);
-    trk_note_off(t, t->arp_note);
-    t->arp_note = 0;
-}
-
-/* the place in the note list (len notes) the step arp_idx plays (not inlined, as arp_chord); UP+8 adds its note */
-static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, uint32_t len)
-{
-    uint32_t i = t->arp_idx, m = (uint32_t)t->p[P_AMODE], cyc, k, w;
-    if (m == AM_UP8 && len < 64u)                   /* UP+8: the first note again over the top */
-        list[len++] = (uint32_t)clamp((int32_t)list[0] + 12 * t->p[P_AOCT], 0, 127);
-    cyc = len > 1u ? 2u * len - 2u : 1u;
-    k = i % cyc;
-    switch (m) {
-    case AM_DN:
-        return len - 1u - i % len;
-    case AM_UPDN:
-        return k < len ? k : cyc - k;
-    case AM_DNUP:
-        return k < len ? len - 1u - k : k - (len - 1u);
-    case AM_RND:
-        return rng() % len;
-    case AM_CONV:
-    case AM_DIVG:
-        k = i % len;
-        if (m == AM_DIVG)
-            k = len - 1u - k;
-        return (k & 1u) ? len - 1u - k / 2u : k / 2u;
-    case AM_PINKY:
-        return len < 2u ? 0u : (k & 1u) ? len - 1u : k / 2u;
-    case AM_THUMB:
-        return len < 2u ? 0u : (k & 1u) ? 1u + k / 2u : 0u;
-    case AM_WALK:
-        w = t->arp_walk;
-        if (!i)
-            w = 0;                                  /* (from the bottom) */
-        else if (w >= len)
-            w = len - 1u;                           /* (notes let go) */
-        else if (len > 1u)
-            w = !w ? 1u : w == len - 1u ? w - 1u : (rng() >> 7) & 1u ? w + 1u : w - 1u;
-        t->arp_walk = (uint8_t)w;
-        return w;
-    default:
-        return i % len;
-    }
-}
-
-/* n: samples the arp advances by (the external clock's while it runs, 0 stopped); gate_n: samples its
- * gate counts down by (real time when the external transport stops: a tapped or latched note still ends) */
-static volatile uint32_t beat_pos, beat_n;      /* samples into the beat, the beat of the bar (0..3) */
-
 /* the metronome (click.c; 1.1, Discussion #131). The click follows the song tempo's quarter notes
  * (BPM, or the external clock's 24 pulses), 4 to the bar, the first accented, whatever a track's DIV or SWING: a beat is
  * four 1/16 steps as the sequencer counts them (click_beat_len: 4 x div_samples(1/16), which may be a few samples
@@ -265,67 +136,12 @@ static volatile uint32_t beat_pos, beat_n;      /* samples into the beat, the be
 static uint32_t clk_pos = CLK_START, clk_step;  /* samples into the 1/16 step, the step of the bar (0..15) */
 static uint32_t click_beat_len(void) { return 4u * div_samples(2); }   /* DIV 2: 1/16 */
 static int click_wanted(void) { return click_mode == CLICK_ON; }
-static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
-{
-    uint32_t period, cnt, list[64], len = 0, i, j, o;
-    int32_t sw;
-    if (t->arp_note) {
-        if (t->arp_off <= gate_n)
-            arp_off(t);
-        else
-            t->arp_off -= gate_n;
-    }
-    if (!t->p[P_AMODE] || !t->nheld) {
-        if (!t->nheld && t->arp_note)
-            arp_off(t);
-        return;
-    }
-    period = div_samples((uint32_t)t->p[P_ARATE]);
-    sw = t->p[P_ASWING] * (int32_t)period / 250;
-    t->arp_pos += n;
-    if (t->arp_pos < period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw) && t->arp_pos != 0xFFFFFFF + n)
-        return;
-    t->arp_pos = 0;
-    /* build the note list: held notes (sorted or as played) over OCT octaves */
-    for (i = 0; i < t->nheld; i++)
-        list[i] = t->held[i];
-    cnt = t->nheld;
-    if (!t->p[P_AORDER] && t->p[P_AMODE] != AM_ORD)   /* (ORD: as pressed, held[] keeps that order) */
-        for (i = 1; i < cnt; i++)
-            for (j = i; j > 0 && list[j - 1] > list[j]; j--) {
-                uint32_t x = list[j];
-                list[j] = list[j - 1];
-                list[j - 1] = x;
-            }
-    for (o = 0; o < (uint32_t)t->p[P_AOCT]; o++)
-        for (i = 0; i < cnt && len < 64u; i++)
-            list[len++] = clamp((int32_t)list[i] + 12 * (int32_t)o, 0, 127);
-    if (t->p[P_AMODE] == AM_REPEAT) { list[0] = t->held[t->nheld - 1u]; len = 1; } /* REPEAT: last played note, no octave traversal */
-    t->arp_idx++;
-    j = t->p[P_AMODE] == AM_CHORD ? 0u : arp_pick(t, list, len);
-    if (t->arp_note)
-        arp_off(t);
-    if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]) {
-        t->arp_off = period * (uint32_t)t->p[P_AGATE] / 128u;
-        if (t->p[P_AMODE] == AM_CHORD) {            /* CHORD: the first 4 notes, an octave up each step */
-            arp_chord(t, list, cnt);
-            return;
-        }
-        t->arp_note = (uint8_t)list[j];
-        trk_note_on(t, t->arp_note, 100);
-    }
-}
-
-static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
 
 /* -------------------------------------------------------- note input --- */
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     last_note = (uint8_t)note;
-    if (t->p[P_AMODE])
-        arp_add(t, note);
-    else
-        trk_note_on(t, note, vel);
+    trk_note_on(t, note, vel);
 }
 
 static int midi_note_held(const track_t *t, uint32_t note);
@@ -334,8 +150,7 @@ static void input_off(track_t *t, uint32_t note)
 {
     if (midi_note_held(t, note))
         return;
-    arp_remove(t, note);                            /* both: the note may have started in the */
-    trk_note_off(t, note);                          /* other mode (ARP switched while held) */
+    trk_note_off(t, note);
 }
 
 /* the effect of key k in the FX layer (PF_N none): the white keys F3 .. G5 the map's (perf_map: the settings,
@@ -507,7 +322,7 @@ static void keyboard_block(void)
  * host tests play their songs through it (tests/hostsim.c host_seq) */
 static void (*seq_hook)(uint32_t n);
 
-/* PLAY: the transport from its start: the metronome, the ARP LED's beat, the SLICER and the FX layer's grid with it */
+/* PLAY: the transport from its start: the metronome, the SLICER and the FX layer's grid with it */
 static void seq_start(void)
 {
     uint32_t i;
@@ -517,7 +332,6 @@ static void seq_start(void)
             t->lfo_ph = (uint32_t)t->p[P_LPHASE] << 25;
     }
     song.tick = 0;
-    beat_pos = 0; beat_n = 0;                      /* the ARP LED's beat from the top too */
     clk_pos = CLK_START;                           /* the metronome's first beat now */
     song.playing = 1;
     slicer_start();                                /* slicer.c: its step 0 now */
@@ -526,12 +340,7 @@ static void seq_start(void)
 
 static void seq_stop(void)
 {
-    uint32_t i;
     song.playing = 0;
-    if (song.g[G_CLOCK])                           /* external clock: the arp stops with the transport, */
-        for (i = 0; i < NPART; i++)                /* its sounding note too (HOLD keeps the latched chord) */
-            if (trk[i].arp_note)
-                arp_off(&trk[i]);
 }
 
 /* MIDI in: the track a channel plays (0..15): G_ROUTE CH1-4 (0) channels 1..4 their parts (5..16 never get
@@ -629,21 +438,8 @@ static void events_block(uint32_t n)
         if ((pr >> i) & 1u) {
             midi_forget_track(i);
             trk_all_off(t);
-            t->nheld = 0;
-            t->arp_phys = 0;
-            arp_forget(t);
         }
         engine_block(t);                              /* engine switch: fade, then switch (voice.c) */
-        /* ARP turned off, or HOLD released with no key down: drop the latched chord */
-        if ((t->armp && !t->p[P_AMODE]) || (t->aholdp && !t->p[P_AHOLD] && !t->arp_phys)) {
-            t->nheld = 0;
-            if (!t->p[P_AMODE])
-                t->arp_phys = 0;
-            if (t->arp_note)
-                arp_off(t);
-        }
-        t->armp = t->p[P_AMODE];
-        t->aholdp = t->p[P_AHOLD];
     }
     keyboard_block();
     while (mi_r != mi_w) {                            /* USB-MIDI (and TRS) in */
@@ -677,14 +473,6 @@ static void events_block(uint32_t n)
         seq_hook(song.playing ? seq_n : 0u);
     if (song.playing)
         click_tick(seq_n);
-    for (i = 0; i < NPART; i++)
-        arp_step(&trk[i], clock_mode ? seq_n : n, clock_mode && song.playing ? seq_n : n);
-    beat_pos += clock_mode ? seq_n : n;               /* the beat the ARP LED flashes on (ui_leds) */
-    if (beat_pos >= beat_samples()) {
-        beat_pos -= beat_samples();
-        beat_pos = beat_pos < beat_samples() ? beat_pos : 0u;
-        beat_n = (beat_n + 1u) & 3u;
-    }
     if (song.playing)
         song.tick++;
     tgt_block_end(n);
