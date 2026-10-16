@@ -100,7 +100,7 @@ async function loadDescs(items) {
 
 // ------------------------------------------------------------------ the page's words for the parameters
 // the tabs, and the groups each shows (STU_LAYOUT's keys)
-const TABS = [["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "IYRCPQ"], ["gen", "GENERATIVE", "GK"]];
+const TABS = [["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "XIYRCPQ"], ["gen", "GENERATIVE", "GK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
   A: { title: "Amp envelope", names: ["Attack", "Decay", "Sustain", "Release", "Level", "Octave"] },
@@ -111,6 +111,8 @@ const GROUPS = {
   L: { title: "LFO", names: ["Rate", "Wave", "Phase", "Fade in", "Sync", "Trigger", "Polarity"] },
   D: { title: "LFO moves", names: ["Pitch", "Filter", "Shape", "Amp"] },
   M: { title: "Mod matrix", wide: true },
+  X: { title: "Sound processing", names: ["Processing"], fx: true, wide: true, show: true,
+       note: "BLUE HARE: its chorus, delay and reverb buses, mono lows, compressor and limiter. AMB-1 (Charles Vestal's): a 5.6 s tape echo with two wandering heads and a 160 ms Echoplex, fed into a full-rate Dattorro plate, mixed wet, one soft clip at the end; no chorus, no compressor. The same knobs drive it: TIME, FEEDBACK, COLOR, MIX the echo; SIZE, DAMPING the plate; GEN's MOTION the heads." },
   I: { title: "Inserts", names: ["Low cut", "Haas", "Pan mode"], fx: true,
        note: "LOW CUT: a 12 dB/oct high-pass after the drive. HAAS (the FM-1's WIDTH): the Haas effect, the highs over ~250 Hz late on one side. PAN MODE: ALT voices left and right of PAN by SPREAD, RND each voice on a random side." },
   Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true,
@@ -312,6 +314,7 @@ function change(scope, id, v, gestureKey) {
       if (c) c.text(text);
       if (!scope && id >= fw.PE0) refreshEngineLabels();
       if (!scope && id >= 1 && id <= 4) drawEnv();          // (P_ATK .. P_REL)
+      if (scope === 2) procSync();
     } finally {
       const nx = inflight.get(k).next;
       inflight.delete(k);
@@ -446,7 +449,7 @@ async function buildGroups() {
 function groupBox(g) {
   const G = GROUPS[g.key] || { title: g.key };
   const box = h("section", { class: "group" + (G.wide ? " wide" : ""), "data-group": g.key });
-  const info = G.note && g.key !== "G" ? h("button", { class: "info", type: "button", title: G.note, "aria-label": "About " + G.title,
+  const info = G.note && g.key !== "G" && !G.show ? h("button", { class: "info", type: "button", title: G.note, "aria-label": "About " + G.title,
     onclick: () => { const n = box.querySelector(".gnote"); if (n) n.hidden = !n.hidden; } }, "ⓘ") : null;
   box.append(h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `track ${S.sel + 1}`) : null,
     G.fx ? h("span", { class: "sub" }, "every track") : null, info));
@@ -465,7 +468,7 @@ function groupBox(g) {
     }
     g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, G.names?.[i])));
     if (g.key === "Q") ctrls.append(masterStages());
-    if (G.note) ctrls.append(h("p", { class: "gnote", hidden: g.key !== "G" }, G.note));   /* (the others: ⓘ) */
+    if (G.note) ctrls.append(h("p", { class: "gnote", hidden: !G.show && g.key !== "G" }, G.note));   /* (the others: ⓘ) */
   }
   box.append(ctrls);
   return box;
@@ -554,6 +557,15 @@ function matrix(items) {
   return m;
 }
 // the values of the items given, and their texts, from the firmware
+// the processing chosen (EFFECTS > PROCESSING): with amb-1's, what it has none of is dimmed (the chorus, the delay's and
+// reverb's TYPE, the master's compressor and limiter); the knobs it reads stay
+function procSync() {
+  const k = desc[2].findIndex((d) => d && d.label === "PROC"), amb = k >= 0 && S.x[k] === 1;
+  const grp = (key) => document.querySelector(`[data-group="${key}"]`);
+  grp("C")?.classList.toggle("dim", amb);
+  for (const key of ["Y", "R"]) grp(key)?.querySelector(".choice")?.classList.toggle("dim", amb);
+  grp("Q")?.querySelector(".stages")?.classList.toggle("dim", amb);
+}
 async function showValues(items) {
   const q = items.map(({ scope, id }) => ({ fn: "stu_format", args: [scope, id, cur(scope, id)], ret: "str" }));
   const r = await call(q);
@@ -561,6 +573,7 @@ async function showValues(items) {
     const c = ctl[scope].get(id);
     if (c) { c.show(cur(scope, id)); c.text(r[i]); }
   });
+  procSync();
   drawEnv();
 }
 

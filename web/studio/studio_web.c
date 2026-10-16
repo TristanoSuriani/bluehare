@@ -7,6 +7,7 @@
  * (web/emu/worklet.js, "call"). Nothing of the firmware changes for this file: each export goes the way a device
  * action or the editor protocol (editor.c) goes.
  *   web/studio/build.sh  ->  build/studio/{index.html, studio.js, worklet.js, bluehare.wasm} */
+#define BLUEHARE_AMBFX 1                 /* amb-1's processing beside Blue Hare's (fx_amb.c): EFFECTS > PROCESSING */
 #include "../emu/bluehare_web.c"
 
 #define STU_EXPORT __attribute__((used, visibility("default")))
@@ -63,10 +64,11 @@ STU_EXPORT void stu_undo(void) { undo_swap(); }    /* SAVE held: the sound befor
  * studio treats every effect as shared: a value set is every track's, the one shown track 1's), the
  * performance layer's macros FILTER CRUSH THROW DEPTH (perform.c perf_k, as KNOB 1..4 with FX turn them), MENU > SPEAKER
  * EQ (settings.lowcut, fx.c fx_lowcut) and MASTER (the pot). Described as the others, values through stu_x */
-enum { SX_LOWCUT, SX_WIDTH, SX_PMODE, SX_SPKEQ, SX_FILTER, SX_CRUSH, SX_THROW, SX_DEPTH, SX_MASTER, SX_COUNT };
+enum { SX_LOWCUT, SX_WIDTH, SX_PMODE, SX_SPKEQ, SX_FILTER, SX_CRUSH, SX_THROW, SX_DEPTH, SX_MASTER, SX_PROC, SX_COUNT };
 static const char *const N_SX_LOWCUT[TL_N] = {"OFF", "40Hz", "60Hz", "80Hz", "120Hz", "160Hz", "240Hz", "320Hz"};
 static const char *const N_SX_PMODE[] = {"ALT", "RND"};
 static const char *const N_SX_SPKEQ[] = {"FLAT", "LOWCUT", "BASS+"};
+static const char *const N_SX_PROC[] = {"BLUE HARE", "AMB-1"};   /* fx.c fx_proc: the buses and master, or amb-1's */
 static const param_desc_t SX[SX_COUNT] = {
     [SX_LOWCUT] = {"LOWCUT", F_ENUM, 0, TL_N - 1, 0, N_SX_LOWCUT, 0},
     [SX_WIDTH] = {"WIDTH", F_INT, 0, TW_MAX, TW_DEF, 0, "ms"},
@@ -77,6 +79,7 @@ static const param_desc_t SX[SX_COUNT] = {
     [SX_THROW] = {"THROW", F_INT, 0, 100, 0, 0, 0},
     [SX_DEPTH] = {"DEPTH", F_INT, 0, 100, 0, 0, 0},
     [SX_MASTER] = {"MASTER", F_PCT, 0, 127, 87, 0, 0},
+    [SX_PROC] = {"PROC", F_ENUM, 0, 1, 0, N_SX_PROC, 0},
 };
 static int16_t stu_xv;                            /* (the value read, as the others' pointers give theirs) */
 static int32_t stu_x(uint32_t id)
@@ -89,6 +92,7 @@ static int32_t stu_x(uint32_t id)
     case SX_SPKEQ: return settings.lowcut % 3u;
     case SX_FILTER: case SX_CRUSH: case SX_THROW: return perf_k[id - SX_FILTER];
     case SX_DEPTH: return 100 - perf_k[3];        /* (perf_k[3] is the cut: 0 the full level) */
+    case SX_PROC: return fx_proc;
     default: return (int32_t)(web_master_adc * 127u + 511u) / 1023;
     }
 }
@@ -102,6 +106,7 @@ static void stu_x_put(uint32_t id, int32_t v)
     case SX_SPKEQ: settings.lowcut = (uint8_t)v; fx_lowcut = (uint8_t)v; break;
     case SX_FILTER: case SX_CRUSH: case SX_THROW: perf_k[id - SX_FILTER] = (int8_t)v; break;
     case SX_DEPTH: perf_k[3] = (int8_t)(100 - v); break;
+    case SX_PROC: fx_proc = (uint8_t)(v != 0); break;
     default: web_master((uint32_t)v * 1023u / 127u); break;
     }
 }
@@ -241,6 +246,7 @@ static const uint8_t STU_LAYOUT[] = {
     /* the effects, as docs/SoundAndDSP.md section 3 lists them: the track's inserts, its sends, the shared buses, the
      * performance layer, the master */
     'S', 0, P_DIST, 0, P_SPRD, 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,   /* (the sound's: drive, spread, sends) */
+    'X', X2(SX_PROC), 0xFF,                                           /* Blue Hare's processing or amb-1's */
     'I', X2(SX_LOWCUT), X2(SX_WIDTH), X2(SX_PMODE), 0xFF,
     'Y', G1(G_DTYPE), G1(G_DTIME), G1(G_DFDBK), G1(G_DCOLOR), G1(G_DMIX), 0xFF,
     'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RDAMP), 0xFF,
@@ -309,8 +315,8 @@ STU_EXPORT char *stu_gen_preset_name(uint32_t k) { return stu_say(GEN_PRESETS[k 
 static int32_t stu_mtr[2];
 STU_EXPORT int32_t *stu_meters(void)
 {
-    stu_mtr[0] = bc_g;
-    stu_mtr[1] = lim_env > LIM_T ? (int32_t)(((int64_t)LIM_T << 15) / lim_env) : 32768;
+    stu_mtr[0] = fx_proc ? 32768 : bc_g;          /* (amb-1's processing: no compressor, no limiter) */
+    stu_mtr[1] = fx_proc || lim_env <= LIM_T ? 32768 : (int32_t)(((int64_t)LIM_T << 15) / lim_env);
     return stu_mtr;
 }
 

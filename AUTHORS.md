@@ -109,6 +109,9 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
   (the pieces, the breathing pad, the bells' loops, the drift, the arc, the euclidean pulse) is **amb-1's, by Charles
   Vestal** (GPL-3.0; the excerpts in `docs/excerpt_amb1.c` and `docs/excerpt_fastmath_amb1.c`, the latter from his X0X),
   ported to fixed point and to Blue Hare's tracks and engines by Blue Hare.
+  amb-1's sound processing (`firmware/src/fx_amb.c`: the plate reverb, the tape echo and Echoplex, the master) is
+  his too, ported for the studio's comparison (EFFECTS > PROCESSING). GEN's amb-1 algorithm is kept for comparison
+  only, until Blue Hare's own generative algorithms replace it.
 - SH101 (2026-10) is Blue Hare's engine, its own design after the Roland SH-101 (no circuit modelled).
 - The sound design studio (`web/studio/`, 2026-10-16) is Blue Hare's: its page, its exports and its test. It runs on
   the browser emulator's build and worklet (Felucca's, after X0X), which gained a "call" message for it.

@@ -87,7 +87,7 @@ for (let i = 0; i < lay.length && lay[i];) {
   groups.push(g);
 }
 check(`the layout: ${groups.map((g) => g.key).join("")} (${groups.reduce((n, g) => n + g.items.length, 0)} parameters)`,
-  groups.map((g) => g.key).join("") === "EANLDMVSIYRCPQKG");
+  groups.map((g) => g.key).join("") === "EANLDMVSXIYRCPQKG");
 const descOk = groups.every((g) => g.items.every(([s, id]) => {
   const [fmt, min, max, def] = d.call([{ fn: "stu_desc", args: [s, id], ret: ["i32", 5] }])[0];
   return id < [P, G, X][s] && min <= def && def <= max && d.str("stu_desc_label", s, id) !== "" && fmt >= 0;
@@ -168,6 +168,28 @@ check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)
   d.render(100);
   check("GEN stops", d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0][0] === 0);
   d.render(6000);
+}
+
+// amb-1's processing (fx_amb.c) against Blue Hare's, on the same note with its sends: both sound, they differ, the
+// plate and the tape echo ring on after the note; switching back works
+{
+  const tail = (proc) => {
+    d.one("stu_set", 2, SX.PROC, proc, 0);
+    d.one("stu_set", 0, 35, 100, 0);                 /* (P_DLY, P_REV: the sends up) */
+    d.one("stu_set", 0, 36, 100, 0);
+    d.render(4000);
+    d.one("stu_note", 64, 110);
+    const on = d.render(400);
+    d.one("stu_note", 64, 0);
+    d.render(1500);
+    const late = d.render(1000);                     /* (1.9 .. 2.9 s after the note: the tails) */
+    d.render(8000);
+    return { on, late };
+  };
+  const bh = tail(0), amb = tail(1), back = tail(0);
+  check(`amb-1's processing sounds (peak ${amb.on.toFixed(3)}), rings on (${amb.late.toFixed(4)}), and is not Blue Hare's (${bh.on.toFixed(3)}, ${bh.late.toFixed(4)})`,
+    amb.on > 0.02 && amb.on < 1.0 && amb.late > 0.001 && Math.abs(amb.late - bh.late) > 1e-4 && Number.isFinite(amb.on));
+  check("back to Blue Hare's: as before", Math.abs(back.on - bh.on) < 0.05 && d.one("stu_get", 2, SX.PROC) === 0);
 }
 
 // a note

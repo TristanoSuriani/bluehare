@@ -1208,6 +1208,13 @@ static void mix_track(uint32_t i, uint32_t n, int32_t mg)
     mix_part(&trk[i], n);
 }
 
+#ifndef BLUEHARE_AMBFX
+#define BLUEHARE_AMBFX 0
+#endif
+#if BLUEHARE_AMBFX
+#include "fx_amb.c"                                 /* (Blue Hare, 2026-10) amb-1's processing, the studio's choice */
+#endif
+
 static void mix_block(int32_t *out, uint32_t n)
 {
     uint32_t i;
@@ -1222,6 +1229,12 @@ static void mix_block(int32_t *out, uint32_t n)
     tgt_mix_end(n);
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);
+#if BLUEHARE_AMBFX
+    if (fx_proc) {                                      /* amb-1's processing instead of the buses and the master */
+        amb_block(out, n, mg, perf);
+        return;
+    }
+#endif
     send_lowcut(send_d, send_r, n);                     /* (Blue Hare) */
     fx_buses(send_c, send_d, send_r, wet, n);
     if (hl.side)
