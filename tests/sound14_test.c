@@ -24,7 +24,7 @@
 #endif
 
 static int bad;
-static uint32_t EA;                               /* track 1's engine: WASP (ANALOG's until Blue Hare removed it) */
+static uint32_t EA;                               /* track 1's engine: WAVE (WASP's until the engines were archived) */
 static void check(const char *what, int ok)
 {
     printf("sound14: %-74s %s\n", what, ok ? "ok" : "FAIL");
@@ -89,7 +89,6 @@ static void fresh(uint32_t e, uint32_t pi)        /* the boot state (no FX tails
     mod_seed = 0x2545F491u;
     memset(trk, 0, sizeof trk);
     memset(&mod, 0, sizeof mod);
-    memset(sl, 0, sizeof sl);
     host_tracks_init();
     for (k = 0; k < NPART; k++)
         host_preset(&trk[k], k ? 0u : e, k ? 0u : pi);
@@ -402,14 +401,14 @@ static void sp_leg0(track_t *t) { t->p[P_VOICE] = V_LEGATO; }
 static void sp_poly0(track_t *t) { t->p[P_VOICE] = V_POLY; t->sp_alt = 1; }   /* (the sides change nothing at 0) */
 static void sp_poly0b(track_t *t) { t->p[P_VOICE] = V_POLY; }
 
-/* track 1 (WASP PAD, dry, POLY), SPRD sp, PAN pan: notes, then blocks; L and R sums of squares, the mono sum's */
+/* track 1 (WARM PAD, dry, POLY), SPRD sp, PAN pan: notes, then blocks; L and R sums of squares, the mono sum's */
 typedef struct { double l, r, m, lr; int32_t rmax, lmax; } lr_t;
 static lr_t spread_run(int32_t sp, int32_t pan, uint32_t mode, const uint8_t *notes, uint32_t nn, uint32_t nb)
 {
     track_t *t = &trk[0];
     lr_t a = {0};
     uint32_t k, i;
-    fresh(EA, preset_by_name(EA, "WASP PAD"));
+    fresh(EA, preset_by_name(EA, "WARM PAD"));
     dry(t);
     memset(cho_buf, 0, sizeof cho_buf);                   /* (Blue Hare: no tail of a render before: the buses are */
     memset(dly_buf, 0, sizeof dly_buf);                   /* stereo now, and a tail L != R) */
@@ -507,7 +506,7 @@ static void test_spread(void)
     check(msg, a.lr == 0 && b.lr > b.m * 0.01);
 }
 
-/* the SLICER's gate and the mute key close the side too; the sends stay mono */
+/* the mute key closes the side too; the sends stay mono */
 static void test_spread_fx(void)
 {
     static const uint8_t CHORD[4] = {48, 55, 60, 64};
@@ -515,42 +514,13 @@ static void test_spread_fx(void)
     uint32_t k, i, closed = 0;
     double side_closed = 0, side_open = 0;
     char msg[160];
-    /* SLICER GATE, pattern 1 (x.x.), DEPTH 100 %: in the closed steps L and R both near silent */
-    fresh(EA, preset_by_name(EA, "WASP PAD"));
-    dry(t);
-    t->p[P_ATK] = 0;
-    t->p[P_SPRD] = 127;
-    t->p[P_SLCR] = SL_GATE;
-    t->p[P_SLPAT] = 1;
-    t->p[P_SLDEPTH] = 127;
-    slicer_start();
-    for (i = 0; i < 4u; i++)
-        trk_note_on(t, CHORD[i], 100);
-    blocks(FS / 4u / CTL);
-    for (k = 0; k < FS / CTL; k++) {
-        double s = 0;
-        blocks(1);
-        for (i = 0; i < CTL; i++) {
-            double d = (double)out_buf[2u * i] - out_buf[2u * i + 1u];
-            s += d * d;
-        }
-        if (sl[0].gc >= 32000 && !sl[0].bit) {
-            side_closed += s;
-            closed++;
-        } else if (!sl[0].gc) {
-            side_open += s;
-        }
-    }
-    snprintf(msg, sizeof msg, "SLICER GATE: the side closes with the gate (L - R energy closed / open %.2e, %u blocks)",
-             side_closed / (side_open + 1), closed);
-    check(msg, closed > 10u && side_closed < side_open * 1e-4);
     /* the mute key (FX layer, black key 1): both sides ramp to silence. What is left after it is the master's DC
      * blockers settling: as much at SPRD 127 as at 0, and L - R no more than that (the side muted with the mid) */
     {
         double side[2][2] = {{0}}, all[2][2] = {{0}};
         uint32_t ph, r;
         for (r = 0; r < 2u; r++) {
-            fresh(EA, preset_by_name(EA, "WASP PAD"));
+            fresh(EA, preset_by_name(EA, "WARM PAD"));
             dry(t);
             t->p[P_ATK] = 0;
             t->p[P_SPRD] = (int16_t)(r ? 127 : 0);
@@ -580,7 +550,7 @@ static void test_spread_fx(void)
         uint64_t hw[2];
         uint32_t r;
         for (r = 0; r < 2u; r++) {
-            fresh(EA, preset_by_name(EA, "WASP PAD"));
+            fresh(EA, preset_by_name(EA, "WARM PAD"));
             dry(t);
             t->p[P_REV] = 100;
             t->p[P_SPRD] = (int16_t)(r ? 127 : 0);
@@ -611,7 +581,7 @@ static uint64_t instr_now(void)
 #endif
     return 0;
 }
-/* instructions per sample of WASP PAD POLY with nv notes, SPRD sp; or matrix slots (S&H -> CUT, SLEW -> PITCH,
+/* instructions per sample of WARM PAD POLY with nv notes, SPRD sp; or matrix slots (S&H -> CUT, SLEW -> PITCH,
  * MODW -> DEPTH, ENV -> RATE) with mx */
 static double cost(uint32_t nv, int32_t sp, int mx, uint32_t wave)
 {
@@ -619,7 +589,7 @@ static double cost(uint32_t nv, int32_t sp, int mx, uint32_t wave)
     track_t *t = &trk[0];
     uint32_t i, rep;
     double best = 1e30;
-    fresh(EA, preset_by_name(EA, "WASP PAD"));
+    fresh(EA, preset_by_name(EA, "WARM PAD"));
     t->p[P_VOICE] = V_POLY;
     t->p[P_SUS] = 127;
     t->p[P_SPRD] = (int16_t)sp;
@@ -655,7 +625,7 @@ static void test_cost(void)
     c1s = cost(1, 64, 0, 0);
     c8 = cost(8, 0, 0, 0);
     c8s = cost(8, 64, 0, 0);
-    printf("sound14: cost: SPREAD, WASP PAD POLY: 1 voice %.0f -> %.0f (+%.0f), 8 voices %.0f -> %.0f (+%.0f) "
+    printf("sound14: cost: SPREAD, WARM PAD POLY: 1 voice %.0f -> %.0f (+%.0f), 8 voices %.0f -> %.0f (+%.0f) "
            "instructions / sample: per part +%.0f, per voice %+.1f\n", c1, c1s, c1s - c1, c8, c8s, c8s - c8,
            c1s - c1, ((c8s - c8) - (c1s - c1)) / 7.0);
     check("cost: SPREAD a fixed cost per part (< 3 % of an 8-voice part), next to nothing per voice",
@@ -705,7 +675,7 @@ static int demos(const char *dir)
     FILE *f;
     track_t *t = &trk[0];
     /* S&H -> CUT: ANALOG ACID, a held note, the cutoff jumps once per LFO cycle (1/16 at 120 BPM: SYNC) */
-    fresh(EA, preset_by_name(EA, "WASP LEAD"));
+    fresh(EA, preset_by_name(EA, "BIT LEAD"));
     t->p[P_VOICE] = V_POLY;
     t->p[P_E4] = 50;
     t->p[P_E5] = 90;
@@ -720,7 +690,7 @@ static int demos(const char *dir)
         n++;
     }
     /* SLEW -> CUT, the same: the smooth random line */
-    fresh(EA, preset_by_name(EA, "WASP LEAD"));
+    fresh(EA, preset_by_name(EA, "BIT LEAD"));
     t->p[P_VOICE] = V_POLY;
     t->p[P_E4] = 50;
     t->p[P_E5] = 90;
@@ -736,7 +706,7 @@ static int demos(const char *dir)
     }
     /* LFO rate and depth modulated: LFO DEST PIT vibrato; ENV -> RATE speeds it up as the note decays .. no: MODW
      * rises over 4 s: MODW -> DEPTH opens the vibrato, MODW -> RATE speeds it up (a mod-wheel vibrato that quickens) */
-    fresh(EA, preset_by_name(EA, "WASP KEYS"));
+    fresh(EA, preset_by_name(EA, "DIGI KEYS"));
     t->p[P_VOICE] = V_POLY;
     t->p[P_SUS] = 127;
     t->p[P_LRATE] = 55;
@@ -755,7 +725,7 @@ static int demos(const char *dir)
         n++;
     }
     /* SPREAD on a pad: two chords at SPRD 0, then the same at SPRD 100 */
-    fresh(EA, preset_by_name(EA, "WASP PAD"));
+    fresh(EA, preset_by_name(EA, "WARM PAD"));
     t->p[P_REV] = 50;
     if ((f = demo_open(dir, "spread_pad", 6u * (2u * FS / CTL) * CTL))) {
         uint32_t r;
@@ -773,7 +743,7 @@ static int demos(const char *dir)
         n++;
     }
     /* SPREAD on UNISON: a supersaw-ish lead, SPRD 0 then 127 */
-    fresh(EA, preset_by_name(EA, "WASP LEAD"));
+    fresh(EA, preset_by_name(EA, "BIT LEAD"));
     t->p[P_VOICE] = V_UNISON;
     t->p[P_DETUNE] = 60;
     if ((f = demo_open(dir, "spread_unison", 6u * FS / CTL * CTL))) {
@@ -795,7 +765,7 @@ static int demos(const char *dir)
 int main(int argc, char **argv)
 {
     ml_bypass = 1;                               /* (fx.c MONO LOWS: the tracks' own sides, not the master's) */
-    EA = eng_by_name("WASP");
+    EA = eng_by_name("WAVE");
     test_matrix();
     test_matrix_sound();
     test_spread();

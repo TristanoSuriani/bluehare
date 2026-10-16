@@ -539,22 +539,17 @@ static void state(void)                          /* a playing song */
         scope_buf[i] = (int16_t)((int32_t)((i * 37u) % 128u) * 200 - 12800 + (int32_t)((i % 32u) < 16u ? 3000 : -3000));
     scope_w = 0;
 }
-static void drum(uint32_t kit)                    /* track 4 (DRUM) selected, its KIT */
-{
-    song.sel = 3;
-    trk[3].p[P_E0] = (int16_t)kit;
-}
 static void eng(uint32_t e) { set_engine_of(TSEL, e); }
 
 enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESETS, S_PRESETS_NOFAV, S_USER, S_PROJECT,
-       S_TOOLS, S_MIXER, S_MIXER_HOME, S_MIXER_PAN, S_ENV, S_ENVDEST, S_LFO, S_MOD, S_FX, S_SLICER, S_DLY, S_SCL,
-       S_CHORD, S_CHORD_WIDE, S_CHORD_OFF, S_CHORD_KIT, S_ARP, S_VOICE, S_CLOCK, S_MENU_MIDI, S_EDIT_ANALOG,
+       S_TOOLS, S_MIXER, S_MIXER_HOME, S_MIXER_PAN, S_ENV, S_ENVDEST, S_LFO, S_MOD, S_FX, S_DLY, S_SCL,
+       S_CHORD, S_CHORD_WIDE, S_CHORD_OFF, S_ARP, S_VOICE, S_CLOCK, S_MENU_MIDI, S_EDIT_ANALOG,
        S_EDIT_FM6, S_EDIT_WHEEL, S_EDIT_WAVE_2, S_EDIT_BYTE_2, S_EDIT_PHYS, S_CONFIRM_INIT, S_CONFIRM_PROJ, S_CONFIRM_USER,
        S_CONFIRM_ERASE, S_MENU, S_MENU_SPEAKER, S_ABOUT, S_ABOUT_CREDITS, S_ABOUT_END, S_UBOOT,
        S_CALIBRATION, S_SPLASH, S_BATT0, S_BATT1, S_BATT2, S_BATT3, S_BATT_USB, S_FX_PEEK, S_FX_HELD, S_FX_WAIT,
        S_FX_HARM, S_FX_ASSIGN, S_MENU_HOLD, S_MENU_LEDS, S_MENU_END, S_MENU_SYSTEM, S_MENU_SLIDE, S_REVERB, S_DLY2,
        S_GLO_PEEK, S_GLO_ACTIVE, S_GLO_EXT, S_SCL_PEEK, S_SCL_ACTIVE, S_EDIT_PEEK, S_EDIT_ACTIVE, S_EDIT_USER,
-       S_LAYER_HINT, S_LAYER_LOCK, S_LAYER_LOCK_FX, S_EDIT_DRUM, S_EDIT_DRUM_KIT, S_DRUM_MUTED, S_NAME_USER,
+       S_LAYER_HINT, S_LAYER_LOCK, S_LAYER_LOCK_FX, S_NAME_USER,
        S_NAME_TYPING, S_NAME_123, S_NAME_EMPTY, S_NAME_FULL, S_NAME_PLAYING, S_PROJECT_NAMED, S_PRESETS_CAT,
        S_PRESETS_CAT_EMPTY, S_NAME_CAT, S_NAME_RANDOM, S_MENU_ANIM_IDLE, S_MOMENTARY, S_MOMENTARY_EDIT, S_USER_FOOT,
        S_LFO2,
@@ -562,21 +557,21 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_SEQ_TODO, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_EDIT_HOOVER, S_EDIT_HOOVER_2, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
-       "mod", "fx", "slicer", "dly", "scl", "chord", "chord_wide", "chord_off", "chord_kit", "arp", "voice", "clock",
-       "menu_midi", "edit_sid", "edit_vector", "edit_dubchord", "edit_wave_2", "edit_byte_2", "edit_modal",
+       "mod", "fx", "dly", "scl", "chord", "chord_wide", "chord_off", "arp", "voice", "clock",
+       "menu_midi", "edit_sid", "edit_bliss", "edit_echoes", "edit_wave_2", "edit_bliss_2", "edit_modal",
        "confirm_init", "confirm_project", "confirm_user", "confirm_erase", "menu", "menu_speaker",
        "about", "about_credits", "about_end", "uboot", "calibration", "splash", "batt_0", "batt_1",
        "batt_2", "batt_3", "batt_usb", "perform_peek", "perform_held", "perform_wait", "perform_harm",
        "perform_assign", "menu_hold", "menu_leds", "menu_end", "menu_system", "menu_slide", "reverb_spring", "dly_2_tape",
        "layer_glo_peek", "layer_glo_active", "layer_glo_ext", "layer_scl_peek", "layer_scl_active", "layer_edit_peek",
-       "layer_edit_active", "layer_edit_user", "layer_hint", "layer_lock", "layer_lock_fx", "layer_edit_drum",
-       "layer_edit_drum_kit", "drum_muted", "name_user", "name_typing", "name_123", "name_empty", "name_full",
+       "layer_edit_active", "layer_edit_user", "layer_hint", "layer_lock", "layer_lock_fx",
+       "name_user", "name_typing", "name_123", "name_empty", "name_full",
        "name_playing", "project_named", "presets_bass", "presets_other_empty", "name_category", "name_random",
        "menu_anim_idle", "momentary", "momentary_edit", "user_foot",
        "lfo2", "menu_audio", "head_play",
        "head_bpm_turn", "head_bpm_lock", "head_bpm_locked", "head_glo_turn", "head_downbeat",
        "head_beat_2", "menu_tune", "menu_info", "menu_home", "seq_todo",
-       "edit_wave", "edit_byte", "edit_west", "edit_west_2", "edit_hoover", "edit_hoover_2"};
+       "edit_wave", "edit_echoes_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2"};
 
 
 
@@ -585,7 +580,6 @@ static void setup(int s)
 {
     memset(kb_chn, 0, sizeof kb_chn);               /* no key held (roll_playing holds one) */
     state();
-    memset(drum_mute, 0, sizeof drum_mute);          /* (1.4.1: no DRUM lane muted) */
     switch (s) {
     case S_HOME: song.octave = 2; usb.config = 1; break;
     case S_HOME_IDLE: song.playing = 0; song.batt_raw = 570; ui.hot_col = 1; ui.hot_t = 30; break;
@@ -631,7 +625,6 @@ static void setup(int s)
     case S_MOD: TSEL->p[P_M1SRC] = 1; TSEL->p[P_M1DST] = 2; TSEL->p[P_M1AMT] = 40; TSEL->p[P_M2SRC] = 6;
         TSEL->p[P_M2DST] = 14; TSEL->p[P_M2AMT] = -64; mod_ui_slot = 1; go_title("MOD"); break;
     case S_FX: go_title("FX"); break;
-    case S_SLICER: TSEL->p[P_SLCR] = 1; go_title("SLICER"); break;
     case S_DLY: go_title("DLY"); break;
     case S_SCL: TSEL->p[P_SCALE] = 2; go_title("SCL"); break;
     case S_CHORD:                                    /* A minor DIA7, the last chord on B: Bm7b5 */
@@ -644,7 +637,6 @@ static void setup(int s)
         break;
     }
     case S_CHORD_OFF: go_title("CHORD"); break;
-    case S_CHORD_KIT: eng(ENGI_KIT); TSEL->p[P_CHRD] = CH_DIA3; go_title("CHORD"); break;
     case S_ARP: go_title("ARP"); break;
     case S_VOICE: go_title("VOICE"); break;
     case S_CLOCK: go_title("CLOCK"); break;          /* (1.2: HOME > MIXER > CLOCK; up to 1.1.5 GLO > GLOBAL) */
@@ -660,16 +652,16 @@ static void setup(int s)
         info.t = fm1_ms - INFO_CPU_MS;
         break;
     case S_EDIT_ANALOG: go_title("EDIT 1"); break;
-    case S_EDIT_FM6: eng(ENGI_VECTOR); go_title("EDIT 1"); break;
-    case S_EDIT_WHEEL: eng(ENGI_DUBCHORD); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
+    case S_EDIT_FM6: eng(ENGI_BLISS); go_title("EDIT 1"); break;
+    case S_EDIT_WHEEL: eng(ENGI_ECHOES); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_WAVE_2: eng(ENGI_WAVE); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;
-    case S_EDIT_BYTE_2: eng(ENGI_BYTE); go_title("EDIT 2"); break;
+    case S_EDIT_BYTE_2: eng(ENGI_BLISS); go_title("EDIT 2"); break;
     case S_EDIT_WAVE: eng(ENGI_WAVE); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
-    case S_EDIT_BYTE: eng(ENGI_BYTE); TSEL->p[P_E6] = 9; go_title("EDIT 1"); break;
+    case S_EDIT_BYTE: eng(ENGI_ECHOES); TSEL->p[P_E6] = 9; go_title("EDIT 2"); break;
     case S_EDIT_WEST: eng(ENGI_WEST); TSEL->p[P_E0] = 13; TSEL->p[P_E3] = -20; go_title("EDIT 1"); break;
     case S_EDIT_WEST_2: eng(ENGI_WEST); go_title("EDIT 2"); break;
-    case S_EDIT_HOOVER: eng(ENGI_HOOVER); go_title("EDIT 1"); break;
-    case S_EDIT_HOOVER_2: eng(ENGI_HOOVER); TSEL->p[P_E5] = -12; go_title("EDIT 2"); break;
+    case S_EDIT_HOOVER: eng(ENGI_MODAL); go_title("EDIT 2"); break;
+    case S_EDIT_HOOVER_2: eng(ENGI_SID); TSEL->p[P_E5] = -12; go_title("EDIT 2"); break;
     case S_EDIT_PHYS: eng(ENGI_MODAL); go_title("EDIT 1"); break;
     case S_CONFIRM_INIT: ui.confirm = CF_INIT_SOUND; ui.confirm_trk = 2; break;
     case S_CONFIRM_PROJ: ui.confirm = CF_OVR_PROJ; ui.confirm_trk = 0; break;
@@ -752,18 +744,14 @@ static void setup(int s)
     case S_SCL_PEEK: go_title("ENV"); ui.layer = LAYER_SCL; break;
     case S_SCL_ACTIVE: go_home(); ui.layer = LAYER_SCL; TSEL->p[P_ROOT] = 3; TSEL->p[P_SCALE] = 2; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_PEEK: go_title("EDIT 1"); ui.layer = LAYER_EDIT; break;
-    case S_EDIT_ACTIVE: eng(ENGI_VECTOR); apply_preset_to(TSEL, 2); favorite_set(EID_VECTOR, 2, 1); go_home(); ui.layer = LAYER_EDIT;
+    case S_EDIT_ACTIVE: eng(ENGI_BLISS); apply_preset_to(TSEL, 2); favorite_set(EID_BLISS, 2, 1); go_home(); ui.layer = LAYER_EDIT;
         ui.hot_col = 0; ui.hot_t = 30; break;
-    case S_EDIT_USER: song.playing = 0; eng(ENGI_WASP); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(EID_COUNT, 6, 1);
+    case S_EDIT_USER: song.playing = 0; eng(ENGI_WEST); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(EID_COUNT, 6, 1);
         go_home(); ui.layer = LAYER_EDIT; break;
     case S_LAYER_HINT: go_page(GR_TRK); ui.msg_t = 0; layer_tap(LAYER_GLO); break;
     /* #83: locked open by a double tap (the lock after the header's name): EDIT and FX */
     case S_LAYER_LOCK: go_title("ENV"); ui.layer = ui.lock = LAYER_EDIT; break;
     case S_LAYER_LOCK_FX: go_title("ENV"); ui.layer = ui.lock = LAYER_FX; break;
-    /* the EDIT layer on a DRUM track: the lanes' mutes on the black keys */
-    case S_EDIT_DRUM: drum(0); go_home(); ui.layer = LAYER_EDIT; drum_mute[3] = 1u | 16u; break;
-    case S_EDIT_DRUM_KIT: drum(8); go_home(); ui.layer = LAYER_EDIT; drum_mute[3] = 64u; break;
-    case S_DRUM_MUTED: drum(0); go_home(); drum_mute[3] = 2u | 16u; break;
     /* NAME (ui_name.c): USER SAVE prefilled; a letter cycling (RS: S, R next); 123 on a project; an empty project name
      * (the placeholder); 12 of the widest letters, the cursor past them; playing (OCT+ dim) */
     case S_NAME_USER: song.playing = 0; go_page(GR_USER); ui.uslot = 6; name_open(NK_USER_SAVE, 6); break;

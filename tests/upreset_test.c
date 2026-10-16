@@ -146,7 +146,7 @@ int main(void)
     /* a drum grid by UP_PUT: kind 1, then bit 7 of each step's hits (bit 0) and accents (bit 1) */
     {
         uint8_t g[640];
-        uint32_t k, m = put_frame(g, 9, EID_KIT, "My Beat", 0), at = m - 32u;
+        uint32_t k, m = put_frame(g, 9, EID_MODAL, "My Beat", 0), at = m - 32u;
         for (k = 0; k < 16u; k++) {
             g[at + 2u * k] = (uint8_t)(k % 4u ? 0x08u : 0x09u);    /* HAT CL, the kick on the beats */
             g[at + 2u * k + 1u] = (uint8_t)(k == 0u ? 0x7Fu : 0u);  /* step 1: every lane's accent (one too many) */
@@ -157,7 +157,7 @@ int main(void)
         ok = up_parse(g, m, &got, &slot) == 0 && slot == 9u && got.ver == UP_VER_GRID && up_valid(&got) &&
              got.note[0] == 0x09u && got.flags[0] == 0x09u && got.note[1] == 0x08u && !got.flags[1] &&
              got.note[2] == 0x88u && got.flags[2] == 0x80u && got.note[5] == 0x08u && !got.flags[5] &&
-             got.engine == EID_KIT;
+             got.engine == EID_MODAL;
         bad += check("UP_PUT kind 1: a grid record, accents only on hits", ok);
         g[m - 17u] = 0;                                     /* kind 0: the notes and flags as before */
         ok = up_parse(g, m, &got, &slot) == 0 && got.ver == UP_VER && got.note[2] == 0x08u && got.flags[0] == 4u;   /* (flags 0x7F: a tie) */
@@ -206,11 +206,11 @@ int main(void)
     for (i = 0; i < 53u; i++)
         r.p[i] = (int16_t)(2000 + i);
     up_params(&r, v, def);
-    ok = P_SLCR == 45 && P_SLDEPTH + 1 == P_M1SRC && P_M4AMT + 1 == P_FM1_ATK && P_FM4_LEVEL + 1 == P_CHRD &&
-         P_VOIC + 1 == P_LN0 && P_LN7 + 1 == P_LSYNC && P_SQNT + 1 == P_SPRD && P_SPRD + 1 == P_E0 && P_E0 == 96 && P_COUNT == 104;
+    ok = P_RSV33 == 45 && P_RSV36 + 1 == P_M1SRC && P_M4AMT + 1 == P_FM1_ATK && P_FM4_LEVEL + 1 == P_CHRD &&
+         P_VOIC + 1 == P_RSV25 && P_RSV32 + 1 == P_LSYNC && P_SQNT + 1 == P_SPRD && P_SPRD + 1 == P_E0 && P_E0 == 96 && P_COUNT == 104;
     for (i = 0; i < 45u; i++)
         ok &= v[i] == (int16_t)(2000 + i);
-    for (i = P_SLCR; i < P_E0; i++)
+    for (i = P_RSV33; i < P_E0; i++)
         ok &= v[i] == def[i];
     for (i = 0; i < 8u; i++)
         ok &= v[P_E0 + i] == (int16_t)(2000 + 45 + i);
@@ -276,8 +276,8 @@ int main(void)
         ok = !up_parse(a, n, &r, &slot) && up_cat_of(&r) == CAT_KEYS && UP_CAT_AT >= P_COUNT && r.np == P_COUNT;
         a[n - 1u] = CAT_N;
         ok &= up_parse(a, n, &got, &slot) == 1;
-        n = put_frame(a, 17, EID_KIT, "KIT", 0);
-        ok &= !up_parse(a, n, &got, &slot) && up_cat_of(&got) == CAT_DRUM && !got.packed[UP_CAT_AT];
+        n = put_frame(a, 17, EID_MODAL, "MODAL", 0);
+        ok &= !up_parse(a, n, &got, &slot) && up_cat_of(&got) == CAT_OTHER && !got.packed[UP_CAT_AT];
         bad += check("category: UP_PUT's last byte, none = the engine's", ok);
         memset(&up_bank[1], 0, sizeof up_bank[1]);
         up_bank[1].magic = UP_BANK_MAGIC; up_bank[1].rsize = sizeof(up_rec_t); up_bank[1].nslot = UP_PER_BANK;
@@ -287,7 +287,7 @@ int main(void)
         up_bank_check(1, st_load(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]));
         bad += check("category: kept through the bank on flash", up_used(17) && up_cat_of(up_rec(17)) == CAT_KEYS);
         memset(&r, 0, sizeof r);
-        r.used = UP_USED; r.ver = 3; r.engine = EID_KIT; r.np = 60;
+        r.used = UP_USED; r.ver = 3; r.engine = EID_MODAL; r.np = 60;
         memcpy(r.name, "GRID", 4);
         for (i = 0; i < 60u; i++) r.p[i] = (int16_t)(i * 3u) - 64;
         r.note[0] = 0x81; r.flags[0] = 0x80;
@@ -299,7 +299,7 @@ int main(void)
         got = r;
         up_set_cat(&got, CAT_FX);
         bad += check("category: a version 3 grid -> 5 with it, values kept; one that cannot be packed keeps none",
-                     ok && got.ver == 3u && up_cat_of(&got) == CAT_DRUM && !memcmp(&got, &r, sizeof r));
+                     ok && got.ver == 3u && up_cat_of(&got) == CAT_OTHER && !memcmp(&got, &r, sizeof r));
     }
     printf("%s\n", bad ? "USER PRESET TEST FAILED" : "user preset test passed");
     return bad != 0;

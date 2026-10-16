@@ -159,7 +159,6 @@ static const icon_map_t ICON_MAP[] = {
     /* fixed columns drawn by ui_draw.c */
     {"NOTE", ICON_PITCH}, {"STEP", ICON_STEPS}, {"ACC", ICON_ACCENT},
     {"TRACK", ICON_MIX},                  /* TRACKS page (LEVEL, LEN, PAN: above) */
-    {"SLCR", ICON_SLICE}, {"PAT", ICON_STEPS}, {"DEPTH", ICON_MIX},   /* SLICER page (RATE: param_icon) */
 };
 
 static uint32_t icon_for_label(const char *l)
@@ -193,8 +192,6 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v)
                 return WAVE_ICON[i].icon;
     if (d == &TP[P_LWAVE])
         return ICON_LFO_WAVE;                 /* "WAVE" is also the oscillator wave */
-    if (d == &TP[P_SLRATE])
-        return ICON_DIVISION;                 /* SLICER RATE is a note division, not Hz */
     return icon_for_label(d->label);
 }
 

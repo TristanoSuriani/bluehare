@@ -153,12 +153,11 @@ static int check(const char *what, int ok)
 }
 
 /* (Blue Hare) the sounds these tests power on with: the layout they were written against (a bass on track 1, the
- * pad on 2, a lead on 3, the kit on 4; 5..8 chords, a pluck, a break, the siren), every pan centred. The device's own
- * power-on (engines.c TRK_DEF, TRK_PAN: the rhythm section first) is engines_test.c's to check */
-static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(VOSIM, 13), TRK_PICK(SID, 2), TRK_PICK(KIT, 0)
+ * keys on 2, a lead on 3, the drums on 4: MODAL's WOOD DRUM since the kits were archived; 5..8 a chord, a pluck, a bell,
+ * echoes), every pan centred. The device's own power-on (engines.c TRK_DEF, TRK_PAN) is engines_test.c's to check */
+static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(BLISS, 0), TRK_PICK(SID, 2), TRK_PICK(MODAL, 7)
 #if NPART == 8
-                                         , TRK_PICK2(DUBCHORD, 0, WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK2(BREAKS, 0, KIT, 0),
-                                         TRK_PICK2(DUBSIREN, 0, HOOVER, 5)
+                                         , TRK_PICK(WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK(MODAL, 2), TRK_PICK(ECHOES, 0)
 #endif
 };
 /* main.c bluehare_init, with these tests' sounds (UT_DEF) */
@@ -336,21 +335,19 @@ static int test_sound_loads(void)
     track_t *t = &trk[0], before;
     ui_power_on();
     bad += check("power-on: the four sounds, no undo copy", undo.trk == 0 && undo_depth == 0 &&
-                 trk[3].eng_req == ENGI_KIT && trk[3].preset == 0u && trk[0].preset == UT_DEF[0][1]);
+                 trk[3].eng_req == ENGI_MODAL && trk[3].preset == UT_DEF[3][1] && trk[0].preset == UT_DEF[0][1]);
     t->p[P_E0 + 1] = 77;                          /* a sound edit */
     t->p[P_SCALE] = 2;                            /* and the track's own settings */
     t->p[P_ROOT] = 3;
     t->p[P_TRANS] = 5;
-    t->p[P_SLCR] = SL_GATE;
-    t->p[P_SLPAT] = 4;
     t->p[P_SDIV] = 1;
     t->p[P_LEVEL] = 90;
     before = *t;
     turn(EN_PRESET, 1);                           /* HOME: the next preset */
     bad += check("PRESETS on HOME loads the sound (DIV, kept in the formats, untouched)",
                  t->preset == (uint8_t)((before.preset + 1u) % ENGINES[0]->npresets) && t->p[P_SDIV] == 1);
-    bad += check("..SCL, the SLICER and the mix stay the track's", t->p[P_ROOT] == 3 && t->p[P_SCALE] == 2 &&
-                 t->p[P_TRANS] == 5 && t->p[P_SLCR] == SL_GATE && t->p[P_SLPAT] == 4 && t->p[P_LEVEL] == 90);
+    bad += check("..SCL and the mix stay the track's", t->p[P_ROOT] == 3 && t->p[P_SCALE] == 2 &&
+                 t->p[P_TRANS] == 5 && t->p[P_LEVEL] == 90);
     i = ENGINES[0]->npresets - 2u;                /* (ANALOG's RAVE until Blue Hare: a preset near the end) */
     t->preset = (uint8_t)(i - 1u);
     turn(EN_PRESET, 1);
@@ -377,10 +374,10 @@ static int test_sound_loads(void)
     bad += check("SAVE tap opens the SAVE pages (on release)", !ui.home && cur_page()->fam == FAM_SAVE);
     /* TOOLS INIT, user preset load: the sound only, undoable; one copy for all tracks */
     ui_power_on();
-    trk[1].p[P_SLCR] = SL_STUT;
+    trk[1].p[P_ROOT] = 4;
     track_select(1);
     set_engine(trk[1].eng_req);                   /* TOOLS INIT */
-    bad += check("TOOLS INIT: the sound only (SLICER kept), a copy of T2", undo.trk == 2u && trk[1].p[P_SLCR] == SL_STUT);
+    bad += check("TOOLS INIT: the sound only (ROOT kept), a copy of T2", undo.trk == 2u && trk[1].p[P_ROOT] == 4);
     track_select(0);
     trk[0].p[P_SDIV] = 2;
     up_store(3, "MINE");
@@ -757,13 +754,13 @@ static int test_favorites(void)
                  !memcmp(TSEL, &before, sizeof before));
     bad += check("one favorite occupies one display row, without repeated copies",
                  preset_visible(pos, total, 0) == 0 && preset_visible(pos, total, 1) == total);
-    select_engine(ENGI_KIT);
+    select_engine(ENGI_MODAL);
     before = *TSEL;
     turn(EN_K3, 1);
-    bad += check("a DRUM sound can be a favorite on any track", preset_favorite() &&
-                 favorite_has(EID_KIT, 0) && !memcmp(TSEL, &before, sizeof before));
+    bad += check("another engine's sound can be a favorite on any track", preset_favorite() &&
+                 favorite_has(EID_MODAL, 0) && !memcmp(TSEL, &before, sizeof before));
     turn(EN_PRESET, 1);
-    bad += check("filtered browsing crosses DRUM and synth sounds while retaining the track's TRN",
+    bad += check("filtered browsing crosses engines while retaining the track's TRN",
                  TSEL->eng_req == 0 && preset_favorite() &&
                  TSEL->p[P_TRANS] == 2);
     turn(EN_K3, -1);
@@ -771,7 +768,7 @@ static int test_favorites(void)
     bad += check("unmarking the current sound leaves it loaded even when outside the filtered list",
                  !preset_favorite() && total == 1 && pos == total && TSEL->eng_req == 0);
     turn(EN_PRESET, -1);
-    bad += check("browsing from a nonfavorite selects the last favorite", TSEL->eng_req == ENGI_KIT);
+    bad += check("browsing from a nonfavorite selects the last favorite", TSEL->eng_req == ENGI_MODAL);
     turn(EN_K3, -1);
     before = *TSEL;
     turn(EN_PRESET, 1);
@@ -815,31 +812,22 @@ static int test_categories(void)
             ok &= preset_cat(e, k) >= CAT_BASS && preset_cat(e, k) <= CAT_OTHER;
     }
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
-                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_KIT, 0) == CAT_DRUM && preset_cat(ENGI_VECTOR, 0) == CAT_PAD &&
-                 preset_cat(ENGI_KIT, 9) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
-    {   /* engines 16, 17 (WEST, HOOVER) have no row in the stored favourites: their presets 0 .. 7 star [15][8], [15][9],
-         * 8 .. 63 the tails of rows 12, 14 (favorites.c FAV_ROW26), no other engine's or setting */
-        favorites_t before;
-        for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
-            favorite_set(EID_BYTE, k, 1);
-        before = favorites;
+                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_WEST, 0) == CAT_DRUM && preset_cat(ENGI_WAVE, 1) == CAT_PAD &&
+                 preset_cat(ENGI_SID, 12) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
+    {   /* engine 16 (WEST) has no row in the stored favourites: its presets 0 .. 7 star [15][8], 8 .. 63 the tail of
+         * row 12 (favorites.c FAV_ROW26), no other engine's or setting; an archived engine's (HOOVER 17, BYTE 15) none */
+        favorites_t before = favorites;
         for (k = 0, ok = 1; k < ENGINES[ENGI_WEST]->npresets; k++)
-            ok &= favorite_set(EID_WEST, k, 1) && favorite_has(EID_WEST, k) && !favorite_has(EID_HOOVER, k);
-        ok &= favorite_set(EID_HOOVER, 2, 1) && favorite_has(EID_HOOVER, 2) && !favorite_has(EID_HOOVER, 1);
-        ok &= favorite_set(EID_HOOVER, 9, 1) && favorite_has(EID_HOOVER, 9) && !favorite_has(EID_HOOVER, 8);
+            ok &= favorite_set(EID_WEST, k, 1) && favorite_has(EID_WEST, k);
+        ok &= !favorite_set(EID_HOOVER, 2, 1) && !favorite_has(EID_HOOVER, 2) && !favorite_set(EID_BYTE, 0, 1);
         ok &= !favorite_set(EID_WEST, 64, 1) && !favorite_set(EID_COUNT + 1u, 0, 1) && favorites.factory[15][8] == 0xFFu &&
-              favorites.factory[15][9] == 4u && favorites.factory[12][25] == 0xFFu &&
-              favorites.factory[12][26] == (uint8_t)((1u << (ENGINES[ENGI_WEST]->npresets - 16u)) - 1u) &&
-              favorites.factory[14][25] == 2u;
+              favorites.factory[12][25] == 0xFFu &&
+              favorites.factory[12][26] == (uint8_t)((1u << (ENGINES[ENGI_WEST]->npresets - 16u)) - 1u);
         before.factory[15][8] = 0xFFu;
-        before.factory[15][9] = 4u;
         before.factory[12][25] = favorites.factory[12][25];
         before.factory[12][26] = favorites.factory[12][26];   /* (WEST's 16 .. 21: its 22 presets) */
-        before.factory[14][25] = 2u;
         ok &= !memcmp(&before, &favorites, sizeof favorites);
-        for (k = 0; k < ENGINES[ENGI_BYTE]->npresets; k++)
-            ok &= favorite_has(EID_BYTE, k);
-        bad += check("  WEST's and HOOVER's favourites: their own bits, BYTE's and the settings bytes untouched", ok);
+        bad += check("  WEST's favourites: its own bits, the settings bytes untouched; an archived engine's refused", ok);
         memset(&favorites, 0, sizeof favorites);
     }
     go_page(GR_BROWSE);
@@ -926,16 +914,16 @@ static int test_categories(void)
         int16_t v0[P_COUNT], v1[P_COUNT];
         uint32_t c0;
         memset(r, 0, sizeof *r);
-        r->used = UP_USED; r->ver = 2; r->engine = EID_KIT; r->np = 72;
-        str_cpy(r->name, "OLD KIT", 12);
+        r->used = UP_USED; r->ver = 2; r->engine = EID_WEST; r->np = 72;
+        str_cpy(r->name, "OLD WEST", 12);
         for (i = 0; i < 72u; i++) r->p[i] = (int16_t)(i % 100u);
         up_bank[0].magic = UP_BANK_MAGIC; up_bank[0].rsize = sizeof(up_rec_t); up_bank[0].nslot = UP_PER_BANK;
         c0 = up_cat(9);
         up_values(r, v0);
-        ok = up_rename_cat(9, "OLD KIT", CAT_FX) != 1;
+        ok = up_rename_cat(9, "OLD WEST", CAT_FX) != 1;
         up_values(r, v1);
-        bad += check("  a version 2 record: listed by its engine (DRUM); a rename with a category makes it version 4, same sound",
-                     c0 == CAT_DRUM && ok && r->ver == UP_VER && up_cat(9) == CAT_FX && !memcmp(v0, v1, sizeof v0));
+        bad += check("  a version 2 record: listed by its engine (OTHER); a rename with a category makes it version 4, same sound",
+                     c0 == CAT_OTHER && ok && r->ver == UP_VER && up_cat(9) == CAT_FX && !memcmp(v0, v1, sizeof v0));
         r->ver = 1; r->engine = EID_MODAL;
         bad += check("  a version 1 PHYS record keeps its version (MODEL 2 = DUST): no category",
                      (up_set_cat(r, CAT_PAD), r->ver == 1u && up_cat(9) == cat_of_engine(EID_MODAL)));
@@ -1412,7 +1400,7 @@ static int test_mono_screens(void)
     int bad = 0, ok;
     uint32_t e, n = 0, nb = 0;
     ok = mono_screens(UI_GREY_INDEX, screen_gray, &n);
-    bad += check("GREY: every pixel of every page, HOME, menu, ABOUT, dialog and countdown is gray", ok && n > 200u);
+    bad += check("GREY: every pixel of every page, HOME, menu, ABOUT, dialog and countdown is gray", ok && n >= NENGINES * 20u);
     ok = mono_screens(UI_BW_INDEX, screen_neutral, &nb);
     bad += check("MONO (black and white): every pixel of every page, HOME, menu, ABOUT, dialog and countdown is neutral",
                  ok && nb == n);
@@ -1840,7 +1828,7 @@ static int test_product_ux(void)
     int bad = 0, ok = 1;
     uint32_t i, p, b;
     for (i = 0; i < NPAGES; i++) {
-        ui_power_on(); set_engine_of(TSEL, ENGI_VECTOR);  /* (its operator pages too) */
+        ui_power_on(); set_engine_of(TSEL, ENGI_BLISS);
         ui.home = 0; ui.page = (uint8_t)i; page_entered();
         if (!page_visible(i))
             continue;
@@ -2016,7 +2004,7 @@ static int test_layer(void)
     bad += check("FX tap: nothing on press, the FX page when let go", ok && !ui.home && cur_page()->fam == FAM_FX);
     frames(320);                                       /* (not a double tap: #83) */
     press(B_FX);
-    bad += check("  a second tap: the next page of the family (SLICER)", str_eq(cur_page()->title, "SLICER"));
+    bad += check("  a second tap: the next page of the family (DLY)", str_eq(cur_page()->title, "DLY"));
     ui_power_on();
     btn_down(B_FX);
     for (flash = 0, i = 0; i < 22u; i++) { frame(); flash |= ui.layer; }      /* 0.35 s */
@@ -2100,7 +2088,7 @@ static int test_layer(void)
     {
         btn_down(B_FX); key_down(white(2)); frame();
         ok = ui.layer == LAYER_FX && !gates() && mo_w == mo && (kb_layer >> white(2)) & 1u &&
-             (perf_held & PF_BIT(PF_R32));                    /* white key 3 (A3): REPEAT 1/32 */
+             (perf_held & PF_BIT(PF_FRZ));                    /* white key 3 (A3): FREEZE */
         for (i = 0; i < 40u; i++) events_block(CTL);
         bad += check("FX + a key: the map at once; no voice, no MIDI", ok);
         key_up(white(2)); frame();
@@ -2111,30 +2099,30 @@ static int test_layer(void)
     song.playing = 0;
     /* FX let go first: the effect stays with its key, the map too; a key pressed now is a note */
     ui_power_on();
-    btn_down(B_FX); key_down(white(4)); frame();          /* white key 5 (C4): LPF */
+    btn_down(B_FX); key_down(white(0)); frame();          /* white key 1 (F3): LPF */
     btn_up(B_FX); frame();
     ok = (perf_held & PF_BIT(PF_LPF)) && ui.layer == LAYER_FX;
-    key_down(white(0)); frame();
-    ok &= gates() > 0 && !((kb_layer >> white(0)) & 1u);
-    key_up(white(0)); key_up(white(4)); frame();
+    key_down(white(6)); frame();
+    ok &= gates() > 0 && !((kb_layer >> white(6)) & 1u);
+    key_up(white(6)); key_up(white(0)); frame();
     bad += check("FX let go first: the key holds its effect and the map; a new key is a note", ok && !ui.layer && !perf_held);
-    /* OCT UP (G4) and OCT DN (A4), the 9th and 10th white keys: held effects, silent; KNOB 4 the shimmer while
-     * held, back to 0 with FX; B4 on does nothing */
+    /* OCT UP (B3) and OCT DN (C4), the 4th and 5th white keys: held effects, silent; KNOB 4 the shimmer while
+     * held, back to 0 with FX; D4 on does nothing */
     ui_power_on();
     usb.config = 1; mo = mo_w;
-    btn_down(B_FX); key_down(white(8)); frame();
+    btn_down(B_FX); key_down(white(3)); frame();
     ok = ui.layer == LAYER_FX && !gates() && mo_w == mo && perf_held == PF_BIT(PF_OUP);
     perf_begin(CTL);                                    /* (an audio block: OCT UP runs, KNOB 4 is SHIMR) */
     turn(EN_K4, 40);
     ok &= perf_k[3] == 40;
-    key_up(white(8)); key_down(white(9)); frame();
+    key_up(white(3)); key_down(white(4)); frame();
     ok &= perf_held == PF_BIT(PF_ODN) && !gates() && mo_w == mo;
-    key_up(white(9)); key_down(white(10)); frame();
-    ok &= !perf_held && (kb_layer >> white(10)) & 1u && !gates();   /* (B4: nothing, FLANGER's key until Blue Hare) */
-    key_up(white(10)); key_down(white(12)); frame();
+    key_up(white(4)); key_down(white(5)); frame();
+    ok &= !perf_held && (kb_layer >> white(5)) & 1u && !gates();     /* (D4: nothing) */
+    key_up(white(5)); key_down(white(12)); frame();
     ok &= !perf_held && (kb_layer >> white(12)) & 1u && !gates();
     key_up(white(12)); btn_up(B_FX); frame();
-    bad += check("FX + G4 / A4: OCT UP / OCT DN held, silent, no MIDI; KNOB 4 turns; B4, D5 nothing; FX let go: K4 0",
+    bad += check("FX + B3 / C4: OCT UP / OCT DN held, silent, no MIDI; KNOB 4 turns; D4, D5 nothing; FX let go: K4 0",
                  ok && !perf_held && !ui.layer && !perf_k[3] && mo_w == mo);
     /* REVERB > TYPE (FX family, global): ROOM / SPRING / HALL on KNOB 1 (HALL at power-on since 1.2), kept by a
      * project */
@@ -2274,19 +2262,14 @@ static int test_layer(void)
         a = leds_at(0); b2 = leds_at(250);
         k = white(1);
         ok = ((a >> k) & 1u) && ((b2 >> k) & 1u);                    /* held: lit */
-        for (i = 0; i < 10u; i++)                                     /* the other effects (F3 .. A4): breathe */
+        for (i = 0; i < 5u; i++)                                      /* the other effects (F3 .. C4): breathe */
             ok &= i == 1u || ((a ^ b2) >> white(i)) & 1u;
-        for (i = 10; i < 16u; i++)                                    /* B4 .. G5: no effect, dark */
+        for (i = 5; i < 16u; i++)                                     /* D4 .. G5: no effect, dark */
             ok &= !((a | b2) >> white(i) & 1u);
         ok &= ((a ^ b2) >> key_at(1, 0)) & 1u && !((a | b2) >> key_at(1, NTRK) & 1u);   /* a mute breathes, a spare black dark */
-        song.g[G_BPM] = 72;
-        a = leds_at(0); b2 = leds_at(250);
-        ok &= !((a | b2) >> white(0) & 1u) && !((a | b2) >> white(3) & 1u);   /* 1/8, REVERSE: too long at 72 */
-        ok &= ((a ^ b2) >> white(2)) & 1u;                            /* 1/32 still blinks */
-        song.g[G_BPM] = 120;
     }
     key_up(white(1)); btn_up(B_FX); frame();
-    bad += check("map LEDs: held lit, the 10 effects breathe, B4 .. G5 and a too-long REPEAT dark", ok);
+    bad += check("map LEDs: held lit, the 5 effects breathe, D4 .. G5 dark", ok);
     usb.config = 0;
     return bad;
 }
@@ -2530,23 +2513,7 @@ static int test_edit_cycle(void)
     bad += check("no ENGINE page (engines are the EDIT layer's)", ok);
     set_engine_of(TSEL, 0);
     bad += check("EDIT cycle (SID): EDIT 1 EDIT 2 VOICE VOICE 2 VOICE 3 EDIT 1", engine_cycle(CYC_A, NELEM(CYC_A)));
-    set_engine_of(TSEL, ENGI_VECTOR);
     (void)CYC_D;
-    {   /* #97: a DRUM track's lane levels on EDIT > LANES (KICK SNARE CLAP HATCL) and LANES 2 (HATOP TOM RIM BELL) */
-        static const char *const CYC_K[] = {"EDIT 1", "EDIT 2", "LANES", "LANES 2", "VOICE", "VOICE 2", "VOICE 3", "EDIT 1"};
-        set_engine_of(TSEL, ENGI_KIT);
-        bad += check("EDIT cycle (KIT): EDIT 1 EDIT 2 LANES LANES 2 VOICE VOICE 2 VOICE 3 EDIT 1", engine_cycle(CYC_K, NELEM(CYC_K)));
-        go_title("LANES 2"); frame();
-        ok = TSEL->p[P_LN5] == 127;
-        turn(EN_K2, -3);
-        ok &= TSEL->p[P_LN5] == 124 && TSEL->p[P_LN4] == 127 && TSEL->p[P_LN6] == 127;
-        bad += check("LANES 2: KNOB 2 turns TOM's level (100 % by default), the other lanes stay", ok);
-        apply_preset_to(TSEL, 0);
-        bad += check("a factory preset load: every lane 100 % again", TSEL->p[P_LN5] == 127);
-        ui.fam_last[FAM_EDIT] = ui.page;
-        set_engine_of(TSEL, 0); frame();
-        bad += check("LANES 2 of a track no longer DRUM falls back to EDIT 1", str_eq(cur_page()->title, "EDIT 1"));
-    }
     go_title("EDIT 2"); ui.fam_last[FAM_EDIT] = ui.page;
     go_home(); press(B_EDIT);
     bad += check("EDIT remembers its last page (as every family)", str_eq(cur_page()->title, "EDIT 2"));
@@ -2698,7 +2665,7 @@ static int test_quick_layers(void)
     /* EDIT: the engines from F3 (NENGINES of them), sound loads with UNDO, INIT with the dialog */
     ui_power_on();
     set_engine_of(TSEL, 1); go_home(); frame();          /* (not the first engine: its key is a change) */
-    TSEL->p[P_SLCR] = SL_STUT; song.playing = 1;
+    TSEL->p[P_ROOT] = 5; song.playing = 1;
     before = *TSEL;
     sync_reload = 0;
     lay_combo(B_EDIT, white(eng_rank(ENGI_SID)));             /* (the keys: the engines one can pick, engines.c eng_vis) */
@@ -2709,9 +2676,9 @@ static int test_quick_layers(void)
     key_down(white(LY_INIT - 1u)); key_up(white(LY_INIT - 1u)); frame();
     ok &= TSEL->eng_req == eng_vis(LY_INIT - 1u);         /* (the last engine key) */
     ok &= TSEL->p[P_SLEN] == before.p[P_SLEN] &&
-          TSEL->p[P_SLCR] == SL_STUT;
+          TSEL->p[P_ROOT] == 5;
     btn_up(B_EDIT); frame();
-    bad += check("EDIT + white key n: the n-th engine shown, while playing; LEN, SLICER stay", ok);
+    bad += check("EDIT + white key n: the n-th engine shown, while playing; LEN, ROOT stay", ok);
     hold(B_SAVE);
     bad += check("  SAVE held: UNDO back to before the layer's loads",
                  TSEL->eng_req == 1u && TSEL->preset == before.preset);
@@ -2727,9 +2694,9 @@ static int test_quick_layers(void)
     bad += check("  every engine one can pick has its white key from F3 (NENG_SHOWN, 16 at most; never a retired one)",
                  ok && a == LY_INIT && LY_INIT == (NENG_SHOWN < 16u ? NENG_SHOWN : 16u));
     set_engine_of(TSEL, 0);
-    lay_combo(B_EDIT, white(eng_rank(ENGI_WASP))); key_up(white(eng_rank(ENGI_WASP))); frame();
+    lay_combo(B_EDIT, white(eng_rank(ENGI_WAVE))); key_up(white(eng_rank(ENGI_WAVE))); frame();
     turn(EN_K2, 1);
-    ok = TSEL->eng_req == ENGI_WASP && TSEL->preset == 1u;
+    ok = TSEL->eng_req == ENGI_WAVE && TSEL->preset == 1u;
     turn(EN_K3, 1);
     ok &= preset_favorite();
     oct_back();
@@ -2914,9 +2881,6 @@ static int test_chord_page(void)
     t->p[P_CHRD] = CH_MIN7; t->p[P_VOIC] = VC_BASS;
     apply_preset_to(t, 1);
     bad += check("  a sound load keeps CHRD and VOIC (SCL settings)", t->p[P_CHRD] == CH_MIN7 && t->p[P_VOIC] == VC_BASS);
-    set_engine_of(t, ENGI_KIT); t->engine = t->eng_req; frame();
-    memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
-    bad += check("  a kit (DRUM): the page says so, MONO gray", chord_kit(t) && screen_gray());
     ui_power_on();
     t = TSEL;
     t->p[P_CHRD] = CH_OFF; t->p[P_VOIC] = VC_CLOSE;
@@ -3096,15 +3060,11 @@ static int test_large_face(void)
 static int test_retired_engines(void)
 {
     static const uint8_t GONE[4] = {1, 4, 8, 13};
-    static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (the IDM distribution, the host tests'
-                                                       * build) */
-        {ENGI_SID, EID_SID, "SID"}, {ENGI_WASP, EID_WASP, "WASP"}, {ENGI_WAVE, EID_WAVE, "WAVE"},
-        {ENGI_BREAKS, EID_BREAKS, "BREAKS"}, {ENGI_WEST, EID_WEST, "WEST"}, {ENGI_VECTOR, EID_VECTOR, "VECTOR"},
-        {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_DUBCHORD, EID_DUBCHORD, "DUBCHORD"},
-        {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_PARTICLE, EID_PARTICLE, "PARTICLE"}, {ENGI_CHAOS, EID_CHAOS, "CHAOS"},
-        {ENGI_ECHOES, EID_ECHOES, "ECHOES"}, {ENGI_KIT, EID_KIT, "KIT"}, {ENGI_SPEECH, EID_SPEECH, "SPEECH"},
-        {ENGI_GLITCH, EID_GLITCH, "GLITCH"}};
-    static const char *const ORDER[] = {"SID", "WASP", "WAVE", "BREAKS", "WEST", "VECTOR", "DUBSIREN", "MODAL", "DUBCHORD", "VOSIM", "PARTICLE", "CHAOS", "ECHOES", "KIT", "SPEECH", "GLITCH"};
+    static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
+        {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_BLISS, EID_BLISS, "BLISS"},
+        {ENGI_WEST, EID_WEST, "WEST"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_ECHOES, EID_ECHOES, "ECHOES"}};
+    static const uint8_t ARCH[4] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM};   /* (archived, 2026-10-16) */
+    static const char *const ORDER[] = {"SID", "WAVE", "BLISS", "WEST", "MODAL", "ECHOES"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3119,6 +3079,11 @@ static int test_retired_engines(void)
               eng_by_id(GONE[i]) == &ENG_NONE && !eng_by_id(GONE[i])->npresets && str_eq(N_ENGNAME[GONE[i]], "-");
     ok &= eng_of_id(EID_COUNT) == ENG_NO && eng_load_id(EID_COUNT, &sub) == ENG_NO && eng_by_id(200) == &ENG_NONE;
     bad += check("retired ids 1 4 8 13 (DIGITAL SAMPLE GRAIN SLICE) and ids past the last: no engine, \"-\", refused", ok);
+    for (i = 0, ok = 1; i < 4u; i++)
+        ok &= EID_RETIRED(ARCH[i]) && eng_of_id(ARCH[i]) == ENG_NO && eng_load_id(ARCH[i], &sub) == ENG_NO &&
+              eng_by_id(ARCH[i]) == &ENG_NONE && str_eq(N_ENGNAME[ARCH[i]], "-");
+    ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_ECHOES) && !EID_RETIRED(EID_CANYON);
+    bad += check("archived engines (HOOVER KIT WASP SANDSTORM ..): retired as those, their ids kept; the kept ones not", ok);
     for (i = 0; i < NENGINES; i++)
         all |= (uint32_t)eng_ok(i) << i;
     /* (a project naming one is refused: tests/robust_test.c, which crafts the stored stream) */
@@ -3130,14 +3095,14 @@ static int test_retired_engines(void)
         for (k = 0; k < P_COUNT; k++)
             up_set_value(&rec, k, TSEL->p[k]);
         *up_rec(9) = rec;
-        set_engine_of(TSEL, ENGI_VECTOR);
+        set_engine_of(TSEL, ENGI_BLISS);
         bad += check("  a user preset of one: the slot shows empty, a load does nothing", !up_used(9) && up_load(9) == 1 &&
-                     TSEL->eng_req == ENGI_VECTOR);
+                     TSEL->eng_req == ENGI_BLISS);
         memset(up_rec(9), 0, sizeof rec);
     }
     ui_power_on();
-    bad += check("power-on: track 2 is VOSIM FORMANT PAD (these tests' UT_DEF)", trk[1].eng_req == ENGI_VOSIM &&
-                 str_eq(ENGINES[ENGI_VOSIM]->presets[trk[1].preset].name, "FORMANT PAD"));
+    bad += check("power-on: track 2 is BLISS E.PIANO (these tests' UT_DEF)", trk[1].eng_req == ENGI_BLISS &&
+                 str_eq(ENGINES[ENGI_BLISS]->presets[trk[1].preset].name, "E.PIANO"));
     preset_all_pos(&total);
     for (i = 0, seen = 0; i < total; i++) {
         e = preset_all_at(i, &k);
@@ -3152,8 +3117,8 @@ static int test_retired_engines(void)
         seen |= 1u << TSEL->eng_req;
     }
     bad += check("PRESETS KNOB 2: the engines in order, back to the first",
-                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_WASP && eng_step(ENGI_WASP, 1) == ENGI_WAVE &&
-                 eng_step(ENGI_WASP, -1) == 0u && eng_step(0, -1) == ENGI_GLITCH);
+                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_WAVE && eng_step(ENGI_WAVE, 1) == ENGI_BLISS &&
+                 eng_step(ENGI_WAVE, -1) == 0u && eng_step(0, -1) == ENGI_ECHOES);
     /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
     ok = NENG_SHOWN == NELEM(ORDER);
     for (i = 0; ok && i < NENG_SHOWN; i++)
@@ -3929,12 +3894,7 @@ static int test_scale_leds(void)
     ui_leds();
     ok = !lit_keys(fm1_led_mid) && !lit_keys(fm1_led_dim);
     ui.layer = 0;
-    set_engine_of(t, ENGI_KIT);
-    t->engine = t->eng_req;
-    sc = scale_leds(&root);
-    ui_leds();
-    ok &= !sc && !root && lit_keys(fm1_led_dim) == ALL && !lit_keys(fm1_led_mid);
-    bad += check("#127 a layer and a DRUM track (its keys as before) keep their own LEDs", ok);
+    bad += check("#127 a layer keeps its own LEDs", ok);
     menu_put(MI_SCLLED, 0);
     ok = !(ui_rec_prefs & 0x40u) && !scale_leds(&root);
     bad += check("#127 SCALE LEDS OFF again: the bit clears", ok);
@@ -4290,9 +4250,9 @@ static int test_layer_lock(void)
     ui_power_on();
     go_title("ENV"); frame();
     press(B_FX); press(B_FX); frames(100);
-    key_down(white(4)); frame();                        /* C4: LPF while held */
+    key_down(white(0)); frame();                        /* F3: LPF while held */
     ok = (perf_held & PF_BIT(PF_LPF)) && !gates();
-    key_up(white(4)); frame();
+    key_up(white(0)); frame();
     ok &= !(perf_held & PF_BIT(PF_LPF));
     turn(EN_K2, 20);
     ok &= perf_k[1] == 20;
@@ -4391,34 +4351,34 @@ static int test_layer_lock(void)
 static int test_fx_map(void)
 {
     int bad = 0, ok;
-    uint32_t a4 = white(9), p, snd;
+    uint32_t c4 = white(4), p, snd;
     ui_power_on();
     memset(fx_keys, 0, 10);
     frame();
     for (ok = 1, p = 0; p < PF_KEYS; p++)
         ok &= perf_map[p] == PF_DEF[p];
-    bad += check("FX map: settings of 0 (before 1.2) are the default: 1.1.5's ten keys, B4 .. G5 none", ok);
+    bad += check("FX map: settings of 0 are the default: LPF HPF FREEZE OCT UP OCT DN, D4 .. G5 none", ok);
     snd = TSEL->preset | (uint32_t)TSEL->eng_req << 8;
-    btn_down(B_FX); key_down(a4); frame();
+    btn_down(B_FX); key_down(c4); frame();
     ok = perf_held == PF_BIT(PF_ODN) && ui.layer == LAYER_FX;
     turn(EN_PRESET, 1); keyboard_block();               /* (keyboard_block: the ISR's next block) past the last: NONE */
-    ok &= perf_map[9] == PF_N && !perf_held && msg_is("A4 NONE") && (kb_layer >> a4) & 1u;
+    ok &= perf_map[4] == PF_N && !perf_held && msg_is("C4 NONE") && (kb_layer >> c4) & 1u;
     turn(EN_PRESET, 1); keyboard_block();               /* round: the first */
-    ok &= perf_map[9] == PF_R8 && perf_held == PF_BIT(PF_R8);
+    ok &= perf_map[4] == PF_LPF && perf_held == PF_BIT(PF_LPF);   /* (the archived ones skipped) */
     turn(EN_PRESET, -1); turn(EN_PRESET, -1); turn(EN_PRESET, -1); keyboard_block();
-    ok &= perf_map[9] == PF_OUP && perf_held == PF_BIT(PF_OUP) && lys.rp_dirty;
+    ok &= perf_map[4] == PF_OUP && perf_held == PF_BIT(PF_OUP) && lys.rp_dirty;
     ok &= (TSEL->preset | (uint32_t)TSEL->eng_req << 8) == snd && !gates();
-    bad += check("  FX + A4 held + PRESETS: NONE, round to REPEAT 1/8 and back to OCT UP, each held at once; no sound load", ok);
+    bad += check("  FX + C4 held + PRESETS: NONE, round to LPF and back to OCT UP, each held at once; no sound load", ok);
     btn_down(B_EDIT); frame(); btn_up(B_EDIT); frame(); keyboard_block();
-    ok = perf_map[9] == PF_ODN && perf_held == PF_BIT(PF_ODN) && msg_is("A4 OCT DN (DEF)") && ui.layer == LAYER_FX;
+    ok = perf_map[4] == PF_ODN && perf_held == PF_BIT(PF_ODN) && msg_is("C4 OCT DN (DEF)") && ui.layer == LAYER_FX;
     bad += check("  EDIT with the key held: its default (OCT DN) back, the layer open", ok);
-    turn(EN_PRESET, -1); keyboard_block();              /* A4: OCT UP */
-    key_up(a4); frame();
-    ok = !perf_held && perf_map[9] == PF_OUP;
+    turn(EN_PRESET, -1); keyboard_block();              /* C4: OCT UP */
+    key_up(c4); frame();
+    ok = !perf_held && perf_map[4] == PF_OUP;
     turn(EN_PRESET, 1);                                 /* no key held: nothing; how */
-    ok &= perf_map[9] == PF_OUP && msg_is("HOLD A KEY: ASSIGN");
+    ok &= perf_map[4] == PF_OUP && msg_is("HOLD A KEY: ASSIGN");
     key_down(white(1)); frame();                        /* G3 */
-    ok &= perf_held == PF_BIT(PF_R16);
+    ok &= perf_held == PF_BIT(PF_HPF);
     key_up(white(1)); btn_up(B_FX); frame();
     ok &= !ui.layer && !lys.rp_dirty;                   /* (closed: settings_save) */
     bad += check("  the key let go: PRESETS changes nothing (HOLD A KEY: ASSIGN); FX let go: the map saved", ok);
@@ -4427,19 +4387,19 @@ static int test_fx_map(void)
         settings_export(&pp);
         memset(fx_keys, 0, 10);
         frame();
-        ok = perf_map[9] == PF_ODN;
+        ok = perf_map[4] == PF_ODN;
         ok &= settings_import(&pp, (int)sizeof pp) == 1;
         frame();
-        ok &= perf_map[9] == PF_OUP;
+        ok &= perf_map[4] == PF_OUP;
         for (p = 0; p < PF_KEYS; p++)
-            ok &= p == 9u || perf_map[p] == PF_DEF[p];
+            ok &= p == 4u || perf_map[p] == PF_DEF[p];
         memset(&pp.favorites, 0, sizeof pp.favorites);
         pp.magic = 0x50455233u;                         /* PER3: no favorites */
         ok &= settings_import(&pp, (int)(sizeof pp - sizeof pp.favorites)) == 2;
         frame();
         for (p = 0; p < PF_KEYS; p++)
             ok &= perf_map[p] == PF_DEF[p];
-        bad += check("  the map with the settings (exported, imported: A4 OCT UP, the rest default); older settings: default", ok);
+        bad += check("  the map with the settings (exported, imported: C4 OCT UP, the rest default); older settings: default", ok);
     }
     /* the lock (a double tap of FX): one hand holds a key, the other turns PRESETS; EDIT keeps the lock */
     ui_power_on();
@@ -4447,21 +4407,21 @@ static int test_fx_map(void)
     go_title("ENV"); frame();
     press(B_FX); press(B_FX); frames(100);
     ok = ui.lock == LAYER_FX;
-    key_down(white(1)); frame();                        /* G3: REPEAT 1/16 */
+    key_down(white(1)); frame();                        /* G3: HPF */
     turn(EN_PRESET, 1); keyboard_block();
-    ok &= perf_map[1] == PF_R32 && perf_held == PF_BIT(PF_R32) && msg_is("G3 REPEAT 1/32");
+    ok &= perf_map[1] == PF_FRZ && perf_held == PF_BIT(PF_FRZ) && msg_is("G3 FREEZE");
     btn_down(B_EDIT); frame(); btn_up(B_EDIT); frame(); keyboard_block();
-    ok &= perf_map[1] == PF_R16 && perf_held == PF_BIT(PF_R16) && ui.lock == LAYER_FX && ui.layer == LAYER_FX &&
+    ok &= perf_map[1] == PF_HPF && perf_held == PF_BIT(PF_HPF) && ui.lock == LAYER_FX && ui.layer == LAYER_FX &&
           str_eq(cur_page()->title, "ENV");
     turn(EN_PRESET, -1); keyboard_block();
-    ok &= perf_map[1] == PF_R8;
+    ok &= perf_map[1] == PF_LPF;
     key_up(white(1)); frame();
     press(B_EDIT);                                      /* no key held: EDIT closes the lock as before */
     ok &= !ui.lock && !perf_held;
-    bad += check("  locked (FX double tap): G3 held + PRESETS: REPEAT 1/32; EDIT: 1/16, the lock stays; no key: EDIT closes it", ok);
-    {   /* the cells name what the keys hold: G3 "1/8" now, A4 OCT- */
-        ok = str_eq(PF_CELL[perf_map[1]], "1/8") && str_eq(PF_CELL[perf_map[9]], "OCT-") && perf_map[12] == PF_N;
-        bad += check("  the map's cells: G3 1/8 (remapped), A4 OCT-, D5 empty", ok);
+    bad += check("  locked (FX double tap): G3 held + PRESETS: FREEZE; EDIT: HPF, the lock stays; no key: EDIT closes it", ok);
+    {   /* the cells name what the keys hold: G3 "LPF" now, C4 OCT- */
+        ok = str_eq(PF_CELL[perf_map[1]], "LPF") && str_eq(PF_CELL[perf_map[4]], "OCT-") && perf_map[12] == PF_N;
+        bad += check("  the map's cells: G3 LPF (remapped), C4 OCT-, D5 empty", ok);
     }
     memset(fx_keys, 0, 10);
     frame();
@@ -4474,15 +4434,15 @@ static int test_fx_map(void)
 static int test_fx_latch(void)
 {
     int bad = 0, ok;
-    uint32_t lpf = white(4), m1 = black(0);
+    uint32_t lpf = white(0), m1 = black(0);
     ui_power_on();
     btn_down(B_FX); frame();
     turn(EN_K4, 5);  ok = perf_k[3] == 0;                         /* DEPTH 100 %: right stays at 100 */
     turn(EN_K4, -30); ok &= perf_k[3] == 30;                      /* left: 70 % */
     turn(EN_K4, 10); ok &= perf_k[3] == 20;                       /* right: 80 % */
-    key_down(white(8)); frame(); perf_begin(CTL);                 /* OCT UP: KNOB 4 is SHIMR, right is more */
+    key_down(white(3)); frame(); perf_begin(CTL);                 /* OCT UP: KNOB 4 is SHIMR, right is more */
     turn(EN_K4, 10); ok &= perf_k[3] == 30;
-    key_up(white(8)); frame(); btn_up(B_FX); frame();
+    key_up(white(3)); frame(); btn_up(B_FX); frame();
     bad += check("#40 FX + KNOB 4: DEPTH rises to the right, falls to the left; SHIMR (OCT UP) rises to the right",
                  ok && !perf_k[3]);
     /* OFF (the default; a byte older settings leave 0) */
@@ -4502,7 +4462,7 @@ static int test_fx_latch(void)
     btn_up(B_FX); frame();
     ok &= perf_latched == PF_BIT(PF_LPF) && perf_k[1] == 30 && !ui.layer;
     ok &= perf_begin(CTL) && (perf_act & PF_BIT(PF_LPF));                 /* it runs with nothing held */
-    bad += check("  FX LATCH ON: FX + C4 latches LPF, CRUSH stays at 30 after FX is let go", ok);
+    bad += check("  FX LATCH ON: FX + F3 latches LPF, CRUSH stays at 30 after FX is let go", ok);
     ui_leds();
     memset(led_pos, 0xFF, sizeof led_pos);
     led_pos[panel.btn[B_FX]] = 0u << 3 | 1u;
@@ -4510,10 +4470,10 @@ static int test_fx_latch(void)
     ok = (fm1_led[0] & 2u) != 0u;
     btn_down(B_FX); key_down(m1); frame(); key_up(m1); frame();   /* a mute latches too */
     ok &= perf_latched == (PF_BIT(PF_LPF) | PF_BIT(PF_M1));
-    key_down(lpf); frame(); key_up(lpf); frame();                 /* C4 again: LPF off */
+    key_down(lpf); frame(); key_up(lpf); frame();                 /* F3 again: LPF off */
     ok &= perf_latched == PF_BIT(PF_M1);
     btn_up(B_FX); frame();
-    bad += check("  the FX LED lit while something is on; a mute key latches; C4 again: LPF off", ok);
+    bad += check("  the FX LED lit while something is on; a mute key latches; F3 again: LPF off", ok);
     btn_down(B_FX); frame(); turn(EN_K1, -40);
     ok = song.octave == 0 && oct_leds() == 1u;
     btn_down(B_OCTDN); frame(); btn_up(B_OCTDN); frame();
@@ -4600,12 +4560,12 @@ static int test_fx_latch(void)
 }
 
 /* #48: the note divisions step by their length, longest first (triplets between their neighbours), on every list
- * that has them (SEQ DIV, the delay's TIME, the SLICER's RATE); the stored values and their sound stay */
+ * that has them (SEQ DIV, the delay's TIME); the stored values and their sound stay */
 static int test_div_order(void)
 {
     int bad = 0, ok = 1;
     uint32_t id, c, k, found = 0;
-    static const param_desc_t *const LISTS[] = {&TP[P_SDIV], &GP[G_DTIME], &TP[P_SLRATE]};
+    static const param_desc_t *const LISTS[] = {&TP[P_SDIV], &GP[G_DTIME]};
     ui_power_on();
     for (k = 0; k < NELEM(LISTS); k++) {           /* left end -> right end: each one shorter than the one before */
         const param_desc_t *d = LISTS[k];
@@ -4613,7 +4573,7 @@ static int test_div_order(void)
         uint32_t prev = 0xFFFFFFFFu, len;
         for (n = 0; n < 40; n++) v = param_turn(d, v, -1);
         for (n = 0; n <= d->max - d->min; n++) {
-            len = d->names == N_SLDIV ? 1000000u / SL_DEN[v] : div_samples((uint32_t)v);
+            len = div_samples((uint32_t)v);
             if (!(len < prev && enum_rank(d, v) == d->min + n && !((seen >> v) & 1))) {
                 printf("  %s: %s (value %d, place %d, length %u) after %u\n", d->label, d->names[v], (int)v,
                        (int)enum_rank(d, v), len, prev);
@@ -4629,7 +4589,7 @@ static int test_div_order(void)
     ok &= param_turn(&TP[P_SDIV], 2, 1) == 5 && param_turn(&TP[P_SDIV], 2, -1) == 4 &&   /* 1/16: right 16T, left 8T */
           param_turn(&TP[P_SDIV], 3, 1) == 3 && param_turn(&TP[P_SDIV], 9, -1) == 9 &&   /* the ends hold */
           param_turn(&TP[P_SDIV], 2, -6) == 8 && param_turn(&TP[P_SDIV], 2, 40) == 3;    /* 6 left: 2BAR; far: clamped */
-    bad += check("#48 DIV / RATE / TIME / SLICER RATE step longest -> shortest, every value once, the ends hold", ok);
+    bad += check("#48 DIV / RATE / TIME step longest -> shortest, every value once, the ends hold", ok);
     ok = 1;                                         /* the real knob on the pages that show them, the gauge follows */
     for (id = 0; id < NPAGES; id++)
         for (c = 0; c < 4u; c++) {
@@ -4646,7 +4606,7 @@ static int test_div_order(void)
             turn(EN_K1 + c, -2);
             ok &= *vp == (d->names == N_DIV ? 4 : 3);  /* 8T */
         }
-    bad += check("#48 the pages' knobs step the divisions by length (DLY, SLICER)", ok && found >= 2u);
+    bad += check("#48 the pages' knobs step the divisions by length (DLY)", ok && found >= 1u);
     return bad;
 }
 
@@ -5562,215 +5522,18 @@ static int test_no_flash(void)
     return bad;
 }
 
-/* 1.4.1 ENGINE QUICK ACTIONS (ui_layer.c EQA): the EDIT layer's black keys are the selected track's engine's. DRUM:
- * black keys 1..8 MUTE its lanes (eng_drum.c drum_mute). qa_beat: T4's own output (track_render) of a beat whose hits
- * strike the lanes of `lanes` (trk_note_on: the keys', MIDI's and the sequencer's way in), 16 steps of 8 blocks; its
- * hash and the energy under ~150 Hz (a one-pole low-pass: the kick's) */
-static uint64_t qa_beat(uint32_t lanes, double *low)
-{
-    static const uint8_t NOTE[NLANE] = {36, 38, 39, 42, 46, 45, 37, 56};
-    track_t *t = &trk[3];
-    int32_t o[CTL];
-    uint32_t s, b, i, l, p;
-    uint64_t h = 1469598103934665603ull;
-    double lp = 0;
-    for (p = 0; p < NPART; p++)
-        memset(trk[p].v, 0, sizeof trk[p].v);
-    memset(kit_lane, 0, sizeof kit_lane);
-    kit_rnd = 0x9E3779B9u;                             /* (KIT's VARY off: a hit struck or not changes no other) */
-    t->p[P_E7] = 0;
-    vage = 0;                                          /* (the voices' ages: KIT's noise seeds) */
-    *low = 0;
-    for (s = 0; s < 16u; s++) {
-        uint32_t hit = (s % 4u == 0u ? 1u : 0u) | (s % 8u == 4u ? 2u : 0u) | (s == 14u ? 4u : 0u) |
-                       (s % 2u == 0u ? 8u : 0u) | (s == 6u ? 16u : 0u) | (s == 11u ? 32u : 0u) | (s == 3u ? 64u : 0u) |
-                       (s == 9u ? 128u : 0u);
-        for (l = 0; l < NLANE; l++)
-            if (((hit & lanes) >> l) & 1u)
-                trk_note_on(t, NOTE[l], s == 0u ? 120u : 100u);
-        for (b = 0; b < 8u; b++) {
-            track_render(t, o, CTL);
-            for (i = 0; i < CTL; i++) {
-                h = (h ^ (uint32_t)o[i]) * 1099511628211ull;
-                lp += ((double)o[i] - lp) * 0.02;       /* (~150 Hz at 48 kHz) */
-                *low += lp * lp;
-            }
-        }
-        for (l = 0; l < NLANE; l++)
-            if (((hit & lanes) >> l) & 1u)
-                trk_note_off(t, NOTE[l]);
-    }
-    return h;
-}
+/* 1.4.1 ENGINE QUICK ACTIONS (ui_layer.c EQA): the EDIT layer's black keys are the selected track's engine's. Since the
+ * kits (whose lanes' mutes they were) were archived, 2026-10-16, no engine has any: the keys are dark and do nothing */
 static int test_edit_quick_actions(void)
 {
-    int bad = 0, ok;
-    uint32_t i, a, b2, n;
-    uint64_t h_all, h_nokick, h_mute, h_again;
-    double e_all, e_nokick, e_mute, e_again;
-    int32_t o[2u * CTL];
-
-    /* the map per engine: DRUM 8 actions (the lanes), every other engine none */
+    uint32_t e;
+    int ok = 1;
     ui_power_on();
-    ok = 1;
-    for (i = 0; i < NENGINES; i++) {
-        trk[0].eng_req = (uint8_t)i;
-        n = eqa_count(&trk[0]);
-        ok &= i == ENGI_KIT ? n == NLANE : n == 0u;
-        ok &= !eqa_of(&trk[0], i == ENGI_KIT ? NLANE : 0u);
+    for (e = 0; e < NENGINES; e++) {
+        set_engine_of(TSEL, e);
+        ok &= eqa_count(TSEL) == 0u && !eqa_of(TSEL, 0) && !eqa_put_back();
     }
-    ui_power_on();
-    bad += check("1.4.1 EDIT quick actions: DRUM 8 (black keys 1..8), every other engine none", ok);
-
-    /* DRUM (T4): EDIT held, a black key toggles its lane's mute (SET, latched); LEDs lit = sounding, dark = muted */
-    ui_power_on();
-    track_select(3); go_home(); frame();
-    ok = drum_track(TSEL) && !drum_mute[3];
-    btn_down(B_EDIT); frames(500);
-    a = leds_at(0); b2 = leds_at(250);
-    for (i = 0; i < 11u; i++)                         /* 1..8 lit, steady; 9..11 dark (16 engines: 11 is INIT's, its own) */
-        ok &= (LY_INIT_BK && i == LY_INIT_P) || ((((a & b2) >> black(i)) & 1u) == (i < NLANE) && !(((a ^ b2) >> black(i)) & 1u));
-    key_down(black(0)); frame(); key_up(black(0)); frame();
-    key_down(black(5)); frame(); key_up(black(5)); frame();
-    ok &= drum_mute[3] == (1u | 32u) && msg_is("TOM MUTED") && !gates() && ui.layer == LAYER_EDIT;
-    a = leds_at(0); b2 = leds_at(250);
-    ok &= !(((a | b2) >> black(0)) & 1u) && !(((a | b2) >> black(5)) & 1u) && ((a & b2) >> black(1)) & 1u;
-    key_down(black(5)); frame(); key_up(black(5)); frame();
-    ok &= drum_mute[3] == 1u && msg_is("TOM ON");
-    btn_up(B_EDIT); frame();
-    ok &= drum_mute[3] == 1u && ui.home && !ui.layer;
-    bad += check("  DRUM: EDIT + black key 1 / 6: KICK / TOM muted (latched; LEDs dark), again: on (lit); 9..11 dark", ok);
-    ok = undo.trk != 4u && !lys.loaded;
-    bad += check("  the mutes take no undo copy (no sound load)", ok);
-
-    /* the white keys as before (an engine pick from DRUM: the sound load clears the mutes) */
-    btn_down(B_EDIT); frames(500);
-    key_down(white(0)); frame(); key_up(white(0)); frame();
-    ok = TSEL->eng_req == eng_vis(0) && !drum_mute[3] && eqa_count(TSEL) == 0u;
-    a = leds_at(0); b2 = leds_at(250);
-    for (i = 0; i < 11u; i++)                         /* (no actions: the black keys dark and inert; INIT's its own) */
-        ok &= (LY_INIT_BK && i == LY_INIT_P) || !(((a | b2) >> black(i)) & 1u);
-    {
-        track_t before = *TSEL;
-        uint8_t m[NPART];
-        memcpy(m, drum_mute, sizeof m);
-        ui.msg_t = 0;
-        for (i = 0; i < 11u; i++) {
-            if (LY_INIT_BK && i == LY_INIT_P)
-                continue;                             /* (16 engines: INIT's key) */
-            key_down(black(i)); frame(); key_up(black(i)); frame();
-        }
-        ok &= !memcmp(m, drum_mute, sizeof m) && !ui.msg_t && !gates() && before.eng_req == TSEL->eng_req &&
-              !memcmp(before.p, TSEL->p, sizeof before.p) && ui.layer == LAYER_EDIT;
-    }
-    oct_back();                                       /* OCT-: DRUM back, the mutes as the layer opened (KICK) */
-    btn_up(B_EDIT); frame();
-    ok &= TSEL->eng_req == ENGI_KIT && drum_mute[3] == 1u;
-    bad += check("  a white key loads its engine (the mutes go with the sound); the black keys dark, inert; OCT- back", ok);
-
-    /* OCT-: the mutes as the layer opened */
-    btn_down(B_EDIT); frames(500);
-    key_down(black(0)); frame(); key_up(black(0)); frame();   /* KICK on */
-    key_down(black(2)); frame(); key_up(black(2)); frame();   /* CLAP muted */
-    key_down(black(7)); frame(); key_up(black(7)); frame();   /* BELL muted */
-    ok = drum_mute[3] == (4u | 128u);
-    oct_back();
-    ok &= drum_mute[3] == 1u && msg_is("MUTES PUT BACK") && ui.layer == LAYER_EDIT;
-    btn_up(B_EDIT); frame();
-    bad += check("  OCT- in the layer: the lanes' mutes as it opened (KICK muted, CLAP BELL not)", ok && drum_mute[3] == 1u);
-
-    /* locked (a double tap), and while playing */
-    go_title("ENV"); frame();
-    press(B_EDIT); frames(64); press(B_EDIT); frames(500);
-    ok = ui.lock == LAYER_EDIT;
-    key_down(black(1)); frame(); key_up(black(1)); frame();
-    ok &= drum_mute[3] == 3u && str_eq(cur_page()->title, "ENV") && !gates();
-    oct_back();
-    ok &= drum_mute[3] == 1u && ui.lock == LAYER_EDIT;
-    press(B_EDIT); frames(16);
-    ok &= !ui.lock && !ui.layer && drum_mute[3] == 1u;
-    bad += check("  EDIT locked: a black key toggles its lane, OCT- puts it back; closed: kept", ok);
-    song.playing = 1;
-    btn_down(B_EDIT); frames(500);
-    key_down(black(3)); frame(); key_up(black(3)); frame();
-    ok = drum_mute[3] == (1u | 8u) && song.playing && msg_is("HATCL MUTED");
-    btn_up(B_EDIT); frame();
-    song.playing = 0;
-    bad += check("  while playing: HATCL muted at once", ok && drum_mute[3] == 9u);
-
-
-
-
-    /* not saved: a sound load into the track and a project load clear them */
-    go_home(); frame();
-    turn(EN_PRESET, 1); frame();
-    ok = !drum_mute[3];
-    {
-        int r = project_save(0);
-        drum_mute[3] = 5u;
-        project_load(0);
-        ok &= r == 0 && !drum_mute[3];
-    }
-    bad += check("  not saved: a sound load into the track and a project load clear them", ok);
-
-    /* the sound: KICK muted = the beat without its kicks, bit for bit; unmuted: bit for bit as never muted */
-    ui_power_on();
-    track_select(3); go_home(); frame();
-    song.master_q12 = 4096;
-    for (i = 0; i < 256u && (trk[3].xf_on || trk[3].eng_req != trk[3].engine); i++)
-        mix_block(o, CTL);
-    h_all = qa_beat(0xFFu, &e_all);
-    h_nokick = qa_beat(0xFEu, &e_nokick);
-    drum_mute[3] = 1u;
-    h_mute = qa_beat(0xFFu, &e_mute);
-    drum_mute[3] = 0u;
-    h_again = qa_beat(0xFFu, &e_again);
-    /* (KIT seeds each hit's noise by the voice's age: a kick struck and muted shifts the later hits' noise, so the
-     * muted beat is the no-kick beat in its energy, not bit for bit as DRUM's was) */
-    ok = h_all != h_mute && h_again == h_all && fabs(e_mute - e_nokick) <= 0.02 * e_nokick && e_all > e_mute;
-    {   /* the kick struck alone: its energy, none muted */
-        double ek, ekm;
-        (void)qa_beat(1u, &ek);
-        drum_mute[3] = 1u;
-        (void)qa_beat(1u, &ekm);
-        drum_mute[3] = 0u;
-        ok &= ek > 0.0 && ekm == 0.0;
-        printf("    low band energy: the beat %.4g, KICK muted %.4g (%.1f dB); the kicks alone %.4g, muted %.4g\n", e_all,
-               e_mute, 10.0 * log10(e_mute / e_all), ek, ekm);
-    }
-    bad += check("  KICK muted: the beat as with no kick struck (its energy), the kicks alone silent; unmuted: as before (bit for bit)", ok);
-    drum_mute[3] = 0xFFu;
-    (void)qa_beat(0xFFu, &e_mute);
-    drum_mute[3] = 0u;
-    bad += check("  every lane muted: silent", e_mute == 0.0);
-    {   /* muted mid-ring and unmuted: the lane rang on unheard (its voice, its state), as never muted after */
-        static const uint8_t NOTE2[2] = {36, 46};
-        uint64_t hm = 0, hu = 0;
-        uint32_t r, j, k;
-        for (r = 0; r < 2u; r++) {
-            uint64_t h = 1469598103934665603ull;
-            for (k = 0; k < NPART; k++)
-                memset(trk[k].v, 0, sizeof trk[k].v);
-            memset(kit_lane, 0, sizeof kit_lane);
-            kit_rnd = 0x9E3779B9u;
-            trk[3].p[P_E7] = 0;                       /* (VARY off) */
-            vage = 0;
-            for (j = 0; j < 2u; j++)
-                trk_note_on(&trk[3], NOTE2[j], 100);
-            for (j = 0; j < 64u; j++) {
-                drum_mute[3] = (uint8_t)(r && j >= 8u && j < 24u ? 16u : 0u);   /* (HATOP muted 8 .. 23) */
-                track_render(&trk[3], o, CTL);
-                if (j >= 24u)
-                    for (k = 0; k < CTL; k++)
-                        h = (h ^ (uint32_t)o[k]) * 1099511628211ull;
-            }
-            *(r ? &hm : &hu) = h;
-        }
-        drum_mute[3] = 0;
-        bad += check("  HATOP muted mid-ring, unmuted: it sounds on bit for bit as if never muted (a channel mute)", hm == hu);
-    }
-    ui_power_on();
-    return bad;
+    return check("EDIT layer quick actions: none on any engine (the kits archived), nothing to put back", ok);
 }
 
 #if NTRK == 8

@@ -79,14 +79,6 @@ static void overload(void)
     check("a lead alone on each part stays protected", lead->gate && bass->gate && shed_count == 1u);
 
     fresh();
-    host_preset(&trk[0], ENGI_KIT, 0);
-    trk_note_on(&trk[0], 36, 100); trk_note_on(&trk[0], 38, 100);
-    lead = held(&trk[0], 36); extra = held(&trk[0], 38);
-    shed_voice(); mix_block(out, CTL);
-    check("overload frees a held one-shot drum without waiting for its decay",
-          lead && extra && lead->active && !extra->active && voices_busy() == 1u);
-
-    fresh();
     trk[0].p[P_VOICE] = V_UNISON;
     trk_note_on(&trk[0], 55, 100);
     shed_voice(); mix_block(out, CTL);

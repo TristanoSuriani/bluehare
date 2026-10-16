@@ -133,9 +133,9 @@ static int preferences(void)
         host_wire[5] == 2 && host_wire[8] == 9 && host_wire[10] == 127);
     a[0] = 2; request(ED_UI_SET, a, 2);
     bad += check("unsupported preference is reported without applying it", host_wire[5] == 2);
-    a[0] = EID_KIT; a[1] = 0; a[2] = 64; a[3] = 1;
+    a[0] = EID_MODAL; a[1] = 0; a[2] = 64; a[3] = 1;
     request(ED_FAV_SET, a, 4);
-    bad += check("FAV_SET marks KIT as a normal engine", host_wire[5] == 3 && favorite_has(EID_KIT, 0));
+    bad += check("FAV_SET marks a factory sound (MODAL's first)", host_wire[5] == 3 && favorite_has(EID_MODAL, 0));
     request(ED_FAV_GET, a, 4);
     bad += check("FAV_GET reads the bounded favorite range", host_wire[5] == 0 && host_wire[10] == 1);
     a[0] = EID_COUNT; a[1] = 31; request(ED_FAV_SET, a, 4);
@@ -442,14 +442,14 @@ static int live_sync(void)
                  TSEL->preset == 2 && !wire_frames(ED_RELOAD, 0) && wire_frames(ED_CHANGED, &x) == 1u &&
                  x[1] == P_LEVEL && !sync_pass());
     for (i = 0; i < 3u; i++) {                           /* any preset of any engine */
-        a[0] = (uint8_t)(i ? EID_WASP : EID_WAVE); a[1] = (uint8_t)i;
+        a[0] = (uint8_t)(i ? EID_WEST : EID_WAVE); a[1] = (uint8_t)i;
         request(ED_PRESET, a, 2);
         other += sync_pass() != 0;
     }
     bad += check("PRESET of other engines: no push at all", !other && ed_w.eng == ed_eng(TSEL));
-    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_VOSIM) & 127; a[3] = (8192 + EID_VOSIM) >> 7;
+    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_BLISS) & 127; a[3] = (8192 + EID_BLISS) >> 7;
     request(ED_SET, a, 4);
-    bad += check("SET of G_ENGSEL: no RELOAD", ed_eng(TSEL) == EID_VOSIM && !sync_pass());
+    bad += check("SET of G_ENGSEL: no RELOAD", ed_eng(TSEL) == EID_BLISS && !sync_pass());
     sync_reload = 1;                                     /* a load on the device, not pushed yet */
     a[0] = EID_SID; a[1] = 1;
     request(ED_PRESET, a, 2);

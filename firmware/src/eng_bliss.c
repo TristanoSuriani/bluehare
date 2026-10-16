@@ -11,6 +11,7 @@
  * way on high notes so the spectrum stays below ~14 kHz (as FMPERC).
  * Voice state: ph[0] the body's carrier, ph[1] the tine's carrier (its modulator: 14 times that phase), ph[2] the body's
  * modulator, s[0] the index envelope (Q15), s[1] the tine's envelope (Q15), s[2] the modulator's last output. */
+#define FMP_BW 1363500000u      /* 14 kHz as a phase increment (14000 x 2^32 / 44100); / (inc >> 8): in notes, Q8 */
 static const char *const N_FK_RATIO[] = {"1/2", "1", "2", "3", "4", "5", "6", "7", "8", "11", "14", "1.41", "2.76",
                                         "3.5", "4.2", "7.1", 0};
 static const uint16_t FK_RATIO[16] = {128, 256, 512, 768, 1024, 1280, 1536, 1792, 2048, 2816, 3584, 361, 707, 896,

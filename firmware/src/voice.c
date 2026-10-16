@@ -181,7 +181,7 @@ static voice_t *voice_reuse(track_t *t, voice_t *v)
     return v;
 }
 
-/* POLY allocation (within the engine's voice cap). DRUM: reuse its lane; other engines: the same note.
+/* POLY allocation (within the engine's voice cap): the same note.
  * Else a free voice: ROTATE takes
  * the next one round-robin (release tails ring out), REUSE (or any GLIDE) takes
  * the free voice whose last pitch is closest, so poly portamento moves each
@@ -193,11 +193,6 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
 {
     uint32_t i, np = trk_nvoice(t), best = np, low = np, nfree = 0;
     int32_t bd = 0x7FFFFFFF;
-    if (ENG_IS(t->engine, KIT)) {                     /* a lane's hit retakes its voice */
-        voice_t *v = kit_reuse(t, note);
-        if (v)
-            return voice_reuse(t, v);
-    }
     for (i = 0; i < np; i++) {
         if (t->v[i].active && t->v[i].note == note)
             return voice_reuse(t, &t->v[i]);
@@ -584,7 +579,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     int32_t tune_fine = (song.g[G_TUNE] * 16 - tune * 100) * 2367 / 16000;   /* rest, in 1/4096 (1 ct = 2.367) */
     int32_t bend, bend16, bend_fine;
     uint32_t ti = (uint32_t)(t - trk);
-    if (eng_idx(t->eng_req) == ENGI_KIT) {
+    if (ENGINES[eng_idx(t->eng_req)]->oneshot) {     /* (hits: no bend) */
         midi_bend_q8[ti] = midi_bend_target[ti] = 0;
     } else {
         int32_t d = midi_bend_target[ti] - midi_bend_q8[ti];

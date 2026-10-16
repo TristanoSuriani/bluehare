@@ -936,7 +936,7 @@ static __attribute__((noinline)) void rev_side_mix(int32_t *l, int32_t *r, uint3
 }
 
 /* one block of the whole mix (shared with hostsim.c): events -> each part (with its modulation matrix)
- * -> dist -> SLICER -> level / pan / sends -> buses -> master; out: stereo Q15 */
+ * -> dist -> level / pan / sends -> buses -> master; out: stereo Q15 */
 static void events_block(uint32_t n);                    /* seq.c */
 static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_r[CTL];
 
@@ -946,9 +946,8 @@ static void track_lowcut(uint32_t k, int32_t *b, uint32_t n);   /* (Blue Hare: L
  * voice_start; UNISON's detuned voices alternate), at PAN -/+ SPRD / 2 (SPRD 127: hard left and right), with the pan
  * law PAN has (the far side down, the near one as it is). track_render gives every voice (b, as always) and the left
  * ones (spread_buf); here d = left - right, the side signal, so for a pair of pans L = b (gla + glb) / 2 + d (gla - glb)
- * / 2 (R alike): the mono sum is b's, the level of a centre pan less by SPRD / 256 at most. b goes through DIST, the
- * SLICER and the FX layer's mute key as always; d gets the SLICER's gate and the mute's ramp (slicer_track_sd,
- * perf_mute_sd) and passes DIST by (the spread of a distorted chord is its voices' clean difference). The sends
+ * / 2 (R alike): the mono sum is b's, the level of a centre pan less by SPRD / 256 at most. b goes through DIST and
+ * the FX layer's mute key as always; d gets the mute's ramp (perf_mute_sd) and passes DIST by (the spread of a distorted chord is its voices' clean difference). The sends
  * take b, mono, as before. SPRD 0, MONO or LEGATO: mix_part's own loop, bit for bit as before. The cost: a block's
  * clear and sum of spread_buf, the side and a wider mix loop, per part; per voice none (it picks its buffer) */
 static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_t n)
@@ -968,7 +967,6 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     for (i = 0; i < n; i++)
         d[i] = (d[i] << 1) - b[i];                      /* left - right */
     track_dist(t, b, n);
-    slicer_track_sd(t, b, d, n);
     if (trk_lowcut[(t - trk) % NTRK])
         track_lowcut((uint32_t)(t - trk) % NTRK, b, n);   /* (Blue Hare; the side d passes it, as it passes DIST) */
     if ((pf.mute >> (t - trk)) & 1u)
@@ -990,8 +988,8 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     t->peak = pk;
 }
 
-/* (Blue Hare) LOW CUT (core.h trk_lowcut): two one-pole high-passes at TL_HZ[] on the track's block, after DIST and the
- * SLICER (so the sends lose the lows too). The states are Q8 and step by the difference / 256 * k / 128, at least one
+/* (Blue Hare) LOW CUT (core.h trk_lowcut): two one-pole high-passes at TL_HZ[] on the track's block, after DIST (so the
+ * sends lose the lows too). The states are Q8 and step by the difference / 256 * k / 128, at least one
  * unit while they differ (tl_pole), so they reach their input exactly: silence in, silence out */
 static const int16_t TL_K[TL_N] = {0, 186, 279, 371, 555, 739, 1101, 1458};   /* Q15: 1 - e^(-2 pi f / 44100) */
 static struct { int32_t s1, s2, h1, h2; } tmix[NTRK];   /* LOW CUT's poles; WIDTH's split (all Q8) */
@@ -1066,8 +1064,7 @@ static void mix_part(track_t *t, uint32_t n)
                 trk_pmode[(uint32_t)(t - trk) % NTRK] == TP_RND;                                   /* PAN MODE RND: any) */
     if (track_render(t, b, n))
         t->tail = 16;                                   /* blocks of DIST state to run out after the last voice */
-    else if ((!t->tail || !t->p[P_DIST] || !--t->tail) && !slicer_busy(t)) {
-        slicer_track(t, 0, n);                          /* (the SLICER's step clock runs on) */
+    else if (!t->tail || !t->p[P_DIST] || !--t->tail) {
         if (mod.on)
             mod_end(t);
         return;
@@ -1082,7 +1079,6 @@ static void mix_part(track_t *t, uint32_t n)
         xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);   /* sends: loud chords at a high LEVEL */
         uint32_t k = (uint32_t)(t - trk) % NTRK;
         track_dist(t, b, n);
-        slicer_track(t, b, n);                          /* slicer.c: before the level, pan and sends */
         if (trk_lowcut[k])
             track_lowcut(k, b, n);                      /* (Blue Hare) LOW CUT */
         if ((pf.mute >> (t - trk)) & 1u)
@@ -1203,52 +1199,6 @@ static __attribute__((noinline)) void bus_comp(int32_t *out, uint32_t n)
     bc_g = g1;
 }
 
-/* (Blue Hare) DUCK (core.h trk_duck): the key track's level (its share of the mix, the block's peak) as an envelope,
- * at once up, down over ~90 ms; a ducked track's dry share and sends scaled by 1 - depth x envelope (Q12, ramped over
- * the block from the last one's) */
-#define DK_REF 12000                     /* the key's peak that is the envelope's full (a kick at its LEVEL: ~0 dB) */
-static int32_t dk_env, dk_g[NTRK];
-static int32_t dk_pre[5][CTL];
-static void mix_track(uint32_t i, uint32_t n, int32_t mg);   /* (below) */
-static __attribute__((noinline)) void duck_key(uint32_t key, uint32_t n, int32_t mg)
-{
-    uint32_t j;
-    int32_t pk = 0, e;
-    for (j = 0; j < n; j++) {
-        dk_pre[0][j] = mix_l[j];
-        dk_pre[1][j] = mix_r[j];
-    }
-    mix_track(key, n, mg);
-    for (j = 0; j < n; j++) {
-        int32_t a = mix_l[j] - dk_pre[0][j], b = mix_r[j] - dk_pre[1][j];
-        a = a < 0 ? -a : a;
-        b = b < 0 ? -b : b;
-        pk = a > pk ? a : pk;
-        pk = b > pk ? b : pk;
-    }
-    e = pk >= DK_REF ? 32767 : (int32_t)((uint32_t)pk * 32767u / DK_REF);
-    if (e > dk_env)
-        dk_env = e;
-    else
-        dk_env -= (dk_env >> 7) + (dk_env > 0);
-}
-static __attribute__((noinline)) void mix_ducked(uint32_t i, uint32_t n, int32_t mg)
-{
-    int32_t *bufs[5] = {mix_l, mix_r, send_c, send_d, send_r};
-    int32_t g0 = dk_g[i], g1 = 4096 - (int32_t)((uint32_t)dk_env * trk_duck[i] * 3800u / (TD_MAX * 32767u)), b;   /* (32 bits) */
-    uint32_t j;
-    for (b = 0; b < 5; b++)
-        for (j = 0; j < n; j++)
-            dk_pre[b][j] = bufs[b][j];
-    mix_track(i, n, mg);
-    for (j = 0; j < n; j++) {
-        int32_t g = g0 + (g1 - g0) * (int32_t)(j + 1u) / (int32_t)n;
-        for (b = 0; b < 5; b++)
-            bufs[b][j] = dk_pre[b][j] + (int32_t)(((int64_t)(bufs[b][j] - dk_pre[b][j]) * g) >> 12);
-    }
-    dk_g[i] = g1;
-}
-
 /* one track into the mix (native: its own pair if it has one; the others' pairs silent while any has) */
 static void mix_track(uint32_t i, uint32_t n, int32_t mg)
 {
@@ -1259,31 +1209,15 @@ static void mix_track(uint32_t i, uint32_t n, int32_t mg)
 
 static void mix_block(int32_t *out, uint32_t n)
 {
-    uint32_t i, key = NPART;
+    uint32_t i;
     int perf;
     int32_t mg = fx_usb_fixed ? MASTER_FULL : (int32_t)song.master_q12;   /* (USB LEVEL FIXED: MASTER after) */
     for (i = 0; i < n; i++)
         send_c[i] = send_d[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
     events_block(n);
     perf = perf_begin(n);                               /* the FX hold layer at work (perform.c) */
-    for (i = 0; i < NPART; i++)                       /* (Blue Hare) DUCK: the key first, if one ducks */
-        if (trk_duck[i] == TD_KEY) {
-            uint32_t k;
-            for (k = 0; k < NPART && !(trk_duck[k] && trk_duck[k] <= TD_MAX && k != i); k++)
-                ;
-            key = k < NPART ? i : NPART;
-            break;
-        }
-    if (key < NPART)
-        duck_key(key, n, mg);
-    for (i = 0; i < NPART; i++) {
-        if (i == key)
-            continue;
-        if (key < NPART && trk_duck[i] && trk_duck[i] <= TD_MAX)
-            mix_ducked(i, n, mg);
-        else
-            mix_track(i, n, mg);
-    }
+    for (i = 0; i < NPART; i++)
+        mix_track(i, n, mg);
     tgt_mix_end(n);
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);

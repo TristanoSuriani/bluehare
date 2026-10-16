@@ -11,8 +11,13 @@
 #define BLUEHARE_CATEGORY 1
 enum { CAT_NONE, CAT_BASS, CAT_LEAD, CAT_PAD, CAT_PLUCK, CAT_KEYS, CAT_DRUM, CAT_FX, CAT_OTHER, CAT_N };
 static const char *const CAT_NAME[CAT_N] = {"-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "DRUM", "FX", "OTHER"};
-/* the category a sound of engine id e without one is listed under: a kit (DRUM) DRUM, any other OTHER */
-static uint32_t cat_of_engine(uint32_t e) { return e == EID_KIT || e == EID_BREAKS ? CAT_DRUM : CAT_OTHER; }
+/* the category a sound of engine id e without one is listed under: OTHER (a kit's was DRUM until the kits were
+ * archived, 2026-10-16) */
+static uint32_t cat_of_engine(uint32_t e)
+{
+    (void)e;
+    return CAT_OTHER;
+}
 
 #ifndef UP_HOST
 /* the factory presets' categories: each engine's cats (engine_t), a letter per preset in its order (B BASS, L LEAD, P PAD,

@@ -137,5 +137,5 @@ static const engine_t ENG_WEST = {
     .knob = {P_E1, P_E2, P_E4, P_DEC},
     .keep = 0x07,                /* the filter, the vactrol */
 };
-/* favorites.c: WEST's stars are one byte, BYTE's presets must not reach it ([15][8]: presets 64..71) */
-_Static_assert(NELEM(WEST_PRESETS) <= 64u && NELEM(BYTE_PRESETS) <= 64u, "favorites.c FAV_E16, FAV_ROW26");
+/* favorites.c: WEST's stars are one byte ([15][8]) and a tail */
+_Static_assert(NELEM(WEST_PRESETS) <= 64u, "favorites.c FAV_E16, FAV_ROW26");

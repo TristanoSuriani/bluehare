@@ -39,7 +39,6 @@ int main(int argc, char **argv)
             if (rnd() % 4u == 0) {
                 trk_width[j] = (uint8_t)(rnd() % (TW_MAX + 2u));
                 trk_lowcut[j] = (uint8_t)(rnd() % (TL_N + 1u));
-                trk_duck[j] = (uint8_t)(rnd() % (TD_KEY + 2u));
                 trk_pmode[j] = (uint8_t)(rnd() % 3u);
             }
         if (project_save(0))

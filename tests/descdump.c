@@ -71,7 +71,7 @@ int main(void)
     uint32_t e, i, k;
     int32_t v[16];
     printf("{\"P_COUNT\":%d,\"G_COUNT\":%d,\"P_E0\":%d,\"G_ENGSEL\":%d,\"P_SLCR\":%d,\"NTRK\":%d,\n",
-           P_COUNT, G_COUNT, P_E0, G_ENGSEL, P_SLCR, NTRK);
+           P_COUNT, G_COUNT, P_E0, G_ENGSEL, P_RSV33, NTRK);
     printf("\"TP\":");
     js_descs(TP, P_E0);                                  /* P_E0.. are the engine's */
     printf(",\n\"GP\":");
@@ -114,10 +114,7 @@ int main(void)
     for (k = 0; k < NPART; k++)
         printf("%s[%d,%d]", k ? "," : "", (int)eng_id(TRK_DEF[k][0]), TRK_DEF[k][1]);   /* (by id) */
     printf("]");
-    printf(",\n\"LANE_OF\":\"");
-    for (k = 35; k <= 81; k++)
-        printf("%u", (unsigned)drum_lane(k));
-    printf("\",\n\"PCT\":[");                          /* F_PCT as the firmware shows it (#31: SWG 0..100) */
+    printf(",\n\"PCT\":[");                          /* F_PCT as the firmware shows it (#31: SWG 0..100) */
     for (k = 0, e = 0; k < (uint32_t)P_E0 + G_COUNT; k++) {
         const param_desc_t *d = k < (uint32_t)P_E0 ? &TP[k] : &GP[k - P_E0];
         int32_t x[3] = {d->min, (d->min + d->max) / 2, d->max};

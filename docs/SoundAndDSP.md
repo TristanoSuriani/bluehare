@@ -2,8 +2,9 @@
 
 This document lists every effect and every DSP algorithm in Blue Hare's audio path, and names the sound engines the
 rest of the system depends on. It describes the tree as of 2026-10-16, after the sequencer, the arpeggiator and the
-plugin were removed. The engine list will shrink once the engine whitelist is applied; see
-[What archiving engines touches](#what-archiving-engines-touches) for the dependencies that matter then.
+plugin were removed and Milestone 1's first step ([Milestones.md](Milestones.md)) archived the groovebox's parts: every
+engine but SID, WAVE, BLISS, WEST, MODAL and ECHOES (`archive/engines/`), the SLICER, DUCK and the FX layer's REPEAT,
+REVERSE and TAPE STOP (`archive/fx/`). One distribution is built, HARE FM1.
 
 Sources are named relative to `firmware/src/` unless a path says otherwise.
 
@@ -33,9 +34,9 @@ keys / MIDI (USB, TRS)
   -> note input: scale map (QNT SNAP / WHITE), TRN, octave; chord keys (CHRD, VOIC)       seq.c, chord.c
   -> voice allocation (POLY / MONO / LEGATO / UNISON, glide, the shared budget, stealing)  voice.c
   -> per voice: ADSR, LFO, modulation matrix -> the engine's render                         voice.c, mod.c, eng_*.c
-  -> per track: DIST -> SLICER -> LOW CUT -> level, pan, SPREAD / PAN MODE, WIDTH, DUCK     fx.c, slicer.c
+  -> per track: DIST -> LOW CUT -> level, pan, SPREAD / PAN MODE, WIDTH                     fx.c
        sends -> chorus | delay (sends low-cut) | reverb (sends low-cut)                    fx.c
-  -> mix -> FX layer (REPEAT, REVERSE, filters, TAPE STOP, FREEZE, OCT UP / DN, macros)     perform.c
+  -> mix -> FX layer (filters, FREEZE, OCT UP / DN, macros, mutes)                        perform.c
   -> master: MONO LOWS -> bus compressor -> peak limiter -> soft clip -> DC blocker
              -> SPEAKER EQ (FLAT / LOWCUT / BASS+) -> MASTER                                fx.c, master.c
   -> USB audio (44.1 kHz, or 48 kHz through the resampler)                                  usb.c, uac_fir.h
@@ -49,12 +50,13 @@ keys / MIDI (USB, TRS)
 | Effect | Algorithm | Where |
 |---|---|---|
 | **DIST** | Low cut, then drive (1x to 8x, exponential), then an asymmetric soft clip (a tanh table with a small bias for even harmonics), then a tone low-pass that closes as the drive rises, then make-up gain. Its state is per track. | `fx.c` `dist` |
-| **SLICER** | A tempo-synced 16-step insert after DIST and before the sends. GATE: a gain ramped at most 1/128 a sample (2.9 ms), its edges on the step boundaries. STUT: open steps play live and are recorded (22.05 kHz, 16-bit); closed steps loop the recording at the step length, windowed and cross-faded by DEPTH. Rates 1/8 to 32T, 16 patterns, swung by CLOCK's SWING. | `slicer.c` |
-| **LOW CUT** | Two one-pole high-passes (12 dB/oct) at 40 to 320 Hz, after DIST and the SLICER, so the sends lose the lows too. | `fx.c` `track_lowcut` |
+| **LOW CUT** | Two one-pole high-passes (12 dB/oct) at 40 to 320 Hz, after DIST, so the sends lose the lows too. | `fx.c` `track_lowcut` |
 | **SPREAD** | POLY and UNISON voices alternate left and right of PAN by SPRD; the track carries a sum and a side signal (L - R), the side bypassing DIST so a distorted chord keeps its clean stereo. | `fx.c` `mix_spread`, `voice.c` |
 | **PAN MODE** | ALT spreads voices in turn (as SPREAD); RND puts each new voice on a random side. | `voice.c` `voice_start` |
 | **WIDTH** | Haas widening on the upper half of the tracks: the signal splits at ~250 Hz; one side plays it whole, the other plays the lows plus the highs delayed 1 to 20 ms. The mono sum keeps its lows. | `fx.c` `mix_haas` |
-| **DUCK** | A track marked KEY (the kick) ducks the others by their depth (1 to 15, up to ~23 dB): an instant attack on the key's level, a ~90 ms release. | `fx.c` `duck_key`, `mix_ducked` |
+
+Archived 2026-10-16 (`archive/fx/README.md`): the **SLICER** (a tempo-synced 16-step GATE / STUT insert) and **DUCK**
+(a kick track ducking the others).
 
 ### 3.2 Send buses (shared by all tracks)
 
@@ -75,20 +77,18 @@ keys / MIDI (USB, TRS)
 
 ### 3.3 The performance layer (FX held)
 
-On the master, between its level and its output. The SLICER's 32 KB recording memory is borrowed as one stereo loop
-(8192 frames at 22.05 kHz, 371 ms).
+On the master, between its level and its output, with its own 16 KB buffer (4096 stereo frames). Its default key map:
+LPF, HPF, FREEZE, OCT UP, OCT DN on the first five white keys.
 
 | Effect | Algorithm |
 |---|---|
-| **REPEAT 1/8, 1/16, 1/32** | A beat repeat from the loop, starting on the next 1/16. |
-| **REVERSE** | The loop played backwards. |
 | **LPF / HPF** | A resonant filter over the mix; the FILTER macro sweeps it. |
-| **TAPE STOP** | The read speed falls to zero (the pitch drops with it). |
-| **FREEZE** | The loop held. |
+| **FREEZE** | What it caught (186 ms) held, read by two overlapping grains under triangle windows at random places. |
 | **OCT UP / OCT DN** | A rotating-delay harmonizer: two read taps sweep a 128 to 2176-sample delay half a sweep apart at the speed that gives 2x or 0.5x, cross-faded by a raised cosine. SHIMMER feeds the shifted sound back, so each pass climbs another octave. |
 | **Macros** | FILTER, CRUSH (bit reduction), THROW (the dry mix into the delay and reverb), DEPTH (the effect's level, or SHIMMER while an octave plays). |
 
-Black keys 1 to 4 mute tracks 1 to 4 while held. Every effect starts and ends with a 2.9 ms ramp.
+Black keys 1 to 4 mute tracks 1 to 4 while held. Every effect starts and ends with a 2.9 ms ramp. REPEAT 1/8, 1/16,
+1/32, REVERSE and TAPE STOP were archived 2026-10-16; their numbers in the stored key map are kept and hold nothing.
 
 ### 3.4 Master and output
 
@@ -106,20 +106,19 @@ Black keys 1 to 4 mute tracks 1 to 4 while held. Every effect starts and ends wi
 
 ## 4. DSP building blocks
 
-Shared by the engines (`dsp.c`, `shared/`):
+Shared by the engines and the effects (`dsp.c`, `shared/`); who uses each in HARE FM1:
 
 | Block | What it is |
 |---|---|
 | **Phase accumulators** | 32-bit phases; pitch from a 1/16-semitone table plus cents as a factor (`cents_inc`). |
 | **Sine** | A 1024-point table, linearly interpolated (THD about -55 dB). |
-| **Band-limited saw and pulse** | polyBLEP: a quadratic residual around each wrap (`blep`, `osc_saw`, `osc_pulse`). |
+| **Band-limited saw and pulse** | polyBLEP: a quadratic residual around each wrap (`blep`, `osc_saw`, `osc_pulse`). SID, ECHOES (and CANYON). |
 | **Triangle** | Naive (its harmonics fall fast enough). |
 | **Noise** | xorshift32 generators, one per voice or engine; the shared `rng` for the LFO's S&H on tracks 1 to 3. |
-| **State-variable filter** | Andrew Simper's trapezoidal SVF, unconditionally stable, low-pass output; coefficients per block in Q13 (`tsvf_coef`, `tsvf_lp`). Used by 13 engines. |
-| **Soft clip and soft knee** | The tanh table (`softclip`, used by 16 engines) and a linear-then-soft knee for peaks only (`soft_knee`). |
-| **2x oversampling** | A polyphase IIR half-band (two first-order allpass paths, after hiir's design for a 0.16 transition) up and down around a shaper; what would fold under 15 kHz is 46 dB down. Used by RAZOR, VENOM, GUTS and SANDSTORM. |
-| **Physical models** | DaisySP's resonators ported to fixed point (MIT, `shared/phys_dsp.c`): a modal bank of up to 12 band-pass SVF modes with a strike exciter, a circular-membrane mode set, and an extended Karplus-Strong string (dispersion allpass or curved bridge, DC block, one-pole damping, a resampler for low notes). Q20 to Q24 signals, Q28 SVF coefficients, no float. |
-| **Drum map** | The GM drum note to lane map shared by the kits (`shared/drum_map.c`). |
+| **State-variable filter** | Andrew Simper's trapezoidal SVF, unconditionally stable, low-pass output; coefficients per block in Q13 (`tsvf_coef`, `tsvf_lp`). WAVE, WEST (13 engines before the archive). |
+| **Soft clip and soft knee** | The tanh table (`softclip`: WAVE, DIST, the master, the harmonizer's shimmer) and a linear-then-soft knee for peaks only (`soft_knee`). |
+| **2x oversampling** | A polyphase IIR half-band (two first-order allpass paths, after hiir's design for a 0.16 transition) up and down around a shaper; what would fold under 15 kHz is 46 dB down. Its users (RAZOR, VENOM, GUTS, SANDSTORM) are archived; it stays for the next drive (the SH-101 engine's). |
+| **Physical models** | DaisySP's resonators ported to fixed point (MIT, `shared/phys_dsp.c`): a modal bank of up to 12 band-pass SVF modes with a strike exciter, a circular-membrane mode set, and an extended Karplus-Strong string (dispersion allpass or curved bridge, DC block, one-pole damping, a resampler for low notes). Q20 to Q24 signals, Q28 SVF coefficients, no float. MODAL's resonator. |
 
 ## 5. The voice layer
 
@@ -137,142 +136,43 @@ Shared by the engines (`dsp.c`, `shared/`):
 
 ## 6. The engines
 
-47 engines are in the tree (`engine_ids.h`: each has a stable id and a substitute that loads in its place when a build
-lacks it). Engines 0 to 13 and 27 were Felucca's and are retired; every engine below is Blue Hare's own. NEBULA and
-CANYON exist only in the native image.
+HARE FM1 has six engines, in the order the device lists them (`distributions/hare_fm1.txt`); the native image plays
+CANYON in ECHOES' place. Each has a stable id and a substitute that loads in its place in a build without it
+(`engine_ids.h`).
 
-### Kits and percussion
+| Engine | Id | Algorithm | Substitute |
+|---|---|---|---|
+| **SID** | 24 | The C64 chip's way of sounding: a phase accumulator whose top 12 bits make the waves (triangle, saw, pulse with PWM, and a 23-bit noise shift register clocked by the oscillator), their combinations, ring modulation and hard sync, then a resonant filter. Basses, sync leads, PWM pads, chip drums. | WAVE |
+| **WAVE** | 14 | Wavetables: 8 banks of 8 single-cycle frames in flash (`tools/gen_wavetables.py`), band-limited per octave; POS crossfades neighbouring frames (the shape routings move it), windowed SYNC up to 8x, a detuned second oscillator, drive, a resonant low-pass (Simper SVF), CRSH (rate and bit reduction). | BLISS |
+| **BLISS** | 26 | Four-operator FM as two pairs, after the 80s FM pianos and bells: the body (a sine phase-modulated by a sine at RATIO, its index falling over DECAY, FDBK on the modulator) and the tine (a high, fast-decaying strike); the index is held under ~14 kHz (Carson's rule against the note) so high notes do not alias; VEL brightens, KSCL softens the top. | WAVE |
+| **WEST** | 16 | West coast: a complex oscillator (a modulator at a whole, half or inharmonic RATIO, FM depth and feedback), a sine wavefolder (FOLD, SYM), and a low-pass gate whose cutoff follows the envelope through a vactrol-like lag. FM and FOLD ease off on high notes. | MODAL |
+| **MODAL** | 34 | DaisySP's modal resonator in fixed point (`shared/phys_dsp.c`, MIT): an exciter (mallet, pluck, bow, click) strikes 12 tuned band-pass SVF modes of a material (bar, marimba, bell, glass, plate, drum, tube, string); STRUCT stretches them, POS sets the strike place, DECAY / DAMP / BRIGHT the ring. Capped at 4 voices. | WEST |
+| **ECHOES** | 36 | A note and its echoes as one instrument: every repeat is a new sound (BLIP, PLUCK, STAB, NOISE, FM), COUNT of them at the tempo along SHAPE (even, bouncing, slowing, swung, random), each changed by DECAY, PITCH, TONE and SCAT. They ring on after the key. Capped at 4 voices. | WAVE |
+| **CANYON** (native) | 58 | ECHOES' repeats uncut: up to 64, all ringing, 8 voices; its sounds load on the FM-1 as ECHOES. | ECHOES |
 
-| Engine | Algorithm |
-|---|---|
-| **FMPERC** | Two-operator FM made to be hit: a modulator at RATIO times the note moves the carrier's phase by INDEX; each hit sweeps pitch and index down. Its `fmp_run` is the voice of KIT, BREAKS and FLOOR. |
-| **KIT** | A General MIDI drum kit on one track, eight lanes (kick to bell) of FMPERC voices, with lane levels and mutes. |
-| **BREAKS** | A synthesized breakbeat: a key starts a one-bar pattern (kick, snare with accents and ghost notes, hats) at the song tempo, looping while held. |
-| **FLOOR** | Four-on-the-floor grooves, made like BREAKS. |
-| **WAR** | An industrial kit: a key a drum, each a pair of FM operators. |
-| **LINNKIT** | The LinnDrum's kit, synthesized (no samples). |
-| **CHIPKIT** | The 8-bit consoles' drums, made the way their sound chips made them. |
-| **GLITCH** | Micro-sounds a key each: clicks, pops, sweeps, random-pitch squares, data noise. |
-| **CHOKE** | Gated noise, hard-limited: resonant band-pass noise, a falling sine body, a snap. |
+The other engines (41 of them, ids 15 .. 60) are archived in `archive/engines/` (its README describes each); their ids
+are retired, and a sound of one is refused.
 
-### Subtractive, virtual-analog and leads
+## 7. The backbone
 
-| Engine | Algorithm |
-|---|---|
-| **WASP** | Two oscillators (band-limited saw, square, pulse, noise) into a gritty multimode filter, after the Wasp of 1978. |
-| **SID** | The C64 chip's way of sounding: a 12-bit-quantised phase accumulator, its combined waves, a 23-bit noise shift register, ring mod and hard sync. |
-| **RAZOR** | Up to 7 detuned band-limited saws, a sub square and noise, driven (2x oversampled) into a resonant low-pass and a high-pass edge. |
-| **SANDSTORM** | Five detuned saws into two resonant low-passes in series (24 dB), oversampled drive: the late-90s trance lead. |
-| **HOOVER** | Two detuned PWM saws plus a square an octave down, a pitch bend into the note, a low-pass: the rave lead. |
-| **VENOM** | A low-pass and a band-pass that cross-modulate each other's cutoff at audio rate (caustic acid). |
-| **GUTS** | A sine wavefolder made lopsided by an offset, then a resonant low-pass (filthy acid). |
-| **DARK** | Sub-bass: a sine with sub-octaves through a sine folder. |
-| **SLAG** | 2 to 4 drifting oscillators, saturated, through a low-pass that sinks over each note. |
-| **STRINGS** | A string ensemble: 16', 8' and 4' saws plus a square per voice, filtered, with its own ensemble chorus as a post-voice stage. |
-| **DUBCHORD** | A whole four-note chord in one voice through one filter (the dub-techno stab). |
+The six engines cover the synthesizer's ground with little overlap: a subtractive and chip voice (SID), wavetables
+(WAVE), FM keys and bells (BLISS), west coast FM and folding (WEST), physical modelling (MODAL) and a rhythmic,
+generative echo instrument (ECHOES). What the rest of the system leans on:
 
-### FM, wavetable and vector
+- **WAVE**: the wavetable data (`bluehare_wavetables.h`, 130 KB of flash) and the end of most substitute chains (SID,
+  BLISS and ECHOES fall back to it); the power-on pad (WARM PAD).
+- **MODAL**: the only user of DaisySP's physical models (`shared/phys_dsp.c`); the power-on bells (KALIMBA) and the
+  host tests' drums (WOOD DRUM); the voice-capped engine the voice-budget tests use.
+- **SID**: the power-on bass; the first engine (the fallback of last resort, and engine 0 in the tests).
+- **ECHOES**: its repeat engine (`ec_*`) is CANYON's, the native image's.
+- **BLISS** and **WEST**: self-contained.
 
-| Engine | Algorithm |
-|---|---|
-| **WAVE** | Wavetables: 8 banks of 8 single-cycle frames in flash, POS crossfading neighbours (the shape routings move it). Its tables are VECTOR's sources. |
-| **VECTOR** | Four sources at the corners of a square, mixed bilinearly as a point moves over it. |
-| **BLISS** | Four-operator FM as two pairs, in the manner of 80s FM pianos and bells. |
-| **WEST** | A complex oscillator (FM, feedback), a wavefolder and a low-pass gate, the Buchla way. |
-| **DRILL** | A sine carrier pitch-ramped at audio rate and phase-modulated (power tools). |
+The power-on tracks (`engines.c` `TRK_DEF`) are the roles Milestone 1's generative engine will play: a pad (WAVE), a
+bass (SID), keys (BLISS) and bells (MODAL).
 
-### Physical models and resonators
+## Next
 
-| Engine | Algorithm |
-|---|---|
-| **MODAL** | DaisySP's modal resonator in fixed point: an exciter striking a bank of tuned modes (bar, marimba, bell, glass ...). Its `md_render` is ANVIL's voice. |
-| **ANVIL** | Heavy metal struck, on MODAL's resonator with heavy materials (anvil, pipe, gong, chain, beam, tank, slab). |
-| **KARPLUS** | Karplus-Strong: a period-long delay line filled with an excitation at the pluck, fed back through damping. |
-| **ABYSS** | A feedback network of four delay lines, a cavern that rings (or sings the note with TUNE). |
-
-### Voice and formant
-
-| Engine | Algorithm |
-|---|---|
-| **VOSIM** | Kaegi and Tempelaars' VOSIM (1978) with two formants: trains of decaying sin^2 pulses per period. |
-| **SPEECH** | LPC speech: a buzz or hiss through a 10-pole lattice filter at 8820 Hz whose reflection coefficients glide word by word (no recordings). |
-| **SCREAM** | An unstable glottal pulse train (roughness, jitter, breaks) with formants. |
-| **HONKS** | A clipped reed (saw) with breath noise through two formant resonances, each note scooping up into pitch. |
-
-### Noise, chaos, grains and texture
-
-| Engine | Algorithm |
-|---|---|
-| **CHAOS** | Chaotic systems as oscillators: Lorenz and Rössler flows integrated at the note's speed, logistic and Hénon maps per period. |
-| **RUST** | Noise and a pulse, sample-rate reduced, bit-crushed and corrupted, through two resonances. |
-| **FLUIDS** | A morphing oscillator through a chain of 2 to 8 first-order allpasses mixed back with the dry signal (liquid notches). |
-| **PARTICLE** | A cloud of synthesized grains: random start times at DENS a second, SIZE long, scattered in pitch (quantisable), chirped. |
-| **NEBULA** (native) | PARTICLE's cloud uncut: 64 grains a voice. |
-| **SHRED** | A source written into a 35 ms ring, read back by two windowed grains that stretch, freeze or reverse it. |
-| **SCRATCH** | A turntablist's hands: a worked-out "record" (stab, voice, kick or noise) read at the speed of scratch gestures. |
-| **BYTE** | Bytebeat: one-line formulas of a counter t (shifts, products, logic), held at 8 kHz on C4. |
-
-### Echoes, sirens and builds
-
-| Engine | Algorithm |
-|---|---|
-| **ECHOES** | A note and its echoes as one instrument: every repeat played anew, each different from the last. |
-| **CANYON** (native) | ECHOES' repeats uncut: 64 of them, all ringing. |
-| **DUBSIREN** | The sound-system siren box: an oscillator swept by a shaped LFO, with its own echo (last track only). |
-| **DUBSIREN8** | DUBSIREN in 8 bits, for any track. |
-| **RISERS** | Build-ups timed to the tempo: noise or tone climbing RANGE semitones over LEN beats along CURVE. |
-
-## 7. The backbone engines
-
-"Backbone" here means an engine the rest of the system leans on, by any of four measures:
-
-1. **It lends code to other engines.** Archiving it means moving that code into `shared/` or archiving its users too.
-2. **Other engines fall back to it.** When a sound's engine isn't in a build, it loads as that engine's substitute
-   (`engine_ids.h`), so every stored sound and preset has somewhere to land.
-3. **It fills a power-on track role** (kit, bass, mid, high: `engines.c` `TRK_DEF`).
-4. **Most builds carry it.**
-
-| Engine | Lends code to | Engines falling back to it | Builds that carry it (of 6) | Power-on role |
-|---|---|---|---|---|
-| **WAVE** | VECTOR (its wavetables) | 8: PARTICLE, BLISS, DUBCHORD, VECTOR, ECHOES, SLAG, FLUIDS, STRINGS | 4 | mid (IDM) |
-| **KIT** (with **FMPERC**) | FMPERC's `fmp_run` is the voice of KIT, BREAKS and FLOOR | 6: FMPERC, BREAKS, GLITCH, WAR, LINNKIT, CHIPKIT | 2 | kit (reference, native) |
-| **SID** | none | 4: BYTE, HOOVER, WASP, DARK | 3 | bass and high (CHIP, reference) |
-| **GLITCH** | none | 4: CHAOS, KIT, DRILL, SCRATCH | 3 | none |
-| **MODAL** | its resonator (`md_render`, DaisySP's `phys_dsp.c`) is ANVIL's | 1: ANVIL | 3 | high (IDM) |
-| **WASP** | none | 2: SID, RAZOR | 3 | bass (IDM) |
-| **BREAKS** | none (plays FMPERC's voice) | 1: FLOOR | 4 | kit (IDM) |
-| **ECHOES** | its repeats (`ec_*`) are CANYON's | 2: ABYSS, CANYON | 3 | none |
-| **PARTICLE** | its grain helpers (`pt_*`) are NEBULA's | 1: NEBULA | 3 | none |
-| **RAZOR** | none | 2: GUTS, VENOM | 1 | high (FOUNDRY) |
-
-**The backbone, then:**
-
-- **WAVE**: the most-substituted engine and the wavetable source. Every melodic family falls back to it.
-- **KIT with FMPERC**: the percussion spine. Every kit falls back to KIT, and FMPERC's voice drives KIT, BREAKS
-  and FLOOR.
-- **SID**: the fallback for the bass and lead families, and the default bass in two builds.
-- **WASP**: the subtractive core (SID and RAZOR land on it), the IDM bass.
-- **MODAL**: the only home of the physical-modelling code (DaisySP's resonators), which ANVIL needs too.
-- **GLITCH**: where the noise and micro-sound family lands (CHAOS, DRILL, SCRATCH, and KIT itself as a last
-  resort).
-
-These six cover the four track roles (kit: KIT or BREAKS; bass: SID or WASP; mid: WAVE; high: MODAL or SID) and give
-every other engine a substitute within one or two hops.
-
-## What archiving engines touches
-
-When the whitelist is applied:
-
-- **Shared code goes with its owner unless moved.** Archiving FMPERC breaks KIT, BREAKS and FLOOR; archiving MODAL
-  breaks ANVIL; archiving WAVE breaks VECTOR; archiving PARTICLE or ECHOES breaks NEBULA or CANYON. Either keep the
-  owner, or move `fmp_run`, `md_render` (with `shared/phys_dsp.c`), the wavetables, `pt_*` or `ec_*` into
-  `shared/`.
-- **Substitutes must stay inside the build.** Every kept engine's substitute chain has to end at a kept engine.
-  Otherwise a stored sound of an archived engine has nowhere to load, and the project or preset is refused. The
-  chains in `engine_ids.h` are then rewritten for the one distribution.
-- **Ids stay.** An archived engine's id is retired, never reused, as Felucca's 0 to 13 and 27 were.
-- **Golden renders and CPU baselines** of archived engines move out of `tests/golden.txt` and
-  `tests/cpu_baseline.txt` with them; the target cost budget (`tests/target_budget.txt`) keeps only the kept render
-  loops.
-- **The effects, the voice layer and the building blocks in sections 3 to 5 don't depend on any one engine.** They
-  stay whole whatever the whitelist is. Section 4's blocks lose users but not their purpose.
+Milestone 1 adds an SH-101-style engine (`docs/Milestones.md`): oscillator (saw, pulse with PWM, sub-oscillator,
+noise) into a resonant 24 dB low-pass, a natural user of the 2x oversampling around its drive. Then FX presets (the FX
+screen chooses between presets of the chain in section 3), the sound design studio (the engines and the FX chain in
+the browser, WebAssembly) and the generative ambient engine on the ARP button.

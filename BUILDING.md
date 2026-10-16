@@ -4,7 +4,7 @@ Blue Hare (Tristano Suriani's fork of Felucca by Leo Kuroshita) builds the same 
 Felucca's file names (`bluehare.bin`, `bluehare.fwsc`). The distributions (below) are Blue Hare's. Whose work is
 whose: [AUTHORS.md](AUTHORS.md).
 
-**One command per target:** `make help` lists them. `make firmware DIST=foundry`, `make emu DIST=chip`,
+**One command per target:** `make help` lists them. `make firmware`, `make emu`,
 `make native`, `make quick` (the fast tests, about a minute), `make test` (the whole suite, its
 steps in parallel). The Makefile sets the environment each needs (the venv, `.local-bin`, Emscripten); the scripts
 below still work on their own.
@@ -79,33 +79,32 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/bluehare.c`, `
 The tree holds every engine (`firmware/src/engine_ids.h`); a **distribution** is the set one build holds, at most 16,
 in the order the device lists them: `distributions/<name>.txt`, one engine a line, and optionally `TRACKS 4` or
 `TRACKS 8`, the build's track count (4 without the line), and `PALETTE <name>`, the palette a device starts with
-(tools/gen_ui_palettes.py: IDM's IDM, FOUNDRY's FOUNDRY; GREY without the line).
+(tools/gen_ui_palettes.py; GREY without the line).
 
 ```
-./build.sh                         # the distribution distributions/BUILD names: IDM (build/bluehare.fwsc, "v0.10.0 IDM")
-BLUEHARE_DIST=foundry ./build.sh    # another one (build/bluehare-foundry.fwsc)
+./build.sh                          # the distribution distributions/BUILD names: HARE FM1 (build/bluehare.fwsc, "v0.10.0 HARE FM1")
+BLUEHARE_DIST=<name> ./build.sh      # another one (build/bluehare-<name>.fwsc)
 ```
 
 | Distribution | Tracks | Engines |
 | --- | --- | --- |
-| `idm` | 4 | BREAKS GLITCH WASP WEST WAVE VECTOR MODAL PARTICLE |
-| `foundry` | 4 | WAR ANVIL DARK RAZOR SLAG RUST SCREAM DRILL |
-| `warehouse` | 4 | FLOOR BREAKS VENOM DUBCHORD STRINGS HOOVER SANDSTORM RISERS |
-| `chip` | 4 | CHIPKIT SID WAVE BYTE ECHOES SPEECH DUBSIREN8 |
-| `idm_native` | 4 | the IDM of before 2026-10, PARTICLE and ECHOES as NEBULA and CANYON: SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM NEBULA CHAOS CANYON KIT SPEECH GLITCH (`NATIVE`: the native image's alone, "Native image" below) |
-| `ref` | 4 | the host tests' build, never an image: the IDM of before 2026-10 (SID WASP WAVE BREAKS WEST VECTOR DUBSIREN MODAL DUBCHORD VOSIM PARTICLE CHAOS ECHOES KIT SPEECH GLITCH), the engines the shared tests were written for |
+| `hare_fm1` | 4 | SID WAVE BLISS WEST MODAL ECHOES: Blue Hare's one distribution (2026-10-16, Milestone 1), palette ICE |
+| `hare_native` | 4 | HARE FM1 with ECHOES as its native engine CANYON (`NATIVE`: the native image's alone, "Native image" below) |
+| `test_subset` | 4 | the host tests' build without some engines, never an image: SID WAVE WEST MODAL (`tests/engines_test.c`) |
 
-Since the 2026-10 plan every build has 4 tracks and the shipped ones at most 8 engines, two for each track's role (kit,
-bass, mid, high). `VOICES 12` keeps the voice budget at 12 always (FOUNDRY, WAREHOUSE, CHIP: 4 tracks freed
-their CPU); without it 8, and 12 while the audio's load stays under 75 % (IDM, until it is tried on an FM-1). The code still builds with 8 tracks (`TRACKS 8`, or the tests' `-DBLUEHARE_NTRK=8`): with 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
-selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an
-8-track song; an 8-track build loads both); the song store and the autosave hold 16 chunks; the SLICER's STUT records
-on tracks 1 .. 4 only; DUBSIREN's echo is the last track's, 8 (elsewhere it plays dry); MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).
+*(2026-10-16)* Blue Hare builds one distribution; the infrastructure for several stays (a new `distributions/*.txt` is
+a new build). The earlier ones (IDM, FOUNDRY, WAREHOUSE, CHIP, IDM NATIVE, REF) are in `archive/distributions/`, with
+the engines only they held in `archive/engines/` (its README says how one comes back). The host tests build the
+primary distribution (`distributions/BUILD`: HARE FM1) with 4 tracks unless they name one.
+
+`VOICES 12` keeps the voice budget at 12 always; without it 8, and 12 while the audio's load stays under 75 % (HARE
+FM1). The code still builds with 8 tracks (`TRACKS 8`, or the tests' `-DBLUEHARE_NTRK=8`): the places four wide (the
+MIXER, HOME's rows, the GLO and FX layers' cards) show the selected track's four, 1 .. 4 or 5 .. 8; projects hold 16
+chunks; MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).
 
 Felucca's own engines (ANALOG FM6 PHASE LOFI VOICE TRIO WHEEL PHYS NOISE DRUM) and its default distribution are gone
-from Blue Hare: their ids are retired (`core.h` `EID_RETIRED`), what other engines used of them lives in
-`firmware/src/shared/` (PHYS's resonators for MODAL and ANVIL, DRUM's lanes and GM map for KIT, WAR and GLITCH). The
-host tests build the primary distribution (`distributions/BUILD`: IDM) with 4 tracks unless they name one.
+from Blue Hare: their ids are retired (`core.h` `EID_RETIRED`, which the archived engines' ids join); what other
+engines used of them lives in `firmware/src/shared/` (PHYS's resonators for MODAL).
 
 The engines a distribution leaves out are not linked. A build numbers its engines 0, 1, .. in the distribution's
 order (`core.h` `ENGI_*`, `engines.c` `ENGINES[]`), but everything stored and the editor protocol name an engine by its
@@ -116,7 +115,8 @@ fixed id (`EID_*`), so a project, a user preset, a song or a backup moves betwee
   distribution's first engine;
 - a user preset of such an engine is kept as it is but listed nowhere and loads nothing (the editor still reads and
   writes it);
-- the power-on parts (SID BASS, VOSIM FORMANT PAD, SID SYNC LEAD, KIT FM KIT) whose engine is missing start as the first engine;
+- the power-on parts (WAVE's WARM PAD, SID BASS, BLISS's E.PIANO, MODAL's KALIMBA) whose engine is missing start as
+  their second pick, else the first engine;
 - the editor sees the missing engines as "-" (`INFO`), as it does the retired ids.
 
 A new engine: its `eng_<name>.c` (an `ENG_<NAME>` with `.id`), a line in `engine_ids.h` (the next free id, its
@@ -135,8 +135,8 @@ python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 
 (A desktop application of the same: "Native image" below.)
 
-`web/emu/build.sh` builds the distribution `distributions/BUILD` names (IDM) into `build/emu/`;
-`BLUEHARE_DIST=foundry web/emu/build.sh` another one into `build/emu-foundry/` (serve that folder instead). The page
+`web/emu/build.sh` builds the distribution `distributions/BUILD` names (HARE FM1) into `build/emu/`;
+`BLUEHARE_DIST=<name> web/emu/build.sh` another one into `build/emu-<name>/` (serve that folder instead). The page
 shows the distribution after the version.
 
 The computer's keyboard: the bottom rows play the keys, the number row the buttons, [ ] OCT, ↑ ↓ KNOB 1 (with Shift
@@ -160,8 +160,8 @@ MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 
 ```
 ./build.sh
-native/build.sh                # or native/build.sh foundry, warehouse, chip
-open "build/native/Blue Hare IDM.app"      # or run build/native/blue-hare-idm
+native/build.sh                # or native/build.sh hare_native
+open "build/native/Blue Hare HARE FM1.app" # or run build/native/blue-hare-hare_fm1
 ```
 
 Blue Hare as a desktop application (`native/bluehare_native.c`): the same simulated FM-1 the browser emulator runs
@@ -183,7 +183,7 @@ native image adds is its own:
 | voices | 12 shared by all the tracks (8 when the CPU is busy); a new note takes one from another track | 16 on every track, its own: nothing taken from another track |
 | reverb (FX > REVERB TYPE) | ROOM, SPRING, HALL (8 lines at half the rate), GATED | and CONCERT, CAVERN, SHIMMER (`firmware/src/fx_native.c`, below) |
 | delay line | 1.49 s (1/1, 2BAR, 4BAR cut short at most tempos) | 23.8 s: 4BAR down to 41 BPM; PING's right side 11.9 s |
-| engines | the distribution's | and the native engines, in a `NATIVE` distribution (`idm_native`): NEBULA, CANYON |
+| engines | the distribution's | and the native engine, in a `NATIVE` distribution (`hare_native`): CANYON |
 | MENU > INFO CPU | the device's audio interrupt | the computer's audio thread (the FIRMWARE line reads VERSION) |
 
 The reverbs, in floating point at the full rate (some 0.7 MB):
@@ -201,20 +201,17 @@ The native engines (`engine_ids.h` marks them `/* native: */`; `tools/gen_dist.p
 list them, and `core.h` refuses a device build of one) share the controls of the engine they grew from, their
 substitute, so a sound made with them loads on the FM-1 as that engine:
 
-- **NEBULA** (id 57, PARTICLE's): the cloud whole: 64 grains at once a voice (PARTICLE drops any past 8), 12 voices, the
-  chirp followed every 8 samples, the level from the overlap's square root (a dense cloud keeps its loudness). PARTICLE's
-  12 presets and 8 of its own: NEBULA, CHOIR CLOUD, OCEAN, FIFTHS HAZE, BELL MIST, SHEPARD SKY, DEEP SWARM, STATIC FIELD.
 - **CANYON** (id 58, ECHOES'): up to 64 repeats (COUNT; ECHOES 16, a CANYON sound with more plays 16 there), all of
   them ringing (ECHOES cuts all but 6), 8 voices. ECHOES' 24 presets and 8 of its own: CANYON, BELL CASCADE, PLUCK
   STORM, ENDLESS DUB, LONG BOUNCE, FM RAIN, WHOLE TONE, AVALANCHE.
 
 ```
-native/build.sh idm_native
-open "build/native/Blue Hare IDM NATIVE.app"
+native/build.sh hare_native
+open "build/native/Blue Hare HARE NATIVE.app"
 ```
 
 Songs, sounds and presets are stored as on the device: a song made here plays on the FM-1 with the device's voices,
-CONCERT, CAVERN and SHIMMER as HALL, NEBULA as PARTICLE, CANYON as ECHOES, and a delay longer than 1.49 s cut short.
+CONCERT, CAVERN and SHIMMER as HALL, CANYON as ECHOES, and a delay longer than 1.49 s cut short.
 `tests/native_test.c` checks all of it in each distribution and prints how fast the computer renders every track full
 (about 30 times real time on an M1 Pro).
 
@@ -236,7 +233,7 @@ Runs the host tests and, with Node.js, the web page tests (and, with Emscripten 
 user presets, projects of every format, backup, the keys and knobs, MIDI (USB, TRS, clock,
 control), USB audio, the update entry and loader, the command-line installer, the UI (the real
 drawing code against stubs: every screen in every palette is rendered and checked for clipped or
-overlapping text; PNGs land in `build/ui_new/`), every engine (SPEECH, the regression renders of each preset), the chord keys, the modulation matrix, the FX layer, the reverbs, the SLICER
+overlapping text; PNGs land in `build/ui_new/`), every engine (the regression renders of each preset), the chord keys, the modulation matrix, the FX layer, the reverbs, the SLICER
 and swing.
 
 The regression suite (`tests/regress.c`) renders every engine and preset and compares a

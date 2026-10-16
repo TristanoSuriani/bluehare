@@ -4,7 +4,7 @@
 /* The native image (cc -DBLUEHARE_NATIVE -DBLUEHARE_DIST=<dist>; core.h BLUEHARE_NATIVE):
  *   every track its own 16 voices, whatever the load (no shared budget, nothing taken from another track), and how
  *   fast the computer renders every track full (printed: the times real time);
- *   the device's engines as the device has them (their voice caps), the native ones (NEBULA, CANYON: in a NATIVE
+ *   the device's engines as the device has them (their voice caps), the native one (CANYON: in a NATIVE
  *   distribution) sounding with all their voices, grains and repeats, or loading as their substitutes where missing;
  *   the reverbs only it has (fx_native.c: CONCERT, CAVERN, SHIMMER): HALL's level, stereo, a tail as long as SIZE asks,
  *   exact silence after it;
@@ -120,8 +120,7 @@ static void rev_run(uint32_t rt, double *e2, double *side, double *end)
 int main(void)
 {
     static const struct { const char *name; uint32_t cap; } DEV[] = {
-        {"MODAL", 4}, {"ANVIL", 4}, {"PARTICLE", 4}, {"ECHOES", 4}, {"KARPLUS", 4}, {"FLUIDS", 6}, {"SPEECH", 4},
-        {"GLITCH", 8}, {"DUBCHORD", 4}, {"RAZOR", 4}, {"CHOKE", 6}, {"SLAG", 6}, {"VECTOR", 6},
+        {"MODAL", 4}, {"ECHOES", 4},
     };
     static const char *const RT[] = {"CONCERT", "CAVERN", "SHIMMER"};
     static const double RT_TAIL[] = {4.0, 12.0, 7.0};   /* RT60 at SIZE 90 (fx_native.c) */
@@ -167,26 +166,6 @@ int main(void)
     ck(msg, ok);
 
     /* the native engines: in a NATIVE distribution, all their voices, grains, repeats; else their substitutes */
-    if ((e = eng_named("NEBULA")) != ENG_NO) {
-        uint32_t k, gmax = 0, j, s;
-        kills = voice_kills;
-        play(e, 12, 12);                              /* (NEBULA, the preset: dense, long grains) */
-        run(2, 0);
-        s = sounding(&trk[0]);
-        en = 0;
-        for (k = 0; k < FS / 2u / CTL; k++) {
-            uint32_t c = 0;
-            run(1, &en);
-            for (j = 0; j < NB_NG; j++)
-                c += nb_g[0][0][j].len != 0;
-            gmax = c > gmax ? c : gmax;
-        }
-        snprintf(msg, sizeof msg, "NEBULA: 12 voices sound, a voice up to %u grains at once (PARTICLE: 8), none taken", gmax);
-        ck(msg, s == NB_POLY && gmax > 32u && voice_kills == kills && en > 0);
-        all_off();
-    } else
-        ck("NEBULA not here: its sounds load as PARTICLE (its substitute: the same controls)",
-           eng_load_id(EID_NEBULA, 0) == eng_load_id(EID_PARTICLE, 0));
     if ((e = eng_named("CANYON")) != ENG_NO) {
         uint32_t k, gmax = 0, j, s, pi;
         for (pi = 0; pi < ENGINES[e]->npresets && strcmp(ENGINES[e]->presets[pi].name, "BELL CASCADE"); pi++)

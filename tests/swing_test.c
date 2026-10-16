@@ -6,8 +6,7 @@
  * 1. the swing: CLOCK's SWG, 0..100 (core.h track_swing; 1.5: a track's own SWG, the step sequencer's, unread).
  * 2. the rows (the tests' song player, hostsim.c host_seq: the sequencer is a placeholder): at 100 they play 1.4 x /
  *    0.6 x the straight 1/16, measured from the transport.
- * 3. the SLICER: its step lengths are the rows' (one helper), and it stays on the rows at the extremes.
- * 4. the display: SWG (0..100) shows its value, 100 is "100" (not 79); 0..127 percents unchanged. */
+ * 3. the display: SWG (0..100) shows its value, 100 is "100" (not 79); 0..127 percents unchanged. */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -95,56 +94,7 @@ static int test_seq(void)
     return bad;
 }
 
-/* --------------------------------------------------------- 3. SLICER --- */
-static int test_slicer(void)
-{
-    static const int C[][2] = {{100, 100}, {100, 0}, {0, 100}, {80, 70}, {0, 0}};
-    uint32_t c, k, f, miss = 0, lens = 0, blocks = 0;
-    int bad = 0;
-    for (c = 0; c < sizeof C / sizeof C[0]; c++) {
-        sl_t s;
-        host_tracks_init();
-        song.g[G_BPM] = 97;
-        set_swing(&trk[0], C[c][0], C[c][1]);
-        trk[0].p[P_SLRATE] = 1;
-        memset(&s, 0, sizeof s);
-        s.idx = 15;
-        for (k = 0; k < 32u; k++) {
-            sl_enter(&trk[0], &s);
-            lens += s.len != swing_step_len(&trk[0], s.base, s.idx);
-        }
-    }
-    bad += check("SLICER step lengths == the rows (one helper) at every swing", !lens);
-
-    host_tracks_init();
-    song.g[G_BPM] = 131;
-    for (k = 0; k < NTRK; k++) {                     /* every track past 100 in sum, the SLICER on */
-        trk[k].p[P_SLEN] = 16;
-        trk[k].p[P_SLRATE] = 1;
-        trk[k].p[P_SLCR] = SL_GATE;
-        trk[k].p[P_SLPAT] = (int16_t)(3u + k);
-        trk[k].p[P_SLDEPTH] = 127;
-        trk[k].p[P_SSWING] = (int16_t)(40 + 20 * k);
-    }
-    song.g[G_SWING] = 100;
-    memset(sl, 0, sizeof sl);
-    host_rows = HS_ROWS;                             /* (an empty song: its rows) */
-    transport_req = 1;
-    for (f = 0; f < 8u * FS; f += CTL) {
-        int32_t o[2 * CTL];
-        mix_block(o, CTL);
-        blocks++;
-        for (k = 0; k < NTRK; k++) {                 /* the SLICER step that holds the block's first sample */
-            uint32_t idx = sl[k].pos >= CTL ? sl[k].idx : (sl[k].idx + 15u) & 15u;
-            miss += song.playing && idx != hs.row % 16u;
-        }
-    }
-    transport_req = 2;
-    bad += check("SLICER on the rows, SWG 100, 131 BPM, 4 tracks (their own SWG unread)", !miss && blocks > 1000u);
-    return bad;
-}
-
-/* -------------------------------------------------------- 4. display --- */
+/* -------------------------------------------------------- 3. display --- */
 static const char *shown(const param_desc_t *d, int32_t v)
 {
     static char val[12];
@@ -168,7 +118,7 @@ static int test_display(void)
 
 int main(void)
 {
-    int bad = test_sum() + test_seq() + test_slicer() + test_display();
+    int bad = test_sum() + test_seq() + test_display();
     printf("swing: %s\n", bad ? "FAILED" : "all ok");
     return bad ? 1 : 0;
 }

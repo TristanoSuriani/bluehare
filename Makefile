@@ -3,18 +3,18 @@
 # Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 # One command per target: the scripts underneath, with the environment each needs (the venv's Python with Pillow,
 # .local-bin's docker for the firmware, Emscripten for the emulator) set here once.
-#   make firmware [DIST=foundry]   the FM-1 image (./build.sh; DIST: distributions/<DIST>.txt, default distributions/BUILD)
-#   make firmwares                 every device distribution, IDM last (the target-cost check reads the last build)
-#   make emu [DIST=chip]           the browser emulator (web/emu/build.sh -> build/emu or build/emu-<dist>)
+#   make firmware [DIST=hare_fm1]  the FM-1 image (./build.sh; DIST: distributions/<DIST>.txt, default distributions/BUILD)
+#   make firmwares                 every device distribution, the BUILD one last (the target-cost check reads the last build)
+#   make emu [DIST=hare_fm1]       the browser emulator (web/emu/build.sh -> build/emu or build/emu-<dist>)
 #   make emus                      the emulator of every device distribution
-#   make native [DIST=idm_native]  the desktop application (native/build.sh)
+#   make native [DIST=hare_native] the desktop application (native/build.sh)
 #   make quick                     the fast tier of the tests (QUICK=1: about a minute)
 #   make test                      the whole suite (NATIVE=0 / SANITIZE=0 leave parts out)
 #   make test-core                 the suite without the native image (most firmware work)
-#   make serve [DIST=foundry]      the emulator on http://localhost:8000
+#   make serve [DIST=hare_fm1]     the emulator on http://localhost:8000
 SHELL := /bin/bash
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-DISTS := idm foundry warehouse chip
+DISTS := hare_fm1
 ENV := cd $(ROOT) && { [ ! -f .venv/bin/activate ] || . .venv/bin/activate; } && export PATH="$(ROOT)/.local-bin:$$PATH"
 EMSDK ?= $(HOME)/emsdk/emsdk_env.sh
 EMENV := { command -v emcc >/dev/null || . $(EMSDK) >/dev/null 2>&1; }
@@ -29,7 +29,7 @@ firmware:
 	$(ENV) && $(if $(DIST),BLUEHARE_DIST=$(DIST) ,)./build.sh
 
 firmwares:
-	$(ENV) && for d in $(filter-out idm,$(DISTS)) idm; do BLUEHARE_DIST=$$d ./build.sh || exit 1; done
+	$(ENV) && for d in $(DISTS); do BLUEHARE_DIST=$$d ./build.sh || exit 1; done
 
 emu:
 	$(ENV) && $(EMENV) && $(if $(DIST),BLUEHARE_DIST=$(DIST) ,)sh web/emu/build.sh

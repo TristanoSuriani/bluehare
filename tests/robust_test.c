@@ -64,11 +64,6 @@ static int projects(void)
     project_load(0);
     refused = msg_is_ed("LOAD ERROR") && trk_pmode[1] == TP_ALT;
     bad += check("a PAN MODE past the last: refused", refused);
-    trk_duck[2] = TD_KEY + 1u;                          /* (DUCK past KEY) */
-    project_save(0);
-    trk_duck[2] = 3;
-    project_load(0);
-    bad += check("a DUCK past the last: loads OFF", !trk_duck[2] && !msg_is_ed("LOAD ERROR"));
     reset();
     trk[1].p[P_LEVEL] = 999;
     project_save(0);
@@ -90,7 +85,7 @@ static int user_presets(void)
     r->note[3] = 200; r->flags[3] = 0x43;
     r->note[4] = 0; r->flags[4] = 0x03;                     /* a rest with flags */
     r = &bk->r[1];                                          /* a drum grid: accents where there is no hit */
-    r->used = UP_USED; r->ver = UP_VER_GRID; r->engine = EID_KIT; r->np = 8; r->name[0] = 'G';
+    r->used = UP_USED; r->ver = UP_VER_GRID; r->engine = EID_MODAL; r->np = 8; r->name[0] = 'G';
     r->note[0] = 0x05; r->flags[0] = 0xFF;
     up_bank_check(0, sizeof *bk);
     bad += check("a bank from flash: a note pattern's note inside 0..127, its flags inside their fields",

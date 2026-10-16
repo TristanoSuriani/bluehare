@@ -65,7 +65,7 @@ static struct {
 } host_tr;
 static uint64_t dev_frames;                 /* frames rendered since power-on */
 
-/* the transport running from beat b (>= 0): the metronome's, the FX layer's, the SLICER's and the synced LFOs' places
+/* the transport running from beat b (>= 0): the metronome's and the synced LFOs' places
  * there. 1: b is less than `late` samples into a 1/16 (the host's start reaches the device a block or two after it):
  * that 1/16 starts now, the block's samples count from the next one */
 static int seq_locate(double b, uint32_t late)
@@ -80,21 +80,8 @@ static int seq_locate(double b, uint32_t late)
         clk_step = f > 0.0 ? six & 15u : (six - 1u) & 15u;
         clk_pos = f > 0.0 ? (uint32_t)(f * p) : p;
     }
-    pf.ph = (uint32_t)(f * (beat_samples() >> 2));
-    pf.sync = 0;
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
-        double st = b * SL_DEN[(uint32_t)t->p[P_SLRATE] % 6u];
-        uint32_t k = (uint32_t)st;
-        sl_t *s = &sl[i];
-        if (st > (double)k) {                      /* inside a step: entered, then on by the part already gone */
-            s->idx = (uint8_t)((k - 1u) & 15u);
-            sl_enter(t, s);
-            s->pos = (uint32_t)((st - k) * s->base);
-            s->pos = s->pos < s->len ? s->pos : s->len - 1u;
-        } else {
-            s->idx = (uint8_t)((k - 1u) & 15u);
-        }
         if (t->p[P_LTRIG] && t->p[P_LSYNC])        /* (seq_start set the phase: on by the blocks since beat 0) */
             t->lfo_ph += lfo_sync_inc(t) * (uint32_t)(b * lb / CTL);
     }

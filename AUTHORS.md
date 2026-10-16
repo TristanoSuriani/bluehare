@@ -70,7 +70,12 @@ These carry `Copyright (C) 2026 Tristano Suriani (Blue Hare)`.
 | CHIPKIT (the drums of the 8-bit consoles; CHIP's) | `firmware/src/eng_chipkit.c` |
 | SANDSTORM (the late-90s trance lead, named after Darude's track; WAREHOUSE's) | `firmware/src/eng_sandstorm.c` |
 | The native image's reverbs CONCERT, CAVERN, SHIMMER | `firmware/src/fx_native.c` |
-| Tests for distributions and SPEECH | `tests/engines_test.c`, `tests/speech_test.c` |
+| Tests for distributions and SPEECH | `tests/engines_test.c`, `archive/tests/speech_test.c` |
+
+*(2026-10-16)* The engines not in Blue Hare's one distribution, HARE FM1 (SID, WAVE, BLISS, WEST, MODAL, ECHOES; CANYON
+in the native image), are archived: their files are in `archive/engines/` (the paths above say `firmware/src/` for
+where they lived), their tests in `archive/tests/`, SPEECH's generator and vocabularies in `archive/tools/`. The
+SLICER is in `archive/fx/`.
 
 All of these engines are original implementations of published techniques, with no third-party code:
 
@@ -98,6 +103,8 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
 - DRUM's special cases (lanes, mutes, MIDI) cover KIT too.
 - Felucca's own engines, its default distribution and FM6's patch editing (its web editor tab, voice bank and preset
   patches) are removed; their ids retired; the host tests build IDM.
+- Blue Hare's groovebox parts are archived (2026-10-16): the SLICER (Felucca's), DUCK, and the FX layer's REPEAT,
+  REVERSE and TAPE STOP (Felucca's); the FX layer has its own buffer instead of the SLICER's.
 - The documentation is updated to match.
 
 ### Files moved from Felucca

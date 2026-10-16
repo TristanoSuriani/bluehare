@@ -34,7 +34,6 @@ static struct { volatile uint32_t notes, buttons; } fm1_in;
 #include "../firmware/src/params.c"
 #include "../firmware/src/mod.c"
 #include "../firmware/src/voice.c"
-#include "../firmware/src/slicer.c"
 #include "../firmware/src/fx.c"
 static void fm1_delay_ms(uint32_t ms) { (void)ms; }
 #include "../firmware/src/usb.c"
@@ -196,8 +195,9 @@ static void host_preset(track_t *t, uint32_t e, uint32_t pi)
     t->engine = t->eng_req;
 }
 
-/* the drums of the render tests: DRUM's kit (the power-on track 4; until 1.0.2 these used SAMPLE PERC) */
-static void host_drums(track_t *t) { host_preset(t, BLUEHARE_ENG_KIT ? (uint32_t)ENGI_KIT : 0u, 0); }   /* (no KIT: the first engine) */
+/* the drums of the render tests (Blue Hare, 2026-10-16: the kits archived): MODAL's WOOD DRUM (no MODAL: the first
+ * engine) */
+static void host_drums(track_t *t) { host_preset(t, BLUEHARE_ENG_MODAL ? (uint32_t)ENGI_MODAL : 0u, BLUEHARE_ENG_MODAL ? 7u : 0u); }
 
 /* a step of the renders' songs, written as they were for the step sequencer of 1.4 (the goldens keep their songs): into
  * row i of host_song, which plays them: its first note, a REST an OFF, a TIE nothing (the note rings); the song as long
@@ -271,9 +271,9 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     host_tracks_init();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, BLUEHARE_ENG_VOSIM ? (uint32_t)ENGI_VOSIM : 0u, BLUEHARE_ENG_VOSIM ? 13u : 0u);   /* (VOSIM's FORMANT
-                                                    * PAD: the power-on pad until Blue Hare's rhythm section came first) */
-    host_preset(t3, ENGI_WASP, 0);
+    host_preset(t2, BLUEHARE_ENG_BLISS ? (uint32_t)ENGI_BLISS : 0u, 0);   /* (BLISS's E.PIANO; VOSIM's FORMANT PAD until
+                                                    * the engines were archived) */
+    host_preset(t3, ENGI_SID, 0);
     host_drums(td);
     for (i = 0; i < 16u; i++) {
         if (ACID[i]) put_row(0, i, ACID[i]);
@@ -474,7 +474,7 @@ static int xfade_test(const char *dir)
     /* switches: (a) in a release tail, (b) twice with a chord held, (c) with a note right after it */
     const uint32_t sw[4] = {11u * B, 23u * B, 29u * B + 7u * CTL, 33u * B};
     const uint32_t on[3] = {B, 15u * B, 25u * B}, sine[3] = {14u * B, 24u * B, 32u * B};
-    const uint8_t to[4] = {ENGI_VECTOR, 2, 3, ENGI_WAVE};
+    const uint8_t to[4] = {ENGI_WEST, 2, 3, ENGI_WAVE};
     char path[512];
     FILE *w;
     int32_t *L = calloc(frames + CTL, sizeof *L);               /* (the last block may run past frames) */
@@ -670,13 +670,13 @@ static int tracks_test(const char *dir)
                    e + 1u < NENGINES ? "," : "\n");
     {   /* FM6, PHASE, VOICE (their heaviest presets) and drums on part 4 at once: 3 + 3 + 2 notes and the hits in the
          * budget of 8 */
-        const uint8_t fm = ENGI_VECTOR;
-        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 3}, {ENGI_DUBCHORD, (uint8_t)heavy[ENGI_DUBCHORD], 2},
-                                   {ENGI_KIT, 0, DRUM_HITS}};
-        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 8}, {ENGI_DUBCHORD, (uint8_t)heavy[ENGI_DUBCHORD], 4},
-                                  {ENGI_KIT, 0, DRUM_HITS}};
-        uint8_t vv[NPART][3] = {{ENGI_DUBCHORD, (uint8_t)heavy[ENGI_DUBCHORD], 4}, {ENGI_DUBCHORD, (uint8_t)heavy[ENGI_DUBCHORD], 4}, {0, 0, 0}, {0, 0, 0}};
-        uint8_t idle[NPART][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {ENGI_KIT, 0, DRUM_HITS}};
+        const uint8_t fm = ENGI_WEST;
+        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 3}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 2},
+                                   {ENGI_MODAL, 7, DRUM_HITS}};
+        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 8}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 4},
+                                  {ENGI_MODAL, 7, DRUM_HITS}};
+        uint8_t vv[NPART][3] = {{ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 4}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 4}, {0, 0, 0}, {0, 0, 0}};
+        uint8_t idle[NPART][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {ENGI_MODAL, 7, DRUM_HITS}};
         uint32_t bm2 = 0, bm3 = 0;
         double two_voice, none;
         four = tracks_cost(parts, &bm);

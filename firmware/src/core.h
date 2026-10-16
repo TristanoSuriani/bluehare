@@ -8,10 +8,10 @@
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
 
-#ifndef BLUEHARE_DIST             /* (not given: a host test's build, distributions/ref.txt with 4 tracks, the
-                                  * engines the shared tests were written for: their 8-track builds set BLUEHARE_NTRK;
-                                  * every image and the emulator name their distribution) */
-#define BLUEHARE_DIST ref
+#ifndef BLUEHARE_DIST             /* (not given: a host test's build, the shipped distribution with 4 tracks (Blue Hare,
+                                  * 2026-10-16: one distribution); their 8-track builds set BLUEHARE_NTRK; every image
+                                  * and the emulator name their distribution) */
+#define BLUEHARE_DIST hare_fm1
 #ifndef BLUEHARE_NTRK
 #define BLUEHARE_NTRK 4
 #endif
@@ -58,16 +58,26 @@ typedef char ntrk_ok[NTRK == 4 || NTRK == 8 ? 1 : -1];
  * The engines the distribution leaves out are not linked (nothing refers to them but the table) and their ENGI_ is
  * ENG_ABSENT, which no track's engine equals (a compare with it folds to false). A stored sound of an engine the build
  * lacks loads as its substitute (engines.c eng_load_id) */
-enum {                           /* the ids */
+enum {                           /* the ids (an archived engine's too: its id is still its own, refused) */
 #define ENGINE(N, id, sub) EID_##N = id,
+#define ARCHIVED(N, id) EID_##N = id,
 #include "engine_ids.h"
+#undef ARCHIVED
 #undef ENGINE
 };
 #define EID_COUNT 61u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 /* retired: 1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE (Felucca 1.5), 27 ACID; 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO,
  * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Blue Hare removed them): ids 0 .. 13 but 14,
  * and 27 */
-#define EID_RETIRED(e) ((e) <= 13u || (e) == 27u)
+/* (Blue Hare, 2026-10-16) and the archived ones (engine_ids.h ARCHIVED: 15 .. 60 but the six kept), their ids kept */
+#define ENGINE(N, id, sub)
+#define ARCHIVED(N, id) | (1ull << (id))
+static const uint64_t EID_ARCHIVED_MASK = 0
+#include "engine_ids.h"
+    ;
+#undef ARCHIVED
+#undef ENGINE
+#define EID_RETIRED(e) ((e) <= 13u || (e) == 27u || ((e) < 64u && ((EID_ARCHIVED_MASK >> (e)) & 1u)))
 #define ENG_ABSENT 0x100u        /* the ENGI_ of an engine the build leaves out: no uint8_t equals it */
 #define BLUEHARE_VERSION_DIST BLUEHARE_VERSION BLUEHARE_DIST_TAG   /* "v1.5", "v1.5 IDM": the version as shown */
 enum {                           /* the indices: the distribution's engines in its order (engines.c ENGINES[]) */
@@ -77,7 +87,7 @@ enum {                           /* the indices: the distribution's engines in i
     NENGINES                     /* engines in this build (1 .. 16) */
 };                               /* (the ones left out: ENGI_<NAME> ENG_ABSENT, in the generated header) */
 typedef char eng_count_ok[NENGINES > 0 && NENGINES <= 16 ? 1 : -1];
-#if (BLUEHARE_DIST_NATIVE || BLUEHARE_ENG_NEBULA || BLUEHARE_ENG_CANYON) && !defined(BLUEHARE_NATIVE)
+#if (BLUEHARE_DIST_NATIVE || BLUEHARE_ENG_CANYON) && !defined(BLUEHARE_NATIVE)
 #error "a NATIVE distribution, or a native engine: the native image's alone (native/build.sh)"
 #endif
 #define NENG_SHOWN NENGINES      /* (the engines one can pick: all of the build's, in their order) */
@@ -116,7 +126,7 @@ enum {                          /* per-track parameters */
     P_DIST, P_CHOR, P_DLY, P_REV,
     P_VOICE, P_GLIDE, P_PAN, P_MUTE,
     P_GLMODE, P_PRIO, P_ALLOC, P_DETUNE,
-    P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH,      /* SLICER insert (slicer.c) */
+    P_RSV33, P_RSV34, P_RSV35, P_RSV36,        /* (33 .. 36: the SLICER's until 2026-10-16, archived; inert) */
     P_M1SRC, P_M1DST, P_M1AMT,                 /* modulation matrix (mod.c): 4 slots of SRC, DST, AMT; */
     P_M2SRC, P_M2DST, P_M2AMT,                 /* new common parameters go just before P_E0 (user presets */
     P_M3SRC, P_M3DST, P_M3AMT,                 /* and projects map by count) */
@@ -126,7 +136,8 @@ enum {                          /* per-track parameters */
     P_FM3_ATK, P_FM3_DEC, P_FM3_SUS, P_FM3_REL, P_FM3_LEVEL,
     P_FM4_ATK, P_FM4_DEC, P_FM4_SUS, P_FM4_REL, P_FM4_LEVEL,
     P_CHRD, P_VOIC,                            /* chord keys (chord.c): one key plays a chord; its voicing */
-    P_LN0, P_LN1, P_LN2, P_LN3, P_LN4, P_LN5, P_LN6, P_LN7,   /* DRUM lane levels (KIT; once DRUM, #97): KICK .. BELL */
+    P_RSV25, P_RSV26, P_RSV27, P_RSV28,        /* (25 .. 32: the kits' lane levels, #97 .. 2026-10-16; inert, the ids */
+    P_RSV29, P_RSV30, P_RSV31, P_RSV32,        /* kept, as 17 .. 24) */
     P_LSYNC, P_LTRIG, P_LPOL,                  /* 1.2 (#154): LFO SYNC (OFF, a note value), TRIG (NOTE, FREE), POL (BI, UNI) */
     P_SQNT,                                    /* 1.2 (#162): QUANTIZE, the steps' recorded / nudged timing (ON: none) */
     P_SPRD,                                    /* (#148): SPREAD, the voices of a POLY / UNISON track around PAN (fx.c) */
@@ -254,7 +265,6 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
 } engine_t;
 
 /* ------------------------------------------------- tracks, the song --- */
-#define NLANE 8                  /* the DRUM engine's lanes (shared/drum_map.c) */
 
 typedef struct track {
     int16_t p[P_COUNT];
@@ -323,12 +333,7 @@ static song_t song;
 static const uint16_t TL_HZ[TL_N] = {0, 40, 60, 80, 120, 160, 240, 320};
 static uint8_t trk_width[NTRK], trk_lowcut[NTRK];
 static inline int tw_has(uint32_t k) { return k >= TW_FIRST && k < NTRK; }
-/* (Blue Hare) ducking (SETTINGS' DUCK; project.c version 6): trk_duck[k] 0 OFF, 1..TD_MAX how deep the track is ducked
- * by the key (TD_MAX: ~24 dB under it at its loudest), TD_KEY the key itself (the kick: the first track so set; its
- * level ducks the others, an instant attack and a ~90 ms release: fx.c mix_block). None set: nothing done */
-#define TD_MAX 15u
-#define TD_KEY 16u
-static uint8_t trk_duck[NTRK];
+/* ((Blue Hare) DUCK, a kick track ducking the others, was archived 2026-10-16: archive/fx/README.md) */
 /* (Blue Hare, 2026-10) PAN MODE (SETTINGS' PAN MODE; project.c version 7): trk_pmode[k] TP_ALT the voices left, right,
  * left .. of PAN by SPRD (SPREAD as it was: POLY and UNISON), TP_RND each new voice on a side picked at random, in every
  * voice mode, by SPRD (half the width at SPRD 0): hats, plucks, arps that move. A sounding voice keeps its side */
@@ -341,13 +346,12 @@ static void trk_mix_defaults(void)
     for (k = 0; k < NTRK; k++) {
         trk_width[k] = (uint8_t)(tw_has(k) ? TW_DEF : 0u);
         trk_lowcut[k] = (uint8_t)(tw_has(k) ? TL_DEF : 0u);
-        trk_duck[k] = 0;
         trk_pmode[k] = TP_ALT;
     }
 }
 
-/* SWING of a track's step clock (#31): CLOCK's SWING, at most 100. The SLICER (slicer.c sl_enter) swings by it; a
- * track's own SWG (P_SSWING, the step sequencer's, up to 1.4) is not read any more. At 100 the even steps are 1.4 x the straight length and the odd
+/* SWING of a track's step clock (#31): CLOCK's SWING, at most 100 (the host tests' song player swings by it; the
+ * SLICER did until it was archived); a track's own SWG (P_SSWING, the step sequencer's, up to 1.4) is not read any more. At 100 the even steps are 1.4 x the straight length and the odd
  * ones 0.6 x. */
 #define SWING_MAX 100
 static inline int32_t track_swing(const track_t *t)

@@ -4,8 +4,8 @@
 # Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 # The native image: Blue Hare as a desktop application (native/bluehare_native.c: the firmware as the browser
 # emulator runs it, in an SDL2 window, the computer's audio out, MIDI in).
-#   native/build.sh [DIST]   (DIST: a distribution, distributions/<DIST>.txt; the BUILD one, IDM, without; idm_native:
-#                             IDM with the native image's own engines, NEBULA and CANYON)
+#   native/build.sh [DIST]   (DIST: a distribution, distributions/<DIST>.txt; the BUILD one, HARE FM1, without; hare_native:
+#                             HARE FM1 with the native image's own engine CANYON)
 #     -> build/native/blue-hare-<dist>          the program (SDL2 linked in: nothing else to install)
 #     -> build/native/Blue Hare <DIST>.app      on macOS, the same as an application (double-click it)
 # Needs SDL2 (macOS: brew install sdl2; Linux: the libsdl2-dev package) and one ./build.sh before (build/gen: the
@@ -18,7 +18,7 @@ DIST="${1:-$(grep -v '^#' distributions/BUILD | awk 'NF { print $1; exit }')}"
 command -v sdl2-config >/dev/null 2>&1 || { echo "native: no SDL2 (macOS: brew install sdl2)"; exit 1; }
 VERSION=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/src/bluehare.c)   # ("v0.10.0")
 PLIST_VERSION=${VERSION#v}
-NAME=$(echo "$DIST" | tr 'a-z_' 'A-Z ')   # ("IDM NATIVE": the tag, gen_dist.py's)
+NAME=$(echo "$DIST" | tr 'a-z_' 'A-Z ')   # ("HARE NATIVE": the tag, gen_dist.py's)
 BUNDLE=$(echo "$DIST" | tr '_' '-')
 OUT=build/native
 mkdir -p "$OUT"

@@ -9,8 +9,7 @@
  * CH1-4 (0) channels 1..4 play parts 1..4, channels 5..16 are ignored (midi_control.c midi_event); SEL (1)
  * every channel the selected track; 1.2: CH5-8, CH9-12, CH13-16 as CH1-4 on those four channels (midi_base). Their CC1 (mod wheel), CC11 (expression) and channel aftertouch go to
  * the same track's modulation matrix (mod.c; the selected track: the one selected then).
- * The sequencer is a placeholder (SEQ shows TODO): PLAY runs the transport alone (the click, the SLICER, the FX
- * layer's grid, the synced LFOs). A key or MIDI note plays a
+ * The sequencer is a placeholder (SEQ shows TODO): PLAY runs the transport alone (the click, the synced LFOs). A key or MIDI note plays a
  * chord when the track's CHRD is on (chord.c): its notes go through the same input as so many keys. */
 static const uint16_t SCALE_MASK[] = {
     0xFFF,                                   /* CHR */
@@ -56,7 +55,8 @@ static int32_t midi_base(void)
 /* MIDI channel 0..15 of track i (keys -> MIDI out): its channel in ROUT's block (SEL, CH1-4: 1..4) */
 static uint32_t trk_midi_ch(uint32_t i) { return (midi_base() > 0 ? (uint32_t)midi_base() : 0u) + i % NTRK; }
 
-static int drum_track(const track_t *t) { return eng_idx(t->eng_req) == ENGI_KIT; }
+/* a track of hits (engine_t.oneshot: no bend, no sustain pedal) */
+static int drum_track(const track_t *t) { return ENGINES[eng_idx(t->eng_req)]->oneshot; }
 
 /* the 27 keys from F: black or white, and the key's place among the keys of its colour (white 0..15, black
  * 0..10) */
@@ -322,7 +322,7 @@ static void keyboard_block(void)
  * host tests play their songs through it (tests/hostsim.c host_seq) */
 static void (*seq_hook)(uint32_t n);
 
-/* PLAY: the transport from its start: the metronome, the SLICER and the FX layer's grid with it */
+/* PLAY: the transport from its start: the metronome with it */
 static void seq_start(void)
 {
     uint32_t i;
@@ -334,8 +334,6 @@ static void seq_start(void)
     song.tick = 0;
     clk_pos = CLK_START;                           /* the metronome's first beat now */
     song.playing = 1;
-    slicer_start();                                /* slicer.c: its step 0 now */
-    perf_start();                                  /* perform.c: its 1/16 grid too */
 }
 
 static void seq_stop(void)

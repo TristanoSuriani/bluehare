@@ -18,8 +18,8 @@
  *              and INIT is the last black key, F#5 (LY_INIT_BK)
  *              (the dialog); KNOB 1 ENG, 2 No. (the engine's sounds), 3 FAV. Sound loads as on PRESETS: the steps
  *              stay, SAVE held undoes, the editor gets RELOAD; they apply while playing too. 1.4.1: the black keys
- *              the selected track's engine's quick actions (EQA below: DRUM 1..8 its lanes' MUTE; other engines
- *              none yet, the keys dark)
+ *              the selected track's engine's quick actions (EQA below: none since the kits were archived, the
+ *              keys dark)
  * The gesture: let go before HOLD (the menu: 0.3 .. 0.6 s) with nothing else touched: a tap, the button's page.
  * Held past HOLD alone: the map (a peek), letting go does nothing. A key, a knob or a button meanwhile: a combo,
  * the map at once, no tap. Keys pressed with the button down are the layer's (seq.c keyboard_block): silent, no
@@ -78,7 +78,6 @@ static struct {
                                         * it opened; OCT- / OCT+ pressed in a SET layer (bits) */
     uint8_t rp_dirty;                  /* FX: the key map changed (settings_save when the layer lets go) */
     uint8_t fxk;                       /* FX: the white key pressed last in the layer (+ 1; 0 none): PRESETS assigns it */
-    uint8_t mute[NPART];               /* EDIT: the DRUM lanes' mutes when it opened (shared/drum_map.c drum_mute; OCT-) */
     uint32_t eqh;                      /* EDIT: the keys (bits 0..26) of the HOLD quick actions held */
     int16_t v[9];                      /* the values when it opened: GLO mutes, levels, BPM; SCL ROOT..TRN, CHRD VOIC */
     uint32_t solo;                     /* GLO: the keys held that solo */
@@ -222,7 +221,6 @@ static void layer_opened(uint32_t l)
             lys.v[4u + k] = k < 2u ? TSEL->p[P_CHRD + k] : 0;
         }
     lys.v[8] = song.g[G_BPM];
-    memcpy(lys.mute, drum_mute, sizeof lys.mute);
 }
 
 /* the armed button: 0, or the layer whose button was tapped (let go) */
@@ -339,7 +337,7 @@ static void glo_tap(void)
     }
 }
 
-/* FX: the effects' names (the message; NONE: PF_N) and the map's cells' */
+/* FX: the effects' names (the message; NONE: PF_N) and the map's cells' (the archived ones', PF_GONE: never shown) */
 static const char *const PF_NAME[PF_NFX + 1] = {"REPEAT 1/8", "REPEAT 1/16", "REPEAT 1/32", "REVERSE", "LPF", "HPF",
     "TAPE STOP", "FREEZE", "OCT UP", "OCT DN", "NONE"};
 static const char *const PF_CELL[PF_NFX] = {"1/8", "1/16", "1/32", "REV", "LPF", "HPF", "STOP", "FRZ", "OCT+", "OCT-"};
@@ -376,9 +374,11 @@ static void fx_assign(int32_t s)
         return;
     }
     p = key_place(--k);
-    i = perf_map_of(fx_keys, p);                        /* (the list: NONE, then the effects in order) */
-    i = i < PF_NFX ? i + 1u : 0u;
-    i = (i + (s > 0 ? 1u : n - 1u)) % n;
+    i = perf_map_of(fx_keys, p);                        /* (the list: NONE, then the effects in order, the */
+    i = i < PF_NFX ? i + 1u : 0u;                       /* archived ones left out) */
+    do
+        i = (i + (s > 0 ? 1u : n - 1u)) % n;
+    while (i && ((PF_GONE >> (i - 1u)) & 1u));
     perf_map_put(fx_keys, p, i ? i - 1u : PF_N);
     lys.rp_dirty = 1;
     fx_map_sync();
@@ -404,9 +404,8 @@ static void fx_default(void)
  * and does nothing. An action: its cell's name, HOLD (on while its key is held: act down, then up; a corner triangle,
  * breathes) or SET (act on each press), its handler and its LED (on: lit). They are performance state: no sound load,
  * no undo copy, not recorded; OCT- puts back what they changed since the layer opened (eqa_put_back). A new engine's
- * actions: a table and its row in EQA, and what OCT- puts back in eqa_put_back.
- *   DRUM  1..8 MUTE of the lanes KICK .. BELL (shared/drum_map.c drum_mute; the cells the kit's names), latched: lit =
- *         sounding, dark = muted (as GLO's track mutes); the cell of a muted lane as a muted track's (KEY) */
+ * actions: a table and its row in EQA, and what OCT- puts back in eqa_put_back. (2026-10-16: none since the kits, whose
+ * lanes' mutes they were, were archived) */
 enum { EQ_SHOW_SEL, EQ_SHOW_MUTE };                /* the cell: on = the selection's fill; on = idle, off = KEY */
 typedef struct {
     uint8_t kind, show, arg;                       /* LK_HOLD / LK_SET, EQ_SHOW_*, the handler's argument */
@@ -416,22 +415,9 @@ typedef struct {
 } eqa_t;
 typedef struct { uint8_t eng, n; const eqa_t *a; } eqa_set_t;
 
-static void eqa_drum_mute(track_t *t, uint32_t l, uint32_t down)
-{
-    uint32_t k = trk_index(t) % NPART;
-    if (!down)
-        return;
-    drum_mute[k] ^= (uint8_t)(1u << l);
-    ui_say(drum_lane_name(t, l), (drum_mute[k] >> l) & 1u ? " MUTED" : " ON");
-}
-static uint32_t eqa_drum_on(const track_t *t, uint32_t l) { return !((drum_mute[trk_index(t) % NPART] >> l) & 1u); }
-#define EQA_LANE(l) {LK_SET, EQ_SHOW_MUTE, l, drum_lane_abbr, eqa_drum_mute, eqa_drum_on}
-static const eqa_t EQA_DRUM[NLANE] = {EQA_LANE(0), EQA_LANE(1), EQA_LANE(2), EQA_LANE(3), EQA_LANE(4), EQA_LANE(5),
-    EQA_LANE(6), EQA_LANE(7)};
 static const eqa_set_t EQA[] = {
-    {BLUEHARE_ENG_KIT ? (uint8_t)ENGI_KIT : ENG_NO, NLANE, EQA_DRUM},     /* (KIT: the lanes of drum_map.c, drum_mute) */
+    {ENG_NO, 0, 0},                                /* (none yet; an engine's row: {ENGI_X, n <= 11, its table}) */
 };
-typedef char eqa_fits[NLANE <= 11 ? 1 : -1];       /* (11 black keys) */
 
 static uint32_t eqa_count(const track_t *t)        /* the actions of t's engine (black keys 1..n) */
 {
@@ -475,9 +461,7 @@ static void eqa_release(void)
 /* OCT- in the EDIT layer: the actions' state as the layer opened (1 = something changed) */
 static int eqa_put_back(void)
 {
-    int d = memcmp(drum_mute, lys.mute, sizeof drum_mute) != 0;
-    memcpy(drum_mute, lys.mute, sizeof drum_mute);
-    return d;
+    return 0;                                      /* (nothing yet: the kits' lane mutes were the only state) */
 }
 /* the map's signature of the actions: their LEDs and names */
 static uint32_t eqa_sig(void)
@@ -612,8 +596,8 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
             if (ld)
                 undo_swap();                            /* (the copy from its first load) */
             lys.loaded = 0;
-            if (eqa_put_back() && !ld)                  /* (the quick actions: the lanes' mutes) */
-                ui_message("MUTES PUT BACK");
+            if (eqa_put_back() && !ld)                  /* (the quick actions' state) */
+                ui_message("PUT BACK");
         } else if (lys.l == LAYER_GLO) {
             for (k = 0; k < NTRK; k++) {
                 trk[k].p[P_MUTE] = lys.glo_mute[k];
@@ -661,7 +645,7 @@ static uint32_t layer_leds(uint32_t *br)
             can = p < NENG_SHOWN && p < LY_INIT ? 1u : p == LY_INIT;
         } else if (l == LAYER_EDIT && LY_INIT_BK && p == LY_INIT_P) {   /* (16 engines: INIT breathes on F#5) */
             can = 1;
-        } else if (l == LAYER_EDIT && (a = eqa_of(TSEL, p)) != 0) {   /* the quick actions: on lit (DRUM: sounding), */
+        } else if (l == LAYER_EDIT && (a = eqa_of(TSEL, p)) != 0) {   /* the quick actions: on lit, */
             on = a->on(TSEL, a->arg) != 0u;             /* a HOLD one off breathes, none dark */
             can = a->kind == LK_HOLD;
         }

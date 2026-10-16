@@ -1167,7 +1167,7 @@ static void demo2(const char *dir, int src, int m, int size)
         for (i = 0; i < 16u; i++)
             put_step(tr, i, PL[i] ? 1u : 0u, &PL[i], PL[i] ? ST_NOTE : ST_REST, 0);
     } else if (src == 2) {
-        host_preset(tr, ENGI_VECTOR, 0);                              /* FM6 TINE EP */
+        host_preset(tr, ENGI_BLISS, 0);                               /* BLISS's E.PIANO */
         for (i = 0; i < 16u; i++) {
             if (i % 4u == 0u)
                 put_step(tr, i, 3, CH[i / 4u], ST_NOTE, 0);

@@ -41,8 +41,6 @@ static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCER
 static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL"};   /* G_DTYPE: the delay bus's (fx.c
                                                                    * dly_tape; PING, DUAL: Blue Hare's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
-static const char *const N_SLCR[] = {"OFF", "GATE", "STUT"};             /* SL_OFF .. SL_STUT (slicer.c) */
-static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"};   /* SL_DEN */
 /* modulation matrix (mod.c): sources, destinations (E1..E8 = P_E0..P_E7: shown with the engine's labels).
  * Append-only (stored values keep their meaning): S&H SLEW and DEPTH (#132) came after EXPR and E8 */
 static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"};
@@ -52,9 +50,11 @@ static const char *const N_ENGNAME[EID_COUNT] = {   /* by id (G_ENGSEL); "-": a 
     [0] = "-", [1] = "-", [2] = "-", [3] = "-", [4] = "-", [5] = "-", [6] = "-", [7] = "-", [8] = "-", [9] = "-",
     [10] = "-", [11] = "-", [12] = "-", [13] = "-", [27] = "-",   /* (retired: core.h EID_RETIRED) */
 #define ENGINE(N, id, sub) [EID_##N] = BLUEHARE_ENG_##N ? #N : "-",
+#define ARCHIVED(N, id) [id] = "-",
 #include "engine_ids.h"
+#undef ARCHIVED
 #undef ENGINE
-};   /* (engines.c ENGINES[]; "-": not built) */
+};   /* (engines.c ENGINES[]; "-": not built, or archived) */
 
 #define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}
 #define PE(l, n, df) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n, 0}
@@ -106,10 +106,10 @@ static const param_desc_t TP[P_COUNT] = {
     [P_DETUNE] = PD("DTUNE", F_INT, 0, 127, 40),
     [P_PAN] = PD("PAN", F_BIPCT, -64, 63, 0),
     [P_MUTE] = PE("MUTE", N_ONOFF, 0),
-    [P_SLCR] = PE("SLCR", N_SLCR, 0),
-    [P_SLPAT] = PD("PAT", F_INT, 1, 16, 1),        /* SL_PAT[] */
-    [P_SLRATE] = PE("RATE", N_SLDIV, 1),
-    [P_SLDEPTH] = PD("DEPTH", F_PCT, 0, 127, 127),
+    [P_RSV33] = PD("-", F_INT, 0, 0, 0),              /* (33 .. 36: the SLICER's until 2026-10-16; inert) */
+    [P_RSV34] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV35] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV36] = PD("-", F_INT, 0, 0, 0),
 #define MSLOT(k) [P_M##k##SRC] = PE("SRC" #k, N_MSRC, 0), [P_M##k##DST] = PE("DST" #k, N_MDST, 0), \
                  [P_M##k##AMT] = PD("AMT" #k, F_BIPCT, -64, 63, 0)
     MSLOT(1), MSLOT(2), MSLOT(3), MSLOT(4),
@@ -126,11 +126,14 @@ static const param_desc_t TP[P_COUNT] = {
 #undef FMOP
     [P_CHRD] = PE("CHRD", N_CHRD, 0),
     [P_VOIC] = PE("VOIC", N_VOIC, 0),
-/* the DRUM engine's lane levels (KIT; once DRUM, #97): 100 % = the kit as designed (the sound before 1.1) */
-#define LANE(k, l) [P_LN0 + (k)] = PD(l, F_PCT, 0, 127, 127)
-    LANE(0, "KICK"), LANE(1, "SNARE"), LANE(2, "CLAP"), LANE(3, "HATCL"),
-    LANE(4, "HATOP"), LANE(5, "TOM"), LANE(6, "RIM"), LANE(7, "BELL"),
-#undef LANE
+    [P_RSV25] = PD("-", F_INT, 0, 0, 0),              /* (25 .. 32: the kits' lane levels until 2026-10-16; inert) */
+    [P_RSV26] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV27] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV28] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV29] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV30] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV31] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV32] = PD("-", F_INT, 0, 0, 0),
     [P_LSYNC] = PE("SYNC", N_LSYNC, 0),
     [P_LTRIG] = PE("TRIG", N_LTRIG, 0),
     [P_LPOL] = PE("POL", N_LPOL, 0),
@@ -202,13 +205,12 @@ static int32_t param_oct(uint32_t id, int32_t v) { return id == P_OCT && (v < -4
 static int32_t param_fit(const param_desc_t *d, int32_t v) { return clamp(v, d->min, d->max); }
 
 /* #48: the note divisions in the order of their length, longest first (triplets between their neighbours), on the
- * knobs and the gauges; the stored values (N_DIV, N_SLDIV indices: projects, presets, the editor protocol) stay.
+ * knobs and the gauges; the stored values (N_DIV indices: projects, presets, the editor protocol) stay.
  * -> the shown order of d's values (index: position, entry: value), 0 = the values' own order */
 static const uint8_t DIV_ORDER[10] = {9, 8, 7, 6, 0, 1, 4, 2, 5, 3};   /* 4BAR 2BAR 1/1 1/2 1/4 1/8 8T 1/16 16T 1/32 */
-static const uint8_t SLDIV_ORDER[6] = {0, 3, 1, 4, 2, 5};              /* 1/8 8T 1/16 16T 1/32 32T */
 static const uint8_t *enum_order(const param_desc_t *d)
 {
-    return d->names == N_DIV ? DIV_ORDER : d->names == N_SLDIV ? SLDIV_ORDER : 0;
+    return d->names == N_DIV ? DIV_ORDER : 0;
 }
 static int32_t enum_rank(const param_desc_t *d, int32_t v)   /* v's place in the shown order (+ min): the gauges */
 {
@@ -343,7 +345,7 @@ enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE,
        FAM_COUNT };
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_TRK };   /* SC_TRK: the TRACKS page (ui_input.c tracks_edit) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
-       GR_SLCR, GR_MOD, GR_TOOLS, GR_CHORD,
+       GR_MOD, GR_TOOLS, GR_CHORD,
        GR_TODO };                  /* (GR_TODO: SEQ's placeholder, ui_draw.c draw_todo) */
 
 typedef struct {
@@ -360,7 +362,6 @@ static const page_t PAGES[] = {
     {"LFO DEST", FAM_LFO, SC_TRACK, GR_NONE, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
     {"MOD", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},   /* KNOB 1: the slot (mod_ui_slot) */
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
-    {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},
     {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
     {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN (Blue Hare) */
     {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL / GATED */
@@ -369,8 +370,6 @@ static const page_t PAGES[] = {
     {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, 0xFF, 0xFF}},   /* SCL again: the chord keys (chord.c) */
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},
     {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E4, P_E5, P_E6, P_E7}},
-    {"LANES", FAM_EDIT, SC_TRACK, GR_NONE, {P_LN0, P_LN1, P_LN2, P_LN3}},   /* DRUM only: the lane levels */
-    {"LANES 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_LN4, P_LN5, P_LN6, P_LN7}},
     {"VOICE", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_GLIDE, P_GLMODE, P_PRIO}},
     {"VOICE 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_ALLOC, P_DETUNE, P_PAN, P_MUTE}},
     {"VOICE 3", FAM_EDIT, SC_TRACK, GR_NONE, {P_SPRD, P_OCT, 0xFF, 0xFF}},   /* #148: SPREAD; OCT (Blue Hare) */

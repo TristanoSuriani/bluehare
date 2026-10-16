@@ -48,8 +48,6 @@ static int controls_test(void)
     bad += check("Reset Controllers centres bend and preserves RPN sensitivity", !midi_bend_target[0] && midi_ch[0].semis == 12 && gate_note(t, 60));
     queued(0xB0, 1, 87, 1); queued(0xB0, 11, 23, 1); queued(0xD0, 90, 0, 1);
     bad += check("existing modwheel/expression/aftertouch stay routed to the track", t->mw == 87 && t->ex_off == 104 && t->at == 90);
-    queued(0xE3, 127, 127, 1);
-    bad += check("drum track ignores pitch bend", !midi_bend_target[3]);
     return bad;
 }
 static int sustain_test(void)
@@ -63,8 +61,6 @@ static int sustain_test(void)
     bad += check("All Notes Off honours sustain rather than hard-killing", gate_note(t, 62) && (midi_notes[0][62] & MIDI_PEDAL_NOTE));
     queued(0xB0, 121, 0, 1);
     bad += check("Reset Controllers releases pedal-held notes", !gate_note(t, 62) && !midi_notes[0][62]);
-    queued(0x93, 36, 100, 1); queued(0xB3, 64, 127, 1); queued(0x83, 36, 0, 1);
-    bad += check("drum note-offs do not accumulate pedal-held owners", !midi_notes[3][36] && !midi_owners[3]);
     queued(0x90, 67, 100, 1); queued(0xB0, 64, 127, 1); queued(0x80, 67, 0, 1); queued(0xB0, 120, 0, 1);
     bad += check("All Sound Off ignores pedal and discards all track ownership", !midi_notes[0][67] && !midi_owners[0] && !gate_note(t, 67));
     return bad;
@@ -314,8 +310,8 @@ static int cc_map_test(void)
     };
     int bad = 0, ok = 1; uint32_t i, e; int16_t before[P_COUNT];
     midi_test_reset();
-    bad += check("power-on parts: SID, VOSIM, SID, KIT", trk[0].eng_req == ENGI_SID && trk[1].eng_req == ENGI_VOSIM &&
-                 trk[2].eng_req == ENGI_SID && trk[3].eng_req == ENGI_KIT);
+    bad += check("power-on parts (ui_test.c UT_DEF): SID, BLISS, SID, MODAL", trk[0].eng_req == ENGI_SID &&
+                 trk[1].eng_req == ENGI_BLISS && trk[2].eng_req == ENGI_SID && trk[3].eng_req == ENGI_MODAL);
     for (i = 0; i < NELEM(COMMON); i++) {
         queued(0xB0, COMMON[i].cc, 127, 1);
         ok &= trk[0].p[COMMON[i].id] == TP[COMMON[i].id].max;

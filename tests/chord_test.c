@@ -4,8 +4,8 @@
 /* Chord keys (firmware/src/chord.c; SCL > CHORD: CHRD, VOIC) against the real keyboard, MIDI IN and voice
  * code: the diatonic triads and sevenths of several scales and roots as music theory has them, the
  * fixed shapes, the voicings, at most 4 notes, the names, MONO plays the root, a key's or a MIDI note's release
- * ends exactly the notes it started (CHRD / VOIC changed while held too), shared notes, QNT WHITE maps the key first, a kit (the DRUM engine)
- * ignores CHRD, MIDI OUT of the keys, and OFF plays exactly as before.
+ * ends exactly the notes it started (CHRD / VOIC changed while held too), shared notes, QNT WHITE maps the key first,
+ * MIDI OUT of the keys, and OFF plays exactly as before.
  * Run by tests/run_tests.sh (needs build/gen from one firmware build). */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
@@ -257,28 +257,9 @@ static int midi_in(void)
     return bad;
 }
 
-static int kits(void)
-{
-    int bad = 0;
-    track_t *d = &trk[3];
-    uint8_t out[CHORD_MAX];
-    reset();
-    song.sel = 3;                                                  /* the DRUM track */
-    d->p[P_CHRD] = CH_DIA7;
-    key_down(K_C4);
-    bad += check("DRUM: CHRD ignored (one hit per key)", chord_build(d, 36, out) == 1u && out[0] == 36 &&
-                 kb_chn[K_C4] == 1u && mo_w == 1u);
-    key_up(K_C4);
-    midi(0x93, 38, 100);
-    bad += check("  MIDI IN on the DRUM track: one hit, no chord kept", !mchord[0].id);
-    midi(0x83, 38, 0);
-    song.sel = 0;
-    return bad;
-}
-
 int main(void)
 {
-    int bad = theory() + shapes_voicings() + keys() + midi_in() + kits();
+    int bad = theory() + shapes_voicings() + keys() + midi_in();
     printf("%s\n", bad ? "CHORD TEST FAILED" : "chord keys test passed");
     return bad != 0;
 }

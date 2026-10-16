@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Blue Hare UI: the panel (Y_GRAPH .. Y_GRAPH + H_GRAPH) between the cards and the footer: a SURF area
- * (rounded, on BG) holding the page graphs (ADSR, LFO, scale, FX, SLICER, MOD, lists: presets, user presets, the
+ * (rounded, on BG) holding the page graphs (ADSR, LFO, scale, FX, MOD, lists: presets, user presets, the
  * song store), the HOME oscilloscope, the
  * instrument diagrams; the MIXER page draws four SURF columns instead. Each graph is redrawn only when
  * graph_signature() changes. The look:
@@ -67,9 +67,6 @@ static void graph_lfo(const track_t *t, uint16_t c)
     }
 }
 
-/* bar x of step i of a 16-step row (the SLICER's): 4 groups (9 px bars, 13 px apart, 4 px between groups), the row
- * centred: x 12 .. 228 */
-static int32_t bar_x(uint32_t i) { return 12 + (int32_t)(i % 16u) * 13 + (int32_t)(i % 16u / 4u) * 4; }
 
 /* SCL: the 12 keys as rounded bars (black keys high, white keys low): in the scale THEME, the root the
  * accent, out of the scale RAISE */
@@ -145,30 +142,6 @@ static void graph_fx(const track_t *t, uint16_t c)
         if (h > 3)
             cv_rrect(x, 88 - h, 4, h, 2, c, T_RAISE);
         cv_rrect(x - 4, 85 - h, 12, 6, 3, c, T_SURF);
-    }
-}
-/* SLICER page: the pattern's 16 steps, a 'x' step a full bar; a '.' step: GATE a bar as high as it stays
- * open (DEPTH), STUT hatched (it repeats the last 'x'); the step playing underlined. Grey when OFF, and STUT on
- * tracks 5 .. 8 (TRACKS 8: no recording there, it plays live: slicer.c SL_BUFS) */
-static void graph_slicer(const track_t *t, uint16_t c)
-{
-    uint32_t i, pat = sl_pattern(t), mode = (uint32_t)t->p[P_SLCR], cur = sl[t - trk].idx;
-    int32_t open = 70 - t->p[P_SLDEPTH] * 70 / 127;      /* px a closed GATE step keeps */
-    uint16_t col = mode == SL_OFF || (mode == SL_STUT && (uint32_t)(t - trk) >= SL_BUFS) ? T_DIM : c;
-    for (i = 0; i < 16u; i++) {
-        int32_t x = bar_x(i), y;
-        if ((pat >> i) & 1u) {
-            cv_rrect(x, 8, 9, 72, 2, mode == SL_OFF ? T_RAISE : col, T_SURF);
-        } else if (mode == SL_STUT) {
-            for (y = 8; y < 80; y += 4)
-                cv_rect(x, y, 9, 1, col);
-        } else {
-            cv_rrect(x, 77, 9, 3, 1, T_RAISE, T_SURF);
-            if (open > 3)
-                cv_rrect(x, 80 - open, 9, open, 2, T_RAISE, T_SURF);
-        }
-        if (mode != SL_OFF && i == cur)
-            cv_rect(x, 84, 9, 2, T_ACCENT);
     }
 }
 /* MOD page: the four slots as rows "1 LFO > CUT +50%" (M, a list's rows: the source to x 78, the arrow 84..98, the
@@ -317,8 +290,6 @@ static uint32_t graph_signature(void)
     }
     if (pg->graph == GR_MOD)
         h ^= (mod_ui_slot + 1u) * 40503u;
-    if (pg->graph == GR_SLCR && t->p[P_SLCR])        /* the SLICER's step playing */
-        h ^= (sl[song.sel].idx + 1u) * 2654435761u;
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < 4u; i++)
             h ^= (uint32_t)graph_project_used(i) << (20u + i);
@@ -849,9 +820,6 @@ static void draw_graph(void)
             break;
         case GR_FX:
             graph_fx(t, c);
-            break;
-        case GR_SLCR:
-            graph_slicer(t, c);
             break;
         case GR_MOD:
             cv_oy = 0;

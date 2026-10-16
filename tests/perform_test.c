@@ -3,12 +3,11 @@
  * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Host test of the FX hold layer's effects (firmware/src/perform.c), same sources as the firmware (through
  * hostsim.c).   build/host/perform_test [DEMO_DIR]          (run_tests.sh: build/perform_demo)
- * 1. timing: REPEAT and REVERSE start on the next 1/16 of the transport (sample exact) and end when let go
- *    (the live signal back, bit for bit, after the 2.9 ms ramp); the others start at once.
- * 2. stereo: REPEAT, REVERSE, TAPE STOP and FREEZE keep left and right apart (a silent right channel stays
- *    silent; each side follows its own input).
- * 3. a REPEAT too long for the loop (1/8 and REVERSE below 81 BPM) does nothing at all.
- * 4. the SLICER: its recordings are not used meanwhile and are dropped afterwards.
+ * 1. timing: every effect starts at once and ends when let go (the live signal back, bit for bit, after the 2.9 ms
+ *    ramp).
+ * 2. stereo: FREEZE keeps left and right apart (a silent right channel stays silent; each side follows its own input).
+ * 3. the archived effects (REPEAT 1/8 1/16 1/32, REVERSE, TAPE STOP, 2026-10-16): a key holding one does nothing.
+ * 4. (the SLICER's buffer borrowed: gone with the SLICER, archived 2026-10-16.)
  * 5. the keys: a layer key plays nothing and sends no MIDI; a key held before FX stays a note; the white
  *    keys past the first 10 (B4 .. G5, none in the default map) are the layer's too but do nothing.
  * 6. idle: nothing held, nothing ramping, the mix is bit-identical (and the goldens of regress.c too).
@@ -22,11 +21,11 @@
  *    sound): its strongest line within one spacing of 2x / 0.5x. A silent side stays silent; no click in or out on a 110 Hz sine and the live signal back bit for bit
  *    after the ramp; the shimmer (KNOB 4 at 100, 0.82) on 4x full-scale square waves stays bounded and dies
  *    away after the input stops; KNOB 4 at 0 is plain (the delay holds only the input); the cost: over the
- *    idle song, and the harmonizer's own over REPEAT 1/16 alone (the layer's stage, which every effect of it
+ *    idle song, and the harmonizer's own over FREEZE alone (the layer's stage, which every buffer effect of it
  *    pays): about 2 % at most (device estimate: 1.7 % per 100 instructions per sample).
  * 10. (Felucca 1.2's FLANGER and PHASER: gone in Blue Hare.)
  * 11. the key map (perform.c perf_map_of / perf_map_put, seq.c): 0 = the default; any effect or NONE on any key, the
- *    others kept; the codes of the retired FLANGER and PHASER read as the default; the keys of a remapped layer; a
+ *    others kept; the codes of the retired FLANGER and PHASER read as the default, the archived ones as none; the keys of a remapped layer; a
  *    key remapped while held takes its new effect; two keys with one effect; FX LATCH follows a remap; the default
  *    map on the keys.
  * Demos (WAV) into DEMO_DIR; with a second directory, the harmonizer's (a melody with OCT UP, OCT DN, and
@@ -67,9 +66,9 @@ static void perf_reset(void)
     perf_kill = 0;
     memcpy((void *)perf_map, PF_DEF, sizeof PF_DEF);
     memset((void *)perf_k, 0, sizeof perf_k);
-    sl_lent = 0;
-    memset(sl, 0, sizeof sl);
 }
+/* the code an effect is stored and read back as: an archived one none */
+static uint32_t live(uint32_t e) { return e < PF_NFX && ((PF_GONE >> e) & 1u) ? PF_N : e; }
 /* the stage alone on the test signal: samples [t0, t1); ev: press (+e + 1) / let go (-(e + 1)) at block bt */
 typedef struct { uint32_t t; int e; } ev_t;
 static int busy_seen;
@@ -84,7 +83,6 @@ static void run(uint32_t bpm, int playing, const ev_t *ev, uint32_t nev, uint32_
     perf_k[3] = run_k4;
     song.g[G_BPM] = (int16_t)bpm;
     song.playing = (uint8_t)playing;
-    perf_start();
     busy_seen = 0;
     for (t = 0; t < t1; t += CTL) {
         while (k < nev && ev[k].t <= t) {
@@ -134,47 +132,20 @@ static int32_t peak(const int32_t *x, uint32_t a, uint32_t b)
 static int test_timing(void)
 {
     int bad = 0;
-    char what[160];
     test_signal(440, 12000, 277, 9000);
-    {   /* REPEAT 1/16: pressed mid-1/16, records the next 1/16, then loops it */
-        ev_t ev[] = {{992, PF_R16 + 1}, {20000, -(PF_R16 + 1)}};
-        int32_t el, er, el2;
+    {   /* FREEZE: at once, playing or not; let go: live again */
+        ev_t ev[] = {{992, PF_FRZ + 1}, {20000, -(PF_FRZ + 1)}};
         run(120, 1, ev, 2, 40000);
-        shift_d = P16;
-        el = err_vs(2 * P16 + 160, 3 * P16 - 160, delayed, 0);
-        er = err_vs(2 * P16 + 160, 3 * P16 - 160, delayed, 1);
-        shift_d = 2 * P16;
-        el2 = err_vs(3 * P16 + 160, 20000 - 160, delayed, 0);
-        snprintf(what, sizeof what, "REPEAT 1/16: live until the 1/16 after the press + one 1/16 (exact)");
-        bad += check(what, same(0, 2 * P16));
-        snprintf(what, sizeof what, "  then the 1/16 from that 1/16, looped (error L %d R %d, 2nd pass %d of 12000)", el, er, el2);
-        bad += check(what, el < 100 && er < 100 && el2 < 100);
+        bad += check("FREEZE starts at once", same(0, 992) && !same(992, 20000));
         bad += check("  let go: the live signal again after the ramp, bit for bit", same(20000 + 160, 40000));
-        bad += check("  the buffer given back, nothing left running", !sl_lent && pf.mode == BM_NONE && !pf.busy);
-    }
-    {   /* REVERSE: the next 1/8 recorded, then played backwards */
-        ev_t ev[] = {{992, PF_REV + 1}, {40000, -(PF_REV + 1)}};
-        int32_t el, er;
-        run(120, 1, ev, 2, 50000);
-        rev_a = P16;
-        rev_len = 11025;
-        rev_t0 = P16 + rev_len;
-        el = err_vs(rev_t0 + 160, rev_t0 + rev_len - 160, reversed, 0);
-        er = err_vs(rev_t0 + 160, rev_t0 + rev_len - 160, reversed, 1);
-        bad += check("REVERSE: live until the 1/16 after the press + a 1/8 (exact)", same(0, rev_t0));
-        snprintf(what, sizeof what, "  then that 1/8 backwards (error L %d R %d of 12000)", el, er);
-        bad += check(what, el < 100 && er < 100);
-        bad += check("  let go: live again", same(40000 + 160, 50000));
-    }
-    {   /* stopped: at once */
-        ev_t ev[] = {{992, PF_R16 + 1}};
-        run(120, 0, ev, 1, 12000);
-        bad += check("stopped: a 1/16 effect starts at once", (perf_act & PF_BIT(PF_R16)) && !same(992, 12000));
+        bad += check("  the buffer given back, nothing left running", pf.mode == BM_NONE && !pf.busy);
+        run(120, 0, ev, 2, 40000);
+        bad += check("  stopped: the same", same(0, 992) && !same(992, 20000) && same(20000 + 160, 40000));
     }
     {   /* the immediate ones: LPF moves at once */
         ev_t ev[] = {{992, PF_LPF + 1}};
         run(120, 1, ev, 1, 3000);
-        bad += check("LPF starts at once (not on the 1/16)", same(0, 992) && !same(992, 3000));
+        bad += check("LPF starts at once", same(0, 992) && !same(992, 3000));
     }
     return bad;
 }
@@ -182,25 +153,24 @@ static int test_timing(void)
 /* ------------------------------------------------------------ 2. stereo --- */
 static int test_stereo(void)
 {
-    static const struct { const char *name; int e; } C[] = {
-        {"REPEAT 1/8", PF_R8}, {"REVERSE", PF_REV}, {"TAPE STOP", PF_TAPE}, {"FREEZE", PF_FRZ}};
+    static const struct { const char *name; int e; } C[] = {{"FREEZE", PF_FRZ}};
     uint32_t c;
     int bad = 0;
     char what[160];
-    for (c = 0; c < 4u; c++) {
+    for (c = 0; c < sizeof C / sizeof C[0]; c++) {
         ev_t ev[] = {{992, C[c].e + 1}, {60000, -(C[c].e + 1)}};
         int32_t pl, pr;
         double cl = 0, cr = 0, nl = 0, nr = 0;
         uint32_t t;
         test_signal(440, 12000, 0, 0);                    /* the right side silent */
         run(120, 1, ev, 2, 70000);
-        pl = C[c].e == PF_TAPE ? peak(out_l, 2000, 12000) : peak(out_l, 30000, 60000);
+        pl = peak(out_l, 30000, 60000);
         pr = peak(out_r, 0, 70000);
         snprintf(what, sizeof what, "%s: a silent right side stays silent (L %d, R %d)", C[c].name, pl, pr);
         bad += check(what, pr == 0 && pl > 3000);
         test_signal(440, 12000, 3 * 440, 12000);          /* each side its own pitch */
         run(120, 1, ev, 2, 70000);
-        for (t = C[c].e == PF_TAPE ? 1100u : 30000u; t < (C[c].e == PF_TAPE ? 2600u : 50000u); t++) {
+        for (t = 30000u; t < 50000u; t++) {
             cl += (double)out_l[t] * out_l[t - 1];
             nl += (double)out_l[t] * out_l[t];
             cr += (double)out_r[t] * out_r[t - 1];
@@ -222,62 +192,22 @@ static int test_stereo(void)
                  peak(out_r, 20000, 60000));
         bad += check(what, peak(out_l, 20000, 60000) > 6000 && peak(out_r, 20000, 60000) > 4000 && same(60000 + 160, 70000));
     }
-    {   /* TAPE STOP: slower, then silent within its beat */
-        ev_t ev[] = {{992, PF_TAPE + 1}, {50016, -(PF_TAPE + 1)}};
-        test_signal(440, 12000, 330, 9000);
-        run(120, 1, ev, 2, 60000);
-        snprintf(what, sizeof what, "TAPE STOP: silent a beat after the press (peak %d), live again after", peak(out_l, 992 + 22050 + 64, 50016));
-        bad += check(what, peak(out_l, 992 + 22050 + 64, 50016) == 0 && peak(out_r, 992 + 22050 + 64, 50016) == 0 &&
-                           same(50016 + 160, 60000));
-    }
     return bad;
 }
 
-/* -------------------------------------------------------- 3. too long --- */
-static int test_too_long(void)
+/* -------------------------------------------------------- 3. archived --- */
+static int test_archived(void)
 {
-    int bad = 0;
-    ev_t ev[] = {{992, PF_R8 + 1}, {40000, -(PF_R8 + 1)}};
+    static const int GONE[5] = {PF_R8, PF_R16, PF_R32, PF_REV, PF_TAPE};
+    uint32_t c;
+    int ok = 1;
     test_signal(440, 12000, 277, 9000);
-    run(72, 1, ev, 2, 50000);
-    bad += check("REPEAT 1/8 at 72 BPM (417 ms, the loop holds 371): nothing happens, bit for bit",
-                 same(0, 50000) && !busy_seen && !sl_lent && !(perf_avail() & PF_BIT(PF_R8)));
-    run(120, 1, ev, 2, 50000);
-    bad += check("REPEAT 1/8 at 120 BPM (250 ms): it plays", !same(0, 40000) && (perf_avail() & PF_BIT(PF_R8)));
-    song.g[G_BPM] = 81;
-    bad += check("  REPEAT 1/8 and REVERSE (1/8) fit from 81 BPM, 1/16 from 41",
-                 (perf_avail() & PF_BIT(PF_R8) && perf_avail() & PF_BIT(PF_REV)) &&
-                 (song.g[G_BPM] = 80, !(perf_avail() & PF_BIT(PF_R8)) && !(perf_avail() & PF_BIT(PF_REV))) &&
-                 (song.g[G_BPM] = 41, perf_avail() & PF_BIT(PF_R16)) &&
-                 (song.g[G_BPM] = 40, !(perf_avail() & PF_BIT(PF_R16))));
-    {   /* a REPEAT held while the tempo slows past its fit stops cleanly */
-        uint32_t t;
-        int32_t mx = 0;
-        host_tracks_init();
-        perf_reset();
-        song.g[G_BPM] = 120;
-        song.playing = 1;
-        perf_start();
-        test_signal(110, 12000, 110, 12000);
-        perf_press(PF_R8, 1);
-        for (t = 0; t < 120000u; t += CTL) {
-            uint32_t i;
-            if (t == 60000u)
-                song.g[G_BPM] = 72;
-            memcpy(out_l + t % NT, in_l + t % NT, CTL * 4);
-            memcpy(out_r + t % NT, in_r + t % NT, CTL * 4);
-            if (perf_begin(CTL))
-                perf_block(out_l + t % NT, out_r + t % NT, CTL);
-            for (i = 1; i < CTL && t > 1000u; i++) {
-                int32_t d = abs(out_l[t % NT + i] - out_l[t % NT + i - 1]);
-                mx = d > mx ? d : mx;
-            }
-        }
-        perf_press(PF_R8, 0);
-        bad += check("  a REPEAT 1/8 held while the tempo drops below its fit: it ends, no click",
-                     pf.mode == BM_NONE && !sl_lent && mx < 4 * 190);
+    for (c = 0; c < 5u; c++) {
+        ev_t ev[] = {{992, GONE[c] + 1}, {40000, -(GONE[c] + 1)}};
+        run(120, 1, ev, 2, 50000);
+        ok &= same(0, 50000) && !busy_seen && !perf_held && !(perf_avail() & PF_BIT(GONE[c])) && live((uint32_t)GONE[c]) == PF_N;
     }
-    return bad;
+    return check("archived REPEAT 1/8 1/16 1/32, REVERSE, TAPE STOP: a key holding one does nothing, bit for bit", ok);
 }
 
 /* ------------------------------------------------------------ the song --- */
@@ -290,10 +220,11 @@ static void song_setup(void)
     memset(trk, 0, sizeof trk);
     host_tracks_init();
     perf_reset();
+    song.playing = 0;                              /* (a test before may leave the transport running) */
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, ENGI_VECTOR, 4);                  /* FM6 PAD */
-    host_drums(td);                                /* DRUM KIT */
+    host_preset(t2, ENGI_BLISS, 4);                   /* BLISS's GLASS BELL */
+    host_drums(td);                                /* hostsim's drums */
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i], d[4], k = 0;
         put_step(t1, i, n ? 1u : 0u, &n, n ? ST_NOTE : ST_REST, 0);
@@ -326,46 +257,11 @@ static void song_render(uint32_t frames, void (*at)(uint32_t t))
     mix_block(o, CTL);
 }
 
-/* ------------------------------------------------------------ 4. SLICER --- */
-static int slicer_ok;
-static void stut_at(uint32_t t)
-{
-    uint32_t k;
-    if (t == 44032u)
-        perf_press(PF_R16, 1);
-    if (t > 50000u && t < 80000u)
-        for (k = 0; k < NTRK; k++)
-            if (sl[k].rec_on || sl[k].loop)
-                slicer_ok = 0;
-    if (t > 50000u && t < 80000u && !sl_lent)
-        slicer_ok = 0;
-    if (t == 80000u)
-        perf_press(PF_R16, 0);
-    if (t == 80000u + 320u)
-        for (k = 0; k < NTRK; k++)
-            if (sl_lent || sl[k].rec || sl[k].loop)
-                slicer_ok = 0;
-}
-static int test_slicer(void)
-{
-    uint32_t k;
-    song_setup();
-    for (k = 0; k < NTRK; k++) {
-        trk[k].p[P_SLCR] = SL_STUT;
-        trk[k].p[P_SLPAT] = 1;
-        trk[k].p[P_SLRATE] = 1;
-        trk[k].p[P_SLDEPTH] = 127;
-    }
-    slicer_ok = 1;
-    song_render(120000, stut_at);
-    return check("SLICER STUT: live (no recording, no repeat) while REPEAT has the buffer, dropped after", slicer_ok);
-}
-
 /* -------------------------------------------------------------- 5. keys --- */
 static int test_keys(void)
 {
     int bad = 0;
-    uint32_t mo0, fx = 1u << 3, k = 9;              /* (a button bit for FX; key 9: a white key, D4) */
+    uint32_t mo0, fx = 1u << 3, k = 7;              /* (a button bit for FX; key 7: a white key, C4) */
     song_setup();
     usb.config = 1;
     mo_r = mo_w = 0;
@@ -416,8 +312,8 @@ static int test_keys(void)
             ok &= !kb_layer && !perf_held && mo_w == mo0;
         }
         fm1_in.buttons = 0;
-        bad += check("the keys without an effect (6 white from B4, 7 black from D#4): silent, nothing held",
-                     ok && assigned == 0x15BFFu);   /* F3 .. A4 but D#4 F#4 G#4 */
+        bad += check("the keys without an effect (11 white from D4, 7 black from D#4): silent, nothing held",
+                     ok && assigned == 0x1FFu);     /* F3 .. C4 */
         kb_mask = perf_mask = 0;
     }
     usb.config = 0;
@@ -458,10 +354,10 @@ static int test_idle(void)
     {   /* after an effect: once its ramps are over, the stage is skipped again */
         uint32_t f;
         int32_t o[2 * CTL];
-        perf_press(PF_R16, 1);
+        perf_press(PF_FRZ, 1);
         for (f = 0; f < FS; f += CTL)
             mix_block(o, CTL);
-        perf_press(PF_R16, 0);
+        perf_press(PF_FRZ, 0);
         for (f = 0; f < 512u; f += CTL)
             mix_block(o, CTL);
         bad += check("  after an effect is let go and its ramp is over: skipped again", !pf.busy && !perf_begin(CTL));
@@ -475,9 +371,7 @@ static int test_misc(void)
     int bad = 0;
     char what[160];
     static const struct { const char *name; int e; uint32_t off; } C[] = {
-        {"REPEAT 1/8", PF_R8, 30000}, {"REPEAT 1/16", PF_R16, 30000}, {"REPEAT 1/32", PF_R32, 30000},
-        {"REVERSE", PF_REV, 50000}, {"TAPE STOP", PF_TAPE, 30016}, {"FREEZE", PF_FRZ, 30016}, {"LPF", PF_LPF, 60000},
-        {"HPF", PF_HPF, 60000}};
+        {"FREEZE", PF_FRZ, 30016}, {"LPF", PF_LPF, 60000}, {"HPF", PF_HPF, 60000}};
     uint32_t c, t;
     int32_t own;
     test_signal(110, 16000, 110, 16000);
@@ -511,22 +405,21 @@ static int test_misc(void)
             in_r[t] = (t / 53u) & 1u ? 120000 : -120000;
         }
         {
-            ev_t e2[] = {{0, PF_LPF + 1}, {0, PF_HPF + 1}, {0, PF_R16 + 1}};
+            ev_t e2[] = {{0, PF_LPF + 1}, {0, PF_HPF + 1}, {0, PF_FRZ + 1}};
             run_crush = 100;
             run(120, 1, e2, 3, 100000);
             run_crush = 0;
-            snprintf(what, sizeof what, "4x full scale through LPF + HPF + KNOB 2 CRUSH + REPEAT: peak %d (no wrap)",
+            snprintf(what, sizeof what, "4x full scale through LPF + HPF + KNOB 2 CRUSH + FREEZE: peak %d (no wrap)",
                      peak(out_l, 0, 100000) > peak(out_r, 0, 100000) ? peak(out_l, 0, 100000) : peak(out_r, 0, 100000));
             bad += check(what, peak(out_l, 0, 100000) < 300000 && peak(out_r, 0, 100000) < 300000);
         }
     }
-    {   /* KNOB 1 left: a low-pass at once; KNOB 4: the REPEAT's level */
+    {   /* KNOB 1 left: a low-pass at once */
         test_signal(5000, 30000, 5000, 30000);
         host_tracks_init();
         perf_reset();
         song.g[G_BPM] = 120;
         song.playing = 1;
-        perf_start();
         perf_k[0] = -100;
         for (t = 0; t < 20000u; t += CTL) {
             memcpy(out_l + t, in_l + t, CTL * 4);
@@ -678,7 +571,7 @@ static int test_harm(void)
                  k ? "OCT DN" : "OCT UP", mx, own);
         bad += check(what, mx <= 4 * own);
         bad += check("  back to the live signal, bit for bit; the buffer given back",
-                     same(40000 + 3000, 49000) && !sl_lent && pf.mode == BM_NONE);
+                     same(40000 + 3000, 49000) && pf.mode == BM_NONE);
     }
     {   /* the shimmer at its most: bounded, and it dies away */
         ev_t ev[] = {{0, PF_OUP + 1}};
@@ -703,7 +596,7 @@ static int test_harm(void)
         run(120, 1, ev, 1, 20000);
         for (f = 1; f <= 2048u; f++) {
             uint32_t s = 20000u - f;
-            const int16_t *q = &sl_buf[0][0] + 2u * ((pf.wr - f) & HB_MASK);
+            const int16_t *q = &pb_buf[0][0] + 2u * ((pf.wr - f) & HB_MASK);
             diff += q[0] != (int16_t)(in_l[s] >> 1) || q[1] != (int16_t)(in_r[s] >> 1);
         }
         bad += check("OCT UP, KNOB 4 at 0: no shimmer (the delay holds the input alone)", !diff && !pf.hfb);
@@ -721,8 +614,8 @@ static int test_map(void)
     memset(b, 0, sizeof b);
     for (p = 0; p < PF_KEYS; p++)                       /* all 0 (every setting before 1.2): the default */
         ok &= perf_map_of(b, p) == PF_DEF[p];
-    bad += check("map: settings of 0 (before 1.2) read as the default (1.1.5's ten, 6 none)",
-                 ok && PF_DEF[9] == PF_ODN && PF_DEF[10] == PF_N && PF_DEF[11] == PF_N && PF_DEF[0] == PF_R8);
+    bad += check("map: settings of 0 read as the default (LPF HPF FREEZE OCT UP OCT DN, 11 none)",
+                 ok && PF_DEF[0] == PF_LPF && PF_DEF[4] == PF_ODN && PF_DEF[5] == PF_N && PF_DEF[15] == PF_N);
     ok = 1;
     for (p = 0; p < PF_KEYS; p++)                       /* FLANGER (12), PHASER (13) stored by Felucca 1.2 .. Blue Hare
                                                          * 1.5: the key's default */
@@ -742,21 +635,21 @@ static int test_map(void)
             for (q = 0; q < PF_KEYS; q++)
                 perf_map_put(b, q, (q * 5u + 3u) % (PF_NFX + 1u) < PF_NFX ? (q * 5u + 3u) % (PF_NFX + 1u) : PF_N);
             perf_map_put(b, p, ee);
-            ok &= perf_map_of(b, p) == ee && !b[10] && !b[11];
+            ok &= perf_map_of(b, p) == live(ee) && !b[10] && !b[11];
             for (q = 0; q < PF_KEYS; q++)
                 if (q != p)
-                    ok &= perf_map_of(b, q) == ((q * 5u + 3u) % (PF_NFX + 1u) < PF_NFX ? (q * 5u + 3u) % (PF_NFX + 1u) : PF_N);
+                    ok &= perf_map_of(b, q) == live((q * 5u + 3u) % (PF_NFX + 1u) < PF_NFX ? (q * 5u + 3u) % (PF_NFX + 1u) : PF_N);
         }
     memset(b, 0, sizeof b);
     for (p = 0; p < PF_KEYS; p++) {                     /* each key's default back: 0 again */
-        perf_map_put(b, p, PF_REV);
+        perf_map_put(b, p, PF_FRZ);
         perf_map_put(b, p, PF_DEF[p]);
     }
     for (p = 0; p < 10u; p++)
         ok &= !b[p];
     b[0] = 31;                                          /* an unknown code (a later firmware's effect): the default */
     ok &= perf_map_of(b, 0) == PF_DEF[0];
-    bad += check("map: any effect or NONE on any of the 16 keys, the others kept, 10 bytes; the default stores 0", ok);
+    bad += check("map: any effect or NONE on any of the 16 keys (an archived one: none), the others kept, 10 bytes; the default stores 0", ok);
     {   /* the keys: a rotated map, each white key holds its effect; NONE holds nothing */
         uint32_t fx = 1u << 3, k, white = 0;
         song_setup();
@@ -771,21 +664,22 @@ static int test_map(void)
             fm1_in.buttons = fx;
             fm1_in.notes = 1u << k;
             keyboard_block();
-            ok &= p < PF_NFX ? perf_held == PF_BIT(PF_NFX - 1u - p) : !perf_held;
+            ok &= p < PF_NFX && live(PF_NFX - 1u - p) != PF_N ? perf_held == PF_BIT(PF_NFX - 1u - p) : !perf_held;
             fm1_in.notes = 0;
             keyboard_block();
             ok &= !perf_held && !kb_layer;
             white++;
         }
-        bad += check("keys: a remapped layer (white key p holds effect 9 - p, the last 6 none), all 16 white keys", ok && white == 16u);
+        bad += check("keys: a remapped layer (white key p holds effect 9 - p, an archived one and the last 6 none), all 16 white keys", ok && white == 16u);
         /* remapped while held: the key takes the new effect at once, the old one let go */
+        perf_map[0] = PF_LPF;
         fm1_in.notes = 1u << 0;                         /* F3 */
         keyboard_block();
         ok = perf_held == PF_BIT(perf_map[0]);
-        perf_map[0] = PF_TAPE;
+        perf_map[0] = PF_FRZ;
         perf_remap = 1;
         keyboard_block();
-        ok &= perf_held == PF_BIT(PF_TAPE) && !perf_remap;
+        ok &= perf_held == PF_BIT(PF_FRZ) && !perf_remap;
         perf_map[0] = PF_N;                             /* .. to NONE: nothing held, the key still the layer's */
         perf_remap = 1;
         keyboard_block();
@@ -793,7 +687,7 @@ static int test_map(void)
         fm1_in.notes = 0;
         keyboard_block();
         ok &= !perf_held && !kb_layer;
-        bad += check("  a key remapped while held: its new effect at once (TAPE STOP), then NONE: nothing; let go: clean", ok);
+        bad += check("  a key remapped while held: its new effect at once (FREEZE), then NONE: nothing; let go: clean", ok);
         /* two keys the same effect: it ends with the last let go */
         perf_map[0] = perf_map[1] = PF_LPF;
         fm1_in.notes = 1u << 0 | 1u << 2;               /* F3, G3 */
@@ -831,14 +725,14 @@ static int test_map(void)
         fm1_in.buttons = 0;
         kb_mask = perf_mask = 0;
     }
-    snprintf(what, sizeof what, "map: the default map on the keys: F3 .. A4 as 1.1.5, B4 .. G5 none");
+    snprintf(what, sizeof what, "map: the default map on the keys: F3 .. C4 LPF HPF FREEZE OCT UP OCT DN, D4 .. G5 none");
     {
         uint32_t k;
         ok = 1;
         for (k = 0; k < 27u; k++)
             if (!key_black(k))
                 ok &= perf_key(k) == (key_place(k) < PF_KEYS ? PF_DEF[key_place(k)] : PF_N);
-        ok &= perf_key(18) == PF_N && perf_key(19) == PF_N && perf_key(16) == PF_ODN;
+        ok &= perf_key(18) == PF_N && perf_key(9) == PF_N && perf_key(7) == PF_ODN;
     }
     bad += check(what, ok);
     return bad;
@@ -856,7 +750,7 @@ static uint64_t instr_now(void)
 }
 static double cost_run(int on)
 {
-    static const int ALL[] = {PF_R16, PF_LPF, PF_HPF, PF_M1 + 2};
+    static const int ALL[] = {PF_FRZ, PF_LPF, PF_HPF, PF_M1 + 2};
     static const int HARM[] = {PF_OUP};
     uint32_t f, k;
     uint64_t i0;
@@ -872,8 +766,8 @@ static double cost_run(int on)
     } else if (on == 2 || on == 4) {                /* OCT UP, with the shimmer (2) or plain (4) */
         perf_press((uint32_t)HARM[0], 1);
         perf_k[3] = on == 2 ? 60 : 0;
-    } else if (on == 3) {                           /* REPEAT 1/16 alone: the layer's own cost, for scale */
-        perf_press(PF_R16, 1);
+    } else if (on == 3) {                           /* FREEZE alone: the layer's own cost, for scale */
+        perf_press(PF_FRZ, 1);
     }
     i0 = instr_now();
     for (f = 0; f < 2u * FS; f += CTL)
@@ -893,12 +787,12 @@ static int test_cost(void)
         printf("perform: cost: no instruction counter on this host\n");
         return 0;
     }
-    snprintf(what, sizeof what, "cost: the song %.0f instructions / sample idle, %.0f with REPEAT+LPF+HPF+MUTE, K2 CRUSH, K3 THROW: +%.0f",
+    snprintf(what, sizeof what, "cost: the song %.0f instructions / sample idle, %.0f with FREEZE+LPF+HPF+MUTE, K2 CRUSH, K3 THROW: +%.0f",
              idle, on, on - idle);
     bad = check(what, on - idle < 400);
-    printf("perform: cost: over the idle song: REPEAT 1/16 alone +%.0f (the layer's own stage), OCT UP +%.0f, with the shimmer +%.0f\n",
+    printf("perform: cost: over the idle song: FREEZE alone +%.0f (the layer's own stage), OCT UP +%.0f, with the shimmer +%.0f\n",
            rep - idle, plain - idle, harm - idle);
-    snprintf(what, sizeof what, "  OCT UP over REPEAT 1/16 (the harmonizer itself): +%.0f, with the shimmer +%.0f (device ~%.1f / %.1f %%, about 2 %%)",
+    snprintf(what, sizeof what, "  OCT UP over FREEZE (the harmonizer itself): +%.0f, with the shimmer +%.0f (device ~%.1f / %.1f %%, about 2 %%)",
              plain - rep, harm - rep, (plain - rep) * 0.017, (harm - rep) * 0.017);
     return bad + check(what, (harm - rep) * 0.017 <= 2.2);
 }
@@ -907,10 +801,8 @@ static int test_cost(void)
 static void demo_at(uint32_t t)
 {
     static const struct { uint32_t t; int e; } D[] = {     /* press +(e + 1), let go -(e + 1) */
-        {88192, PF_R8 + 1}, {110080, -(PF_R8 + 1)}, {110080, PF_R16 + 1}, {121088, PF_R32 + 1},
-        {126592, -(PF_R32 + 1)}, {132096, -(PF_R16 + 1)}, {176384, PF_LPF + 1}, {264576, -(PF_LPF + 1)},
-        {264576, PF_HPF + 1}, {308672, -(PF_HPF + 1)}, {308672, PF_REV + 1}, {352768, -(PF_REV + 1)},
-        {352768, PF_TAPE + 1}, {385024, -(PF_TAPE + 1)}, {396800, PF_FRZ + 1}, {440896, -(PF_FRZ + 1)},
+        {176384, PF_LPF + 1}, {264576, -(PF_LPF + 1)}, {264576, PF_HPF + 1}, {308672, -(PF_HPF + 1)},
+        {352768, PF_OUP + 1}, {385024, -(PF_OUP + 1)}, {396800, PF_FRZ + 1}, {440896, -(PF_FRZ + 1)},
         {440896, PF_M1 + 1}, {462848, -(PF_M1 + 1)}};
     uint32_t i;
     if (t == 462848u)
@@ -935,7 +827,7 @@ static void demos(const char *dir)
     for (t = 0; t < NT - 4096u; t++)
         wav_put(f, song_l[t], song_r[t]);
     fclose(f);
-    printf("perform: demo %s (REPEAT 1/8, a 1/16 -> 1/32 roll, LPF, HPF, REVERSE, TAPE STOP, FREEZE, MUTE 1, KNOB 3 THROW)\n", path);
+    printf("perform: demo %s (LPF, HPF, OCT UP, FREEZE, MUTE 1, KNOB 3 THROW)\n", path);
 }
 
 /* the harmonizer on a melody: plain, OCT UP (a bar), OCT DN (a bar), OCT UP with the shimmer (a bar) */
@@ -964,7 +856,7 @@ static void harm_demos(const char *dir)
         host_tracks_init();
         perf_reset();
         song.g[G_BPM] = 110;
-        host_preset(&trk[0], 0, 0);                       /* ANALOG SAW LEAD */
+        host_preset(&trk[0], 0, 2);                       /* SID SYNC LEAD */
         for (i = 0; i < 16u; i++)
             put_step(&trk[0], i, MEL[i] ? 1u : 0u, &MEL[i], MEL[i] ? ST_NOTE : ST_REST, 0);
         hd_mode = m + 1u;
@@ -988,8 +880,7 @@ int main(int argc, char **argv)
     int bad = 0;
     bad += test_timing();
     bad += test_stereo();
-    bad += test_too_long();
-    bad += test_slicer();
+    bad += test_archived();
     bad += test_keys();
     bad += test_idle();
     bad += test_misc();

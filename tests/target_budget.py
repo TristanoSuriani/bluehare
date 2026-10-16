@@ -15,51 +15,26 @@ import os
 import re
 import sys
 
-FUNCS = ["slicer_track",
-         "wave_render", "byte_render", "west_render",       # WAVE, BYTE, WEST (1.5: eng_wave.c, eng_byte.c, eng_west.c)
-         "hoover_render",                                   # HOOVER (1.5: eng_hoover.c)
-         "speech_render",                                   # SPEECH (1.5: eng_speech.c; the IDM distribution's)
-         "fmperc_render",                                   # FMPERC (1.5: eng_fmperc.c; IDM's)
-         "karplus_render",                                  # KARPLUS (1.5: eng_karplus.c; IDM's)
-         "vosim_render",                                    # VOSIM (1.5: eng_vosim.c; IDM's)
-         "particle_render", "chaos_render",                 # PARTICLE, CHAOS (1.5: eng_particle.c, eng_chaos.c; IDM's)
-         "sid_render", "dubsiren_render",                   # SID, DUBSIREN (1.5: eng_sid.c, eng_dubsiren.c; IDM's)
-         "bliss_render",                                   # BLISS (1.5: eng_bliss.c; IDM's)
-         "kit_render", "breaks_render", "risers_render",    # KIT, BREAKS, RISERS (1.5; IDM's)
-         "fmp_run",                                         # FMPERC's voice (eng_fmperc.c), KIT's and BREAKS' too
-         "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
+FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
          # (Blue Hare: the IDM build has 8 tracks since step 3d: the ISR's loops over the parts twice as long, 37502 -> 67431)
          # (Blue Hare, the stereo buses: the chorus's second read, the sends' low cut, ROOM's side: 68734 -> 77039)
          "uac_tap48",                                       # the USB audio input at 48 kHz: the 44.1 -> 48 resampler (usb.c)
          "click_render",                                    # the metronome's click (click.c), while it sounds
-         "mod_begin", "mod_voice", "mod_end",                 # the modulation matrix (mod.c), called when active
+         "mod_begin", "mod_voice", "mod_end",               # the modulation matrix (mod.c), called when active
          "perf_begin", "perf_mute", "perf_pre", "perf_block", "perf_master",   # the FX layer (perform.c), when busy
-         "rev_room", "rev_spring", "rev_hall", "rev_side_mix",
-         "mix_track",                                       # (Blue Hare 2026-10) a track's mix, out of the ISR since CONCERT (fx.c)
+         "rev_room", "rev_spring", "rev_hall", "rev_side_mix",   # the reverb bus (fx.c): ROOM / SPRING / HALL, its stereo
+         # (mix_track: inlined into the ISR again since DUCK, whose calls kept it out of line, was archived 2026-10-16)
          "rev_concert",                                     # (Blue Hare 2026-10) REVERB TYPE CONCERT, the device's (fx.c)
          "mono_lows",                                       # (Blue Hare 2026-10) the master's lows in mono (fx.c)
-         "dly_tape",
-         "dubsiren8_render",
-         "dubchord_render",                                 # DUBCHORD (Blue Hare 1.5: eng_dubchord.c; IDM's)
-         "wasp_render",
-         "modal_render",                                    # MODAL (Blue Hare 1.5: eng_modal.c; IDM's)
-         "vector_render",                                   # VECTOR (Blue Hare 1.5: eng_vector.c; IDM's)
-         "echoes_render", "glitch_render"]                  # ECHOES, GLITCH (Blue Hare 1.5; IDM's)                                 # DUBCHORD (Blue Hare 1.5: eng_dubchord.c; IDM's)                                # DUBSIREN8 (Blue Hare 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Blue Hare 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
+         "dly_tape",                                        # DELAY TYPE TAPE / WORN (Blue Hare 1.5, fx.c), when chosen
+         "sid_render", "wave_render", "bliss_render",       # (Blue Hare 2026-10-16: HARE FM1's engines; the others archived)
+         "west_render", "modal_render", "echoes_render"]
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a BLUEHARE_UAC_48K=0 or BLUEHARE_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
 # the one build/bluehare.dis is: tools/build.py), skipped then
-ENGINE_OF = {"wave_render": "WAVE",
-             "byte_render": "BYTE", "west_render": "WEST", "hoover_render": "HOOVER", "speech_render": "SPEECH",
-             "fmperc_render": "FMPERC", "karplus_render": "KARPLUS",
-             "vosim_render": "VOSIM",
-             "particle_render": "PARTICLE", "chaos_render": "CHAOS",
-             "sid_render": "SID", "dubsiren_render": "DUBSIREN",
-             "bliss_render": "BLISS", "wasp_render": "WASP", "modal_render": "MODAL",
-             "vector_render": "VECTOR", "echoes_render": "ECHOES", "glitch_render": "GLITCH",
-             "risers_render": "RISERS", "dubsiren8_render": "DUBSIREN8", "dubchord_render": "DUBCHORD",
-             "kit_render": "KIT", "breaks_render": "BREAKS", "risers_render": "RISERS",
-             "fmp_run": "FMPERC"}
+ENGINE_OF = {"sid_render": "SID", "wave_render": "WAVE", "bliss_render": "BLISS", "west_render": "WEST",
+             "modal_render": "MODAL", "echoes_render": "ECHOES"}
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...
@@ -122,6 +97,8 @@ def built_engines():
     d = os.path.join(os.path.dirname(dis) or ".", "dist.txt")
     name = open(d).read().strip() if os.path.exists(d) else "default"
     path = os.path.join(here, "..", "distributions", f"{name}.txt")
+    if not os.path.exists(path):                    # (an image of a distribution archived since: stale)
+        return name, None
     return name, {ln.split("#", 1)[0].strip().upper() for ln in open(path)} - {""}
 
 
@@ -130,6 +107,9 @@ def main():
         print(f"target: skip ({dis} missing: run ./build.sh)")
         return 0
     dist, engines = built_engines()
+    if engines is None:
+        print(f"target: skip ({dis} is of {dist}, a distribution no longer in distributions/: run ./build.sh)")
+        return 0
     fns = functions(dis)
     res = {n: cost(fns[n]) for n in FUNCS if fns.get(n)}
     elsewhere = [n for n in FUNCS if n not in res and ENGINE_OF.get(n, next(iter(engines))) not in engines]

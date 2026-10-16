@@ -342,11 +342,10 @@ static int layer_locked(void);
 static uint32_t layer_leds(uint32_t *br);
 static uint32_t layer_btn(void);
 
-/* LANES / LANES 2 are a KIT track's (its lane levels) */
+/* a page the selected track has (2026-10-16: every page, since the kits' LANES went; the hook stays for an engine's own) */
 static int page_visible(uint32_t i)
 {
-    if (PAGES[i].scope == SC_TRACK && PAGES[i].id[0] >= P_LN0 && PAGES[i].id[0] <= P_LN7)
-        return TSEL->eng_req % NENGINES == ENGI_KIT;
+    (void)i;
     return 1;
 }
 
@@ -516,7 +515,6 @@ static void load_begin(track_t *t)
 {
     uint32_t i = trk_index(t);
     mom_back(t);                                  /* (MOMENTARY: the sound as it was, then the load) */
-    drum_mute[i] = 0;                             /* (1.4.1: the lanes' mutes go with the sound) */
     if (undo_depth++)
         return;
     if (undo.keep && undo.trk == i + 1u && track_sig(t) == undo.after)
@@ -607,11 +605,11 @@ static void undo_swap(void)
 /* the track's settings, not the sound's: what a sound load (factory or user preset, an engine jump,
  * TOOLS INIT) leaves alone. The mix (LEVEL, PAN, MUTE: the TRACKS faders), the scale and key map (SCL), the inert
  * ids (17 .. 24, the arpeggiator's until 2026-10; the old step sequencer's LEN DIV SWING GATE QUANTIZE, kept in the
- * stored formats) and the SLICER insert */
+ * stored formats; 33 .. 36, the SLICER's until 2026-10-16) */
 static int param_kept(uint32_t i)
 {
     return i == P_LEVEL || i == P_PAN || i == P_MUTE || (i >= P_RSV17 && i <= P_SGATE) ||
-           (i >= P_SLCR && i <= P_SLDEPTH) || i == P_CHRD || i == P_VOIC || i == P_SQNT;
+           (i >= P_RSV33 && i <= P_RSV36) || i == P_CHRD || i == P_VOIC || i == P_SQNT;
 }
 
 #define preset_shown(e) (ENGINES[e]->npresets)

@@ -12,13 +12,13 @@
  * that one whole: on load the newest generation whose chunks are all there wins (proj_find). The stream keeps only a
  * track's parameters that differ from their defaults.
  *
- * The stream, version 8 (little endian):
+ * The stream, version 9 (little endian):
  *   u8 version, u8 P_COUNT, u8 G_COUNT; G_COUNT x i16 the globals (SLOT NAME LOAD SAVE as their defaults); u8 the
  *   selected track and 12 bytes the name (neither in the hash below: a rename changes the name in place; the track
  *   selected is no change of the music the autosave has to keep); u8 the track count (4 or 8)
  *   per track: u8 engine id (core.h EID_*), u8 preset, u8 n, n x (u8 id, i16 value), u8 0 (Felucca's FM6 patch flag)
- *   tracks x u8 WIDTH, tracks x u8 LOW CUT, tracks x u8 DUCK, tracks x u8 PAN MODE (core.h trk_width, trk_lowcut,
- *   trk_duck, trk_pmode: 0 ALT, 1 RND)
+ *   tracks x u8 WIDTH, tracks x u8 LOW CUT, tracks x u8 PAN MODE (core.h trk_width, trk_lowcut, trk_pmode:
+ *   0 ALT, 1 RND)
  *   u32 FNV-1a of everything before it but the name
  * A project of more tracks than the build has is refused (SONG HAS 8 TRACKS), one of fewer fills its first tracks (the
  * rest as at power-on). */
@@ -30,7 +30,7 @@
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
 #endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER 8u                            /* (Blue Hare) 8: no song (the sequencer is a placeholder) */
+#define PROJ_VER 9u                            /* (Blue Hare) 8: no song (the sequencer is a placeholder); 9: no DUCK */
 #define PROJ_HDR 16u
 #if !BLUEHARE_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
 #define ST_PAYLOAD_MAX 3840u
@@ -154,9 +154,8 @@ static void proj_write(pw_t *w, const char *name)
             }
         pw_u8(w, 0);                                    /* (Felucca's FM6 patch flag: no patch, FM6 is gone) */
     }
-    pw_bytes(w, trk_width, NTRK);                      /* WIDTH, LOW CUT, DUCK, PAN MODE */
+    pw_bytes(w, trk_width, NTRK);                      /* WIDTH, LOW CUT, PAN MODE */
     pw_bytes(w, trk_lowcut, NTRK);
-    pw_bytes(w, trk_duck, NTRK);
     pw_bytes(w, trk_pmode, NTRK);
     {
         uint32_t h = w->h;
@@ -286,11 +285,10 @@ static int proj_read(pr_t *r, int apply)
         if (pr_u8(r))                               /* a Felucca FM6 patch: an engine this firmware has none of */
             return 1;
     }
-    {                                               /* WIDTH, LOW CUT, DUCK, PAN MODE */
-        uint8_t wd[8], lc[8], dk[8], pm[8];
+    {                                               /* WIDTH, LOW CUT, PAN MODE */
+        uint8_t wd[8], lc[8], pm[8];
         pr_bytes(r, wd, ntr);
         pr_bytes(r, lc, ntr);
-        pr_bytes(r, dk, ntr);
         pr_bytes(r, pm, ntr);
         for (k = 0; k < ntr; k++)
             if (pm[k] > TP_RND)
@@ -300,7 +298,6 @@ static int proj_read(pr_t *r, int apply)
         for (k = 0; apply && k < ntr; k++) {        /* (the others out of range: OFF) */
             trk_width[k] = (uint8_t)(tw_has(k) && wd[k] <= TW_MAX ? wd[k] : 0u);   /* (WIDTH: the last tracks' alone) */
             trk_lowcut[k] = (uint8_t)(lc[k] < TL_N ? lc[k] : 0u);
-            trk_duck[k] = (uint8_t)(dk[k] <= TD_KEY ? dk[k] : 0u);
             trk_pmode[k] = pm[k];
         }
     }
@@ -539,7 +536,6 @@ static int project_restore(int (*get)(uint32_t), uint32_t count)
     if ((bad = proj_read(&r, 0)) != 0)
         return bad;                               /* (2: more tracks than this build's) */
     mom_back(0);                                  /* (ui_input.c MOMENTARY: the values as they were, then the load) */
-    memset(drum_mute, 0, sizeof drum_mute);       /* (1.4.1: the DRUM lanes' mutes, performance state) */
     transport_req = 2;
     panic_req = (1u << NTRK) - 1u;
     fm1_irq_off();                                /* the audio ISR must not see half a song */

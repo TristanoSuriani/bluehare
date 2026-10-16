@@ -29,7 +29,7 @@
 #                   (build/ui_new/align.txt). MENU > LARGE: every screen again (FLAT, LINE, every palette) and the page / value
 #                   sweep with the tall cards, the same lint and alignment; sheet_LARGE_GREY.png, sheet_LARGE_MONO.png.
 # UI (tests/ui_test.c): the UI sources against stub display / buttons / knobs: sound loads keep the track's
-#                   ARP / SCL / SLICER, the sound's one-step undo (SAVE held), REC (nothing yet) on every page, SEQ's
+#                   SCL, the sound's one-step undo (SAVE held), REC (nothing yet) on every page, SEQ's
 #                   placeholder (TODO), MIDI IN ROUT, saves refused while playing and the OVERWRITE? dialog, MUTE on TRACKS
 #                   KNOB 1.
 # Audio / persistence / editor: the real C paths against simulated DMA and NOR flash: bounded overload
@@ -39,7 +39,7 @@
 #                   editor (MENU_DESC / MENU_SET: every item, clamping, unknown ids, saving, USB SERIAL applied later).
 # CHORD (tests/chord_test.c): the chord keys (src/chord.c): diatonic triads / sevenths of several scales and roots,
 #                   the fixed shapes and voicings (at most 4 notes), names, MONO plays the root, a release ends
-#                   exactly what its key / MIDI note started, the ARP, MIDI IN, kits ignore CHRD.
+#                   exactly what its key / MIDI note started, MIDI IN.
 # LFO 2 (tests/lfo2_test.c, 1.2): SYNC one cycle per note value at several tempi and on the external clock, OFF bit for bit
 #                   as before; TRIG NOTE / FREE; POL UNI 0..+1, the matrix's AMP.
 # SEQUENCER: a placeholder (SEQ shows TODO). The renders' songs play through the tests' own player (tests/hostsim.c
@@ -50,10 +50,10 @@
 # SOUND (tests/sound14_test.c; #132 #104 #148): the matrix's S&H / SLEW sources (a value per LFO cycle, the glide) and
 #                   DEPTH destination (the LFO's gain; none = untouched), (ANALOG's WAVE SYNC / SUB: gone with it;
 #                   the band-limited restart), SPREAD (SPRD 0 / MONO / LEGATO bit for bit, a note hard left / right, the
-#                   mono sum, UNISON, the SLICER's gate and the mute key on both sides, mono sends), the cost; demos in
+#                   mono sum, UNISON, the mute key on both sides, mono sends), the cost; demos in
 #                   build/sound14_demo/.
-# PERFORM (tests/perform_test.c): the FX hold layer (src/perform.c): 1/16 starts, stereo buffer effects, the
-#                   too-long REPEAT, the SLICER interplay, silent layer keys, idle bit-identical, cost; build/perform_demo/;
+# PERFORM (tests/perform_test.c): the FX hold layer (src/perform.c): starts at once, stereo FREEZE, the archived
+#                   effects (REPEAT, REVERSE, TAPE STOP) holding nothing, silent layer keys, idle bit-identical, cost; build/perform_demo/;
 #                   OCT UP / DN (the harmonizer): pitch, stereo, clicks, the shimmer bounded, cost; the key
 #                   map (any effect or none on any key, a key remapped while held, FX LATCH); build/fx_demo/.
 # REVERB (tests/reverb_test.c): REVERB TYPE (src/fx.c): ROOM bit for bit as before, SPRING's decay against SIZE,
@@ -89,7 +89,7 @@
 # Browser emulator (web/emu, when emcc is there): the firmware in WebAssembly (build/emu) boots, plays keys and MIDI,
 #                   draws, lights its LEDs, keeps a save across instances, plays a song bit for bit as the same file
 #                   built with cc (web/emu/native_check.c); the cost of 1 s of a heavy song against real time.
-# ENGINES (tests/engines_test.c): the IDM distribution (BLUEHARE_DIST=idm, no HOOVER BYTE .. nor FOUNDRY's): its engines
+# ENGINES (tests/engines_test.c): a build without some engines (BLUEHARE_DIST=test_subset: HARE FM1 without BLISS, ECHOES): its engines
 #                   numbered from 0 in its order, the ids both ways, a left-out engine's sound loading as its substitute
 #                   (projects, G_ENGSEL / PRESET, the song's instruments), its user presets kept but not listed, every
 #                   engine left rendering.
@@ -235,7 +235,7 @@ if [ -f build/gen/bluehare_tables.h ]; then
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/scale_test" tests/scale_test.c -lm
     run "scales: white-key mapping and note lifecycle" "$OUT/scale_test"
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/chord_test" tests/chord_test.c -lm
-    run "chord keys: diatonic and fixed chords, voicings, MONO root, releases, ARP, MIDI IN, kits" "$OUT/chord_test"
+    run "chord keys: diatonic and fixed chords, voicings, MONO root, releases, MIDI IN" "$OUT/chord_test"
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/speaker_test" tests/speaker_test.c -lm
     run "SPEAKER EQ: FLAT / LOWCUT / BASS+ responses, BASS+ harmonics of the bass, the sub cut, no offset after, headroom on a full-scale kick (#180)" "$OUT/speaker_test"
     slow run "DSP render (ANALOG preset 0)" "$OUT/hostsim" 0 0 1 "$OUT/render.wav"
@@ -262,10 +262,10 @@ if [ -f build/gen/bluehare_tables.h ]; then
     mkdir -p build/ui_new/ppm build/ui_slot
     slow run "UI renders: layout lint (every screen and palette, every page, engine and column value), GREY gray, MONO neutral, alignment by ink (1 px fails), draw cost" \
         sh -c '"$1" build/ui_new build/ui_slot && { ! python3 -c "import PIL" 2>/dev/null || python3 tests/ui_render.py build/ui_new build/ui_slot; }' _ "$OUT/ui_render"
-    slow compile $CC -O1 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=idm_native "-DBLUEHARE_VERSION=\"$FV\"" -Ibuild/gen -Ifirmware/src -Itests \
+    slow compile $CC -O1 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=hare_native "-DBLUEHARE_VERSION=\"$FV\"" -Ibuild/gen -Ifirmware/src -Itests \
         -o "$OUT/ui_render_native" tests/ui_render.c -lm
     mkdir -p build/ui_native/ppm build/ui_native_slot
-    slow run "UI renders, IDM NATIVE (the native image's): its engines, CONCERT CAVERN SHIMMER, its version line: the same lint and alignment" \
+    slow run "UI renders, HARE NATIVE (the native image's): its engines, CONCERT CAVERN SHIMMER, its version line: the same lint and alignment" \
         "$OUT/ui_render_native" build/ui_native build/ui_native_slot
     compile $CC -w -DBLUEHARE_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test8" tests/ui_test.c -lm
     run "UI built with 8 tracks (step 3c): every check above, the view 1..4 / 5..8, GLO / FX on 8 tracks, MIDI IN blocks of 8" "$OUT/ui_test8"
@@ -292,18 +292,14 @@ if [ -f build/gen/bluehare_tables.h ]; then
     for n in 4 8; do
         compile $CC -w -DBLUEHARE_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/width_test$n" tests/width_test.c -lm
         run "WIDTH and LOW CUT ($n tracks): the Haas effect on the last tracks, the lows whole, the cut, the store" "$OUT/width_test$n"
-        compile $CC -w -DBLUEHARE_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/duck_test$n" tests/duck_test.c -lm
-        run "DUCK ($n tracks): the key ducks a pad at once and lets it back, as deep as its DUCK; none without a key; the store" "$OUT/duck_test$n"
     done
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/panmode_test" tests/panmode_test.c -lm
     run "PAN MODE: ALT at power-on (SPREAD in turn), RND a side at random (POLY, and MONO at half width), the store" "$OUT/panmode_test"
-    compile $CC -w -DBLUEHARE_DIST=ref -DBLUEHARE_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test4" tests/engines_test.c -lm
-    run "a build without some engines (the ref build, 4 tracks): ids, substitutes, protocol, projects, presets; a 4-track project for the next" "$OUT/engines_test4"
-    compile $CC -w -DBLUEHARE_DIST=ref -DBLUEHARE_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm
+    compile $CC -w -DBLUEHARE_DIST=test_subset -DBLUEHARE_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test4" tests/engines_test.c -lm
+    run "a build without some engines (TEST SUBSET, 4 tracks): ids, substitutes, protocol, projects, presets; a 4-track project for the next" "$OUT/engines_test4"
+    compile $CC -w -DBLUEHARE_DIST=test_subset -DBLUEHARE_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm
     AFTER=$nj                                           # (it reads the 4-track run's song_4trk.bin)
     run "a build without some engines, 8 tracks: the same checks, its power-on, a 4-track project on it" "$OUT/engines_test"
-    compile $CC -w -DBLUEHARE_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/idm_test" tests/idm_test.c -lm
-    run "IDM: its 8 engines in their order, 4 tracks, power-on, where the engines it lacks load" "$OUT/idm_test"
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/mod_test" tests/mod_test.c -lm
     mkdir -p build/mod_demo
     slow run "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" "$OUT/mod_test" build/mod_demo
@@ -311,21 +307,14 @@ if [ -f build/gen/bluehare_tables.h ]; then
     mkdir -p build/sound14_demo
     slow run "sound items: matrix S&H / SLEW / DEPTH, SPREAD (bit for bit at 0, L / R, mono sum), cost, demos" \
         "$OUT/sound14_test" build/sound14_demo
-    slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/slicer_test" tests/slicer_test.c -lm
-    mkdir -p build/slicer_demo
-    slow run "SLICER: no clicks, timing, sync with the sequencer, STUT, cost, demos" "$OUT/slicer_test" build/slicer_demo
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/swing_test" tests/swing_test.c -lm
-    run "SWING: track + global at most 100, sequencer and SLICER step lengths, the SWG display" "$OUT/swing_test"
+    run "SWING: track + global at most 100, the song player's step lengths, the SWG display" "$OUT/swing_test"
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/perform_test" tests/perform_test.c -lm
     mkdir -p build/perform_demo build/fx_demo
-    slow run "FX layer effects: on the 1/16, stereo, too-long REPEAT, SLICER, silent keys, idle bit-identical, clicks, OCT UP / DN, the key map, cost, demos" "$OUT/perform_test" build/perform_demo build/fx_demo
+    slow run "FX layer effects: at once, stereo, the archived ones nothing, silent keys, idle bit-identical, clicks, OCT UP / DN, the key map, cost, demos" "$OUT/perform_test" build/perform_demo build/fx_demo
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_test" tests/reverb_test.c -lm
     mkdir -p build/reverb_demo
     slow run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, DELAY TYPE, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
-    for d in foundry warehouse; do
-        slow compile $CC -O2 -w -DBLUEHARE_DIST=$d -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/os2_test_$d" tests/os2_test.c -lm
-        slow run "2x OVERSAMPLING ($d): the pair transparent to 15 kHz, silence exact; the drives' aliases under 15 kHz lower" "$OUT/os2_test_$d"
-    done
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/concert_test" tests/concert_test.c -lm
     run "REVERB TYPE CONCERT (the device's): HALL's level, longer with SIZE, stable at the corners, exact silence, stereo, model changes" "$OUT/concert_test"
     compile $CC -O1 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/dual_test" tests/dual_test.c -lm
@@ -335,35 +324,18 @@ if [ -f build/gen/bluehare_tables.h ]; then
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/gated_test" tests/gated_test.c -lm
     run "REVERB TYPE GATED: HALL's level while it holds, cut after SIZE's hold, a longer SIZE longer, a hit opens it again" "$OUT/gated_test"
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
-    slow run "regression, the IDM distribution (the primary) built with 4 tracks: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
-    slow compile $CC -O2 -w -DBLUEHARE_DIST=idm -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm" tests/regress.c -lm
-    slow run "regression, the IDM distribution with its 8 tracks: its presets' renders and CPU" "$OUT/regress_idm" tests/golden.txt tests/cpu_baseline.txt
-    slow compile $CC -O2 -w -DBLUEHARE_DIST=foundry -Ibuild/gen -Ifirmware/src -o "$OUT/regress_foundry" tests/regress.c -lm
-    slow run "regression, the FOUNDRY distribution: its presets' golden renders and CPU" "$OUT/regress_foundry" tests/golden.txt tests/cpu_baseline.txt
-    compile $CC -w -DBLUEHARE_DIST=foundry -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/foundry_test" tests/foundry_test.c -lm
-    run "FOUNDRY: its engines and order, the clean ones among them, 24 presets and more, power-on, where the ones that left load" "$OUT/foundry_test"
-    slow compile $CC -O2 -w -DBLUEHARE_DIST=warehouse -Ibuild/gen -Ifirmware/src -o "$OUT/regress_warehouse" tests/regress.c -lm
-    slow run "regression, the WAREHOUSE distribution: its presets' golden renders and CPU" "$OUT/regress_warehouse" tests/golden.txt tests/cpu_baseline.txt
-    compile $CC -w -DBLUEHARE_DIST=warehouse -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/warehouse_test" tests/warehouse_test.c -lm
-    run "WAREHOUSE: its engines and order, power-on, SIREN8 on every track" "$OUT/warehouse_test"
-    slow compile $CC -O2 -w -DBLUEHARE_DIST=chip -Ibuild/gen -Ifirmware/src -o "$OUT/regress_chip" tests/regress.c -lm
-    slow run "regression, the CHIP distribution (4 tracks): its presets' golden renders (CHIPKIT) and CPU" "$OUT/regress_chip" tests/golden.txt tests/cpu_baseline.txt
-    compile $CC -w -DBLUEHARE_DIST=chip -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/chip_test" tests/chip_test.c -lm
-    run "CHIP: its engines and order, 4 tracks, its palette, power-on; CHIPKIT's drums sound and end, a console each, RATE" "$OUT/chip_test"
-    for d in idm foundry warehouse chip idm_native; do
+    slow run "regression, HARE FM1 (the primary) built with 4 tracks: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
+    for d in hare_fm1 hare_native; do
         slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=$d -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/native_test_$d" tests/native_test.c -lm
-        slow run "native image ($d): 16 voices a track, the device's engines as they are, NEBULA CANYON, CONCERT CAVERN SHIMMER, the long delay" "$OUT/native_test_$d"
+        slow run "native image ($d): 16 voices a track, the device's engines as they are, CANYON, CONCERT CAVERN SHIMMER, the long delay" "$OUT/native_test_$d"
     done
-    slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=idm_native -Ibuild/gen -Ifirmware/src -o "$OUT/regress_idm_native" tests/regress.c -lm
-    slow run "regression, IDM NATIVE (the native image's): its presets' golden renders (NEBULA, CANYON; the rest as the device's)" "$OUT/regress_idm_native" tests/golden.txt tests/cpu_baseline.txt
-    if ${CC%% *} -fsyntax-only -w -DBLUEHARE_DIST=idm_native -Ibuild/gen -Ifirmware/src tests/hostsim.c 2>/dev/null; then
+    slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=hare_native -Ibuild/gen -Ifirmware/src -o "$OUT/regress_hare_native" tests/regress.c -lm
+    slow run "regression, HARE NATIVE (the native image's): its presets' golden renders (CANYON; the rest as the device's)" "$OUT/regress_hare_native" tests/golden.txt tests/cpu_baseline.txt
+    if ${CC%% *} -fsyntax-only -w -DBLUEHARE_DIST=hare_native -Ibuild/gen -Ifirmware/src tests/hostsim.c 2>/dev/null; then
         echo "== FAILED: a NATIVE distribution builds without BLUEHARE_NATIVE"; fail=1
     else
         echo "== a NATIVE distribution refuses a device build (core.h: BLUEHARE_NATIVE only)"
     fi
-    slow compile $CC -O2 -w -DBLUEHARE_DIST=chip -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/speech_test" tests/speech_test.c -lm
-    mkdir -p build/speech_demo
-    slow run "SPEECH: every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/descdump" tests/descdump.c -lm
     echo "== parameter and engine tables as JSON (for the editor mock test)"
     "$OUT/descdump" > "$OUT/desc.json" || fail=1
@@ -431,24 +403,6 @@ else
     run_now "browser emulator: the same song from the native build" "$OUT/emu_native" "$OUT/emu_native.f32"
     run_now "browser emulator: boot, keys, MIDI, screen, LEDs, PLAY, a save kept across instances, = native, cost" \
         node web/emu/emu_test.mjs build/emu/bluehare.wasm "$OUT/emu_native.f32"
-    cc -O2 -ffp-contract=off -w -DBLUEHARE_DIST=foundry -Ibuild/gen -Ifirmware/src -o "$OUT/emu_native_foundry" \
-        web/emu/native_check.c -lm
-    run_now "browser emulator: the same song from the native build, FOUNDRY" "$OUT/emu_native_foundry" "$OUT/emu_native_foundry.f32"
-    run_now "browser emulator, the FOUNDRY distribution (web/emu/build.sh -> build/emu-foundry)" env BLUEHARE_DIST=foundry sh web/emu/build.sh
-    run_now "browser emulator, FOUNDRY: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
-        node web/emu/emu_test.mjs build/emu-foundry/bluehare.wasm "$OUT/emu_native_foundry.f32"
-    cc -O2 -ffp-contract=off -w -DBLUEHARE_DIST=warehouse -Ibuild/gen -Ifirmware/src -o "$OUT/emu_native_warehouse" \
-        web/emu/native_check.c -lm
-    run_now "browser emulator: the same song from the native build, WAREHOUSE" "$OUT/emu_native_warehouse" "$OUT/emu_native_warehouse.f32"
-    run_now "browser emulator, the WAREHOUSE distribution (web/emu/build.sh -> build/emu-warehouse)" env BLUEHARE_DIST=warehouse sh web/emu/build.sh
-    run_now "browser emulator, WAREHOUSE: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
-        node web/emu/emu_test.mjs build/emu-warehouse/bluehare.wasm "$OUT/emu_native_warehouse.f32"
-    cc -O2 -ffp-contract=off -w -DBLUEHARE_DIST=chip -Ibuild/gen -Ifirmware/src -o "$OUT/emu_native_chip" \
-        web/emu/native_check.c -lm
-    run_now "browser emulator: the same song from the native build, CHIP" "$OUT/emu_native_chip" "$OUT/emu_native_chip.f32"
-    run_now "browser emulator, the CHIP distribution (web/emu/build.sh -> build/emu-chip)" env BLUEHARE_DIST=chip sh web/emu/build.sh
-    run_now "browser emulator, CHIP: boot, keys, MIDI, screen, LEDs, PLAY, saves, = native, cost" \
-        node web/emu/emu_test.mjs build/emu-chip/bluehare.wasm "$OUT/emu_native_chip.f32"
 fi
 
 # (the plugin, VST3 / AU / CLAP, and its tests: archived, archive/plugin)
@@ -461,10 +415,10 @@ elif ! command -v sdl2-config >/dev/null 2>&1 || [ ! -f build/gen/bluehare_table
 else
     run_now "native image: the desktop application builds (native/build.sh -> build/native)" sh native/build.sh
     run_now "native image: boots (dummy drivers), the screen draws, the clock follows the audio, HOME lit, a key sounds, MASTER dragged and scrolled" \
-        build/native/blue-hare-idm --selftest
-    run_now "native image, IDM NATIVE: builds (native/build.sh idm_native)" sh native/build.sh idm_native
-    run_now "native image, IDM NATIVE: boots, the screen draws, the clock follows the audio, HOME lit, a key sounds" \
-        build/native/blue-hare-idm_native --selftest
+        build/native/blue-hare-hare_fm1 --selftest
+    run_now "native image, HARE NATIVE: builds (native/build.sh hare_native)" sh native/build.sh hare_native
+    run_now "native image, HARE NATIVE: boots, the screen draws, the clock follows the audio, HOME lit, a key sounds" \
+        build/native/blue-hare-hare_native --selftest
 fi
 
 barrier
