@@ -210,9 +210,9 @@ The pages by button:
 A placeholder for now: SEQ (and GLO, which opened the song) show a page that says TODO. Felucca's step sequencer, its
 automation, PHRASES and the A–D song are gone, and so is the tracker that took their place until 2026-10 (git
 history keeps it). PLAY still runs the transport: the click, the SLICER and the FX layer's grid follow it,
-on the internal, USB or TRS clock or the plugin's host. REC does nothing for now.
+on the internal, USB or TRS clock. REC does nothing for now.
 
-A project (SAVE > PROJECT, the autosave, the plugin's state) holds the tracks' sounds, the globals and each track's
+A project (SAVE > PROJECT, the autosave) holds the tracks' sounds, the globals and each track's
 place in the mix (WIDTH, LOW CUT, DUCK, PAN MODE: their power-on values, as no page sets them for now). Projects of
 earlier versions, the tracker's songs among them, do not open.
 
@@ -546,7 +546,7 @@ sevenths, or a fixed shape) and VOIC the voicing.
 | `assets/` | UI font, icon names |
 | `web/` | the web installer, the editor (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
 | `native/` | *(Fel-Tracker)* the native image: Fel-Tracker as a desktop application (SDL2), BUILDING.md "Native image" |
-| `plugin/` | *(Fel-Tracker)* the plugin (VST3, AU, CLAP by DPF, `plugin/dpf`): its cores (a library a distribution), their instances, the host side and its window (`src/`), `install.sh`, BUILDING.md "Plugin" |
+| `archive/` | *(Fel-Tracker)* what is kept but neither built nor tested: the plugin (VST3, AU, CLAP by DPF), `archive/plugin/README.md` |
 | `tests/` | tests that run on the build machine |
 | `LICENSES/` | licence texts of the bundled fonts, icons, ported DSP and SDK files |
 

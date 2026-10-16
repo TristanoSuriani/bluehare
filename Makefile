@@ -8,11 +8,9 @@
 #   make emu [DIST=chip]           the browser emulator (web/emu/build.sh -> build/emu or build/emu-<dist>)
 #   make emus                      the emulator of every device distribution
 #   make native [DIST=idm_native]  the desktop application (native/build.sh)
-#   make plugin [ARCH=arm64]       VST3, AU and CLAP (plugin/build.sh; ARCH: one architecture, quicker)
-#   make plugin-install            build, sign and install the plugin on this Mac (plugin/install.sh)
 #   make quick                     the fast tier of the tests (QUICK=1: about a minute)
-#   make test                      the whole suite (PLUGIN=0 / NATIVE=0 / SANITIZE=0 leave parts out)
-#   make test-core                 the suite without the plugin and the native image (most firmware work)
+#   make test                      the whole suite (NATIVE=0 / SANITIZE=0 leave parts out)
+#   make test-core                 the suite without the native image (most firmware work)
 #   make serve [DIST=foundry]      the emulator on http://localhost:8000
 SHELL := /bin/bash
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -23,7 +21,7 @@ EMENV := { command -v emcc >/dev/null || . $(EMSDK) >/dev/null 2>&1; }
 TESTCC := cc -O1 -Wall -Wno-unused-function
 EMUDIR = build/emu$(if $(filter-out ,$(DIST)),-$(DIST),)
 
-.PHONY: firmware firmwares emu emus native plugin plugin-install quick test test-core serve help
+.PHONY: firmware firmwares emu emus native quick test test-core serve help
 help:
 	@sed -n '/^#   make/s/^#   //p' $(MAKEFILE_LIST)
 
@@ -42,12 +40,6 @@ emus:
 native:
 	$(ENV) && sh native/build.sh $(DIST)
 
-plugin:
-	$(ENV) && $(if $(ARCH),FEL_ARCH="-arch $(ARCH)" ,)sh plugin/build.sh
-
-plugin-install:
-	$(ENV) && sh plugin/install.sh
-
 quick:
 	$(ENV) && QUICK=1 CC="$(TESTCC)" sh tests/run_tests.sh
 
@@ -55,7 +47,7 @@ test:
 	$(ENV) && $(EMENV); CC="$(TESTCC)" sh tests/run_tests.sh
 
 test-core:
-	$(ENV) && $(EMENV); PLUGIN=0 NATIVE=0 CC="$(TESTCC)" sh tests/run_tests.sh
+	$(ENV) && $(EMENV); NATIVE=0 CC="$(TESTCC)" sh tests/run_tests.sh
 
 serve:
 	cd $(ROOT)/$(EMUDIR) && python3 -m http.server 8000
