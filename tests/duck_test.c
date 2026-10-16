@@ -3,8 +3,7 @@
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* DUCK (core.h trk_duck; fx.c duck_key, mix_ducked): none at power-on; a key (the kick on track 1) ducks a pad held on
  * track 2 at once and lets it back over ~a quarter second, as deep as the pad's DUCK; a track at OFF, and every track
- * without a key, plays as it did; the song store (version 6) keeps it, a new song has none; the editor's DUCK
- * (TRACKER op 12) and its bounds. */
+ * without a key, plays as it did; the song store keeps it, the power-on values have none. */
 #define EDITOR_TEST_NO_MAIN 1
 #include "editor_test.c"
 #include <math.h>
@@ -85,28 +84,11 @@ int main(void)
     trk_duck[0] = TD_KEY;
     trk_duck[NTRK - 1u] = 9;
     ok = !project_save(0);
-    project_new();
+    trk_mix_defaults();
     ok &= !trk_duck[0] && !trk_duck[NTRK - 1u];
     project_load(0);
-    ok &= proj_ram[0][PROJ_HDR] >= 6u && trk_duck[0] == TD_KEY && trk_duck[NTRK - 1u] == 9u;
-    bad += check("the store: version 6 keeps DUCK; a new song has none", ok);
-
-    /* the editor's DUCK (op 12) */
-    {
-        uint8_t a[3] = {EDT_DUCK};
-        uint32_t m = request(ED_TRACKER, a, 1);
-        ok = m == 8u + NTRK && !host_wire[6] && host_wire[7] == TD_KEY && host_wire[7 + NTRK - 1u] == 9u;
-        a[1] = 1;
-        a[2] = 12;
-        m = request(ED_TRACKER, a, 3);
-        ok &= m == 8u + NTRK && !host_wire[6] && trk_duck[1] == 12u;
-        a[2] = 17;
-        ok &= request(ED_TRACKER, a, 3) && host_wire[6] == 1 && trk_duck[1] == 12u;
-        a[1] = (uint8_t)NTRK;
-        a[2] = 1;
-        ok &= !request(ED_TRACKER, a, 3);
-        bad += check("the editor's DUCK (TRACKER op 12): read, track 2 to 12, 17 refused (rc 1), a track past the last: no reply", ok);
-    }
+    ok &= proj_ram[0][PROJ_HDR] == PROJ_VER && trk_duck[0] == TD_KEY && trk_duck[NTRK - 1u] == 9u;
+    bad += check("the store keeps DUCK; the power-on values have none", ok);
     printf("%s\n", bad ? "DUCK TEST FAILED" : "duck test passed");
     return bad != 0;
 }

@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Chord keys (firmware/src/chord.c; SCL > CHORD: CHRD, VOIC) against the real keyboard, MIDI IN, arp, recording
- * and voice code: the diatonic triads and sevenths of several scales and roots as music theory has them, the
+/* Chord keys (firmware/src/chord.c; SCL > CHORD: CHRD, VOIC) against the real keyboard, MIDI IN, arp and voice
+ * code: the diatonic triads and sevenths of several scales and roots as music theory has them, the
  * fixed shapes, the voicings, at most 4 notes, the names, MONO plays the root, a key's or a MIDI note's release
- * ends exactly the notes it started (CHRD / VOIC changed while held too), shared notes, live recording writes the
- * chord into one step, the ARP gets the chord as held notes, QNT WHITE maps the key first, a kit (the DRUM engine)
+ * ends exactly the notes it started (CHRD / VOIC changed while held too), shared notes, the ARP gets the chord as held notes, QNT WHITE maps the key first, a kit (the DRUM engine)
  * ignores CHRD, MIDI OUT of the keys, and OFF plays exactly as before.
  * Run by tests/run_tests.sh (needs build/gen from one firmware build). */
 #define UI_TEST_NO_MAIN 1
@@ -223,7 +222,7 @@ static int keys(void)
     return bad;
 }
 
-static int arp_rec(void)
+static int arp(void)
 {
     int bad = 0;
     track_t *t = &trk[0];
@@ -236,25 +235,6 @@ static int arp_rec(void)
     key_up(K_C4);
     bad += check("  key up: nothing held", !t->nheld && !t->arp_phys);
     t->p[P_AMODE] = 0;
-    tk_defaults();                                      /* (1.5: into the tracker's rows, a note per cell) */
-    t->p[P_CHRD] = CH_DIA3;
-    song.rec = 1; song.playing = 1;
-    tk_pl.row = 0; tk_pl.row_pos = 0;
-    key_down(K_D4);
-    bad += check("live recording: a chord key records its root into the row (D of D F A)", tk_note(tk_at(0, 0, 0)) == 62u);
-    key_up(K_D4);
-    t->p[P_CHRD] = CH_MAJ7; t->p[P_VOIC] = VC_BASS;
-    tk_pl.row = 4;
-    key_down(K_C4);
-    bad += check("  a 4-note voicing: its lowest note, the bass (C3)", tk_note(tk_at(0, 4, 0)) == 48u);
-    key_up(K_C4);
-    song.rec = 0; song.playing = 0;
-    t->p[P_VOICE] = V_MONO; t->p[P_CHRD] = CH_DIA3; t->p[P_VOIC] = VC_CLOSE;
-    song.rec = 1; song.playing = 1; tk_pl.row = 8;
-    key_down(K_E4);
-    bad += check("  MONO records its root alone", tk_note(tk_at(0, 8, 0)) == 64u);
-    key_up(K_E4);
-    song.rec = 0; song.playing = 0;
     return bad;
 }
 
@@ -313,7 +293,7 @@ static int kits(void)
 
 int main(void)
 {
-    int bad = theory() + shapes_voicings() + keys() + arp_rec() + midi_in() + kits();
+    int bad = theory() + shapes_voicings() + keys() + arp() + midi_in() + kits();
     printf("%s\n", bad ? "CHORD TEST FAILED" : "chord keys test passed");
     return bad != 0;
 }

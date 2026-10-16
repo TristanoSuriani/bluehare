@@ -3,7 +3,7 @@
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The host targets' side of target.h (FELUCCA_NATIVE: the native image, the plugin's cores, through the browser
  * emulator's layer): the host's transport and tempo, the tracks' own outputs. Included at the end of seq.c, so it sees
- * the sequencer's, the tracker's and the mix's own state; the device builds have target.h's empty versions instead. */
+ * the transport's and the mix's own state; the device builds have target.h's empty versions instead. */
 
 /* ---- the host's tempo (fx.c beat_samples) */
 static uint32_t host_beat_samples;                    /* the plugin's host's tempo, over the song's and CLOCK's (host_block);
@@ -51,39 +51,6 @@ static int tgt_track_out(uint32_t k, uint32_t n, int32_t mg)
 }
 static void tgt_mix_end(uint32_t n) { trk_out_w += n; }
 
-/* ---- the tracker's place (seq_locate) */
-/* (Fel-Tracker) the plugin's host put the song somewhere (seq.c seq_locate, after tk_start): s samples from where PLAY
- * starts it (LOOP row 0 of the pattern, SONG the position picked), round and round as it plays; the rows' own lengths
- * (the swing). A place inside a row: that row is not played, the next one is, on time; less than `late` samples
- * into it, it plays at once (the host's start reaches the device a block or two after it: its first row) */
-static void tk_locate(uint64_t s, uint32_t late)
-{
-    uint64_t cyc = 0;
-    uint32_t i, r, len;
-    if (tk_pl.mode == TK_SONG)
-        for (i = 0; i < tk.norder; i++)
-            for (r = 0; r < tk_len(TK_OPAT(tk.order[i])); r++)
-                cyc += tk_row_len(r);
-    else
-        for (r = 0; r < tk_len(tk_pl.pat); r++)
-            cyc += tk_row_len(r);
-    tk_pl.row = 0;
-    if (!cyc)
-        return;
-    s %= cyc;
-    while (s >= (len = tk_row_len(tk_pl.row))) {
-        s -= len;
-        if (tk_pl.row + 1u >= tk_len(tk_pl.pat)) {
-            tk_pl.row = 0;
-            tk_next_pattern();
-        } else {
-            tk_pl.row++;
-        }
-    }
-    tk_pl.row_pos = (uint32_t)s;
-    tk_pl.fresh = s < late;                     /* (tk_tick plays it, row_pos kept: the next rows on time) */
-}
-
 /* ---- the host's transport (seq.c events_block) */
 /* (Fel-Tracker) the plugin's host (plugin/core/fel_core.h transport): its tempo, its transport and its place, always,
  * over BPM, CLOCK and PLAY. The host says which beat it is at a frame of the device's (frames since power-on, as
@@ -98,15 +65,15 @@ static struct {
 } host_tr;
 static uint64_t dev_frames;                 /* frames rendered since power-on */
 
-/* the transport running from beat b (>= 0): the song there (tracker.c tk_locate), the metronome's, the FX layer's,
- * the SLICER's and the synced LFOs' places with it */
-static void seq_locate(double b)
+/* the transport running from beat b (>= 0): the metronome's, the FX layer's, the SLICER's and the synced LFOs' places
+ * there. 1: b is less than `late` samples into a 1/16 (the host's start reaches the device a block or two after it):
+ * that 1/16 starts now, the block's samples count from the next one */
+static int seq_locate(double b, uint32_t late)
 {
     double lb = 4.0 * div_samples(2), q = b * 4.0, f;
     uint32_t i, p = div_samples(2), six;
     b = b < 0.0 ? 0.0 : b;
     seq_start();
-    tk_locate((uint64_t)(b * lb + 0.5), 2u * HALF_FRAMES);
     six = (uint32_t)q;
     f = q - six;
     if (six & 15u || f > 0.0) {                    /* (on a bar's first 1/16: CLK_START, as PLAY) */
@@ -119,7 +86,7 @@ static void seq_locate(double b)
     pf.sync = 0;
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
-        double st = b * SL_DEN[(uint32_t)tp_vo(t, VO_SLRATE) % 6u];
+        double st = b * SL_DEN[(uint32_t)t->p[P_SLRATE] % 6u];
         uint32_t k = (uint32_t)st;
         sl_t *s = &sl[i];
         if (st > (double)k) {                      /* inside a step: entered, then on by the part already gone */
@@ -133,6 +100,7 @@ static void seq_locate(double b)
         if (t->p[P_LTRIG] && t->p[P_LSYNC])        /* (seq_start set the phase: on by the blocks since beat 0) */
             t->lfo_ph += lfo_sync_inc(t) * (uint32_t)(b * lb / CTL);
     }
+    return f * p < late;
 }
 
 /* the samples the sequencer moves on in this block of n (events_block, the host's transport on) */
@@ -151,10 +119,9 @@ static uint32_t host_block(uint32_t n)
     if (!song.playing || now < host_tr.at - 1.0 / 64.0 || now > host_tr.at + 1.0) {
         if (song.playing)
             seq_stop();
-        seq_locate(now);
         host_tr.at = now;
-        if (tk_pl.fresh)
-            return 0;                              /* (its row plays now; the block's samples with the next) */
+        if (seq_locate(now, 2u * HALF_FRAMES))
+            return 0;                              /* (its 1/16 starts now; the block's samples with the next) */
     }
     lb = 4.0 * div_samples(2);
     s = (now + n / spb - host_tr.at) * lb;

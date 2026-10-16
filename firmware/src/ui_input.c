@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Felucca UI input: LEDs, knobs and buttons, SEQ step entry, panel setup. */
+/* Felucca UI input: LEDs, knobs and buttons, panel setup. */
 #include "ui_name.c"                                    /* NAME: naming user presets and projects */
 /* ----------------------------------------------------------- LEDs --- */
 /* The LED picture is built off-line and copied one byte per column: clearing
@@ -42,6 +42,7 @@ static const uint8_t FAM_BTN[FAM_COUNT] = {B_HOME, B_ENV, B_LFO, B_FX, B_SCL, B_
 static uint32_t cur_fam(void) { return ui.home ? FAM_HOME : cur_page()->fam; }
 
 static int layer_set_open(void);                       /* (ui_layer.c) */
+static int32_t accel(uint32_t role, int32_t s, int32_t range);   /* (below: the knobs' acceleration) */
 /* the OCT LEDs, bit 0 OCT- lit, bit 1 OCT+ lit, OCT_BREATH OCT+ breathing (can be pressed: dark .. ~60 %,
  * hal/fm1_input.h fm1_led_breath, #119). In the dialogs and on action pages OCT- (back) is lit and OCT+ breathes
  * while it would do something; the menu: on a value row OCT- and OCT+ both breathe while that way has a value to go to,
@@ -149,17 +150,15 @@ static uint32_t midi_leds(const track_t *t)
     return m;
 }
 
-/* the keys of the notes the selected track's tracker column and ARP sound now (#38), bit k = key k: where the keys
- * play that note (kb_map: the octave, TRN, QNT, an engine's own map), the lowest key that gives it (QNT SNAP
- * rounds the keys above down onto it); a note no key plays is not shown. A snapshot of tk_pl.note and the ISR's
- * arp_note (arp_ch): no state of its own, nothing to do while nothing sounds */
+/* the keys of the notes the selected track's ARP sounds now (#38), bit k = key k: where the keys play that note
+ * (kb_map: the octave, TRN, QNT, an engine's own map), the lowest key that gives it (QNT SNAP rounds the keys above
+ * down onto it); a note no key plays is not shown. A snapshot of the ISR's arp_note (arp_ch): no state of its own,
+ * nothing to do while nothing sounds */
 static uint32_t play_leds(void)
 {
     const track_t *t = TSEL;
-    uint8_t s[5];
+    uint8_t s[4];
     uint32_t n = 0, i, k, note, used = 0, m = 0, hit;
-    if (tk_pl.note[song.sel])                           /* the tracker's (tracker.c: the column's note sounding) */
-        s[n++] = tk_pl.note[song.sel];
     if (t->arp_note)
         s[n++] = t->arp_note;
     for (i = 0; i < 3u; i++)                            /* (the ARP's CHORD) */
@@ -229,7 +228,7 @@ static uint32_t scale_leds(uint32_t *root)
 static int idle_leds(void)
 {
     int due = (ui_idle & 1u) && !(ui_prefs & PREF_ANIM_OFF) && !song.playing &&
-              !song.rec && !transport_req && !ui.layer && !ui.lock && !ui.menu && !ui.confirm && !ui.uboot && !name_on() &&
+              !transport_req && !ui.layer && !ui.lock && !ui.menu && !ui.confirm && !ui.uboot && !name_on() &&
               !(fm1_in.notes | fm1_in.buttons) && !panel_moved && !play_leds() && fm1_ms - scrn.idle >= IDLE_LEDS_MS;
     if (!due) {
         if (fm1_led_idle_on())
@@ -289,7 +288,6 @@ static void ui_leds(void)
         led_put(nl, panel.btn[B_FX], 1);                /* FX LATCH: lit while an effect or a macro is on */
     if (ui.layer)                                       /* the layer's button breathes while its map is up */
         led_put(nb, panel.btn[layer_btn()], 1);
-    led_put(nl, panel.btn[B_REC], song.rec != 0u && ui.layer != LAYER_REC);   /* (its layer: it breathes) */
     k = oct_leds();
     led_put(nl, panel.btn[B_OCTDN], (int)(k & 1u));
     led_put(nl, panel.btn[B_OCTUP], (int)((k >> 1) & 1u));
@@ -393,22 +391,6 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     *vp = (int16_t)clamp(*vp + accel(EN_K1 + slot, steps, d->max - d->min), d->min, d->max);
 }
 
-/* REC tap on every page: arm / disarm recording on the selected track; it never starts the transport. Armed and
- * stopped on PATTERN the keys write the cursor's cell (ui_tracker.c tk_page_keys); armed and playing they record live
- * into the pattern playing (tracker.c tk_rec_note), so PLAY starts the recording */
-static void rec_tap(void)
-{
-    uint8_t bit = (uint8_t)(1u << song.sel);
-    song.rec ^= bit;
-    ui.force = 1;                                     /* also refresh the status on MENU / ABOUT */
-    if (!(song.rec & bit))
-        return;
-    if (song.playing)
-        ui_message("KEYS RECORD LIVE");
-    else if (!ui.home && cur_page()->graph == GR_TKPAT)
-        ui_message("KEYS WRITE NOTES");             /* (elsewhere the REC LED says it; the layer's first-tap hint shows) */
-}
-
 /* the OCT- / OCT+ dialog (ui_draw.c draws it); trk: the track or the slot it is about */
 static void confirm_open(uint32_t kind, uint32_t trk)
 {
@@ -472,16 +454,6 @@ static void act_do(void)
     uint32_t c = act_col(), id, k = (uint32_t)song.g[G_SLOT] - 1u;
     if (!c--)
         return;
-    if (cur_page()->graph == GR_TOOLS) {
-        if (c == 2u)
-            return;
-        if (!act_ready()) {                               /* nothing there to clear; a song is made while stopped */
-            ui_message(c == 3u ? "STOP FIRST" : "NOTHING TO CLEAR");
-            return;
-        }
-        confirm_open(c == 0u ? CF_CLEAR_SEQ : c == 1u ? CF_INIT_SOUND : CF_CLEAR_SONG, tk_pl.loop_pat);
-        return;
-    }
     if (cur_page()->graph == GR_USER) {                   /* 1 LOAD, 2 ERASE, 3 SAVE (the NAME screen first) */
         if (c > 1u)
             ui.act = 0;
@@ -512,13 +484,8 @@ static void act_do(void)
         else
             name_open(NK_PROJ_SAVE, k);
         break;
-    case G_CLRSEQ:                                        /* the pattern edited (tracker.c) */
-        confirm_open(CF_CLEAR_SEQ, tk_pl.loop_pat);
-        break;
-    default:                                              /* G_INITSND */
-        set_engine(TSEL->eng_req);                        /* engine defaults + its first preset (the steps stay) */
-        ui_message("SOUND INIT");
-        ui.force = 1;
+    default:                                              /* G_INITSND (TOOLS): the dialog first */
+        confirm_open(CF_INIT_SOUND, song.sel);
         break;
     }
 }
@@ -544,8 +511,7 @@ static uint32_t oct_taps(uint32_t pressed, int here)
 }
 
 /* Discussions #92 / #94: the PRESETS knob by page (the menu, a dialog, NAME and the layers: ui_input before this).
- *   the tracker's pages: theirs (ui_tracker.c tk_presets); the list pages USER and PROJECT: as their KNOB 1;
- *     TOOLS and SLICES: nothing
+ *   the list pages USER and PROJECT: as their KNOB 1; TOOLS and SLICES: nothing
  *   HOME, PRESETS and every other page (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, CLOCK, ...): the selected track's
  *     sound, one list over every engine, then the used user presets (preset_step; SAVE held undoes it) */
 static void presets_turn(int32_t s)
@@ -563,7 +529,7 @@ static void presets_turn(int32_t s)
     }
 }
 
-/* HOME / REC / SAVE: tap on release, hold 0.7 s fires once. t0 = press time | 1,
+/* HOME / SAVE: tap on release, hold 0.7 s fires once. t0 = press time | 1,
  * bit 1 = fired (or swallowed: then the release is no tap either) */
 enum { BT_NONE, BT_TAP, BT_HOLD };
 static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok)
@@ -604,14 +570,11 @@ static int layer_allowed(void);
 static uint32_t ly_bit(uint32_t l);
 static void layer_lock_input(uint32_t pressed);
 
-/* a page button let go (they act on release; a layer's own button: layer_gesture). 1: it acted (EDIT on PATTERN, USER,
+/* a page button let go (they act on release; a layer's own button: layer_gesture). 1: it acted (EDIT on USER,
  * PROJECT) instead of opening a page */
 static int page_tap(uint32_t b)
 {
     uint32_t f;
-    if (b == B_EDIT && tk_edit_tap())                   /* the tracker's pages: EDIT clears (ui_tracker.c) */
-        return 1;
-
     if (b == B_EDIT && !ui.home && (cur_page()->graph == GR_USER || cur_page()->graph == GR_SLOTS)) {
         name_rename();                                  /* SAVE > USER / PROJECT: EDIT renames the slot */
         return 1;
@@ -643,7 +606,7 @@ static void ui_notices(void)
 static void ui_input(void)
 {
     uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
-    uint32_t home, rec, save;
+    uint32_t home, save;
     uint32_t oct;
     uint32_t lay, combo = 0, lytap, lkeys, glo, kq = 0;
     int32_t s, sel = 0, ks[4] = {0, 0, 0, 0};
@@ -670,12 +633,9 @@ static void ui_input(void)
         ui_message("KEPT");
     }
     home = btn_hold(&ui.home_t0, B_HOME, now, 1);
-    rec = btn_hold(&ui.rec_t0, B_REC, now, 0);          /* (a tap; held, the REC layer: ui_layer.c) */
     save = btn_hold(&ui.save_t0, B_SAVE, now, !ui.menu && !ui.confirm);   /* held: UNDO (ui.c undo_swap) */
     layer_lock_input(pressed);                          /* (#83: a button closes a locked layer) */
     layer_arm(pressed, now);
-    if (((pressed >> panel.btn[B_REC]) & 1u) && ui.ly == LAYER_REC)
-        ui.rec_t0 |= 2u;                                /* (REC is its layer's button now: its tap is layer_tap's) */
     layer_oct_open(pressed);                            /* (OCT± with a SET layer's button down: it opens now) */
     oct = oct_taps(pressed, ui.menu || ui.confirm || act_cols() || name_on() || layer_set_open());
     oct = layer_oct(pressed, oct);                      /* (a SET layer's OCT-: put back) */
@@ -699,8 +659,7 @@ static void ui_input(void)
         lkeys |= notes & ~fm1_in.notes;                 /* (tapped and let go already) */
     notes &= ~kb_layer;
     if (lay) {                                          /* a layer's button held: keys, knobs and buttons are combos */
-        combo |= (pressed & ~ly_bit(ui.ly) &            /* (REC + PLAY: PLAY plays and REC let go soon is still */
-                  ~(ui.ly == LAYER_REC ? 1u << panel.btn[B_PLAY] : 0u)) != 0u;   /* a tap, it arms: as before) */
+        combo |= (pressed & ~ly_bit(ui.ly)) != 0u;
         notes = 0;                                      /* (the keys are the layer's, not the grid's or a step's) */
         if (pressed & (1u << panel.btn[B_SAVE]))       /* no UNDO, no page */
             ui.save_t0 |= 2u;
@@ -744,12 +703,9 @@ static void ui_input(void)
             ui.confirm = 0;                             /* (a clear dialog is cancelled, NAME too) */
             name_close();
             ui.force = 1;
-            song.seq_mode = 0;
         }
     }
-    if (rec == BT_TAP && !ui.menu && !ui.confirm && !name_on())   /* REC pressed in another layer (REC alone: */
-        rec_tap();                                      /* its layer's tap); nothing in the menu, a dialog or NAME */
-    if (ui.menu) {                                      /* SAVE / REC taps do nothing here (HOME: above) */
+    if (ui.menu) {                                      /* SAVE taps do nothing here (HOME: above) */
         if (ui.save_t0)
             ui.save_t0 |= 2u;
         ui.pg_down = 0;
@@ -767,9 +723,7 @@ static void ui_input(void)
         name_input(notes, oct);
         return;
     }
-    if (save == BT_HOLD && tk_page())                   /* the tracker's pages: the last pattern edit (ui_tracker.c) */
-        tk_undo_swap();
-    else if (save == BT_HOLD)                                /* SAVE held: undo the last sound load */
+    if (save == BT_HOLD)                                /* SAVE held: undo the last sound load */
         undo_swap();
     else if (save == BT_TAP && !ui.confirm)             /* SAVE acts on release (a hold is the undo) */
         open_family(FAM_SAVE);
@@ -784,21 +738,8 @@ static void ui_input(void)
                 name_open(NK_USER_SAVE, ui.confirm_trk);
             } else if (kind == CF_ERASE_USER) {
                 up_ui(1u, ui.confirm_trk);
-            } else if (kind == CF_CLEAR_SONG) {
-                if (!transport_busy()) { project_new(); tku.row = tku.pos = 0; ui_message("NEW SONG"); }
-            } else if (kind == CF_INIT_SOUND) {
+            } else if (kind == CF_INIT_SOUND) {      /* engine defaults + its first preset */
                 set_engine(TSEL->eng_req); ui_message("SOUND INIT");
-            } else if (kind == CF_CLEAR_TRK) {            /* (REC > CLEAR: the track's column of the pattern) */
-                track_t *t = &trk[ui.confirm_trk % NTRK];
-                char b[12] = "1 CLEARED";
-                tk_clear_column(tk_pl.loop_pat, ui.confirm_trk % NTRK);
-                t->nheld = 0;                           /* and the latched arp chord */
-                t->arp_phys = 0;
-                b[0] = (char)('1' + ui.confirm_trk);
-                ui_say("TRACK ", b);
-            } else {                                    /* CF_CLEAR_SEQ: the pattern */
-                tk_clear_pattern(ui.confirm_trk % TK_PATS);
-                ui_message("PATTERN CLEARED");
             }
         } else if (oct & 1u) {
             ui.confirm = 0;
@@ -808,8 +749,8 @@ static void ui_input(void)
         enc_drop();
         return;
     }
-    if (lytap)                                          /* a layer's button acts on release (held: the layer; SEQ's */
-        layer_tap(lytap);                               /* on every page since 1.2, its tap the SEQ pages) */
+    if (lytap)                                          /* a layer's button acts on release (held: the layer) */
+        layer_tap(lytap);
     if (home == BT_TAP)                                 /* HOME acts on release: a hold opens the menu */
         home_tap();
     for (id = 0; id < 14u; id++) {
@@ -820,15 +761,9 @@ static void ui_input(void)
         case B_PLAY:
             if (layer_play())                           /* (GLO held: RESTART) */
                 break;
-            if (song.playing)
-                transport_req = 2;
-            else {
-                tk_play_mode();                         /* LOOP or SONG, by the page (ui_tracker.c) */
-                transport_req = 1;
-            }
+            transport_req = song.playing ? 2u : 1u;
             break;
-        case B_SEQ:
-        case B_REC:                                     /* tap: above; held, its layer (ui_layer.c) */
+        case B_REC:                                     /* (nothing: there is no recording yet) */
         case B_SAVE:
         case B_FX:                                      /* the layers' buttons: ui_layer.c */
         case B_GLO:
@@ -847,7 +782,7 @@ static void ui_input(void)
                 song.octave += b == B_OCTDN ? (song.octave > -3 ? -1 : 0) : (song.octave < 3 ? 1 : 0);
             break;
         }
-        default:                                        /* page buttons (GLO SCL ENV LFO EDIT ARP): when let go */
+        default:                                        /* page buttons (GLO SCL ENV LFO EDIT ARP SEQ): when let go */
             if (!lay)                                   /* (with FX held: swallowed) */
                 ui.pg_down |= (uint16_t)(1u << id);
             break;
@@ -867,13 +802,12 @@ static void ui_input(void)
             go_home();
     }
     song.keys_mute = (uint8_t)keys_mode();            /* (seq.c: NAME's keys are silent) */
-    tk_page_keys(notes);                                /* PATTERN: step entry at the cursor (ui_tracker.c) */
 
     /* #102: the knobs a layer took above are not read again here. The TIMER5 scan (10 kHz) counts detents while this
      * pass runs, so one landing after the layer's read went to the page as well: KNOB 1..4 edited the layer's control
      * and the page under it (HOME's sound), PRESETS could load a sound. They stay for the next pass */
     kq |= lay;
-    if (!lay && (s = panel_enc(EN_PRESET)) != 0 && !tk_presets(s))   /* (the tracker's pages: theirs) */
+    if (!lay && (s = panel_enc(EN_PRESET)) != 0)
         presets_turn(s);
     if (!lay && (s = panel_enc(EN_ALGO)) != 0)     /* ALGORITHM: the selected track, on every page */
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NTRK - 1));
@@ -909,10 +843,6 @@ static void ui_input(void)
             int16_t *vp;
             const param_desc_t *d = home_param(k, &vp);
             *vp = (int16_t)param_turn(d, *vp, accel(EN_K1 + k, s, d->fmt == F_ENUM ? 0 : d->max - d->min));
-        } else if (tk_page()) {                         /* the tracker's pages (ui_tracker.c) */
-            ui.hot_col = (uint8_t)k;
-            ui.hot_t = 40;
-            tk_knob(k, s);
         } else {
             edit_param(k, s);
         }

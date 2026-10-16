@@ -156,7 +156,7 @@ static const icon_map_t ICON_MAP[] = {
     {"FREQ", ICON_CUTOFF}, {"TRK", ICON_KEYTRACK}, {"DRFT", ICON_SWEEP},   /* NOISE (COLR, DENS, CRSH: above) */
     {"MLVL", ICON_MOD}, {"MRAT", ICON_RATIO}, {"MEG", ICON_DECAY}, {"VMOD", ICON_ACCENT}, {"DTUN", ICON_DETUNE},
     {"SLOT", ICON_LOAD},                                                    /* FM6 (ALG, FB: above) */
-    /* fixed columns drawn by ui_draw.c and ui_tracker.c */
+    /* fixed columns drawn by ui_draw.c */
     {"NOTE", ICON_PITCH}, {"STEP", ICON_STEPS}, {"ACC", ICON_ACCENT},
     {"TRACK", ICON_MIX},                  /* TRACKS page (LEVEL, LEN, PAN: above) */
     {"SLCR", ICON_SLICE}, {"PAT", ICON_STEPS}, {"DEPTH", ICON_MIX},   /* SLICER page (RATE: param_icon) */
@@ -243,8 +243,7 @@ static uint32_t page_icon(const page_t *pg)
 {
     switch (pg->graph) {
     case GR_TRK: return ICON_X_MIXER;         /* MIXER (HOME): vertical faders */
-    case GR_TKSONG: return ICON_X_SONG;       /* the tracker's SONG */
-    case GR_TKPAT: return ICON_X_PATTERN;     /* .. PATTERN */
+    case GR_TODO: return ICON_X_PATTERN;      /* SEQ: the sequencer's placeholder */
     default: return ICON_NONE;
     }
 }

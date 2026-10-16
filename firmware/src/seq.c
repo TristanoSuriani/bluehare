@@ -9,10 +9,8 @@
  * CH1-4 (0) channels 1..4 play parts 1..4, channels 5..16 are ignored (midi_control.c midi_event); SEL (1)
  * every channel the selected track; 1.2: CH5-8, CH9-12, CH13-16 as CH1-4 on those four channels (midi_base). Their CC1 (mod wheel), CC11 (expression) and channel aftertouch go to
  * the same track's modulation matrix (mod.c; the selected track: the one selected then).
- * A note into an armed track (song.rec) while
- * the transport runs is recorded into its pattern, quantised to its (swung) steps, with its
- * held length as TIE steps (rec_note, rec_hold, rec_release). With the ARP on, the notes the arp
- * plays are recorded, not the keys held (what plays back is what was heard). A key or MIDI note plays a
+ * The sequencer is a placeholder (SEQ shows TODO): PLAY runs the transport alone (the ARP, the click, the SLICER,
+ * the FX layer's grid). A key or MIDI note plays a
  * chord when the track's CHRD is on (chord.c): its notes go through the same input as so many keys. */
 static const uint16_t SCALE_MASK[] = {
     0xFFF,                                   /* CHR */
@@ -76,7 +74,7 @@ static uint32_t scale_mask(const track_t *t)
     return SCALE_MASK[clamp(t->p[P_SCALE], 0, sizeof SCALE_MASK / sizeof SCALE_MASK[0] - 1)];
 }
 
-/* note n moved down onto the track's scale (ROOT, SCALE): QNT SNAP's keys and QNT SEQ's sequenced notes */
+/* note n moved down onto the track's scale (ROOT, SCALE): QNT SNAP's keys */
 static int32_t scale_snap(const track_t *t, int32_t n)
 {
     uint32_t mask = scale_mask(t), guard = 12;
@@ -85,7 +83,7 @@ static int32_t scale_snap(const track_t *t, int32_t n)
     return n;
 }
 
-enum { QN_OFF, QN_SNAP, QN_WHITE, QN_SEQ };      /* P_QUANT */
+enum { QN_OFF, QN_SNAP, QN_WHITE };             /* P_QUANT */
 
 static uint32_t kb_map(const track_t *t, uint32_t k)
 {
@@ -95,7 +93,7 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
     if (e->keys && (n = e->keys(t, k)) >= 0)           /* the engine's own key map (DRUM's GM map, slices) */
         return (uint32_t)n;
     n = 53 + (int32_t)k;
-    if (t->p[P_QUANT] == QN_SNAP || t->p[P_QUANT] == QN_SEQ)   /* SNAP (and SEQ): every key, rounded down */
+    if (t->p[P_QUANT] == QN_SNAP)                      /* SNAP: every key, rounded down */
         return (uint32_t)clamp(scale_snap(t, n + 12 * song.octave + t->p[P_TRANS]), 0, 127);
     if (t->p[P_QUANT] == QN_WHITE) {                    /* WHITE: white keys walk the scale, black keys are silent */
         uint32_t mask = scale_mask(t), i;
@@ -157,17 +155,6 @@ static void arp_remove(track_t *t, uint32_t note)
     t->nheld = (uint8_t)k;
 }
 
-static void rec_note(track_t *t, uint32_t note, uint32_t vel);
-static void rec_release(track_t *t, uint32_t note);
-static int rec_on(const track_t *t) { return ((song.rec >> trk_index(t)) & 1u) && song.playing; }
-/* the tracker (tracker.c, included below) */
-static void tk_rec_note(track_t *t, uint32_t note, uint32_t vel);
-static void tk_rec_release(track_t *t, uint32_t note);
-static void tk_start(void);
-static void tk_stop(void);
-static void tk_tick(uint32_t n);
-
-
 /* the ARP's modes (P_AMODE). Append-only: a stored value keeps its meaning. ORD (1.2, it played as UP before) plays
  * the held notes in the order they were pressed, whatever ARP 2's ORD switch says (that switch orders the list of the
  * other modes). 1.2 (Discussion #95), over the note list (the held notes low to high, or as played,
@@ -185,13 +172,11 @@ static void arp_forget(track_t *t)               /* (its notes ended otherwise: 
 
 /* CHORD's notes. Not inlined: they run once an arp step, and kept out of the audio ISR's loop over the tracks
  * (tests/target_budget.py) */
-static __attribute__((noinline)) void arp_chord_off(track_t *t, int rec)   /* the other notes end */
+static __attribute__((noinline)) void arp_chord_off(track_t *t)   /* the other notes end */
 {
     uint32_t i;
     for (i = 0; i < 3u; i++)
         if (t->arp_ch[i]) {
-            if (rec)
-                rec_release(t, t->arp_ch[i]);
             trk_note_off(t, t->arp_ch[i]);
             t->arp_ch[i] = 0;
         }
@@ -210,27 +195,15 @@ static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list
             t->arp_note = (uint8_t)nt;
         else
             t->arp_ch[i - 1u] = (uint8_t)nt;
-        if (rec_on(t))
-            rec_note(t, nt, 100);
         trk_note_on(t, nt, 100);
     }
 }
 
-static void arp_silence(track_t *t)              /* the sounding arp note(s) end */
+static void arp_off(track_t *t)                  /* the sounding arp note(s) end */
 {
     if (t->arp_ch[0] | t->arp_ch[1] | t->arp_ch[2])
-        arp_chord_off(t, 0);
+        arp_chord_off(t);
     trk_note_off(t, t->arp_note);
-    t->arp_note = 0;
-}
-
-static void arp_off(track_t *t)                  /* the sounding arp note(s) end (a recorded one too) */
-{
-    if (t->arp_ch[0] | t->arp_ch[1] | t->arp_ch[2])
-        arp_chord_off(t, rec_on(t));
-    trk_note_off(t, t->arp_note);
-    if (rec_on(t))
-        rec_release(t, t->arp_note);
     t->arp_note = 0;
 }
 
@@ -291,10 +264,7 @@ static volatile uint32_t beat_pos, beat_n;      /* samples into the beat, the be
 #define CLK_START 0xFFFFFFFFu
 static uint32_t clk_pos = CLK_START, clk_step;  /* samples into the 1/16 step, the step of the bar (0..15) */
 static uint32_t click_beat_len(void) { return 4u * div_samples(2); }   /* DIV 2: 1/16 */
-static int click_wanted(void)                  /* CLICK REC: while a track is armed */
-{
-    return click_mode == CLICK_ON || (click_mode == CLICK_REC && song.rec);
-}
+static int click_wanted(void) { return click_mode == CLICK_ON; }
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 {
     uint32_t period, cnt, list[64], len = 0, i, j, o;
@@ -342,8 +312,6 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
             return;
         }
         t->arp_note = (uint8_t)list[j];
-        if (rec_on(t))
-            rec_note(t, t->arp_note, 100);           /* recording: what the arp plays */
         trk_note_on(t, t->arp_note, 100);
     }
 }
@@ -351,15 +319,9 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
 
 /* -------------------------------------------------------- note input --- */
-/* live recording: into the row of the tracker's pattern playing (tracker.c tk_rec_note) */
-static void rec_note(track_t *t, uint32_t note, uint32_t vel) { tk_rec_note(t, note, vel); }
-static void rec_release(track_t *t, uint32_t note) { tk_rec_release(t, note); }
-
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     last_note = (uint8_t)note;
-    if (rec_on(t) && !t->p[P_AMODE])               /* (ARP on: arp_tick records its notes) */
-        rec_note(t, note, vel);
     if (t->p[P_AMODE])
         arp_add(t, note);
     else
@@ -372,7 +334,6 @@ static void input_off(track_t *t, uint32_t note)
 {
     if (midi_note_held(t, note))
         return;
-    rec_release(t, note);
     arp_remove(t, note);                            /* both: the note may have started in the */
     trk_note_off(t, note);                          /* other mode (ARP switched while held) */
 }
@@ -541,8 +502,12 @@ static void keyboard_block(void)
 }
 
 /* -------------------------------------------------------- sequencer --- */
-/* PLAY: the tracker from its start (tracker.c tk_start: LOOP the pattern edited, SONG the position picked), the
- * metronome, the ARP LED's beat, the SLICER and the FX layer's grid with it */
+/* the sequencer: a placeholder for now (SEQ shows TODO). seq_hook, when set, gets every block the samples the
+ * transport moved on (events_block, after the keys and MIDI IN; 0 while stopped): where the sequencer will play. The
+ * host tests play their songs through it (tests/hostsim.c host_seq) */
+static void (*seq_hook)(uint32_t n);
+
+/* PLAY: the transport from its start: the metronome, the ARP LED's beat, the SLICER and the FX layer's grid with it */
 static void seq_start(void)
 {
     uint32_t i;
@@ -551,12 +516,11 @@ static void seq_start(void)
         if (t->p[P_LTRIG] && t->p[P_LSYNC])        /* LFO 2 FREE + SYNC: in time with the bars from PLAY */
             t->lfo_ph = (uint32_t)t->p[P_LPHASE] << 25;
     }
-    tk_start();
     song.tick = 0;
     beat_pos = 0; beat_n = 0;                      /* the ARP LED's beat from the top too */
-    clk_pos = CLK_START;                           /* the metronome's first beat with row 0 */
+    clk_pos = CLK_START;                           /* the metronome's first beat now */
     song.playing = 1;
-    slicer_start();                                /* slicer.c: its step 0 with the tracker's row 0 */
+    slicer_start();                                /* slicer.c: its step 0 now */
     perf_start();                                  /* perform.c: its 1/16 grid too */
 }
 
@@ -568,7 +532,6 @@ static void seq_stop(void)
         for (i = 0; i < NPART; i++)                /* its sounding note too (HOLD keeps the latched chord) */
             if (trk[i].arp_note)
                 arp_off(&trk[i]);
-    tk_stop();
 }
 
 /* MIDI in: the track a channel plays (0..15): G_ROUTE CH1-4 (0) channels 1..4 their parts (5..16 never get
@@ -582,7 +545,6 @@ static int midi_in_block(uint32_t ch)      /* ch is one of ROUT's block (not wit
 }
 static track_t *midi_track(uint32_t ch) { return midi_in_block(ch) ? &trk[ch - (uint32_t)midi_base()] : TSEL; }
 
-#include "tracker.c"
 #include "midi_control.c"
 #include "midi_clock.c"
 
@@ -678,7 +640,7 @@ static void events_block(uint32_t n)
             if (!t->p[P_AMODE])
                 t->arp_phys = 0;
             if (t->arp_note)
-                arp_silence(t);
+                arp_off(t);
         }
         t->armp = t->p[P_AMODE];
         t->aholdp = t->p[P_AHOLD];
@@ -711,9 +673,8 @@ static void events_block(uint32_t n)
                 seq_n = midi_clock_advance(fm1_ms);
         }
     }
-    if (tk_aud_req | tk_aud_note)
-        tk_audition(n);                               /* (STEP PREVIEW: a cell sounds, stopped; real time) */
-    tk_tick(seq_n);
+    if (seq_hook)
+        seq_hook(song.playing ? seq_n : 0u);
     if (song.playing)
         click_tick(seq_n);
     for (i = 0; i < NPART; i++)

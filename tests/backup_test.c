@@ -71,7 +71,7 @@ static void reset(void)
     memset(nor, 0xFF, sizeof nor);
     memset(&song, 0, sizeof song);
     memset(trk, 0, sizeof trk);
-    tk_defaults();
+    trk_mix_defaults();
     memset(&proj_good, 0, sizeof proj_good);
     proj_name[0] = 0;
     memset(up_bank, 0, sizeof up_bank);
@@ -173,7 +173,7 @@ int main(void)
     persist_t ps;
 
     reset();
-    *tk_at(0, 0, 0) = tk_pack(60, 1, 0, 0);
+    trk[0].p[P_ATK] = 60;
     bad += check("LIST: 13 objects (ids 8, 9 empty: FM6 gone); id 0, the music in RAM, empty (1.5: a song)",
                  list(0, &len, &crc) == 0 && rep[2] == 13u && len == 0u);
     bad += check("no song stored: its chunks (ids 2..5) list as length 0", list(2, &len, &crc) == 0 && len == 0 &&
@@ -268,19 +268,17 @@ int main(void)
     bad += check("PUT while starting PLAY is refused (3)", put_begin(1, sizeof ps, 0) == 3u);
     transport_req = 0;
 
-    /* the song (1.5): its chunks backed up and restored whole; a restore is the newest song stored */
+    /* the project (1.5): its chunks backed up and restored whole; a restore is the newest project stored */
     {
         static uint8_t ch[4][ST_PAYLOAD_MAX];
         static uint32_t cl[4];
-        uint32_t i, p, r, k, h0, h1, n = 0;
+        uint32_t i, k, h0, h1;
         reset();
-        for (p = 0; p < 6u; p++)                        /* (two chunks' worth or more) */
-            for (r = 0; r < TK_ROWS; r++)
-                for (k = 0; k < NTRK; k++, n++)
-                    *tk_at(p, r, k) = tk_pack(30u + n % 70u, k, 0, 0);
+        for (k = 0; k < NTRK; k++)
+            trk[k].p[P_ATK] = (int16_t)(30u + 7u * k);
         song.g[G_BPM] = 99;
         project_save_as(0, "ARCHIVED");
-        for (p = 0, h0 = 0; p < TK_PATS; p++) h0 = h0 * 31u + (uint32_t)tk_pat_empty(p) + tk_note(tk_at(p, 7, 2));
+        for (k = 0, h0 = 0; k < NTRK; k++) h0 = h0 * 31u + (uint32_t)trk[k].p[P_ATK];
         int ok = 1;
         for (i = 0; i < 4u; i++) {
             ok &= list(2u + i, &cl[i], &crc) == 0;
@@ -294,22 +292,20 @@ int main(void)
                 ok &= crc == st_crc32(ch[i], cl[i]);
             }
         }
-        bad += check("a song of two chunks or more: LIST and GET give each as the flash has it", ok && cl[0] && cl[1]);
-        project_new();
-        *tk_at(0, 0, 0) = tk_pack(77, 0, 0, 0);
+        bad += check("a project: LIST and GET give its chunk as the flash has it", ok && cl[0] && !cl[1]);
+        for (k = 0; k < NTRK; k++)
+            trk[k].p[P_ATK] = 77;
         song.g[G_BPM] = 140;
         project_save_as(0, "NEWER");
         ok = 1;
         for (i = 0; i < 4u; i++)
             ok &= put_all(2u + i, cl[i] ? ch[i] : 0, cl[i], st_crc32(ch[i], cl[i])) == 0;
         project_load(0);
-        for (p = 0, h1 = 0; p < TK_PATS; p++) h1 = h1 * 31u + (uint32_t)tk_pat_empty(p) + tk_note(tk_at(p, 7, 2));
-        bad += check("its chunks put back: the stored song is the archived one (newer than the song saved since)",
+        for (k = 0, h1 = 0; k < NTRK; k++) h1 = h1 * 31u + (uint32_t)trk[k].p[P_ATK];
+        bad += check("its chunks put back: the stored project is the archived one (newer than the one saved since)",
                      ok && h1 == h0 && song.g[G_BPM] == 99 && str_eq(proj_name, "ARCHIVED"));
-        ch[1][8] ^= 1u;                                 /* (its index) */
         bad += check("a chunk of another place (its header's index) is refused (2)",
-                     put_all(3, ch[1], cl[1], st_crc32(ch[1], cl[1])) == 2u);
-        ch[1][8] ^= 1u;
+                     put_all(3, ch[0], cl[0], st_crc32(ch[0], cl[0])) == 2u);
         erase_error = 1;
         ok = put_all(2, ch[0], cl[0], st_crc32(ch[0], cl[0])) == 4u;
         erase_error = 0;

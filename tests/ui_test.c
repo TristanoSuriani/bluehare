@@ -168,14 +168,8 @@ static void ui_power_on(void)
     uint32_t i;
     memset(trk, 0, sizeof trk);
     memset(&song, 0, sizeof song);
-    tk_defaults();                                /* the tracker's song empty, nothing playing */
-    tk_user_sound = up_tk_sound;
-    memset(&tku, 0, sizeof tku);
-    tku.step = 1;
-    tku.note = 60;
-    tku.cmd = TKC_RETRIG;
-    tk_aud_req = 0;
-    tk_aud_note = 0;
+    trk_mix_defaults();                           /* (nothing playing) */
+    seq_hook = 0;                                 /* (the sequencer: a placeholder; no test song) */
     memset(&ui, 0, sizeof ui);
     page_over = 0;                                /* (no layer's knobs; roll_settle's test page gone) */
     memset(&nm, 0, sizeof nm);                    /* NAME closed, no project name */
@@ -202,8 +196,6 @@ static void ui_power_on(void)
         set_engine_of(t, UT_DEF[i][0]);
         apply_preset_to(t, UT_DEF[i][1]);
         t->engine = t->eng_req;
-        tk.instr[i].src = (uint8_t)eng_id(UT_DEF[i][0]);   /* (the instruments of these sounds, as tk_defaults makes */
-        tk.instr[i].preset = UT_DEF[i][1];                   /* them of TRK_DEF's) */
     }
     undo_depth--;
     song.sel = 0;
@@ -316,8 +308,6 @@ static int16_t stored_param(uint32_t slot, uint32_t track, uint32_t id)
     return r.err ? -32768 : v;
 }
 static int msg_is(const char *s) { return ui.msg_t && str_eq(ui.msg, s); }
-/* the tracker's cell at pattern p, row r, track k is c (tracker.c) */
-static int cell_is(uint32_t p, uint32_t r, uint32_t k, tk_cell_t c) { return !memcmp(tk_at(p, r, k), &c, sizeof c); }
 static void go_page(uint32_t graph)               /* the page that draws graph */
 {
     uint32_t i;
@@ -343,12 +333,10 @@ static int same_sound(const track_t *a, const track_t *b)
 static int test_sound_loads(void)
 {
     int bad = 0;
-    uint32_t i, empty = 1;
+    uint32_t i;
     track_t *t = &trk[0], before;
     ui_power_on();
-    for (i = 0; i < TK_PATS; i++)
-        empty &= (uint32_t)tk_pat_empty(i);
-    bad += check("power-on: the four sounds, the tracker's song empty, no undo copy", empty && undo.trk == 0 && undo_depth == 0 &&
+    bad += check("power-on: the four sounds, no undo copy", undo.trk == 0 && undo_depth == 0 &&
                  trk[3].eng_req == ENGI_KIT && trk[3].preset == 0u && trk[0].preset == UT_DEF[0][1]);
     t->p[P_E0 + 1] = 77;                          /* a sound edit */
     t->p[P_AMODE] = 2;                            /* and the track's own settings */
@@ -424,87 +412,6 @@ static int test_sound_loads(void)
     return bad;
 }
 
-
-static int test_rec(void)
-{
-    static const uint8_t FAMS[3] = {FAM_TRK, FAM_SEQ, FAM_ARP};
-    int bad = 0;
-    uint32_t k;
-    for (k = 0; k < 3u; k++) {
-        ui_power_on();
-        track_select(2);
-        open_family(FAMS[k]);
-        press(B_REC);
-        bad += check(k == 0 ? "REC on TRACKS: arms the selected track only, PLAY does not start" :
-                     k == 1 ? "REC on SEQ > PATTERN: arms the selected track for step entry, PLAY does not start" :
-                     "REC on ARP: arms the selected track only, PLAY does not start",
-                     song.rec == 4u && transport_req == 0u && (k != 1u || msg_is("KEYS WRITE NOTES")));
-        song.playing = 1;
-        transport_req = 0;
-        frames(400);                                   /* (not a double tap: that locks the REC layer) */
-        press(B_REC);
-        bad += check("REC again disarms (the transport runs on)", song.rec == 0u && transport_req == 0u);
-        frames(400);
-        hold(B_REC);                                   /* 1.1.5: held, the REC layer (ui_layer.c); the arming stays */
-        bad += check("REC held: its layer, closed when let go; no dialog, the arming as it was",
-                     ui.confirm == CF_NONE && song.rec == 0u && !ui.layer && !transport_req);
-        ui.confirm = 0;
-    }
-    ui_power_on();
-    press(B_REC);
-    bad += check("REC on HOME arms without changing the screen; PLAY does not start",
-                 ui.home && song.rec == 1u && transport_req == 0u);
-    /* PATTERN: armed + playing -> the keys record live only (the tracker, tracker.c tk_rec_note) */
-    ui_power_on();
-    open_family(FAM_SEQ);
-    bad += check("SEQ opens PATTERN", cur_page()->graph == GR_TKPAT);
-    press(B_REC);
-    song.playing = 1;
-    transport_req = 0;
-    fm1_in.notes = host_notes = 1u << 7;
-    frame();
-    fm1_in.notes = 0;
-    frame();
-    bad += check("PATTERN, armed and playing: a key does not write the cursor's cell", tk_empty(tk_at(0, 0, 0)) &&
-                 tku.row == 0);
-    song.rec = 0;
-    song.playing = 0;
-    fm1_in.notes = host_notes = 1u << 7;
-    frame();
-    fm1_in.notes = 0;
-    frame();
-    bad += check("PATTERN, not armed: the key only plays (nothing written, the cursor stays)",
-                 tk_empty(tk_at(0, 0, 0)) && tku.row == 0);
-    song.rec = 1;
-    fm1_in.notes = host_notes = 1u << 7;
-    frame();
-    fm1_in.notes = 0;
-    frame();
-    bad += check("PATTERN, armed and stopped: the key writes its note at the cursor (and the cursor moves on)",
-                 tk_note(tk_at(0, 0, 0)) == kb_map(&trk[0], 7) && tku.row == 1);
-    /* ARP: the arp's notes are recorded, not the key */
-    ui_power_on();
-    {
-        track_t *t = &trk[0];
-        uint32_t i, notes = 0;
-        t->engine = t->eng_req;
-        t->p[P_AMODE] = 1;
-        t->p[P_AOCT] = 2;
-        t->p[P_APROB] = 127;
-        song.rec = 1;
-        song.playing = 1;
-        input_on(t, 60, 100);
-        bad += check("ARP on: the key held is not recorded", tk_pat_empty(0));
-        arp_tick(t, 1);
-        for (i = 0; i < TK_ROWS; i++)
-            if (tk_note(tk_at(0, i, 0)))
-                notes = tk_note(tk_at(0, i, 0));
-        bad += check("ARP on: the note the arp plays is recorded", notes == 60u);
-        t->p[P_AMODE] = 0;
-        input_off(t, 60);
-    }
-    return bad;
-}
 
 static uint32_t gated_notes(const track_t *t)
 {
@@ -741,58 +648,49 @@ static int test_actions(void)
     frame();
     go_title("TOOLS");
     turn(EN_K1, 1);
-    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));
     fm1_in.buttons &= ~(1u << panel.btn[B_OCTUP]);
     frame();
     bad += check("a press that began elsewhere does nothing on an action page", !ui.confirm && song.octave == 2);
     ui.act = 0;
     go_home();
-    /* TOOLS: CLRSQ and INIT are picked, not done, by their knobs */
-    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));          /* (the pattern edited: a cell) */
+    /* TOOLS: INIT is picked, not done, by its knob */
     go_title("TOOLS");
-    bad += check("TOOLS: nothing picked, OCT+ dark", act_cols() == 15u && act_col() == 0u && oct_leds_seen(0) == 1u);
+    bad += check("TOOLS: nothing picked, OCT+ dark", act_cols() == 1u && act_col() == 0u && oct_leds_seen(0) == 1u);
     turn(EN_K1, 3);
-    bad += check("KNOB 1 picks CLEAR, the pattern stays; OCT+ breathes", ui.act == 1u && !tk_pat_empty(0) &&
-                 oct_leds_seen(0) == (1u | OCT_BREATH));
+    bad += check("KNOB 1 picks INIT; OCT+ breathes", ui.act == 1u && oct_leds_seen(0) == (1u | OCT_BREATH));
     {
         char a[16], b[16];
         foot_hint(a, b);
-        bad += check("..the footer: OCT+ CLEAR / OCT- CANCEL", str_eq(a, "OCT+ CLEAR") && str_eq(b, "OCT- CANCEL"));
+        bad += check("..the footer: OCT+ INIT / OCT- CANCEL", str_eq(a, "OCT+ INIT") && str_eq(b, "OCT- CANCEL"));
     }
     turn(EN_K1, -1);
     bad += check("KNOB 1 left drops it", ui.act == 0u);
     turn(EN_K1, 1);
     press(B_OCTDN);
-    bad += check("OCT- cancels the pick (still on TOOLS)", ui.act == 0u && !ui.home && !tk_pat_empty(0));
+    bad += check("OCT- cancels the pick (still on TOOLS)", ui.act == 0u && !ui.home);
     turn(EN_K1, 1);
-    press(B_OCTUP);
-    bad += check("TOOLS CLEAR first asks confirmation", ui.confirm == CF_CLEAR_SEQ && !tk_pat_empty(0));
-    press(B_OCTUP);
-    bad += check("OCT+ clears the pattern, the pick dropped", tk_pat_empty(0) && msg_is("PATTERN CLEARED") && ui.act == 0u);
-    turn(EN_K1, 1);
-    bad += check("nothing to clear: OCT+ dark", oct_leds_seen(0) == 1u);
-    turn(EN_K2, 1);
     t->p[P_E0] = (int16_t)(t->p[P_E0] + 1);
     press(B_OCTUP);
     bad += check("TOOLS INIT first asks confirmation", ui.confirm == CF_INIT_SOUND);
     press(B_OCTUP);
-    bad += check("KNOB 2 INIT, OCT+: SOUND INIT", msg_is("SOUND INIT") && ui.act == 0u);
+    bad += check("KNOB 1 INIT, OCT+: SOUND INIT", msg_is("SOUND INIT") && ui.act == 0u);
     press(B_OCTDN);
     bad += check("OCT- with nothing picked: HOME", ui.home);
     /* the dialogs and the menu */
     open_family(FAM_SEQ);
-    tk_put(0, 5, 0, tk_pack(62, 0, 0, 0));
-    confirm_open(CF_CLEAR_SEQ, 0);
+    t->p[P_E0] = (int16_t)(t->p[P_E0] + 1);
+    ui.msg_t = 0;                                       /* (the INIT above said SOUND INIT) */
+    confirm_open(CF_INIT_SOUND, 0);
     frame();
-    bad += check("a dialog: OCT+ breathes, OCT- lit", ui.confirm == CF_CLEAR_SEQ && oct_leds_seen(0) == (1u | OCT_BREATH) &&
+    bad += check("a dialog: OCT+ breathes, OCT- lit", ui.confirm == CF_INIT_SOUND && oct_leds_seen(0) == (1u | OCT_BREATH) &&
                  oct_leds_seen(1) == (1u | OCT_BREATH));
     fm1_in.buttons |= 1u << panel.btn[B_OCTUP];
     host_pressed |= 1u << panel.btn[B_OCTUP];
     frame();
-    bad += check("..it answers on release, not on the press", ui.confirm == CF_CLEAR_SEQ && !tk_pat_empty(0));
+    bad += check("..it answers on release, not on the press", ui.confirm == CF_INIT_SOUND && !msg_is("SOUND INIT"));
     fm1_in.buttons &= ~(1u << panel.btn[B_OCTUP]);
     frame();
-    bad += check("..OCT+ let go: cleared", ui.confirm == CF_NONE && tk_pat_empty(0));
+    bad += check("..OCT+ let go: done", ui.confirm == CF_NONE && msg_is("SOUND INIT"));
     bad += check("back on SEQ: the octave LEDs again", oct_leds() == 2u);
     return bad;
 }
@@ -1166,10 +1064,10 @@ static int test_menu_tabs(void)
             }
     }
     ui_prefs = 0;
-    bad += check("MENU tabs: DISPLAY CONTROL AUDIO MIDI SYSTEM (8 6 5 1 5 rows), 1..8 each in a run, fit the page; tab gaps "
+    bad += check("MENU tabs: DISPLAY CONTROL AUDIO MIDI SYSTEM (8 5 5 1 5 rows), 1..8 each in a run, fit the page; tab gaps "
                  "constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 6u && mtab_rows(MTAB_AUDIO) == 5u &&
+                 mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 5u && mtab_rows(MTAB_AUDIO) == 5u &&
                  mtab_rows(MTAB_MIDI) == 1u && mtab_rows(MTAB_SYSTEM) == 5u && MI_TAB[MI_TUNE] == MTAB_AUDIO &&
                  MI_TAB[MI_MIDIIN] == MTAB_MIDI && MI_TAB[MI_INFO] == MTAB_SYSTEM && MI_INFO >= MI_VALUES);
 
@@ -1503,7 +1401,7 @@ static int mono_screens(uint32_t pal, int (*chk)(void), uint32_t *n)
         if (!eng_ok(e))
             continue;
         for (i = 0; i < NPAGES; i++) {
-            ui_power_on(); set_engine_of(TSEL, e); song.playing = 1; song.rec = 1;
+            ui_power_on(); set_engine_of(TSEL, e); song.playing = 1;
             ui.home = 0; ui.page = (uint8_t)i; page_entered();
             if (!page_visible(i)) continue;
             settings.palette = pal; palette_set(pal);
@@ -1517,7 +1415,7 @@ static int mono_screens(uint32_t pal, int (*chk)(void), uint32_t *n)
         ui.force = 1; ui_draw(); ok &= chk();
     }
     for (i = 0; i < 4u; i++) {
-        ui_power_on(); song.rec = 3;
+        ui_power_on();
         settings.palette = pal; palette_set(pal);
         if (i < 2u) { ui.menu = (uint8_t)(i + 1u); ui.menu_scroll = 300; }
         else if (i == 2u) ui.confirm = CF_OVR_PROJ;
@@ -1776,7 +1674,6 @@ static int test_soak_cards(void)
             quiet = 0;
         } else if (r < 30u) { ui.home = 1; page_entered(); quiet = 0; }
         else if (r < 31u) transport_req = song.playing ? 2u : 1u;
-        else if (r == 31u && SOAK_RND(3u) == 0u) rec_tap();
         else if (r == 32u) { host_enc[panel.enc[EN_ALGO]] += SOAK_RND(2u) ? 1 : -1; quiet = 0; }
         else if (r == 33u) trk[SOAK_RND(NTRK)].p[P_LRATE] = (int16_t)SOAK_RND(128u);
         fm1_ms += SOAK_RND(50u) ? 16u : 1u + SOAK_RND(200u);
@@ -1830,12 +1727,12 @@ static void screen_save(const char *dir, const char *name)
 
 /* Product controls are exercised through the actual button/encoder handlers
  * and canvas, including all pages, both fonts and every shipped palette. */
-/* Discussions #92 / #94: the PRESETS knob on every page. The tracker's pages: theirs; USER, PROJECT: the selection, as
- * KNOB 1; TOOLS: nothing; HOME, PRESETS and every other page: the next sound, SAVE held undoes it */
+/* Discussions #92 / #94: the PRESETS knob on every page. USER, PROJECT: the selection, as KNOB 1; TOOLS: nothing; HOME,
+ * PRESETS and every other page (SEQ's placeholder too): the next sound, SAVE held undoes it */
 static int test_presets_knob(void)
 {
-    int bad = 0, cur_ok = 1, sel_ok = 1, snd_ok = 1, undo_ok = 1, tools_ok = 1;
-    uint32_t i, n_snd = 0, n_cur = 0;
+    int bad = 0, sel_ok = 1, snd_ok = 1, undo_ok = 1, tools_ok = 1;
+    uint32_t i, n_snd = 0;
     for (i = 0; i < NPAGES; i++) {
         track_t before;
         uint32_t g = PAGES[i].graph, uslot;
@@ -1852,21 +1749,10 @@ static int test_presets_knob(void)
         {
             int same_snd = TSEL->preset == before.preset && TSEL->eng_req == before.eng_req &&
                            !memcmp(TSEL->p, before.p, sizeof before.p);
-            if (g == GR_TKPAT) {                       /* (the tracker: the cursor cell's RETRIG on) */
-                cur_ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_RETRIG && same_snd && ui.page == i;
-                n_cur++;
-            } else if (g == GR_USER) {
+            if (g == GR_USER) {
                 sel_ok &= ui.uslot == uslot + 1u && same_snd;
             } else if (g == GR_SLOTS) {
                 sel_ok &= song.g[G_SLOT] == slot && same_snd;   /* (one song: no slot to pick) */
-            } else if (g == GR_TKSONG) {
-                sel_ok &= tku.pos == 1u && same_snd && ui.page == i;
-            } else if (g == GR_TKSET) {
-                sel_ok &= tku.srow == 1u && same_snd && ui.page == i;
-            } else if (g == GR_TKVAR) {
-                sel_ok &= tku.vrow == 1u && same_snd && ui.page == i;
-            } else if (g == GR_TKINST) {
-                sel_ok &= tku.slot == 1u && same_snd && ui.page == i;
             } else if (g == GR_TOOLS) {
                 tools_ok &= same_snd && !ui.confirm;
             } else {
@@ -1878,10 +1764,9 @@ static int test_presets_knob(void)
             }
         }
     }
-    bad += check("PRESETS on PATTERN: the FX command of the cursor's cell (the last used); the sound stays", cur_ok && n_cur == 1u);
-    bad += check("#94 PRESETS on USER, PROJECT, SONG, VARIATION, SETTINGS, INSTR: the selection; nothing loaded", sel_ok);
+    bad += check("#94 PRESETS on USER, PROJECT: the selection; nothing loaded", sel_ok);
     bad += check("#94 PRESETS on TOOLS does nothing", tools_ok);
-    bad += check("#94 PRESETS elsewhere (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, GLOBAL, ...): the next sound",
+    bad += check("#94 PRESETS elsewhere (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, SEQ, ...): the next sound",
                  snd_ok && n_snd >= 15u);
     bad += check("#94   SAVE held undoes each of those loads", undo_ok);
     ui_power_on();
@@ -1892,8 +1777,8 @@ static int test_presets_knob(void)
     return bad;
 }
 
-/* 1.2 (Discussion #153): the pages by button. HOME: HOME > MIXER > CLOCK; SEQ: the tracker's pages, held SEQ TOOLS
- * everywhere; GLO: SONG; SAVE: USER -> PROJECT -> TOOLS -> PRESETS; a remembered page that left its family */
+/* 1.2 (Discussion #153): the pages by button. HOME: HOME > MIXER > CLOCK; SEQ and GLO: the sequencer's placeholder
+ * (TODO); SAVE: USER -> PROJECT -> TOOLS -> PRESETS; a remembered page that left its family */
 static int test_page_cycles(void)
 {
     static const char *const SAVE_CYC[5] = {"USER", "PROJECT", "TOOLS", "PRESETS", "USER"};
@@ -1909,8 +1794,8 @@ static int test_page_cycles(void)
     ok = 1;
     for (i = 0; i < NPAGES; i++) {                       /* every page in a family its button reaches, and its LED */
         uint32_t f = PAGES[i].fam;
-        ok &= f != FAM_SEQ || (PAGES[i].graph >= GR_TKPAT && PAGES[i].graph <= GR_TKINST);   /* (1.5: the tracker) */
-        ok &= f != FAM_GLO;                                /* (1.5: GLO opens the tracker's SONG, SEQ's) */
+        ok &= f != FAM_SEQ || PAGES[i].graph == GR_TODO;   /* (the sequencer's placeholder) */
+        ok &= f != FAM_GLO;                                /* (GLO opens SEQ's page) */
         ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || str_eq(PAGES[i].title, "CLOCK");   /* HOME's: MIXER CLOCK */
         ok &= PAGES[i].graph != GR_TRK || f == FAM_TRK;
         ui_power_on(); ui.home = 0; ui.page = (uint8_t)i; page_entered();
@@ -1919,8 +1804,8 @@ static int test_page_cycles(void)
     }
     for (i = 0; i < NPAGES; i++)
         ok &= !str_eq(PAGES[i].title, "STEP") && !str_eq(PAGES[i].title, "AUTOMATION") && !str_eq(PAGES[i].title, "PHRASES");
-    bad += check("1.5: SEQ has PATTERN SONG SETTINGS INSTR (the tracker); no STEP, AUTOMATION, PHRASES; MIXER and CLOCK "
-                 "HOME's (their LED HOME)", ok);
+    bad += check("SEQ has its placeholder alone (TODO); no STEP, AUTOMATION, PHRASES; MIXER and CLOCK HOME's (their LED "
+                 "HOME)", ok);
     {   /* 1.2: GLOBAL and SYSTEM are gone; their knobs: BPM SWG CLK on HOME > CLOCK, TUNE and ROUT on no page (the MENU's),
          * MIDI SYNC CPU on none (INFO shows the USB state and the CPU) */
         uint32_t k, clock = 0;
@@ -1939,29 +1824,28 @@ static int test_page_cycles(void)
         bad += check("1.2: no GLOBAL, no SYSTEM page; HOME > CLOCK has BPM SWG CLK (three knobs), TUNE and ROUT on no page", ok);
     }
     /* remembered pages: one that left its family, or out of range, gives the family's first (1.2: GLO's whatever it was,
-     * GLOBAL and SYSTEM too, now SONG; HOME's never remembered: from HOME the MIXER) */
+     * GLOBAL and SYSTEM too, now SEQ's; HOME's never remembered: from HOME the MIXER) */
     ui_power_on();
     for (i = 0; i < NPAGES; i++)
         if (PAGES[i].graph == GR_TRK) ui.fam_last[FAM_GLO] = (uint8_t)i;
-        else if (PAGES[i].graph == GR_TKINST) ui.fam_last[FAM_SEQ] = (uint8_t)i;
     ui.fam_last[FAM_SAVE] = 200u;
     ui.fam_last[FAM_ENV] = 250u;
-    open_family(FAM_GLO); ok = str_eq(cur_page()->title, "SONG") && cur_page()->fam == FAM_SEQ;
-    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TKVAR;   /* (the SONG is SEQ's: SEQ goes on round its pages) */
+    open_family(FAM_GLO); ok = cur_page()->graph == GR_TODO && cur_page()->fam == FAM_SEQ;
+    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TODO;   /* (its only page) */
     go_home();
-    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TKPAT;   /* (1.5: SEQ from elsewhere: PATTERN, always) */
+    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TODO;
     open_family(FAM_ENV); ok &= str_eq(cur_page()->title, "ENV");
     open_family(FAM_SAVE); ok &= str_eq(cur_page()->title, "USER");
-    open_family(FAM_GLO); open_family(FAM_GLO);          /* SONG again (its only page) */
-    ok &= str_eq(cur_page()->title, "SONG");
-    go_home(); open_family(FAM_GLO); ok &= str_eq(cur_page()->title, "SONG");
+    open_family(FAM_GLO); open_family(FAM_GLO);          /* TODO again (its only page) */
+    ok &= cur_page()->graph == GR_TODO;
+    go_home(); open_family(FAM_GLO); ok &= cur_page()->graph == GR_TODO;
     for (i = 0; i < 256u; i++) {                         /* any remembered index (the old GLOBAL 25, SYSTEM 27, ..) */
         go_home(); ui.fam_last[FAM_GLO] = (uint8_t)i; open_family(FAM_GLO);
-        ok &= str_eq(cur_page()->title, "SONG") && ui.fam_last[FAM_GLO] == ui.page;
+        ok &= cur_page()->graph == GR_TODO && ui.fam_last[FAM_GLO] == ui.page;
         go_home(); ui.fam_last[FAM_TRK] = (uint8_t)i; press(B_HOME);
         ok &= cur_page()->graph == GR_TRK && !ui.home;
     }
-    bad += check("1.2: a remembered page no longer in its family (or none) lands on the family's first; GLO always SONG, "
+    bad += check("1.2: a remembered page no longer in its family (or none) lands on the family's first; GLO always SEQ's, "
                  "HOME always the MIXER first", ok);
 
     return bad;
@@ -1978,15 +1862,14 @@ static int test_product_ux(void)
         if (!page_visible(i))
             continue;
         press(B_REC);
-        ok &= song.rec == 1 && !transport_req && ui.page == i && !ui.home;
+        ok &= !transport_req && ui.page == i && !ui.home;
     }
-    bad += check("REC stays on every page and only arms (PLAY does not start)", ok);
+    bad += check("REC does nothing on every page (no recording yet; PLAY does not start)", ok);
     ui_power_on(); hold(B_HOME); press(B_REC);
-    bad += check("REC in the MENU does nothing (the menu stays, no arm, no transport start)",
-                 ui.menu == 1 && song.rec == 0 && !transport_req);
+    bad += check("REC in the MENU does nothing (the menu stays, no transport start)", ui.menu == 1 && !transport_req);
     ui.menu_sel = MI_ABOUT; press(B_OCTUP); press(B_REC);
     bad += check("REC in ABOUT does nothing (the document and its scroll stay)",
-                 ui.menu == 2 && !ui.menu_scroll && song.rec == 0 && !transport_req);
+                 ui.menu == 2 && !ui.menu_scroll && !transport_req);
     ui_power_on(); press(B_HOME);
     bad += check("1.2: HOME tapped on HOME opens the four-channel MIXER", cur_page()->graph == GR_TRK && !ui.home &&
                  cur_fam() == FAM_TRK && FAM_BTN[cur_fam()] == B_HOME);
@@ -2025,14 +1908,16 @@ static int test_product_ux(void)
     bad += check("1.2: HOME held still opens the menu", ui.menu == 1);
     ui_power_on();
     frames(320);                                       /* (taps further apart than a double tap: #83) */
-    press(B_GLO); frames(320); ok = cur_page()->graph == GR_TKSONG && str_eq(cur_page()->title, "SONG");
-    press(B_GLO); frames(320); ok &= cur_page()->graph == GR_TKSONG && !ui.home;
-    go_title("CLOCK"); press(B_GLO); frames(320); ok &= cur_page()->graph == GR_TKSONG;
-    bad += check("1.5: GLO opens the tracker's SONG directly, again SONG (no GLOBAL, no SYSTEM, no MIXER)", ok);
+    press(B_GLO); frames(320); ok = cur_page()->graph == GR_TODO && str_eq(cur_page()->title, "SEQ");
+    press(B_GLO); frames(320); ok &= cur_page()->graph == GR_TODO && !ui.home;
+    go_title("CLOCK"); press(B_GLO); frames(320); ok &= cur_page()->graph == GR_TODO;
+    bad += check("GLO opens SEQ's placeholder directly, again the same (no GLOBAL, no SYSTEM, no MIXER)", ok);
+    go_home(); press(B_SEQ); frames(320);
+    ok = cur_page()->graph == GR_TODO && !ui.home && !ui.layer;
     go_home(); btn_down(B_SEQ); frames(500);
-    ok = ui.layer == LAYER_SEQ && ui.home;
+    ok &= !ui.layer;
     btn_up(B_SEQ); frame();
-    bad += check("1.2: SEQ held on HOME is SEQ TOOLS (no SONG, no tap on release)", ok && ui.home && !ui.layer);
+    bad += check("SEQ opens its placeholder (TODO); held: no layer, its page on release", ok && cur_page()->graph == GR_TODO);
     ui_power_on(); open_family(FAM_EDIT);
     ok = 1;
     for (i = 0; i < 8u; i++) { open_family(FAM_EDIT); ok &= page_visible(ui.page); }
@@ -2041,7 +1926,7 @@ static int test_product_ux(void)
             ok &= PAGES[i].id[p] == 0xFF || PAGES[i].scope == SC_GLOBAL || PAGES[i].id[p] < P_FM1_ATK ||
                   PAGES[i].id[p] > P_FM4_LEVEL;
     bad += check("no page holds DIGITAL's operator values (ids 61..80, removed in 1.5)", ok);
-    ui_power_on(); song.rec = 1; seq_start(); go_home();
+    ui_power_on(); seq_start(); go_home();
     {
         int16_t was = TSEL->p[ENGINES[TSEL->eng_req]->knob[0]];
         turn(EN_K1, 1);
@@ -2049,13 +1934,13 @@ static int test_product_ux(void)
         press(B_PLAY); events_block(32);
         ok &= TSEL->p[ENGINES[TSEL->eng_req]->knob[0]] != was;
     }
-    bad += check("1.5: REC plus a sound knob: the edit stays (no automation: the tracker's FX column instead)", ok);
+    bad += check("1.5: playing, a sound knob: the edit stays (no automation)", ok);
     ui_power_on(); ui_leds();
     memset(led_pos, 0xFF, sizeof led_pos);
     led_pos[panel.btn[B_PLAY]] = 1; led_pos[panel.btn[B_REC]] = 2;
-    song.playing = song.rec = 1; ok = 1;
-    for (i = 0; i < 120u; i++) { fm1_ms += 17; ui_leds(); ok &= (fm1_led[0] & 6u) == 4u && (fm1_led[8] & 2u); }
-    bad += check("PLAY's green and REC LEDs stay lit across time and audio block phase", ok);
+    song.playing = 1; ok = 1;
+    for (i = 0; i < 120u; i++) { fm1_ms += 17; ui_leds(); ok &= (fm1_led[0] & 6u) == 0u && (fm1_led[8] & 2u); }
+    bad += check("PLAY's green LED stays lit across time and audio block phase; REC dark (no recording)", ok);
     {   /* the power-on sweep (hal/fm1_input.h fm1_led_anim_on) has the LEDs: the UI writes none of them while it runs,
          * all of its own picture on the next frame after */
         uint8_t l0[FM1_NCOL], d0[FM1_NCOL];
@@ -2068,7 +1953,7 @@ static int test_product_ux(void)
         ok = !memcmp(l0, fm1_led, sizeof l0) && !memcmp(d0, fm1_led_dim, sizeof d0);
         host_anim = 0;
         ui_leds();
-        ok &= (fm1_led[0] & 6u) == 4u && (fm1_led[8] & 2u) && fm1_led[1] != 0x5A;
+        ok &= (fm1_led[0] & 6u) == 0u && (fm1_led[8] & 2u) && fm1_led[1] != 0x5A;
         bad += check("the power-on LED sweep: the UI leaves the LEDs alone while it runs, takes them after", ok);
     }
     led_pos_init();
@@ -2225,24 +2110,22 @@ static int test_layer(void)
         bad += check("  LEDS is saved with the settings and read back (all four); DIM HI saves the field as before (0)",
                      ok && p.zoom == 0u && settings_import(&p, sizeof p) && settings_leds == LEDS_DIM);
     }
-    /* combo: a key with FX: at once, silent, no MIDI, no recording, no step */
+    /* combo: a key with FX: at once, silent, no MIDI */
     ui_power_on();
     usb.config = 1; mo = mo_w;
-    go_page(GR_TKPAT); song.rec = 1; song.playing = 1;
+    go_page(GR_TODO); song.playing = 1;
     {
-        uint32_t cur = tku.row;
         btn_down(B_FX); key_down(white(2)); frame();
         ok = ui.layer == LAYER_FX && !gates() && mo_w == mo && (kb_layer >> white(2)) & 1u &&
              (perf_held & PF_BIT(PF_R32));                    /* white key 3 (A3): REPEAT 1/32 */
         for (i = 0; i < 40u; i++) events_block(CTL);
-        ok &= tk_pat_empty(tk_pl.loop_pat) && tku.row == cur;
-        bad += check("FX + a key: the map at once; no voice, no MIDI, no recording, no cell written", ok);
+        bad += check("FX + a key: the map at once; no voice, no MIDI", ok);
         key_up(white(2)); frame();
         bad += check("  the key let go: its effect off, no note-off sent", !perf_held && !kb_layer && mo_w == mo);
         btn_up(B_FX); frame();
-        bad += check("  FX let go after a combo: no tap, the map gone", !ui.layer && cur_page()->graph == GR_TKPAT);
+        bad += check("  FX let go after a combo: no tap, the map gone", !ui.layer && cur_page()->graph == GR_TODO);
     }
-    song.playing = 0; song.rec = 0;
+    song.playing = 0;
     /* FX let go first: the effect stays with its key, the map too; a key pressed now is a note */
     ui_power_on();
     btn_down(B_FX); key_down(white(4)); frame();          /* white key 5 (C4): LPF */
@@ -2326,7 +2209,7 @@ static int test_layer(void)
                  !kb_layer);
     /* knob macros: not the page's, not recorded, back to 0 when FX is let go */
     ui_power_on();
-    go_title("ENV"); song.rec = 1; song.playing = 1;
+    go_title("ENV"); song.playing = 1;
     {
         int16_t atk = TSEL->p[P_ATK];
         btn_down(B_FX); frame();
@@ -2338,7 +2221,7 @@ static int test_layer(void)
         bad += check("FX + KNOB 1 / 2: the macros, not ATK, not recorded; FX let go: back to 0, no tap",
                      ok && !perf_k[0] && !perf_k[1] && str_eq(cur_page()->title, "ENV"));
     }
-    song.rec = 0; song.playing = 0;
+    song.playing = 0;
     /* buttons in the layer: PLAY works, SAVE, HOME, a page button are swallowed */
     ui_power_on();
     btn_down(B_FX); frame();
@@ -2372,28 +2255,21 @@ static int test_layer(void)
         }
         bad += check("ENV LFO SCL ARP GLO EDIT act when let go, not on press (ENV LFO ARP held long: the same)", ok);
     }
-    ui_power_on();
-    go_page(GR_TKPAT); tk_put(0, 0, 0, tk_pack(60, 1, 0, 0)); tku.row = 0;
-    btn_down(B_EDIT); frame();
-    ok = tk_note(tk_at(0, 0, 0)) == 60u && tku.row == 0;
-    btn_up(B_EDIT); frame();
-    bad += check("EDIT on PATTERN clears the cell when let go (not on press), the cursor a row on",
-                 ok && tk_empty(tk_at(0, 0, 0)) && tku.row == 1);
     ui_power_on(); hold(B_HOME);
     ok = ui.menu == 1; hold(B_HOME); ok &= !ui.menu;
-    go_home(); hold(B_SEQ); ok &= ui.home && !ui.layer;
-    bad += check("HOME (menu) hold of 0.7 s unchanged; SEQ held: its layer, no page (1.2)", ok);
+    go_home(); hold(B_SEQ); ok &= !ui.home && !ui.layer && cur_page()->graph == GR_TODO;
+    bad += check("HOME (menu) hold of 0.7 s unchanged; SEQ held: no layer, its page (a long press a tap)", ok);
     /* no layer in the menu or a dialog: FX + a key is a note */
     ui_power_on(); hold(B_HOME);
     btn_down(B_FX); frame(); key_down(white(3)); frame();
     ok = !ui.layer && !perf_mask && gates() > 0 && !kb_layer;
     key_up(white(3)); btn_up(B_FX); frame();
     bad += check("in the menu: no layer, FX + a key plays the key; FX let go: no page", ok && ui.menu == 1);
-    ui_power_on(); ui.confirm = CF_CLEAR_SEQ;
+    ui_power_on(); ui.confirm = CF_INIT_SOUND;
     btn_down(B_FX); frames(512);
     ok = !ui.layer;
     btn_up(B_FX); frame();
-    bad += check("in a dialog: FX held shows no map and taps nothing", ok && ui.confirm == CF_CLEAR_SEQ);
+    bad += check("in a dialog: FX held shows no map and taps nothing", ok && ui.confirm == CF_INIT_SOUND);
     /* UBOOT: the countdown closes the map and stops every effect; OCT- + OCT+ are still seen */
     ui_power_on();
     btn_down(B_FX); key_down(white(5)); frame();
@@ -2520,18 +2396,18 @@ static int test_name(void)
     frames(16 * 40);
     fm1_in.notes &= ~(1u << nm_black_key(NB_DEL, 0)); frame();
     bad += check("  DELETE held 0.64 s: one, then it repeats after 0.45 s, every 0.09 s (3 in all)", nm.len == 9u);
-    /* the keys never sound, record or send MIDI */
-    usb.config = 1; mo = mo_w; song.rec = 1;
+    /* the keys never sound or send MIDI */
+    usb.config = 1; mo = mo_w;
     {
         song.playing = 1;
         key_down(white(3)); key_down(nm_black_key(NB_SPACE, 0)); frame();
         for (i = 0; i < 8u; i++) events_block(CTL);
-        ok = !gates() && mo_w == mo && song.keys_mute && tk_pat_empty(tk_pl.pat);
+        ok = !gates() && mo_w == mo && song.keys_mute;
         key_up(white(3)); key_up(nm_black_key(NB_SPACE, 0)); frame();
         stop_transport();
-        bad += check("  keys in NAME: no voice, no MIDI, nothing recorded (seq.c: song.keys_mute)", ok && mo_w == mo);
+        bad += check("  keys in NAME: no voice, no MIDI (seq.c: song.keys_mute)", ok && mo_w == mo);
     }
-    song.rec = 0; usb.config = 0;
+    usb.config = 0;
     {   /* LEDs: all 27 keys do something; the cycling key blinks */
         uint32_t a, c, t0;
         nm_tap(nm_black_key(NB_DEL, 0)); nm_tap(nm_black_key(NB_DEL, 0));
@@ -2718,7 +2594,7 @@ static int test_quick_layers(void)
         btn_down(LB[i]);
         for (flash = 0, k = 0; k < 20u; k++) { frame(); flash |= ui.layer; }      /* 0.32 s */
         btn_up(LB[i]); frame();
-        ok &= !flash && !ui.home && (LB[i] == B_GLO ? str_eq(cur_page()->title, "SONG") :
+        ok &= !flash && !ui.home && (LB[i] == B_GLO ? cur_page()->graph == GR_TODO :
                                      LB[i] == B_SCL ? cur_page()->fam == FAM_SCL : str_eq(cur_page()->title, "EDIT 1"));
         hint &= msg_is(HINT[i]);
         go_home(); frame();
@@ -2900,11 +2776,11 @@ static int test_quick_layers(void)
     ok = !ui.layer && gates() > 0 && !kb_layer;
     key_up(white(3)); btn_up(B_GLO); frame();
     bad += check("in the menu: no GLO layer, GLO + a key plays it; GLO let go: no page", ok && ui.menu == 1);
-    ui_power_on(); ui.confirm = CF_CLEAR_SEQ;
+    ui_power_on(); ui.confirm = CF_INIT_SOUND;
     btn_down(B_SCL); frames(512);
     ok = !ui.layer;
     btn_up(B_SCL); frame();
-    bad += check("in a dialog: SCL held shows no map and taps nothing", ok && ui.confirm == CF_CLEAR_SEQ);
+    bad += check("in a dialog: SCL held shows no map and taps nothing", ok && ui.confirm == CF_INIT_SOUND);
     /* one layer at a time: a second layer button is ignored, its keys stay notes after */
     ui_power_on();
     btn_down(B_GLO); frame(); btn_down(B_EDIT); frame(); key_down(white(1)); frame();
@@ -2926,15 +2802,14 @@ static int test_bughunt_ui(void)
     go_page(GR_USER); ui.uslot = 3;
     press(B_OCTUP);                                     /* NAME opens */
     press(B_REC);
-    bad += check("REC in NAME does nothing (no arm, no transport start); NAME stays",
-                 name_on() && !song.rec && !transport_req && !song.playing);
+    bad += check("REC in NAME does nothing (no transport start); NAME stays", name_on() && !transport_req && !song.playing);
     ui_power_on(); hold(B_HOME); press(B_REC); press(B_PLAY);
-    bad += check("REC in the menu does nothing (then PLAY: nothing either)", ui.menu && !song.rec && !transport_req);
+    bad += check("REC in the menu does nothing (then PLAY: nothing either)", ui.menu && !transport_req);
     ui_power_on();
     up_ui(2, 5);
     go_page(GR_USER); ui.uslot = 5; press(B_OCTUP);
     press(B_REC);
-    ok = ui.confirm == CF_OVR_USER && !song.rec && !transport_req;
+    ok = ui.confirm == CF_OVR_USER && !transport_req;
     press(B_OCTUP);
     bad += check("REC in the OVERWRITE? dialog does nothing; OCT+ then opens NAME", ok && name_on());
     {   /* the ARP button flashes on the beat while an ARP plays (the bar's first beat longer); dark otherwise */
@@ -2991,24 +2866,7 @@ static int test_bughunt_ui(void)
         bad += check("ALGORITHM ignored with a layer's button held (OCT- puts back all); then T2",
                      ok && song.sel == 1u);
     }
-    /* 6: TOOLS (1.5): CLEAR the pattern edited, INIT the sound, NEW song; nothing to clear says so */
-    ui_power_on();
-    go_title("TOOLS"); frame();
-    turn(EN_K1, 1);                                     /* CLEAR on an empty pattern */
-    ok = !act_ready();
-    press(B_OCTUP);
-    ok &= !ui.confirm && msg_is("NOTHING TO CLEAR") && text_w(&AF_S, ui.msg) <= 236 - 106;   /* (fits the header) */
-    tk_put(0, 3, 0, tk_pack(60, 1, 0, 0));
-    ok &= act_ready();
-    press(B_OCTUP);
-    ok &= ui.confirm == CF_CLEAR_SEQ;
-    press(B_OCTUP);
-    ok &= !ui.confirm && tk_pat_empty(0) && msg_is("PATTERN CLEARED");
-    turn(EN_K1 + 3, 1);                                 /* NEW */
-    press(B_OCTUP);
-    bad += check("TOOLS: CLEAR an empty pattern: NOTHING TO CLEAR; one with a cell: its dialog, cleared; NEW: its dialog",
-                 ok && ui.confirm == CF_CLEAR_SONG);
-    /* 7: REC works in the layers: it arms the track (PLAY does not start); the layer stays, no page */
+    /* 7: REC in the layers: nothing (PLAY does not start); the layer stays, no page */
     ok = 1;
     {
         static const uint8_t LB[4] = {B_FX, B_GLO, B_SCL, B_EDIT};
@@ -3017,12 +2875,12 @@ static int test_bughunt_ui(void)
             ui_power_on();
             btn_down(LB[i]); frame();
             press(B_REC);
-            ok &= song.rec == 1u && transport_req == 0u && ui.layer != 0u;
+            ok &= transport_req == 0u && ui.layer != 0u;
             btn_up(LB[i]); frame();
             ok &= ui.home;
         }
     }
-    bad += check("REC in every layer: arms the track (PLAY does not start); the layer stays, no page", ok);
+    bad += check("REC in every layer: nothing (PLAY does not start); the layer stays, no page", ok);
     /* 8: the OCT- LED lit in the SET layers (OCT- = UNDO), OCT+ dark; FX (HOLD): the octave as usual */
     ok = 1;
     {
@@ -3149,7 +3007,7 @@ static int test_bughunt_ui2(void)
             uint32_t k = white(0), ok;
             ui_power_on(); TSEL->p[P_VOICE] = V_POLY;
             go_home(); frame();
-            confirm_open(CF_CLEAR_SEQ, 0); frame();
+            confirm_open(CF_INIT_SOUND, 0); frame();
             btn_down(BTN[i]); frame(); frames(100);
             btn_down(B_OCTDN); frame(); btn_up(B_OCTDN); frame();   /* the dialog closes, the button still held */
             frames(800);
@@ -3191,9 +3049,10 @@ static int test_bughunt_ui2(void)
         project_save_as(0, "OLD");
         project_load(0); frame();
         ok = str_eq(proj_name, "OLD");
-        project_new();
+        proj_name[0] = 0;                                             /* (the music no longer the stored one's) */
+        proj_cur = PROJ_NO_SLOT;
         project_rename(0, "ELSE");
-        ok &= str_eq(proj_name, "");                                  /* a new song: the stored one's name not its */
+        ok &= str_eq(proj_name, "");                                  /* the stored one's name not the music's */
         project_load(0); frame();
         press(B_EDIT);                                                /* rename the song on the PROJECT page */
         while (nm.len) { nm_do(NB_DEL); }
@@ -3215,12 +3074,12 @@ static int test_bughunt_ui2(void)
         press(B_PLAY); frame();
         ok &= !transport_req && !song.playing && name_on();          /* stopped: PLAY starts nothing */
         press(B_REC); frame();
-        ok &= !song.rec && !transport_req && name_on();
+        ok &= !transport_req && name_on();
         song.playing = 1;                                             /* an external MIDI Start / the editor */
         press(B_OCTUP);
         ok &= name_on() && msg_is("STOP TO SAVE");
         press(B_REC); frame();
-        ok &= !song.rec && !transport_req;
+        ok &= !transport_req;
         press(B_PLAY); frame();
         ok &= transport_req == 2u && name_on();                       /* PLAY stops it, NAME stays */
         stop_transport();
@@ -3309,10 +3168,6 @@ static int test_retired_engines(void)
                      TSEL->eng_req == ENGI_VECTOR);
         memset(up_rec(9), 0, sizeof rec);
     }
-    tk.instr[5].src = 13; tk.instr[5].preset = 1;        /* a song's instruments of SLICE and DIGITAL (a stored song) */
-    tk.instr[6].src = 1; tk.instr[6].preset = 0;
-    tk_bound();
-    bad += check("  a song's instrument of one: none", tk.instr[5].src == TK_SRC_NONE && tk.instr[6].src == TK_SRC_NONE);
     ui_power_on();
     bad += check("power-on: track 2 is VOSIM FORMANT PAD (these tests' UT_DEF)", trk[1].eng_req == ENGI_VOSIM &&
                  str_eq(ENGINES[ENGI_VOSIM]->presets[trk[1].preset].name, "FORMANT PAD"));
@@ -3351,7 +3206,7 @@ static int test_retired_engines(void)
     return bad;
 }
 
-/* #38: the keys of the notes the selected track's sequencer and ARP sound light while it plays */
+/* #38: the keys of the notes the selected track's ARP sounds light while it plays (the sequencer: a placeholder) */
 static int test_play_leds(void)
 {
     int bad = 0, ok;
@@ -3359,17 +3214,14 @@ static int test_play_leds(void)
     uint32_t i;
     ui_power_on();
     song.sel = 0;
-    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));             /* (the tracker: a note per track and row) */
-    tk_put(0, 1, 0, tk_pack(100, 0, 0, 0));
-    tk_put(0, 0, 1, tk_pack(67, 0, 0, 0));
     bad += check("stopped, nothing held: no key lit", key_leds(0) == 0u && play_leds() == 0u);
-    seq_start();
-    events_block(CTL);
-    bad += check("playing: row 0's C4 lights key 8 (from F3), track 2's G4 does not",
-                 tk_pl.note[0] == 60u && tk_pl.note[1] == 67u && key_leds(0) == 1u << 7);
+    t->arp_note = 60;                                  /* (the ARP's notes as arp_step leaves them) */
+    trk[1].arp_note = 67;
+    bad += check("the ARP's C4 lights key 8 (from F3), track 2's G4 does not", key_leds(0) == 1u << 7);
     song.sel = 1;
     bad += check("the selected track's notes: track 2's G4 on key 15", play_leds() == 1u << 14);
     song.sel = 0;
+    trk[1].arp_note = 0;
     fm1_in.notes = 1u << 0;
     bad += check("a key held still lights with them", key_leds(0) == (1u << 0 | 1u << 7));
     fm1_in.notes = 0;
@@ -3388,29 +3240,25 @@ static int test_play_leds(void)
     ok = kb_map(t, 8) == 60u && play_leds() == 1u << 7;
     t->p[P_QUANT] = t->p[P_SCALE] = 0;
     bad += check("QNT SNAP: only the key of the note itself lights, not the keys rounding onto it", ok);
-    t->arp_note = 65;
-    bad += check("the ARP's note lights its key too", play_leds() == (1u << 7 | 1u << 12));
+    t->arp_ch[0] = 65;
+    bad += check("the ARP's CHORD notes light their keys too", play_leds() == (1u << 7 | 1u << 12));
+    t->arp_ch[0] = 0;
+    t->arp_note = 100;
+    bad += check("a note above the keyboard (E7) lights nothing", play_leds() == 0u);
     t->arp_note = 0;
-    events_block(div_samples(2) + CTL);
-    bad += check("a note above the keyboard (E7, row 1) lights nothing", tk_pl.note[0] == 100u && play_leds() == 0u);
-    transport_req = 2;
-    events_block(CTL);
-    bad += check("stopped: the notes end, their keys go dark", !song.playing && key_leds(0) == 0u);
+    bad += check("none sounding: the keys dark", key_leds(0) == 0u);
     /* the layer keeps its keys; a kit's hit lights the key that plays it */
-    seq_start();
-    events_block(CTL);
+    t->arp_note = 60;
     ui.layer = 1;
     ok = key_leds(0) == layer_leds(0);
     ui.layer = 0;
     set_engine_of(t, ENGI_KIT);
     t->engine = t->eng_req;
-    tk_put(0, 0, 0, tk_pack(36, 0, 0, 0));              /* (GM 36: the kick) */
-    transport_req = 2; events_block(CTL);
-    seq_start(); events_block(CTL);
+    t->arp_note = 36;                                  /* (GM 36: the kick) */
     i = play_leds();
     ok &= i != 0u && kb_map(t, (uint32_t)__builtin_ctz(i)) == 36u;
     bad += check("the layer's map keeps its keys; a kit's hit lights the key that plays it", ok);
-    transport_req = 2; events_block(CTL);
+    t->arp_note = 0;
     return bad;
 }
 
@@ -3486,27 +3334,24 @@ static int test_midi_leds(void)
     ok = key_leds(0) == 1u << 12;
     midi_event(0xB0, 0, 64, 0);
     bad += check("  a note the pedal holds stays lit until the pedal is up", ok && key_leds(0) == 0u);
-    fm1_in.notes = 1u << 0;                            /* with a key held and the sequencer */
+    fm1_in.notes = 1u << 0;                            /* with a key held and the ARP */
     usb_note(0, 60, 100);
     ok = key_leds(0) == (1u << 0 | 1u << 7);
     fm1_in.notes = 0;
-    tk_put(0, 0, 0, tk_pack(64, 0, 0, 0));             /* (the tracker's row 0) */
-    seq_start();
-    events_block(CTL);
+    trk[0].arp_note = 64;
     ok &= key_leds(0) == (1u << 7 | 1u << 11);
-    bad += check("  with a key held and the tracker's notes: all of them lit", ok);
+    trk[0].arp_note = 0;
+    bad += check("  with a key held and the ARP's notes: all of them lit", ok);
     ui.layer = LAYER_SCL;
     {
         uint32_t b1, b2;
         ok = key_leds(&b1) == layer_leds(&b2) && b1 == b2 && b1;
     }
     ui.layer = 0;
-    open_family(FAM_SEQ);                              /* PATTERN: the keys as elsewhere */
+    open_family(FAM_SEQ);                              /* SEQ: the keys as elsewhere */
     frame();
     ok &= (key_leds(0) & (1u << 7)) != 0u;
-    bad += check("  the layer's map keeps its keys over the MIDI notes; PATTERN shows them", ok);
-    transport_req = 2;
-    events_block(CTL);
+    bad += check("  the layer's map keeps its keys over the MIDI notes; SEQ shows them", ok);
     usb_note(0, 60, 0);
     return bad;
 }
@@ -3601,7 +3446,7 @@ static int test_breath(void)
         ui_power_on();
         settings_leds = MODES[m];
         go_title("ENV"); frame();
-        ui.confirm = CF_CLEAR_SEQ;
+        ui.confirm = CF_INIT_SOUND;
         for (t = 0; t < 4u; t++) {
             fm1_ms += 250u;
             ui_leds();
@@ -3725,9 +3570,13 @@ static uint64_t scr_session(uint32_t setting, uint32_t *flags)
     ui_power_on();
     scr_put(setting);
     song.master_q12 = 4096;
-    for (i = 0; i < 32u; i += 3u)                   /* track 1 plays a line in the tracker's pattern 00 */
-        tk_put(0, i, 0, tk_pack(40u + i, 0, 0, 0));
-    tk.len[0] = 32;
+    seq_hook = host_seq;                            /* track 1 plays a line (the tests' song player: hostsim.c) */
+    memset(host_song, 0, sizeof host_song);
+    memset(&hs, 0, sizeof hs);
+    host_rows = 0;
+    for (i = 0; i < 32u; i += 3u)
+        put_row(0, i, 40u + i);
+    host_rows = 32;
     transport_req = 1;
     for (f = 0; f < 400u; f++) {
         if (f == 50u)
@@ -3829,13 +3678,6 @@ static int test_momentary(void)
         ok &= TSEL->p[id0] == after;
     }
     bad += check("  a sound load with LFO held: the values back first (the undo copy is the sound as it was), the load stays", ok);
-    /* the tracker's PATTERN: the knobs edit the cell as ever (no momentary) */
-    go_home(); open_family(FAM_SEQ); frame();
-    btn_down(B_LFO); frame();
-    turn(EN_K2, 1);
-    ok = !mom.n && tk_note(tk_at(tk_pl.loop_pat, tku.row, song.sel)) != 0u;
-    btn_up(B_LFO); frame();
-    bad += check("  on PATTERN (and the action pages, the lists) the knobs act as ever", ok && cur_page()->graph == GR_TKPAT);
     /* a layer: its knobs */
     go_home();
     v0 = TSEL->p[id0];
@@ -3901,17 +3743,15 @@ static int test_idle_leds(void)
     ok = host_idle;
     song.playing = 1; frame(); ui_leds();
     ok &= !host_idle;
-    song.playing = 0; song.rec = 1; frame(); ui_leds();
+    song.playing = 0; ui.menu = 1; frame(); ui_leds();
     ok &= !host_idle;
-    song.rec = 0; ui.menu = 1; frame(); ui_leds();
-    ok &= !host_idle;
-    ui.menu = 0; ui.confirm = CF_CLEAR_SEQ; frame(); ui_leds();
+    ui.menu = 0; ui.confirm = CF_INIT_SOUND; frame(); ui_leds();
     ok &= !host_idle;
     ui.confirm = 0; ui.lock = LAYER_GLO; ui.layer = LAYER_GLO; ui_leds();
     ok &= !host_idle;
     ui.lock = 0; ui.layer = 0; fm1_ms += IDLE_LEDS_MS; ui_leds();   /* (a dialog counts as input, as for SCREEN OFF) */
     ok &= host_idle;
-    bad += check("  never while playing, armed, in the menu, a dialog or a layer; back when they end", ok);
+    bad += check("  never while playing, in the menu, a dialog or a layer; back when they end", ok);
     menu_put(MI_ANIM, 0); ui_leds();
     ok = !host_idle;
     menu_put(MI_ANIM, 1); ui_leds();
@@ -3976,7 +3816,7 @@ static int test_screen_off(void)
         n = host_pw_n;
         ok = !host_bl;
         hold(B[i]); frames(300u);
-        ok &= scr_woke(n) && ui.home && !ui.menu && !ui.confirm && !song.rec && !song.playing && !transport_req;
+        ok &= scr_woke(n) && ui.home && !ui.menu && !ui.confirm && !song.playing && !transport_req;
         bad += check(i == 0 ? "SCREEN OFF: HOME held to wake: no menu, no HOME tap after" :
                      i == 1 ? "SCREEN OFF: SAVE held to wake: no undo, no SAVE page" :
                               "SCREEN OFF: REC held to wake: nothing armed, no clear, no transport", ok);
@@ -4023,15 +3863,15 @@ static int test_screen_off(void)
     bad += check("SCREEN OFF: NEVER stays on for hours; 5 MIN goes dark after 5; PLAY to wake starts nothing", ok);
 
     n = host_pw_n;
-    ui.confirm = CF_CLEAR_SEQ; ui.force = 1;          /* a dialog: never dark */
+    ui.confirm = CF_INIT_SOUND; ui.force = 1;          /* a dialog: never dark */
     scr_idle(20u * 60000u);
     ok = host_pw_n == n && host_bl;
     ui.confirm = 0; ui.force = 1;
     scr_idle(6u * 60000u);
     ok &= host_pw_n == n + 1u && !host_bl;
-    ui.confirm = CF_CLEAR_SEQ; ui.force = 1;          /* one opening while dark (the editor, MIDI): it wakes */
+    ui.confirm = CF_INIT_SOUND; ui.force = 1;          /* one opening while dark (the editor, MIDI): it wakes */
     frames(300u);
-    ok &= scr_woke(n + 1u) && ui.confirm == CF_CLEAR_SEQ;
+    ok &= scr_woke(n + 1u) && ui.confirm == CF_INIT_SOUND;
     ui.confirm = 0; ui.force = 1;
     scr_idle(6u * 60000u);
     n = host_pw_n;
@@ -4377,8 +4217,7 @@ static int test_layer_knob_race(void)
                     if (pg < NPAGES && !page_visible(pg))
                         continue;
                     if (mode == 2u && LB[l] == B_EDIT && pg < NPAGES &&   /* (EDIT's tap acts there: no lock) */
-                        (PAGES[pg].graph == GR_USER || PAGES[pg].graph == GR_SLOTS ||
-                         (PAGES[pg].graph >= GR_TKPAT && PAGES[pg].graph <= GR_TKINST)))
+                        (PAGES[pg].graph == GR_USER || PAGES[pg].graph == GR_SLOTS))
                         continue;
                     rc_run(LB[l], mode, k, pg, 0, &a0, &b0);
                     rc_run(LB[l], mode, k, pg, 1, &a1, &b1);
@@ -4410,7 +4249,7 @@ static int test_layer_knob_race(void)
             int16_t *vp, c;
             uint32_t i;
             ui_power_on();
-            song.rec = 1; seq_start(); go_home(); frames(64);
+            seq_start(); go_home(); frames(64);
             home_param(k, &vp);
             c = *vp;
             btn_down(LB[l]); frames(560);
@@ -4419,7 +4258,7 @@ static int test_layer_knob_race(void)
             btn_up(LB[l]); frames(400);
             ok &= *vp == c;
             stop_transport();
-            song.rec = 0;
+
         }
     bad += check("  HOME with REC: FX's KNOB 1..4, GLO's KNOB 2..4 leave HOME's sound as it was", ok);
     /* FX LATCH: the macro stays when FX is let go, HOME's KNOB 1 never moved; FX + OCT- turns it off */
@@ -4490,10 +4329,10 @@ static int test_layer_lock(void)
     bad += check("#83 FX GLO SCL EDIT double tapped: the map stays open with no button held, over the page as it was", ok);
     bad += check("  a tap of the button closes it, no page opens", okk);
     {   /* #183: in every lock PLAY starts and stops (GLO's lock no RESTART: that needs GLO held) */
-        static const uint8_t PB[6] = {B_FX, B_GLO, B_SCL, B_EDIT, B_SEQ, B_REC};
-        static const uint8_t PL[6] = {LAYER_FX, LAYER_GLO, LAYER_SCL, LAYER_EDIT, LAYER_SEQ, LAYER_REC};
+        static const uint8_t PB[4] = {B_FX, B_GLO, B_SCL, B_EDIT};
+        static const uint8_t PL[4] = {LAYER_FX, LAYER_GLO, LAYER_SCL, LAYER_EDIT};
         ok = 1;
-        for (i = 0; i < 6u; i++) {
+        for (i = 0; i < 4u; i++) {
             uint32_t k;
             ui_power_on();
             go_title("ENV"); frame();
@@ -4520,7 +4359,7 @@ static int test_layer_lock(void)
                 printf("    #183: %s locked, PLAY does not start / stop\n", LAYERS[PL[i]].head);
             ok &= okk;
         }
-        bad += check("#183 FX GLO SCL EDIT SEQ REC locked: PLAY starts and stops (no RESTART without GLO held)", ok);
+        bad += check("#183 FX GLO SCL EDIT locked: PLAY starts and stops (no RESTART without GLO held)", ok);
     }
     /* the keys and KNOB 1..4 act as held */
     ui_power_on();
@@ -4603,22 +4442,17 @@ static int test_layer_lock(void)
     /* unchanged: a single tap, two slow taps, a tap and a peek, a tap and a combo, PLAY / REC in the lock */
     ui_power_on();
     go_page(GR_TRK); frame();
-    press(B_SEQ); frames(400);                          /* (1.5: SEQ, the tracker's pages; GLO's SONG cycles no more) */
-    ok = str_eq(cur_page()->title, "PATTERN") && !ui.lock;
-    press(B_SEQ); frames(400);
-    ok &= str_eq(cur_page()->title, "SONG") && !ui.lock && !ui.layer;
-    press(B_SEQ);
-    btn_down(B_SEQ); frames(500);
-    ok &= ui.layer == LAYER_SEQ && !ui.lock;
-    btn_up(B_SEQ); frame();
-    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "PAT SET");
+    press(B_SEQ); frames(400);                          /* (SEQ: its placeholder, no layer) */
+    ok = cur_page()->graph == GR_TODO && !ui.lock;
+    press(B_SEQ); frames(16); press(B_SEQ); frames(400);  /* (a double tap: no layer to lock) */
+    ok &= cur_page()->graph == GR_TODO && !ui.lock && !ui.layer;
     press(B_GLO); frames(400);
-    ok &= str_eq(cur_page()->title, "SONG") && !ui.lock;
+    ok &= cur_page()->graph == GR_TODO && !ui.lock;
     press(B_GLO);
     btn_down(B_GLO); frames(500);
     ok &= ui.layer == LAYER_GLO && !ui.lock;
     btn_up(B_GLO); frame();
-    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "SONG");
+    ok &= !ui.layer && !ui.lock && cur_page()->graph == GR_TODO;
     press(B_SCL);
     lay_combo(B_SCL, white(2));
     key_up(white(2)); btn_up(B_SCL); frame(); frames(400);
@@ -4629,7 +4463,7 @@ static int test_layer_lock(void)
     press(B_GLO); frames(16);
     press(B_LFO); frames(16);
     press(B_GLO); frames(400);
-    ok = !ui.lock && str_eq(cur_page()->title, "SONG");   /* (another button between the taps: two taps) */
+    ok = !ui.lock && cur_page()->graph == GR_TODO;     /* (another button between the taps: two taps) */
     ui_power_on();
     go_title("ENV"); frame();
     press(B_FX); press(B_FX); frames(100);
@@ -4638,228 +4472,6 @@ static int test_layer_lock(void)
     ok &= ui.lock == LAYER_FX;
     stop_transport();
     bad += check("  another button between the taps: no lock; PLAY in a locked layer plays, the lock stays", ok);
-    {   /* EDIT on PATTERN clears a cell: two quick taps clear two (no lock) */
-        ui_power_on();
-        tk_put(0, 0, 0, tk_pack(60, 1, 0, 0));
-        tk_put(0, 1, 0, tk_pack(62, 1, 0, 0));
-        go_page(GR_TKPAT); frame();
-        tku.row = 0;
-        press(B_EDIT); press(B_EDIT); frames(100);
-        bad += check("  EDIT on PATTERN (it clears the cell): two quick taps clear two cells, no lock",
-                     !ui.lock && !ui.layer && tku.row == 2u && tk_empty(tk_at(0, 0, 0)) && tk_empty(tk_at(0, 1, 0)));
-    }
-    return bad;
-}
-
-/* 1.1.5: the REC layer (ui_layer.c). REC held past HOLD on any page opens it (up to 1.1.4 REC held on SEQ asked "CLEAR Tn
- * SEQUENCE?", Discussion #91: gone, and its "HOLD: CLEAR" hint and the footer's REC + trash with it); a tap still
- * arms / disarms. F3 CLEAR (no dialog, SAVE held undoes it), G3 CLICK, A3 CLICK LEVEL (each the next value, the same
- * store as MENU > AUDIO, saved when the layer closes; 1.5: COUNT-IN is gone), KNOB 1..2 the same; OCT- puts back; the LEDs;
- * the double-tap lock (the arming as before the taps); REC in another layer still arms */
-static void rec_down(void) { btn_down(B_REC); }
-static void rec_up(void) { btn_up(B_REC); frame(); }
-static uint32_t menu_rec(uint32_t r) { return menu_get(r == 0u ? MI_CLICK : MI_CLKLVL); }
-static int test_rec_layer(void)
-{
-    static const uint8_t G[8] = {GR_TKPAT, GR_TKSONG, GR_USER, GR_SLOTS, GR_TKINST, GR_TOOLS, GR_ADSR, GR_TRK};
-    int bad = 0, ok = 1;
-    uint32_t k, i, n;
-    for (k = 0; k < 9u; k++) {                          /* every page (and HOME): held, the layer; let go, nothing */
-        ui_power_on();
-        song.sel = 1;
-        tk_put(0, 3, 1, tk_pack(60, 0, 0, 0));
-        if (k < 8u)
-            go_page(G[k]);
-        frame();
-        n = ui.page;
-        rec_down(); frames(512);
-        ok &= ui.layer == LAYER_REC && ui.ly == LAYER_REC && !ui.confirm && song.rec == 0u && !transport_req &&
-              !str_eq(ui.msg, "HOLD: CLEAR");
-        rec_up();
-        ok &= !ui.layer && !ui.confirm && song.rec == 0u && !transport_req && ui.page == n && (k < 8u ? !ui.home : ui.home) &&
-              cell_is(0, 3, 1, tk_pack(60, 0, 0, 0));
-    }
-    bad += check("REC layer: REC held on PATTERN SONG USER PROJECT INSTR TOOLS ENV MIXER HOME opens it", ok);
-    bad += check("  no CLEAR dialog any more, nothing armed, cleared or started (#91's hold replaced)", ok);
-    ok = 1;
-    for (k = 0; k < 4u; k++) {                          /* the menu's HOLD time, as the other layers */
-        ui_power_on();
-        settings_hold = (uint8_t)k;
-        rec_down();
-        for (i = 0; i < 40u && !ui.layer; i++)
-            frame();
-        ok &= ui.layer == LAYER_REC && i * 16u >= HOLD_MS[k] && i * 16u <= HOLD_MS[k] + 32u;
-        rec_up();
-    }
-    bad += check("  it opens after MENU > HOLD (0.3 .. 0.6 s), not the old 0.7 s", ok);
-    ui_power_on();
-    press(B_REC);
-    ok = ui.home && song.rec == 1u && transport_req == 0u && !ui.layer;
-    frames(400); song.playing = 1;
-    press(B_REC);
-    ok &= song.rec == 0u && !ui.layer && song.playing;
-    song.playing = 0;
-    go_page(GR_TKPAT); frame(); frames(400);
-    press(B_REC);
-    ok &= song.rec == 1u && transport_req == 0u && msg_is("KEYS WRITE NOTES");
-    bad += check("  a tap still arms / disarms when let go (never starts PLAY; PATTERN: step entry)", ok);
-    ui_power_on();
-    rec_down(); frame();
-    press(B_PLAY);                                      /* REC + PLAY: PLAY plays, REC let go arms (no map) */
-    ok = transport_req == 1u && !ui.layer;
-    song.playing = 1; transport_req = 0;
-    rec_up();
-    ok &= song.rec == 1u && !ui.layer && song.playing;
-    bad += check("  REC held + PLAY: plays, and REC let go before HOLD still arms (no combo)", ok);
-    ui_power_on();
-    song.sel = 2;
-    ok = 1;
-    frames(400);
-    btn_down(B_GLO); frame();
-    press(B_REC);                                       /* REC in GLO's layer: a tap, armed */
-    ok &= song.rec == 4u && ui.ly == LAYER_GLO;
-    btn_up(B_GLO); frame();
-    frames(400);
-    btn_down(B_GLO); frames(512); press(B_REC);
-    ok &= song.rec == 0u && ui.layer == LAYER_GLO;
-    btn_up(B_GLO); frame();
-    bad += check("  REC in another layer still arms / disarms", ok);
-
-    /* F3 CLEAR (1.5): the selected track's column of the pattern edited, no dialog; an empty one: NOTHING TO CLEAR */
-    ui_power_on();
-    song.sel = 1;
-    tk_put(0, 0, 1, tk_pack(60, 1, 0, 0));
-    tk_put(0, 9, 1, tk_pack(64, 0, TKC_RETRIG, 3));
-    tk_put(0, 9, 2, tk_pack(67, 0, 0, 0));
-    rec_down(); frame();
-    key_down(white(0)); frame();                        /* a combo: the map at once, cleared */
-    ok = ui.layer == LAYER_REC && !rec_clearable() && !ui.confirm && msg_is("TRACK CLEARED") && !gates() &&
-         tk_note(tk_at(0, 9, 2)) == 67u;
-    key_up(white(0)); frame();
-    rec_up();
-    ok &= !ui.layer && song.rec == 0u && !transport_req && !rec_clearable();
-    bad += check("REC + F3: CLEAR T2's column at once (no dialog, the key silent, T3 kept), nothing armed", ok);
-    frames(400);
-    rec_down(); frame(); key_down(white(0)); frame();
-    ok = msg_is("NOTHING TO CLEAR");
-    key_up(white(0)); frame(); rec_up();
-    tk_put(0, 4, 1, tk_pack(60, 0, 0, 0));
-    song.playing = 1; song.rec = 2u;                    /* recording live: a retake, the arming and PLAY stay */
-    rec_down(); frame(); key_down(white(0)); frame();
-    ok &= !rec_clearable() && song.rec == 2u && song.playing;
-    key_up(white(0)); frame(); rec_up();
-    song.playing = 0;
-    bad += check("  empty: NOTHING TO CLEAR; armed and playing: clears, records on", ok);
-
-    /* G3 A3: the settings, the next value each press, MENU > AUDIO's values; KNOB 1..2 */
-    ui_power_on();
-    ui_rec_prefs = 0;
-    rp_apply();
-    ok = 1;
-    rec_down(); frames(512);
-    for (k = 0; k < 2u; k++) {
-        static const char *const NM[2][3] = {{"CLICK REC", "CLICK ON", "CLICK OFF"},
-                                             {"CLICK LEVEL HIGH", "CLICK LEVEL LOW", "CLICK LEVEL MID"}};
-        static const uint32_t WANT[2][3] = {{1, 2, 0}, {2, 0, 1}};
-        for (i = 0; i < 3u; i++) {
-            key_down(white(k + 1u)); frame(); key_up(white(k + 1u)); frame();
-            ok &= menu_rec(k) == WANT[k][i] && msg_is(NM[k][i]) && !gates() &&
-                  str_eq(menu_vname(k == 0u ? MI_CLICK : MI_CLKLVL, menu_rec(k)), rl_name(k, rp_get(RL_F[k])));
-        }
-    }
-    key_down(white(3)); frame(); key_up(white(3)); frame();        /* (B3: nothing any more) */
-    ok &= ui_rec_prefs == 0u && !gates();               /* (round: as it was) */
-    bad += check("REC + G3 CLICK OFF>REC>ON, A3 LEVEL MID>HIGH>LOW: MENU's values; B3 nothing (no COUNT-IN)", ok);
-    key_down(white(1)); frame(); key_up(white(1)); frame();        /* CLICK REC */
-    key_down(white(2)); frame(); key_up(white(2)); frame();        /* LEVEL HIGH */
-    ok = click_mode == 1u && click_lvl == 2u && lys.rp_dirty;
-    rec_up();
-    ok &= !ui.layer && !lys.rp_dirty;                  /* (closed: settings_save) */
-    {
-        persist_t p = {0};
-        uint8_t was = ui_rec_prefs;
-        p.magic = PERSIST_MAGIC; p.panel = panel;
-        settings_export(&p); ui_rec_prefs = 0;
-        ok &= settings_import(&p, sizeof p) && ui_rec_prefs == was && menu_get(MI_CLICK) == 1u &&
-              menu_get(MI_CLKLVL) == 2u;
-    }
-    bad += check("  applied at once (click.c), saved when the layer closes, kept with the settings", ok);
-    rec_down(); frames(512);
-    turn(EN_K1, 1);                                     /* CLICK REC -> ON */
-    turn(EN_K2, -5);                                    /* LEVEL HIGH -> LOW (stops at the end) */
-    turn(EN_K3, -3);                                    /* nothing */
-    turn(EN_K4, 3);                                     /* nothing */
-    ok = menu_get(MI_CLICK) == 2u && menu_get(MI_CLKLVL) == 0u && ui.home;
-    rec_up();
-    bad += check("  KNOB 1..2 CLICK LEVEL, stopping at the ends; KNOB 3, 4 nothing; the page untouched", ok);
-
-    /* OCT- puts back the settings and the track as the layer opened */
-    ui_power_on();
-    ui_rec_prefs = 0; rp_apply();
-    song.sel = 1;
-    tk_put(0, 2, 1, tk_pack(60, 1, TKC_RETRIG, 4));
-    tk_put(0, 7, 1, tk_pack(TK_OFF, 0, 0, 0));
-    rec_down(); frames(512);
-    key_down(white(1)); frame(); key_up(white(1)); frame();
-    key_down(white(0)); frame(); key_up(white(0)); frame();
-    ok = !rec_clearable() && click_mode == 1u;
-    press(B_OCTDN);
-    ok &= cell_is(0, 2, 1, tk_pack(60, 1, TKC_RETRIG, 4)) && cell_is(0, 7, 1, tk_pack(TK_OFF, 0, 0, 0)) &&
-          ui_rec_prefs == 0u && click_mode == 0u &&
-          msg_is("REC PUT BACK") && song.octave == 0 && ui.layer == LAYER_REC;
-    rec_up();
-    bad += check("  OCT- puts back CLICK and the cleared track; no octave shift", ok);
-
-    /* the LEDs: CLEAR breathes when there is something; a setting on lit (LEVEL: with the click on), else breathing */
-    ui_power_on();
-    ui_rec_prefs = 0; rp_apply();
-    tk_put(0, 0, song.sel, tk_pack(60, 0, 0, 0));
-    rec_down(); frames(512);
-    {
-        uint32_t a = leds_at(0), b = leds_at(250), w0 = 1u << white(0), w1 = 1u << white(1), w2 = 1u << white(2);
-        ok = ((a ^ b) & (w0 | w1 | w2)) == (w0 | w1 | w2) && !(a & b) && !((a | b) & ~(w0 | w1 | w2));
-        rp_put(RP_CLICK, 2);
-        a = leds_at(0); b = leds_at(250);
-        ok &= (a & b) == (w1 | w2) && (a ^ b) == w0;
-        tk_clear_column(0, song.sel);
-        a = leds_at(0); b = leds_at(250);
-        ok &= !((a | b) & w0);
-    }
-    rec_up();
-    bad += check("  LEDs: CLEAR breathes (dark when empty), CLICK lit when on, LEVEL with the click", ok);
-
-    /* the double-tap lock: the arming as before the taps, the keys and knobs as held, a tap of REC closes it */
-    ui_power_on();
-    ui_rec_prefs = 0; rp_apply();
-    go_title("ENV"); frame();
-    n = ui.page;
-    press(B_REC);
-    ok = song.rec == 1u && transport_req == 0u && msg_is("HOLD [REC] QUICK");   /* (until it has been opened once) */
-    frames(64);
-    press(B_REC);
-    frames(500);
-    ok &= ui.lock == LAYER_REC && ui.layer == LAYER_REC && layer_locked() && song.rec == 0u && transport_req == 0u &&
-          ui.page == n && !fm1_in.buttons && !msg_is("HOLD [REC] QUICK") && ((layer_seen >> LAYER_REC) & 1u);
-    key_down(white(1)); frame(); key_up(white(1)); frame();
-    turn(EN_K2, 1);
-    ok &= click_mode == 1u && click_lvl == 2u && !gates() && ui.lock == LAYER_REC;
-    press(B_PLAY);                                      /* PLAY works in it */
-    ok &= transport_req == 1u && ui.lock == LAYER_REC;
-    transport_req = 0;
-    press(B_REC);                                       /* a tap: closed, nothing armed */
-    frames(16);
-    ok &= !ui.lock && !ui.layer && song.rec == 0u && ui.page == n && !lys.rp_dirty;
-    bad += check("#83 REC double tapped: locked, the arming as before; keys, knobs, PLAY; a REC tap closes it", ok);
-    ui_power_on();
-    song.playing = 1;
-    press(B_REC); frames(64); press(B_REC); frames(100);
-    ok = ui.lock == LAYER_REC && song.rec == 0u && song.playing && transport_req == 0u;
-    press(B_REC); frames(16);
-    song.playing = 0;
-    press(B_GLO); press(B_GLO); frames(100);            /* another layer locked: REC still arms, the lock stays */
-    press(B_REC);
-    ok &= ui.lock == LAYER_GLO && song.rec == 1u;
-    bad += check("  playing: the transport stays; in GLO's lock a REC tap arms, GLO stays locked", ok);
     return bad;
 }
 
@@ -5125,16 +4737,6 @@ static int test_div_order(void)
             ok &= *vp == (d->names == N_DIV ? 4 : 3);  /* 8T */
         }
     bad += check("#48 the pages' knobs step the divisions by length (ARP, DLY, SLICER)", ok && found >= 3u);
-    ui_power_on();                                  /* SEQ held (1.5): the tracker's pattern, its length, EDIT STEP */
-    btn_down(B_SEQ); frames(500);
-    turn(EN_K1, 3);
-    ok = ui.layer == LAYER_SEQ && tk_pl.loop_pat == 3u;
-    turn(EN_K2, -16);
-    ok &= tk.len[3] == 48u && tk.len[0] == TK_ROWS;
-    turn(EN_K3, 2);
-    ok &= tku.step == 3u;
-    btn_up(B_SEQ); frame();
-    bad += check("1.5: SEQ held: KNOB 1 the pattern edited, 2 its length, 3 EDIT STEP", ok);
     return bad;
 }
 
@@ -5280,25 +4882,22 @@ static int test_knob_accel(void)
 static int test_browse_no_pattern(void)
 {
     int bad = 0, ok = 1;
-    uint32_t pass, n, total, loads = 0, k;
+    uint32_t pass, n, total, loads = 0;
     track_t *t;
     for (pass = 0; pass < 4u; pass++) {
         ui_power_on();
         t = TSEL;
         up_store(3, "MINE");
         up_store(5, "PLAIN");
-        if (pass & 1u) song.playing = 1;              /* playing: the tracker's empty song runs */
+        if (pass & 1u) song.playing = 1;              /* playing: the transport runs */
         if (pass & 2u) go_page(GR_BROWSE);
         preset_pos(&total);
         for (n = 0; n < total + 2u; n++) {
-            uint32_t empty = 1;
             turn(EN_PRESET, 1);
             loads++;
-            for (k = 0; k < TK_PATS; k++)
-                empty &= (uint32_t)tk_pat_empty(k);
-            if (!empty || t->p[P_AMODE] || t->nheld || (!(pass & 1u) && (song.playing || transport_req))) {
-                printf("  pass %u, sound %u (%s %u): song empty %u ARP %d held %u playing %d\n", pass, n,
-                       ENGINES[t->eng_req % NENGINES]->name, t->preset, empty, t->p[P_AMODE], t->nheld, song.playing);
+            if (t->p[P_AMODE] || t->nheld || (!(pass & 1u) && (song.playing || transport_req))) {
+                printf("  pass %u, sound %u (%s %u): ARP %d held %u playing %d\n", pass, n,
+                       ENGINES[t->eng_req % NENGINES]->name, t->preset, t->p[P_AMODE], t->nheld, song.playing);
                 ok = 0;
                 break;
             }
@@ -5361,15 +4960,15 @@ static int test_click_menu(void)
     for (i = 0; i < MI_COUNT; i++)
         ok &= !str_eq(MI_NAME[i], "COUNT-IN");
     for (i = 0; i < 3u; i++)
-        ok &= str_eq(menu_vname(MI_CLICK, i), (const char *[]){"OFF", "REC", "ON"}[i]) &&
+        ok &= (i == 2u || str_eq(menu_vname(MI_CLICK, i), (const char *[]){"OFF", "ON"}[i])) &&
               str_eq(menu_vname(MI_CLKLVL, i), (const char *[]){"LOW", "MID", "HIGH"}[i]);
-    bad += check("MENU > AUDIO: CLICK OFF / REC / ON, CLICK LEVEL LOW / MID / HIGH; OFF MID by default; no COUNT-IN", ok);
+    ok &= menu_n(MI_CLICK) == 2u;
+    bad += check("MENU > AUDIO: CLICK OFF / ON, CLICK LEVEL LOW / MID / HIGH; OFF MID by default; no COUNT-IN", ok);
     hold(B_HOME);
     ui.menu_sel = MI_LOWCUT; ui.force = 1; ui_draw();
     turn(EN_PRESET, 1); turn(EN_PRESET, 1);
     ok = ui.menu_sel == MI_CLICK;
-    turn(EN_K1, 1); ok &= click_mode == CLICK_REC;
-    turn(EN_K2, 1); ok &= click_mode == CLICK_ON;
+    turn(EN_K1, 1); ok &= click_mode == CLICK_ON;
     turn(EN_K2, 1); ok &= click_mode == CLICK_ON;      /* (stops at the end) */
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_CLKLVL;
     press(B_OCTDN); ok &= click_lvl == 0u;
@@ -5396,20 +4995,18 @@ static int test_click_menu(void)
     }
     bad += check("CLICK / CLICK LEVEL saved and read back; a stored 3 the default; older settings OFF / MID", ok);
 
-    /* no count-in: armed on PATTERN, PLAY plays at once (an older setting's COUNT-IN 2 BARS bits too) */
+    /* no count-in: PLAY plays at once (an older setting's COUNT-IN 2 BARS bits too) */
     ui_power_on();
     ui_rec_prefs = 2u << 4;
     rp_apply();
-    go_page(GR_TKPAT);
+    open_family(FAM_SEQ);
     frame();
-    press(B_REC);                                       /* (on PATTERN REC arms step entry, stopped) */
-    ok = (song.rec & 1u) && transport_req == 0u;
     press(B_PLAY);
-    ok &= transport_req == 1u;
+    ok = transport_req == 1u;
     events_block(CTL);
     frame();
-    ok &= song.playing && tk_pl.row == 0u && (song.rec & 1u) && cur_page()->graph == GR_TKPAT;
-    bad += check("no count-in: REC on PATTERN arms, PLAY plays (and records live) at once, the page stays", ok);
+    ok &= song.playing && cur_page()->graph == GR_TODO;
+    bad += check("no count-in: PLAY plays at once, the page stays", ok);
     press(B_PLAY);
     events_block(CTL);
     ui_rec_prefs = 0;
@@ -5674,7 +5271,7 @@ static int test_large(void)
     /* per page type: lists and rolls keep the layout, the layers too; MIXER's tracks in the strip */
     go_page(GR_BROWSE); frame();
     ok = large_kind() == LK_LABEL && card_h() == CARD_H && graph_y() == Y_GRAPH && graph_h() == H_GRAPH;
-    go_page(GR_TKPAT); frame();
+    go_page(GR_TODO); frame();
     ok &= large_kind() == LK_LABEL;
     go_page(GR_TRK); frame();
     ok &= large_kind() == LK_TALL && strip_kind() == SK_TRK && lg_px(CARD_X(0) + 8, LG_Y_GRAPH + 56) == T_SURF;
@@ -5683,7 +5280,7 @@ static int test_large(void)
     ok &= ui.layer && large_kind() == LK_LABEL && card_h() == CARD_H;
     btn_up(B_GLO); frame(); frame();
     ok &= !ui.layer && large_kind() == LK_TALL && lg_px(30, LG_Y_GRAPH - 2) == T_BG;
-    bad += check("#15 LARGE: PRESETS and PATTERN keep the layout (labels in M), the layers too; MIXER tall, its tracks in the strip", ok);
+    bad += check("#15 LARGE: PRESETS and SEQ keep the layout (labels in M), the layers too; MIXER tall, its tracks in the strip", ok);
 
     {   /* saved with the settings; settings from before it: OFF (and so again: idempotent) */
         persist_t p, q;
@@ -5882,18 +5479,17 @@ static int32_t head_span2(int32_t a, int32_t b, int32_t *x0, int32_t *x1)
         }
     return *x1 < 0 ? 0 : *x0 + *x1 + 1;
 }
-enum { HS_STOPPED, HS_PLAY_REC, HS_SONG, HS_MSG, HS_OCT, HS_USB, HS_KEYCAP, HS_REC_OTHER, HS_BPM_TURN, HS_BPM_LOCK,
-       HS_NOFILE, HS_REC_LAYER, HS_LAYER_LOCK, HS_GLO_TURN, HS_MSG2, HS_BEAT2, HS_BATT1, HS_BATT0, HS_BPM90,
+enum { HS_STOPPED, HS_PLAY, HS_MSG, HS_OCT, HS_USB, HS_KEYCAP, HS_BPM_TURN, HS_BPM_LOCK,
+       HS_NOFILE, HS_LAYER_LOCK, HS_GLO_TURN, HS_MSG2, HS_BEAT2, HS_BATT1, HS_BATT0, HS_BPM90,
        HS_N };
-static const char *const HS_NAME[HS_N] = {"stopped", "play+REC", "song", "message", "OCT", "USB", "keycap", "REC other",
-    "BPM turn", "BPM LOCK", "NO FILE", "REC layer", "EDIT lock", "GLO turn", "msg2", "beat 2", "battery 1",
+static const char *const HS_NAME[HS_N] = {"stopped", "play", "message", "OCT", "USB", "keycap",
+    "BPM turn", "BPM LOCK", "NO FILE", "EDIT lock", "GLO turn", "msg2", "beat 2", "battery 1",
     "battery 0", "BPM 90"};
 static void head_state(uint32_t s)
 {
-    song.playing = s == HS_PLAY_REC || s == HS_SONG || s == HS_BEAT2 || s == HS_OCT;
-    song.rec = s == HS_PLAY_REC ? 1u << song.sel : s == HS_REC_OTHER ? 1u << ((song.sel + 1u) % NTRK) : 0u;
+    song.playing = s == HS_PLAY || s == HS_BEAT2 || s == HS_OCT;
+
     clk_pos = 0; clk_step = s == HS_BEAT2 ? 4u : 8u;    /* (the 2nd beat: the metronome mirrored; else the 3rd) */
-    if (s == HS_SONG) { tk_pl.mode = TK_SONG; tk_pl.pos = 2; }
     if (s == HS_MSG) ui_message("SAVED 03 BASS");
     if (s == HS_MSG2) ui_say("LOADED ", "07 A VERY LONG PATTERN NAME");
     if (s == HS_OCT) song.octave = 2;
@@ -5903,7 +5499,6 @@ static void head_state(uint32_t s)
     if (s == HS_BPM_TURN || s == HS_GLO_TURN) ui.bpm_t = 40;
     if (s == HS_BPM_LOCK || s == HS_GLO_TURN) ui_prefs |= PREF_BPM_LOCK;
     if (s == HS_NOFILE) ui_message(MSG_NOFILE "NO FILE");
-    if (s == HS_REC_LAYER) { song.rec = 1u << song.sel; ui.layer = LAYER_REC; }
     if (s == HS_LAYER_LOCK) ui.layer = ui.lock = LAYER_EDIT;
     if (s == HS_GLO_TURN) ui.layer = LAYER_GLO;
     song.g[G_BPM] = s == HS_BPM90 ? 90 : 124;
@@ -5911,7 +5506,7 @@ static void head_state(uint32_t s)
 }
 static void head_clear(void)
 {
-    tk_pl.mode = TK_LOOP; ui.msg_t = 0; song.octave = 0; usb.config = 0; song.playing = 0; song.rec = 0; ui.bpm_t = 0;
+    ui.msg_t = 0; song.octave = 0; usb.config = 0; song.playing = 0; ui.bpm_t = 0;
     ui_prefs &= ~PREF_BPM_LOCK; ui.layer = ui.lock = 0; song.batt_raw = 600;
 }
 static int test_head_centres(void)
@@ -5921,8 +5516,8 @@ static int test_head_centres(void)
     for (st = ST_FLAT; st <= ST_LINE; st++)
         for (p = 0; p < NPALETTES; p++)
             for (s = 0; s < HS_N; s++) {
-                int32_t a, b, c2, msg = s == HS_MSG || s == HS_KEYCAP || s == HS_NOFILE || s == HS_REC_LAYER ||
-                                        s == HS_LAYER_LOCK || s == HS_MSG2;
+                int32_t a, b, c2, msg = s == HS_MSG || s == HS_KEYCAP || s == HS_NOFILE || s == HS_LAYER_LOCK ||
+                                        s == HS_MSG2;
                 int pr = !st && !p, okp;
                 ui_power_on();
                 ui_style = (uint8_t)st; style_apply();
@@ -6003,658 +5598,6 @@ static int test_head_metronome(void)
 }
 
 
-
-/* 1.5: the tracker (src/tracker.c plays the song, src/ui_tracker.c its pages, src/project.c keeps it). PLAY on PATTERN
- * loops the pattern edited, on SONG plays the order list from the position picked; a row is a 1/16 (swung by CLOCK's
- * SWING); a column's note rings until the next note or OFF; a row's instrument becomes the track's sound from that row
- * on (the engine, its EDIT values; not the track's ENV and sends); a row's FX sets a parameter for that row only; the
- * track's CUT / RES hold the filter over the instruments; live recording into the rows; the pages' knobs, PRESETS,
- * EDIT and keys; playing, the cursor follows the row playing, 8 rows a page; the song saved and loaded whole */
-static uint32_t tk_gated(const track_t *t, uint32_t note)   /* track t's voices held on note */
-{
-    uint32_t i, n = 0;
-    for (i = 0; i < NVOICE; i++)
-        n += t->v[i].active && t->v[i].gate && t->v[i].note == note;
-    return n;
-}
-static int test_tracker_play(void)
-{
-    int bad = 0, ok;
-    uint32_t row, i, id, base;
-    int16_t atk, rev;
-    track_t *t0 = &trk[0], *t1 = &trk[1];
-    const preset_t *dp = &ENGINES[ENGI_KIT]->presets[0];
-    ui_power_on();
-    song.g[G_SWING] = 0;
-    row = div_samples(2);
-    tk.len[0] = 4;
-    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));
-    tk_put(0, 2, 0, tk_pack(62, 0, 0, 0));
-    tk_put(0, 3, 0, tk_pack(TK_OFF, 0, 0, 0));
-    tk_put(0, 1, 1, tk_pack(48, 0, 0, 0));
-    go_page(GR_TKPAT); frame();
-    press(B_PLAY);
-    events_block(CTL);
-    ok = song.playing && tk_pl.mode == TK_LOOP && tk_pl.pat == 0u && tk_pl.row == 0u && tk_gated(t0, 60) && !tk_gated(t1, 48);
-    events_block(row);
-    ok &= tk_pl.row == 1u && tk_gated(t0, 60) && tk_gated(t1, 48);
-    events_block(row);
-    ok &= tk_pl.row == 2u && tk_gated(t0, 62) && !tk_gated(t0, 60) && tk_gated(t1, 48);
-    events_block(row);
-    ok &= tk_pl.row == 3u && !tk_gated(t0, 62) && tk_gated(t1, 48);
-    events_block(row);
-    ok &= tk_pl.row == 0u && tk_pl.pat == 0u && tk_gated(t0, 60) && tk_pl.rows == 5u;
-    bad += check("tracker LOOP (PLAY on PATTERN): a row a 1/16, a note rings to the next or OFF, the 4 rows again", ok);
-    tk.len[1] = 2;
-    tk_put(1, 0, 0, tk_pack(72, 0, 0, 0));
-    tk_pl.loop_pat = 1;                                 /* (SEQ held, KNOB 1: another pattern while it plays) */
-    events_block(row);
-    frame();
-    ok = tk_pl.pat == 0u && tk_pl.row == 1u && tk_view_pat() == 1u && !tk_following();
-    events_block(3u * row);
-    ok &= tk_pl.pat == 1u && tk_pl.row == 0u && tk_gated(t0, 72);
-    events_block(2u * row);
-    ok &= tk_pl.pat == 1u && tk_pl.row == 0u;
-    bad += check("  another pattern picked plays from the end of the one playing (CUED), then loops", ok);
-    transport_req = 2;
-    events_block(CTL);
-    bad += check("  STOP: the notes end", !song.playing && !tk_gated(t0, 72) && !tk_pl.note[0] && !tk_pl.note[1]);
-
-    /* SONG */
-    ui_power_on();
-    song.g[G_SWING] = 0;
-    tk.len[0] = 2; tk.len[1] = 3;
-    tk.order[0] = 0; tk.order[1] = 1; tk.order[2] = 0; tk.norder = 3;
-    tk_put(0, 0, 0, tk_pack(60, 0, 0, 0));
-    tk_put(1, 0, 0, tk_pack(64, 0, 0, 0));
-    tk_put(1, 2, 0, tk_pack(67, 0, 0, 0));
-    go_page(GR_TKSONG); frame();
-    tku.pos = 1;
-    press(B_PLAY);
-    events_block(CTL);
-    ok = tk_pl.mode == TK_SONG && tk_pl.pos == 1u && tk_pl.pat == 1u && tk_pl.row == 0u && tk_gated(t0, 64);
-    events_block(2u * row);
-    ok &= tk_pl.pos == 1u && tk_pl.row == 2u && tk_gated(t0, 67);
-    events_block(row);
-    ok &= tk_pl.pos == 2u && tk_pl.pat == 0u && tk_pl.row == 0u && tk_gated(t0, 60);
-    events_block(2u * row);
-    ok &= tk_pl.pos == 0u && tk_pl.pat == 0u && tk_pl.row == 0u;
-    go_page(GR_TKPAT); frame();
-    ok &= tk_view_pat() == tk_pl.pat && tku.row == tk_pl.row;
-    bad += check("tracker SONG (PLAY on SONG): the positions from the one picked, pattern by pattern, round; PATTERN shows "
-                 "the one playing", ok);
-    transport_req = 2;
-    events_block(CTL);
-    frame();
-    bad += check("  stopped: PATTERN keeps the pattern the song was on", tk_pl.loop_pat == 0u && tku.pos == 0u);
-
-    /* the cursor follows the row playing, 8 rows a page */
-    ui_power_on();
-    song.g[G_SWING] = 0;
-    go_page(GR_TKPAT); frame();
-    press(B_PLAY);
-    events_block(CTL);
-    frame();
-    ok = tku.row == 0u;
-    events_block(9u * row);
-    frame();
-    ok &= tk_pl.row == 9u && tku.row == 9u && tku.row / TK_VIEW == 1u;
-    turn(EN_K1, 3);
-    ok &= tku.row == tk_pl.row;
-    bad += check("  playing: the cursor is the row playing (KNOB 1 too); the rows shown, the 8 that hold it (08..0F)", ok);
-    transport_req = 2;
-    events_block(CTL);
-
-    /* swing */
-    song.g[G_SWING] = 50;
-    base = div_samples(2);
-    bad += check("  CLOCK's SWING: even rows longer, odd ones shorter, a pair as two straight rows",
-                 tk_row_len(0) > base && tk_row_len(1) < base && tk_row_len(0) + tk_row_len(1) == 2u * base);
-    song.g[G_SWING] = 0;
-
-    /* instruments and FX */
-    ui_power_on();
-    song.g[G_SWING] = 0;
-    tk.instr[4].src = EID_KIT;                         /* instrument 05: DRUM's first kit (by id) */
-    tk.instr[4].preset = 0;
-    atk = t0->p[P_ATK];
-    rev = t0->p[P_REV];
-    tk_put(0, 0, 0, tk_pack(36, 5, 0, 0));               /* (GM 36: the kick) */
-    tk_put(0, 1, 0, tk_pack(60, 1, 0, 0));               /* 01: track 1's power-on sound */
-    tk_put(0, 2, 0, tk_pack(0, 0, TKC_RETRIG, 4));      /* (RETRIG with no note: nothing) */
-    go_page(GR_TKPAT); frame();
-    press(B_PLAY);
-    events_block(CTL);
-    ok = t0->eng_req == ENGI_KIT && t0->p[P_ATK] == atk && t0->p[P_REV] == rev;
-    for (i = 0; i < 8u; i++)
-        ok &= t0->p[P_E0 + i] == dp->e[i];
-    events_block(row);
-    ok &= t0->eng_req == UT_DEF[0][0] && t0->preset == UT_DEF[0][1] && t0->p[P_ATK] == atk && t0->p[P_REV] == rev;
-    bad += check("tracker: a row's instrument is the track's sound from it on (engine, EDIT values); its ENV, sends stay", ok);
-    events_block(row);
-    ok = t0->p[P_REV] == rev && !tk_pl.pcmd[0];
-    id = tk_filter_id(t0, TKP_CUT);
-    bad += check("  a row's RETRIG with no note: nothing at work, the track's values its own (no parameter FX since 2026-10)",
-                 ok && id < P_COUNT);
-    transport_req = 2;
-    events_block(CTL);
-    tk.cut[0] = 10;
-    tk_inst_apply(t0, 1);
-    bad += check("  the track's CUT over the instruments: the filter there after an instrument (INST: its own)",
-                 t0->p[id] == tk_scale(t0, id, 10));
-    tk.cut[0] = TK_INST_VAL;
-
-    /* live recording */
-    ui_power_on();
-    song.g[G_SWING] = 0;
-    tk.len[0] = 16;
-    go_page(GR_TKPAT); frame();
-    song.rec = 1;
-    transport_req = 1;
-    events_block(CTL);
-    events_block(2u * row + row / 4u);                  /* early in row 2 */
-    input_on(t0, 65, 100);
-    ok = song.playing && tk_note(tk_at(0, 2, 0)) == 65u && tk_gated(t0, 65);
-    events_block(row / 2u);                             /* late in row 2: let go, OFF on row 3 */
-    input_off(t0, 65);
-    ok &= tk_note(tk_at(0, 3, 0)) == TK_OFF;
-    events_block(row / 4u + 2u * row + row * 3u / 4u);  /* late in row 5: into row 6, not again there */
-    input_on(t0, 67, 100);
-    ok &= tk_note(tk_at(0, 6, 0)) == 67u && tk_gated(t0, 67) == 1u;
-    events_block(row / 2u);
-    ok &= tk_pl.row == 6u && tk_gated(t0, 67) == 1u;
-    input_off(t0, 67);
-    bad += check("tracker: live recording into the nearest row (OFF where let go); a row still to come does not play it again",
-                 ok);
-    transport_req = 2;
-    events_block(CTL);
-    song.rec = 0;
-    return bad;
-}
-
-static int test_tracker_pages(void)
-{
-    int bad = 0, ok;
-    uint32_t i, src;
-    int16_t v;
-    ui_power_on();
-    open_family(FAM_SEQ); frame();
-    ok = cur_page()->graph == GR_TKPAT && str_eq(cur_page()->title, "PATTERN") && tku.row == 0u;
-    turn(EN_K2, 1);                                     /* none -> the last note (C-4) */
-    ok &= cell_is(0, 0, 0, tk_pack(60, 0, 0, 0));
-    turn(EN_K2, 2);
-    ok &= tk_note(tk_at(0, 0, 0)) == 62u;
-    turn(EN_K3, 3);                                     /* instrument 03, the one the keys record with now */
-    ok &= tk_inst(tk_at(0, 0, 0)) == 3u && tk_cur_inst == 3u;
-    turn(EN_K4, 1);                                     /* a new FX: RETRIG, 4 hits */
-    ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_RETRIG && tk_val(tk_at(0, 0, 0)) == 4u;
-    turn(EN_K4, 5);
-    ok &= tk_val(tk_at(0, 0, 0)) == 9u;
-    turn(EN_K4, 20);
-    ok &= tk_val(tk_at(0, 0, 0)) == TKC_RT_MAX;
-    turn(EN_PRESET, 1);                                 /* (on already: as it was) */
-    ok &= tk_cmd(tk_at(0, 0, 0)) == TKC_RETRIG && tk_val(tk_at(0, 0, 0)) == TKC_RT_MAX;
-    (void)v;
-    bad += check("PATTERN: KNOB 2 the note (from none: the last), 3 the instrument, 4 RETRIG's hits (2 .. 15), PRESETS it on", ok);
-    turn(EN_PRESET, -2);
-    ok = tk_cmd(tk_at(0, 0, 0)) == TKC_NONE && tk_val(tk_at(0, 0, 0)) == 0u && tk_note(tk_at(0, 0, 0)) == 62u;
-    turn(EN_K1, 1);
-    turn(EN_K2, 1);                                     /* row 1: a new note takes the instrument used last */
-    ok &= tku.row == 1u && cell_is(0, 1, 0, tk_pack(62, 3, 0, 0));
-    turn(EN_K2, -100);                                  /* below the lowest: OFF, then none */
-    ok &= tk_note(tk_at(0, 1, 0)) == TK_OFF;
-    turn(EN_K2, -1);
-    ok &= tk_note(tk_at(0, 1, 0)) == 0u;
-    turn(EN_K1, -3);                                    /* the rows wrap in the pattern's length (half speed: the */
-    ok &= tku.row == TK_ROWS - 1u;                      /* first detent at once, then every second one: 2 rows) */
-    turn(EN_K1, -1);                                    /* (the same turn: its second detent waits) */
-    ok &= tku.row == TK_ROWS - 1u;
-    turn(EN_K1, -1);
-    ok &= tku.row == TK_ROWS - 2u;
-    frames(300);
-    turn(EN_K1, 1);                                     /* after a pause: one click, one row */
-    ok &= tku.row == TK_ROWS - 1u;
-    tku.row = 0;
-    press(B_EDIT);
-    ok &= tk_empty(tk_at(0, 0, 0)) && tku.row == 1u && msg_is("CELL CLEARED");
-    bad += check("  PRESETS to NO FX clears it; OFF below the lowest note, then none; the rows wrap, KNOB 1 at half speed; EDIT clears the cell", ok);
-    turn(EN_ALGO, 1); frame();
-    tku.row = 4;
-    turn(EN_K2, 1);
-    ok = song.sel == 1u && tk_note(tk_at(0, 4, 1)) != 0u && tk_empty(tk_at(0, 4, 0));
-    bad += check("  ALGORITHM: the cursor's track (its column)", ok);
-
-    /* SONG */
-    ui_power_on();
-    go_page(GR_TKSONG); frame();
-    turn(EN_K1, 1);                                     /* + ADD */
-    ok = tku.pos == 1u;
-    turn(EN_K2, 1);                                     /* a new position (the one before's pattern) */
-    ok &= tk.norder == 2u && tk.order[1] == 0u;
-    turn(EN_K2, 5);
-    ok &= tk.order[1] == 5u;
-    turn(EN_K3, 1);                                     /* (KNOB 3: nothing since the variations went) */
-    ok &= tk.order[1] == TK_OENT(5, 0) && tk_nvar[5] == 1u;
-    turn(EN_K4, 1);                                     /* a copy after it */
-    ok &= tk.norder == 3u && tk.order[2] == 5u && tku.pos == 2u;
-    turn(EN_K4, -1);                                    /* deleted */
-    ok &= tk.norder == 2u;
-    press(B_EDIT);
-    ok &= tk.norder == 1u && tk.order[0] == 0u;
-    press(B_EDIT);
-    ok &= tk.norder == 1u;                              /* (the last one stays) */
-    bad += check("SONG: KNOB 1 the position (+ ADD), 2 its pattern (adds one), 3 nothing, 4 copy / delete; EDIT deletes",
-                 ok);
-
-    /* PAT SET (Fel-Tracker: the SONG position's pattern's own settings, the variations' A), edited row by row */
-    ui_power_on();
-    go_page(GR_TKVAR); frame();
-    ok = tku.vrow == 0u && tk_nvar[0] == 1u && TK_NVROW == TV_VO + VO_N;
-    turn(EN_K1, 1);                                     /* TEMPO: from SONG to the song's BPM, then up */
-    ok &= tk_var[0][0].bpm == (uint8_t)song.g[G_BPM];
-    turn(EN_K1, 3);
-    ok &= tk_var[0][0].bpm == (uint8_t)(song.g[G_BPM] + 3);
-    turn(EN_K2, 5);                                     /* (TEMPO: KNOB 1 alone) */
-    ok &= tk_var[0][0].bpm == (uint8_t)(song.g[G_BPM] + 3);
-    press(B_EDIT);
-    ok &= !tk_var[0][0].bpm;
-    turn(EN_PRESET, 1);                                 /* MUTE */
-    turn(EN_K2, 1);
-    ok &= tku.vrow == 1u && tk_var[0][0].mute == 2u;
-    turn(EN_PRESET, 1);                                 /* CHANCE */
-    turn(EN_K1, -30);
-    ok &= tk_var[0][0].chance[0] < 100u;
-    turn(EN_PRESET, 4);                                 /* REVERB: from KEEP, the track's own value; below it KEEP */
-    trk[0].p[P_REV] = 40;
-    turn(EN_K1, 1);
-    ok &= tku.vrow == 6u && tk_var[0][0].vo[0][VO_REV] == 41u;
-    turn(EN_K1, -127);
-    ok &= tk_var[0][0].vo[0][VO_REV] == 0u;
-    turn(EN_K1, 1);
-    press(B_EDIT);                                      /* EDIT: the selected track's back to KEEP */
-    ok &= tk_var[0][0].vo[0][VO_REV] == 0u && trk[0].p[P_REV] == 40;
-    turn(EN_PRESET, 20);                                /* (the last row: SL RATE, no DELETE) */
-    ok &= tku.vrow == TK_NVROW - 1u;
-    bad += check("PAT SET: pattern 00's TEMPO SONG / BPM on KNOB 1, MUTE, CHANCE, REVERB KEEP / a value; EDIT: SONG / KEEP; "
-                 "the tracks' own values untouched; no DELETE row", ok);
-    {   /* PLAY on PAT SET: its pattern under it (LOOP); an edit while it plays reaches the sound now */
-        tk_var[0][0].mute = 0;
-        press(B_PLAY);                                  /* (the audio starts it: here the request) */
-        ok = transport_req == 1u && tk_pl.mode == TK_LOOP && tk_pl.loop_pat == 0u;
-        transport_req = 0;
-        song.playing = 1;                               /* (as the audio ISR has it then) */
-        tk_var_enter(0, 0);
-        turn(EN_PRESET, -10);                           /* TEMPO */
-        turn(EN_K1, 1);
-        ok &= tku.vrow == 0u && tk_var[0][0].bpm && tempo_ovr == tk_var[0][0].bpm && song_bpm() == tk_var[0][0].bpm;
-        song.playing = 0;
-        tk_var_leave();
-        ok &= !tempo_ovr;
-        bad += check("  PLAY there: LOOP of 00; its TEMPO turned while it plays: at once; STOP: the song's", ok);
-    }
-
-    /* SETTINGS */
-    ui_power_on();
-    go_page(GR_TKSET); frame();
-    v = trk[1].p[P_ATK];
-    src = (uint32_t)trk[0].p[P_ATK];
-    turn(EN_K2, 3);                                     /* ATTACK of track 2 */
-    ok = trk[1].p[P_ATK] == v + 3 && trk[0].p[P_ATK] == (int16_t)src;
-    for (i = 0; i < TK_NSET && TK_SET[i].id != TKS_CUT; i++)
-        ;
-    turn(EN_PRESET, (int32_t)i);
-    ok &= tku.srow == i;
-    turn(EN_K1, 1);                                     /* CUTOFF: INST -> the instrument's own, then the knob's */
-    ok &= tk.cut[0] != TK_INST_VAL;
-    turn(EN_K1, -127);
-    ok &= tk.cut[0] == TK_INST_VAL;
-    turn(EN_K1, 1);
-    song.sel = 0;
-    press(B_EDIT);
-    ok &= tk.cut[0] == TK_INST_VAL;
-    bad += check("SETTINGS: a row a setting, KNOB 1..4 tracks 1..4; CUTOFF INST <-> the knob's (EDIT: INST)", ok);
-
-    /* INSTR */
-    ui_power_on();
-    go_page(GR_TKINST); frame();
-    turn(EN_K1, (int32_t)NTRK + 2);                     /* slot 07 (8 tracks: 11, past the power-on sounds' 1 .. 8) */
-    ok = tku.slot == NTRK + 2u && tk_cur_inst == NTRK + 3u && tk.instr[NTRK + 2u].src == TK_SRC_NONE;
-    turn(EN_K2, 1);                                     /* the first engine */
-    src = tk.instr[NTRK + 2u].src;
-    ok &= src == eng_id(eng_vis(0)) && TSEL->eng_req == eng_vis(0);   /* (an instrument names its engine by id) */
-    turn(EN_K3, 1);
-    ok &= tk.instr[NTRK + 2u].preset == 1u && TSEL->preset == 1u;
-    press(B_EDIT);
-    ok &= tk.instr[NTRK + 2u].src == TK_SRC_NONE;
-    bad += check("INSTR: KNOB 1 the slot, 2 its engine, 3 its preset: the track plays it at once; EDIT empties it", ok);
-    return bad;
-}
-
-/* 1.5: a cell's chord (two intervals above its note): three notes in the column, released together; a track not
- * POLY plays the note alone; the preview, step entry (keys held together), live recording, the SEQ layer's KNOB 4,
- * the footer, the page title */
-/* PATTERN's column heads: the instrument each track sounds now and its engine; a sound loaded since: the engine alone */
-static int test_tracker_heads(void)
-{
-    int bad = 0, ok;
-    ui_power_on();
-    go_page(GR_TKPAT); frame();
-    ok = !tk_track_inst(0) && !tk_track_inst(1);                 /* (power on: the tracks' own sounds) */
-    tk.instr[4].src = EID_MODAL; tk.instr[4].preset = 0;
-    tk_put(0, 0, 1, tk_pack(60, 5, 0, 0));
-    press(B_PLAY);
-    events_block(CTL);
-    ok &= tk_track_inst(1) == 5u && trk[1].eng_req == ENGI_MODAL;
-    frame();
-    stop_transport();
-    tk.instr[4].preset = 1;                                      /* the instrument changed on INSTR: not the sound now */
-    ok &= !tk_track_inst(1);
-    tk.instr[4].preset = 0;
-    ok &= tk_track_inst(1) == 5u;
-    song.sel = 1;
-    presets_turn(1);                                             /* PRESETS: another sound */
-    ok &= !tk_track_inst(1);
-    bad += check("tracker heads: the instrument a track sounds (05 PHYS), none after INSTR or PRESETS change it", ok);
-    return bad;
-}
-
-/* 1.5 tracker editing: SAVE held undoes the last pattern edit (a knob's turn one undo; held again redo), SEQ held + the
- * white keys from F3 COPY TRK, PASTE TRK, COPY PAT, PASTE PAT, INS ROW, DEL ROW, INS ALL, DEL ALL (each one undo; OCT-
- * puts back the pattern as the layer opened), SEQ + PLAY from the cursor's row, a silent track's head dim */
-static void seq_open(void) { btn_down(B_SEQ); frames(512); }
-static void seq_close(void) { btn_up(B_SEQ); frame(); frames(400); }
-static int test_tracker_tools(void)
-{
-    int bad = 0, ok;
-    uint32_t r, k;
-    ui_power_on();
-    tk_clip.has = 0;
-    go_page(GR_TKPAT); frame();
-    turn(EN_K2, 1); turn(EN_K2, 2);                     /* C-4, then D-4: one turn of KNOB 2 */
-    ok = tk_note(tk_at(0, 0, 0)) == 62u;
-    hold(B_SAVE);
-    ok &= tk_empty(tk_at(0, 0, 0)) && msg_is("UNDO/REDO PATTERN 00");
-    hold(B_SAVE);
-    ok &= tk_note(tk_at(0, 0, 0)) == 62u;
-    frames(1600);
-    turn(EN_K3, 2);                                     /* another edit: its own undo */
-    ok &= tk_inst(tk_at(0, 0, 0)) == 2u;
-    hold(B_SAVE);
-    ok &= tk_note(tk_at(0, 0, 0)) == 62u && tk_inst(tk_at(0, 0, 0)) == 0u;
-    hold(B_SAVE);
-    press(B_EDIT);                                      /* EDIT's clear: one undo */
-    ok &= tk_empty(tk_at(0, 0, 0));
-    hold(B_SAVE);
-    ok &= tk_note(tk_at(0, 0, 0)) == 62u && tk_inst(tk_at(0, 0, 0)) == 2u;
-    bad += check("tracker undo: SAVE held undoes the last pattern edit (a knob's turn at once), held again redoes", ok);
-    tku.row = 0;                                        /* (EDIT moved the cursor on by EDIT STEP) */
-    frames(400);
-    turn(EN_K3, -5);                                    /* (clamped at none, then nothing changes: no new copy) */
-    frames(1600);
-    turn(EN_K3, -1);
-    hold(B_SAVE);
-    ok = tk_inst(tk_at(0, 0, 0)) == 2u;
-    tk.len[0] = 16;
-    seq_open(); turn(EN_K2, -4); seq_close();           /* the length (SEQ + KNOB 2): one undo too */
-    ok &= tk.len[0] == 12u;
-    hold(B_SAVE);
-    ok &= tk.len[0] == 16u;
-    bad += check("  an edit that changes nothing takes no copy; the pattern's length undoes too", ok);
-
-    /* the tools */
-    ui_power_on();
-    tk_clip.has = 0;
-    go_page(GR_TKPAT); frame();
-    tk_put(0, 0, 0, tk_pack_ch(60, 1, TKC_RETRIG, 2, 0x74));
-    tk_put(0, 1, 0, tk_pack(62, 0, 0, 0));
-    tk_put(0, 3, 0, tk_pack(TK_OFF, 0, 0, 0));
-    tk_put(0, 2, 1, tk_pack(48, 2, 0, 0));
-    tk.len[0] = 8;
-    seq_open();
-    tl_key(1);                                          /* PASTE TRK, nothing copied */
-    ok = msg_is("NOTHING COPIED") && tk_empty(tk_at(0, 0, 2)) && !(leds_at(0) & 1u << white(1)) &&
-         !(leds_at(250) & 1u << white(1));
-    tl_key(0);                                          /* COPY TRK: track 1 */
-    ok &= msg_is("TRACK 1 COPIED") && (tk_clip.has & 1u);
-    seq_close();
-    song.sel = 2;
-    seq_open();
-    tl_key(1);                                          /* PASTE TRK onto track 3 */
-    for (r = 0; r < TK_ROWS; r++) ok &= !memcmp(tk_at(0, r, 2), tk_at(0, r, 0), sizeof(tk_cell_t));
-    ok &= msg_is("PASTED TO 3");
-    seq_close();
-    hold(B_SAVE);
-    ok &= tk_empty(tk_at(0, 0, 2)) && tk_empty(tk_at(0, 1, 2)) && tk_note(tk_at(0, 0, 0)) == 60u;
-    bad += check("SEQ + F3 COPY TRK, G3 PASTE TRK (nothing copied: NOTHING COPIED, the key dark); SAVE held undoes it", ok);
-    song.sel = 0;
-    seq_open();
-    tl_key(2);                                          /* COPY PAT */
-    ok = msg_is("COPIED PATTERN 00") && (tk_clip.has & 2u);
-    turn(EN_K1, 3);                                     /* (SEQ + KNOB 1: pattern 03) */
-    tl_key(3);                                          /* PASTE PAT into it */
-    ok &= tk_pl.loop_pat == 3u && tk.len[3] == 8u && msg_is("PASTED TO PATTERN 03");
-    for (r = 0; r < TK_ROWS; r++)
-        for (k = 0; k < NTRK; k++) ok &= !memcmp(tk_at(3, r, k), tk_at(0, r, k), sizeof(tk_cell_t));
-    seq_close();
-    bad += check("  A3 COPY PAT, B3 PASTE PAT: every cell and the length into the pattern edited", ok);
-    tk_pl.loop_pat = 0;
-    tku.row = 1;
-    seq_open();
-    tl_key(4);                                          /* INS ROW: track 1 from row 01 down */
-    ok = tk_empty(tk_at(0, 1, 0)) && tk_note(tk_at(0, 2, 0)) == 62u && tk_note(tk_at(0, 4, 0)) == TK_OFF &&
-         tk_note(tk_at(0, 2, 1)) == 48u && tk_note(tk_at(0, 0, 0)) == 60u && msg_is("ROW INSERTED");
-    tl_key(5);                                          /* DEL ROW: back */
-    ok &= tk_note(tk_at(0, 1, 0)) == 62u && tk_note(tk_at(0, 3, 0)) == TK_OFF && tk_empty(tk_at(0, 7, 0)) &&
-          msg_is("ROW DELETED");
-    tl_key(6);                                          /* INS ALL: every track */
-    ok &= tk_empty(tk_at(0, 1, 0)) && tk_note(tk_at(0, 3, 1)) == 48u && tk_note(tk_at(0, 2, 0)) == 62u;
-    tl_key(7);                                          /* DEL ALL */
-    ok &= tk_note(tk_at(0, 2, 1)) == 48u && tk_note(tk_at(0, 1, 0)) == 62u;
-    tku.row = 6;
-    tl_key(4);                                          /* (the length's last row goes; rows past it stay) */
-    ok &= tk_empty(tk_at(0, 6, 0)) && tk_empty(tk_at(0, 7, 0)) && tk_chord(tk_at(0, 0, 0)) == 0x74u;
-    tl_key(4); tl_key(4); tl_key(4); tl_key(4);
-    press(B_OCTDN);                                     /* OCT-: the pattern as the layer opened */
-    ok &= tk_note(tk_at(0, 1, 0)) == 62u && tk_note(tk_at(0, 3, 0)) == TK_OFF && msg_is("PATTERN PUT BACK");
-    seq_close();
-    bad += check("  C4 INS ROW, D4 DEL ROW (the cursor's track), E4 INS ALL, F4 DEL ALL, in the length; OCT- puts back", ok);
-
-    /* SEQ + PLAY: from the cursor's row (LOOP), stopped on PATTERN; PLAY then from row 00 again */
-    tku.row = 5;
-    seq_open();
-    press(B_PLAY);
-    events_block(CTL);
-    ok = song.playing && tk_pl.mode == TK_LOOP && tk_pl.row == 5u;
-    seq_close();
-    press(B_PLAY); events_block(CTL);
-    ok &= !song.playing;
-    press(B_PLAY); events_block(CTL);
-    ok &= song.playing && tk_pl.row == 0u;
-    press(B_PLAY); events_block(CTL);
-    bad += check("  SEQ + PLAY: LOOP from the cursor's row; PLAY alone from row 00", ok);
-    stop_transport();
-
-    /* a silent track's head: MUTE (GLO's black keys) or another one soloed */
-    ok = !tk_silent(0) && !tk_silent(1);
-    trk[1].p[P_MUTE] = 1;
-    ok &= tk_silent(1) && !tk_silent(0);
-    trk[1].p[P_MUTE] = 0;
-    perf_solo = 1u;
-    ok &= !tk_silent(0) && tk_silent(1) && tk_silent(2) && tk_silent(3);
-    perf_solo = 0;
-    bad += check("  heads: a muted track, or one not soloed, shows as silent", ok);
-    return bad;
-}
-
-static int test_tracker_chords(void)
-{
-    int bad = 0, ok;
-    uint32_t row, k0, k1, k2, n0, n1, n2;
-    track_t *t0 = &trk[0], *t1 = &trk[1];
-    char foot[48], ti[20];
-    ui_power_on();
-    song.g[G_SWING] = 0;
-    row = div_samples(2);
-    t1->p[P_VOICE] = V_POLY;
-    tk.len[0] = 4;
-    tk_put(0, 0, 1, tk_pack_ch(60, 0, 0, 0, 0x74));     /* C-4 MAJ */
-    tk_put(0, 2, 1, tk_pack_ch(62, 0, 0, 0, 0x73));     /* D-4 MIN */
-    tk_put(0, 3, 1, tk_pack(TK_OFF, 0, 0, 0));
-    tk_put(0, 0, 0, tk_pack_ch(48, 0, 0, 0, 0x74));     /* (track 1: ACID, MONO) */
-    go_page(GR_TKPAT); frame();
-    press(B_PLAY);
-    events_block(CTL);
-    ok = tk_gated(t1, 60) && tk_gated(t1, 64) && tk_gated(t1, 67) && tk_pl.note[1] == 60u && tk_pl.ch[1][0] == 64u &&
-         tk_pl.ch[1][1] == 67u;
-    events_block(row);
-    ok &= tk_gated(t1, 60) && tk_gated(t1, 64) && tk_gated(t1, 67);
-    events_block(row);
-    ok &= tk_gated(t1, 62) && tk_gated(t1, 65) && tk_gated(t1, 69) && !tk_gated(t1, 60) && !tk_gated(t1, 64) &&
-          !tk_gated(t1, 67);
-    events_block(row);
-    ok &= !tk_gated(t1, 62) && !tk_gated(t1, 65) && !tk_gated(t1, 69) && !tk_pl.ch[1][0];
-    bad += check("tracker chord: C-4 MAJ plays C E G, rings, D-4 MIN replaces all three, OFF releases them", ok);
-    bad += check("  a track not POLY (ACID, MONO) plays the chord's note alone", t0->p[P_VOICE] != V_POLY &&
-                 tk_pl.note[0] == 48u && !tk_pl.ch[0][0] && !tk_pl.ch[0][1] && !tk_gated(t0, 52) && !tk_gated(t0, 55));
-    transport_req = 2;
-    events_block(CTL);
-    ok = !tk_gated(t1, 60) && !tk_pl.note[1];
-    /* STEP PREVIEW: the cursor onto the chord: the three sound once */
-    ui_prefs2 |= PREF_PREVIEW >> 16;
-    song.sel = 1; tku.row = 1; frame();
-    turn(EN_K1, -1);
-    events_block(CTL);
-    ok &= tk_gated(t1, 60) && tk_gated(t1, 64) && tk_gated(t1, 67);
-    events_block(row + CTL);
-    ok &= !tk_gated(t1, 60) && !tk_gated(t1, 67);
-    ui_prefs2 &= ~(PREF_PREVIEW >> 16);
-    bad += check("  STEP PREVIEW: the chord under the cursor sounds once", ok);
-    /* the footer and the title */
-    tku.row = 0; frame();
-    tk_foot(foot, sizeof foot);
-    page_title(ti);
-    bad += check("  the footer spells it (C-4 MAJ); the title is PATTERN 00 (no 1/4)", str_eq(foot, "C-4 MAJ") &&
-                 str_eq(ti, "PATTERN 00"));
-    tk_put(0, 0, 1, tk_pack_ch(60, 0, 0, 0, 0x92));     /* (+2 +9: no shape) */
-    tk_foot(foot, sizeof foot);
-    bad += check("  a chord that is no shape: its intervals (C-4 +2+9)", str_eq(foot, "C-4 +2+9"));
-    /* the SEQ layer's KNOB 4: the shapes */
-    tk_put(0, 0, 1, tk_pack(60, 2, 0, 0));
-    btn_down(B_SEQ); frames(500);
-    turn(EN_K4, 1);
-    ok = tk_chord(tk_at(0, 0, 1)) == 0x74u && tk_inst(tk_at(0, 0, 1)) == 2u;
-    turn(EN_K4, 1);
-    ok &= tk_chord(tk_at(0, 0, 1)) == 0x73u;
-    turn(EN_K4, -5);
-    ok &= tk_chord(tk_at(0, 0, 1)) == 0u;
-    tku.row = 1;
-    turn(EN_K4, 1);
-    ok &= tk_empty(tk_at(0, 1, 1));
-    btn_up(B_SEQ); frame();
-    bad += check("  SEQ held, KNOB 4: the cursor cell's chord (NONE MAJ MIN ...); a cell without a note takes none", ok);
-    /* KNOB 2 takes the chord along; none drops it */
-    tku.row = 0; tk_put(0, 0, 1, tk_pack_ch(60, 0, 0, 0, 0x74)); frames(400);
-    turn(EN_K2, 2);
-    ok = tk_note(tk_at(0, 0, 1)) == 62u && tk_chord(tk_at(0, 0, 1)) == 0x74u;
-    tk_put(0, 0, 1, tk_pack_ch(TK_OFF + 0u - 126u, 0, 0, 0, 0x74));   /* (note 1, the lowest) */
-    turn(EN_K2, -1);
-    ok &= tk_note(tk_at(0, 0, 1)) == TK_OFF && !tk_chord(tk_at(0, 0, 1));
-    bad += check("  KNOB 2 moves the chord with its note; OFF (or none) drops it", ok);
-    /* step entry: keys held together write a chord, the cursor moves once */
-    ui_power_on();
-    go_page(GR_TKPAT); frame();
-    song.rec = 1;
-    k0 = 7; k1 = 11; k2 = 14;
-    n0 = kb_map(t0, k0); n1 = kb_map(t0, k1); n2 = kb_map(t0, k2);
-    fm1_in.notes = host_notes = 1u << k0; frame();
-    fm1_in.notes = host_notes = 1u << k0 | 1u << k1; frame();
-    fm1_in.notes = host_notes = 1u << k0 | 1u << k1 | 1u << k2; frame();
-    ok = tk_note(tk_at(0, 0, 0)) == n0 && tk_iv(tk_at(0, 0, 0), 0) == n1 - n0 && tk_iv(tk_at(0, 0, 0), 1) == n2 - n0 &&
-         tku.row == 1u && tk_empty(tk_at(0, 1, 0));
-    fm1_in.notes = host_notes = 0; frame();
-    fm1_in.notes = host_notes = 1u << k1; frame();
-    fm1_in.notes = host_notes = 0; frame();
-    ok &= tk_note(tk_at(0, 1, 0)) == n1 && !tk_chord(tk_at(0, 1, 0)) && tku.row == 2u;
-    bad += check("  step entry: keys held together write one cell with its chord; let go, the next key a new cell", ok &&
-                 n1 - n0 <= 15u && n2 - n0 <= 15u);
-    /* live recording: the keys of a chord into one row */
-    ui_power_on();
-    song.g[G_SWING] = 0;
-    t0->p[P_VOICE] = V_POLY;
-    go_page(GR_TKPAT); frame();
-    song.rec = 1;
-    press(B_PLAY);
-    events_block(CTL);
-    fm1_in.notes = host_notes = 1u << k0 | 1u << k1 | 1u << k2; frame();
-    events_block(CTL);
-    ok = tk_note(tk_at(0, 0, 0)) == n0 && tk_iv(tk_at(0, 0, 0), 0) == n1 - n0 && tk_iv(tk_at(0, 0, 0), 1) == n2 - n0;
-    fm1_in.notes = host_notes = 0; frame();
-    transport_req = 2;
-    events_block(CTL);
-    bad += check("  live recording: a chord's keys into one row (the first the note, the others its intervals)", ok);
-    return bad;
-}
-
-static int test_tracker_project(void)
-{
-    int bad = 0, ok;
-    uint32_t p, r, k, h0, h1, n;
-    tk_song_t keep;
-    ui_power_on();
-    tk_put(0, 0, 0, tk_pack_ch(60, 1, 0, 0, 0x74));     /* (a chord: MAJ) */
-    tk_put(7, 3, 2, tk_pack(TK_OFF, 0, TKC_RETRIG, 9));
-    tk_put(TK_LO - 1u, 63, 3, tk_pack_ch(36, 0, 0, 0, 0xF1));   /* (the last pattern in .noinit, the first in .bss) */
-    tk_put(TK_LO, 0, 1, tk_pack(0, 9, TKC_RETRIG, 0));
-    tk_put(TK_PATS - 1u, 31, 0, tk_pack_ch(127u - 1u, 63, TKC_RETRIG, 15, 0x0C));
-    tk.order[1] = 7; tk.order[2] = TK_PATS - 1u; tk.order[3] = TK_LO; tk.norder = 4;
-    tk.len[7] = 12; tk.len[TK_PATS - 1u] = 1;
-    tk.instr[8].src = EID_VECTOR; tk.instr[8].preset = 3;
-    tk.instr[9].src = TK_SRC_USER + 4u;
-    tk.cut[1] = 40; tk.res[2] = 100;
-    song.g[G_BPM] = 99;
-    trk[2].p[P_REV] = 77;
-    keep = tk;
-    for (p = 0, h0 = 2166136261u; p < TK_PATS; p++)
-        for (r = 0; r < TK_ROWS; r++)
-            for (k = 0; k < NTRK; k++)
-                h0 = proj_fnv(h0, tk_at(p, r, k)->b, sizeof(tk_cell_t));
-    ok = project_save_as(0, "MYSONG") == 0 && project_used(0) && msg_is("SAVED (RAM)");
-    project_new();
-    song.g[G_BPM] = 120;
-    trk[2].p[P_REV] = 0;
-    ok &= tk_pat_empty(7) && tk.norder == 1u && !proj_name[0];
-    project_load(0);
-    for (p = 0, h1 = 2166136261u; p < TK_PATS; p++)
-        for (r = 0; r < TK_ROWS; r++)
-            for (k = 0; k < NTRK; k++)
-                h1 = proj_fnv(h1, tk_at(p, r, k)->b, sizeof(tk_cell_t));
-    ok &= msg_is("LOADED") && h0 == h1 && !memcmp(&keep, &tk, sizeof tk) && song.g[G_BPM] == 99 &&
-          trk[2].p[P_REV] == 77 && str_eq(proj_name, "MYSONG");
-    bad += check("tracker project: the song (cells of every pattern with their chords, order, lengths, instruments, CUT / RES), "
-                 "the sounds, the name: saved and loaded back whole", ok);
-    /* a song too big for the store: refused, the stored one kept */
-    for (p = 0; p < TK_PATS; p++)
-        for (r = 0; r < TK_ROWS; r++)
-            for (k = 0; k < NTRK; k++)
-                *tk_at(p, r, k) = tk_pack(40u + r % 40u, 1u + k, TKC_RETRIG, r % 16u);
-    ok = project_save(0) == 2 && msg_is("SONG TOO BIG");
-    project_load(0);
-    ok &= str_eq(proj_name, "MYSONG") && tk_note(tk_at(0, 0, 0)) == 60u && tk_pat_empty(1);
-    bad += check("  a song too big for the store: SONG TOO BIG, the stored one kept", ok);
-    /* a stream damaged in the store: LOAD ERROR, the music as it was */
-    for (p = 0, n = 0; p < 6u; p++)                     /* (two chunks' worth) */
-        for (r = 0; r < TK_ROWS; r++)
-            for (k = 0; k < NTRK; k++, n++)
-                *tk_at(p, r, k) = tk_pack(40u + n % 40u, 0, 0, 0);
-    ok = project_save(0) == 0 && proj_good.count >= 2u;
-    proj_ram[1][PROJ_HDR + 100u] ^= 0x55u;
-    project_new();
-    tk_put(3, 3, 3, tk_pack(50, 0, 0, 0));
-    project_load(0);
-    ok &= msg_is("LOAD ERROR") && tk_note(tk_at(3, 3, 3)) == 50u && tk_pat_empty(0);
-    bad += check("  a damaged chunk: LOAD ERROR, the music as it was", ok);
-    return bad;
-}
 
 /* #181: a sound load (PRESETS) or another track (ALGORITHM) draws the page again (ui.force) with no blank frame on the
  * way: MIXER cleared its panel to the background before its four columns landed (HOME > TRACKS its rows), a flash on
@@ -6929,8 +5872,8 @@ static int test_eight_tracks(void)
     int16_t l4;
     ui_power_on();
     for (k = 4, ok = 1; k < NTRK; k++)
-        ok &= trk[k].eng_req == eng_for_track(&trk[k], UT_DEF[k][0]) && tk.instr[k].src == eng_id(UT_DEF[k][0]);
-    bad += check("8 tracks: power-on, tracks 5 .. 8 their sounds (and their instruments)", ok);
+        ok &= trk[k].eng_req == eng_for_track(&trk[k], UT_DEF[k][0]);
+    bad += check("8 tracks: power-on, tracks 5 .. 8 their sounds", ok);
     ok = trk_view() == 0u;
     track_select(5);
     frame();
@@ -6976,7 +5919,6 @@ int main(void)
     int bad = 0;
     bad += test_large_face();
     bad += test_sound_loads();
-    bad += test_rec();
     bad += test_presets_knob();
     bad += test_midi();
     bad += test_save();
@@ -7001,7 +5943,6 @@ int main(void)
     bad += test_fx_latch();
     bad += test_fx_map();
     bad += test_layer_lock();
-    bad += test_rec_layer();
     bad += test_edit_quick_actions();
     bad += test_menu_prefs();
     bad += test_style();
@@ -7030,12 +5971,6 @@ int main(void)
     bad += test_idle_leds();
     bad += test_momentary();
     bad += test_no_flash();
-    bad += test_tracker_play();
-    bad += test_tracker_pages();
-    bad += test_tracker_project();
-    bad += test_tracker_chords();
-    bad += test_tracker_heads();
-    bad += test_tracker_tools();
     bad += test_retired_engines();
 #if NTRK == 8
     bad += test_eight_tracks();

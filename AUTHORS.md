@@ -37,7 +37,6 @@ These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
 
 | What | Where |
 | --- | --- |
-| The tracker, which replaces the step sequencer: song, patterns, instruments, FX, its pages and its editor protocol | `firmware/src/tracker.c`, `firmware/src/ui_tracker.c`, `firmware/src/editor_tracker.c` |
 | Stable engine ids, distributions, and builds of any set of up to 16 engines | `firmware/src/engine_ids.h`, `tools/gen_dist.py`, `distributions/` |
 | WAVE (wavetables) | `firmware/src/eng_wave.c`, `tools/gen_wavetables.py` |
 | BYTE (bytebeat) | `firmware/src/eng_byte.c` |
@@ -89,7 +88,8 @@ are Tristano Suriani's own. The breaks in BREAKS are his own patterns, written i
 
 These changes are Tristano Suriani's (`git log 7aa4347^..`):
 
-- The step sequencer is removed, and the tracker takes its place.
+- The step sequencer is removed. The tracker that took its place is removed too (2026-10): the sequencer is a
+  placeholder for now (SEQ shows TODO).
 - SAMPLE, GRAIN, SLICE and DIGITAL are removed, along with the sample infrastructure.
 - Engines are named by a stable id everywhere a sound is stored or sent, and by an index within the build.
 - Distributions run through the build, the browser emulator, the regression tests and the device budget checks.

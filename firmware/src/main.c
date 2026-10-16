@@ -96,12 +96,11 @@ static void fm1_fault(const fm1_crash_t *c)
     fm1_reboot();
 }
 
-/* power-on: the parts with their default sounds (TRK_DEF); the tracker's song empty */
+/* power-on: the parts with their default sounds (TRK_DEF) and their places in the mix */
 static void felucca_init(void)
 {
     uint32_t i;
-    tk_defaults();
-    tk_user_sound = up_tk_sound;              /* (tracker.c: user preset instruments, upreset.c) */
+    trk_mix_defaults();
     for (i = 0; i < G_COUNT; i++)
         song.g[i] = GP[i].def;
     undo_depth++;                             /* (no undo copy of the power-on loads) */

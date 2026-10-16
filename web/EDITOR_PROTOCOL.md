@@ -84,6 +84,13 @@ a user preset's stored pattern is still read and written (and kept in flash), bu
 `UP_STORE` stores an empty one. `PROJECT` saves and loads the one song whatever the slot. See "1.5: the tracker (78,
 79)" below.
 
+**Fel-Tracker, 2026-10 (the tracker removed):** the tracker is gone too; the sequencer is a placeholder (the device's
+SEQ page says TODO). `TRACKER` (78) gets no reply, `TRACKER_CHANGED` (79) is never pushed, INFO no longer ends with
+the `58` tag, and `WATCH` does not take bit 2 (7 answers 3). `PROJECT` keeps the tracks' sounds and their places in
+the mix (WIDTH, LOW CUT, DUCK, PAN MODE), no song. The MENU's CLICK is OFF / ON (REC, while a track was armed, is
+gone: there is no recording) and STEP PREVIEW (id 19) is gone: MENU_DESC lists 21 items. `TRACK`'s armed byte is
+always 0. The section on the tracker below describes what 1.5 had.
+
 **1.5 (engines):** the engine byte everywhere (`INFO`'s names, `DUMP` / `RELOAD` / `TRACK`, `PRESET`, `NAMES`,
 `G_ENGSEL`, `UP_*`, `FAV_*`, the tracker's instruments, projects) is the engine's **id**, fixed for good: NENGINES (in
 `INFO`) is the number of ids, 54, the same in every build. Forty engines are appended: 14 WAVE (wavetables), 15 BYTE
@@ -211,7 +218,7 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 
 | cmd | Request args | Reply args |
 | --- | --- | --- |
-| 1 INFO | — | version string, NENGINES, P_COUNT, G_COUNT, NSTEP, P_E0, then NENGINES engine-name strings, then (v3) NTRK (4), then (v6) CHAIN_ROWS (16), then the tagged blocks `55 01 uiCaps`, `4D 01 64 01`, `42 01 3`, `46 01 nfactory nbank`, `53 01 3`, (1.0.3) `50 01 3` and (1.0.4) `4E 01 count` (MENU settings; 12, 1.1: 15, 1.2: 17, 1.1.5: 18, 1.2: 23, 1.3: 24, 1.5: 22) and (1.0.5) `52 01 4` (ratchet) and (1.1) `4C 01 1` (parameter locks) and (1.2) `41 01 00 01` (128 motion records: two 7-bit bytes, LSB first; `4D 01 64 01` keeps saying 64) and `54 01 16` (a step's nudge, 1/16 of a step) and `57 01 4` (song sections: a slot per track, SONG ops 4..7) and (1.4.1) `56 01 32` (FM6's voice bank: cmds 74..77, SLOT 9..40) and (1.5) `58 02 pats rows insts ncmd order-lo order-hi` (the tracker: cmds 78, 79; always the last 8 bytes) (below; 1.5 no longer sends `57 01 4`); older firmware ends earlier |
+| 1 INFO | — | version string, NENGINES, P_COUNT, G_COUNT, NSTEP, P_E0, then NENGINES engine-name strings, then (v3) NTRK (4), then (v6) CHAIN_ROWS (16), then the tagged blocks `55 01 uiCaps`, `4D 01 64 01`, `42 01 3`, `46 01 nfactory nbank`, `53 01 3`, (1.0.3) `50 01 3` and (1.0.4) `4E 01 count` (MENU settings; 12, 1.1: 15, 1.2: 17, 1.1.5: 18, 1.2: 23, 1.3: 24, 1.5: 22, 2026-10: 21) and (1.0.5) `52 01 4` (ratchet) and (1.1) `4C 01 1` (parameter locks) and (1.2) `41 01 00 01` (128 motion records: two 7-bit bytes, LSB first; `4D 01 64 01` keeps saying 64) and `54 01 16` (a step's nudge, 1/16 of a step) and `57 01 4` (song sections: a slot per track, SONG ops 4..7) and (1.4.1) `56 01 32` (FM6's voice bank: cmds 74..77, SLOT 9..40) and (1.5) `58 02 pats rows insts ncmd order-lo order-hi` (the tracker: cmds 78, 79; always the last 8 bytes; gone 2026-10) (below; 1.5 no longer sends `57 01 4`); older firmware ends earlier |
 | 2 GET | scope, id | scope, id, v14 |
 | 3 SET | scope, id, v14 | scope, id, v14 (the value after clamping). Setting global `G_ENGSEL` (id from DESC label "ENG") changes the engine: its defaults, then its first preset (as on the device) |
 | 4 DUMP | — | engine, preset, then P_COUNT × v14 (the selected track), then G_COUNT × v14 (globals) |
@@ -968,20 +975,19 @@ fewer:
 | 9 | 9 | SPEAKER EQ | 0 | 0 FLAT, 1 LOWCUT, 2 BASS+ | FLAT | 2 AUDIO |
 | 10 | 10 | USB LEVEL | 0 | 0 MASTER, 1 FIXED | MASTER | 2 AUDIO |
 | 11 | 11 | USB SERIAL | 0 | 0 ON, 1 OFF | ON | 4 SYSTEM (up to 1.2's MIDI tab: 3) |
-| 12 | 12 | CLICK | 0 | 0 OFF, 1 REC, 2 ON (1.1) | OFF | 2 AUDIO |
+| 12 | 12 | CLICK | 0 | 0 OFF, 1 ON (1.1; 2026-10: REC gone) | OFF | 2 AUDIO |
 | 13 | 13 | CLICK LEVEL | 0 | 0 LOW, 1 MID, 2 HIGH (1.1) | MID | 2 AUDIO |
 | 14 | 15 | RESTORE LAST | 0 | 0 ON, 1 OFF (1.2) | ON | 4 SYSTEM (up to 1.2's MIDI tab: 3) |
 | 15 | 16 | SCALE LEDS | 0 | 0 OFF, 1 ON (1.2) | OFF | 1 CONTROL |
 | 16 | 17 | SCREEN OFF | 0 | 0 NEVER, 1 "5 MIN", 2 "15 MIN", 3 "30 MIN", 4 "60 MIN" (1.1.5) | NEVER (1.1.5.1; 1.1.5: 30 MIN) | 0 DISPLAY |
 | 17 | 18 | SCOPE | 0 | 0 OUT, 1 MIX (1.2) | OUT | 0 DISPLAY |
-| 18 | 19 | STEP PREVIEW | 0 | 0 OFF, 1 ON (1.2) | OFF | 1 CONTROL |
-| 19 | 21 | MIDI IN | 0 | 0 CH1-4, 1 SEL, 2 CH5-8, 3 CH9-12, 4 CH13-16 (1.2: the project's `G_ROUTE`, global 14) | CH1-4 | 3 MIDI |
-| 20 | 22 | TUNE | 1 | -50..50, unit "ct" (1.2: the project's `G_TUNE`, global 3, cents) | 0 | 2 AUDIO |
-| 21 | 23 | HOME | 0 | 0 SCOPE, 1 TRACKS (1.3) | SCOPE | 0 DISPLAY |
+| 18 | 21 | MIDI IN | 0 | 0 CH1-4, 1 SEL, 2 CH5-8, 3 CH9-12, 4 CH13-16 (1.2: the project's `G_ROUTE`, global 14) | CH1-4 | 3 MIDI |
+| 19 | 22 | TUNE | 1 | -50..50, unit "ct" (1.2: the project's `G_TUNE`, global 3, cents) | 0 | 2 AUDIO |
+| 20 | 23 | HOME | 0 | 0 SCOPE, 1 TRACKS (1.3) | SCOPE | 0 DISPLAY |
 
-The device's AUDIO tab shows SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL and (1.2) TUNE (index 9, 10, 12, 13, 20;
+The device's AUDIO tab shows SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL and (1.2) TUNE (index 9, 10, 12, 13, 19;
 1.1 .. 1.4.1 also COUNT-IN, index 14).
-CLICK: the metronome while the transport runs: OFF, REC (while a track is armed), ON (always); CLICK LEVEL its
+CLICK: the metronome while the transport runs: OFF, ON (REC, while a track was armed, until 2026-10); CLICK LEVEL its
 level. The click goes to the headphones / speaker, never into USB audio or a recording (README: Metronome). Applied
 at once, as on the device. 1.5 has no count-in: PLAY starts at once, armed or not.
 
@@ -1004,7 +1010,7 @@ SCOPE (id 18, 1.2, Discussion #165; DISPLAY now shows COLOR, STYLE, LARGE, ANIM,
 the volume; MIX the mix before MASTER (and before the FX layer, SPEAKER EQ and the limiter), drawn at the size MASTER
 at its top would give, whatever the knob. The metronome's click is in neither. Applied at once.
 
-STEP PREVIEW (id 19, 1.2, Discussion #169) and CHORD ENTRY (id 20, 1.2, #155; CONTROL now shows HOLD, KNOB ACCEL, FX
+STEP PREVIEW (id 19, 1.2, Discussion #169; gone with the tracker, 2026-10) and CHORD ENTRY (id 20, 1.2, #155; CONTROL now shows HOLD, KNOB ACCEL, FX
 LATCH, BPM LOCK, SCALE LEDS, STEP PREVIEW and CHORD ENTRY, index 5..8, 16, 19, 20). STEP PREVIEW ON: on SEQ > STEP
 (the piano roll and the DRUM grid) with the transport stopped, moving the cursor with KNOB 1 or PRESETS (or the
 grid's page keys) plays the step it lands on once on the selected track, through its sound (a 1/16 at the track's
@@ -1047,7 +1053,7 @@ at ~0.6 s while the MIDI port was not seen to disappear at all (so do not wait f
 a real change, wait ~1.5 s and open again). What the editor sends in that window is lost, `WATCH` ends with the
 bus reset (send `INFO` and `WATCH` again after reconnecting), and a backup in progress answers rc 5 (stale).
 
-## 1.5: the tracker (78, 79)
+## 1.5: the tracker (78, 79) (removed 2026-10: no reply, see above)
 
 INFO ends with `58 05 pats rows insts ncmd order-lo order-hi vars wfirst` (24, 64, 63, 16, 128 as two 7-bit bytes, 4,
 then 4 with 8 tracks, 2 with 4): the patterns, their most rows, the instruments, the FX commands, the order list's most

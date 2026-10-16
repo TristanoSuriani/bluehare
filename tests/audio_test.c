@@ -42,7 +42,6 @@ static void fresh(void)
     uint32_t p;
     memset(trk, 0, sizeof trk);
     memset(&song, 0, sizeof song);
-    tk_defaults();
     host_tracks_init();
     for (p = 0; p < NPART; p++) host_preset(&trk[p], 0, 0);
     memset(&felucca_dbg, 0, sizeof felucca_dbg);

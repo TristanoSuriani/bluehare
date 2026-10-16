@@ -10,7 +10,7 @@
  * DIST=d, LEVEL=l, SENDS=c,d,r, SWEEP=1, NOTE=k, OCT=o, PSET=id:v,..., VSWEEP=1, PSWEEP=id:a:b,
  * PRESET=1 (the whole preset: sends, voice mode), STEPS=n,n,... (a pattern, 0 = rest; see below).
  * TRACKS=DIR: the 4-track test (tracks_demo below): a bass / pad / lead / drums (DRUM) pattern
- * with live recording into DIR (mix + solos), checks, and the cost against one track. */
+ * into DIR (mix + solos), checks, and the cost against one track. */
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -68,8 +68,71 @@ static uint64_t now_ns(void)
     return (uint64_t)ts.tv_sec * 1000000000u + (uint64_t)ts.tv_nsec;
 }
 
+/* the renders' songs (the sequencer is a placeholder: SEQ shows TODO). The tests' own player, through seq.c's
+ * seq_hook: a song of up to HS_ROWS rows, a note per track and row (0 none: the note rings on, HS_OFF its release),
+ * played round and round from row 0 at PLAY (a plugin host's place: the metronome's 1/16, seq_locate; a row it is
+ * inside plays not, the next one does), each row a 1/16 of the tempo swung by CLOCK's SWING, the notes of a row
+ * at the start of the block it falls in; a note releases the track's note before it (after it starts: MONO / LEGATO
+ * glide into it; the same note: released first). As the tracker played its pattern 00, so the goldens stay */
+#define HS_ROWS 64u
+#define HS_OFF 127u
+static uint8_t host_song[HS_ROWS][NTRK];
 static uint32_t host_rows;                        /* rows put_step wrote (host_tracks_init: none) */
-static void host_tracks_init(void)                /* as felucca_init: defaults, empty patterns */
+static struct { uint32_t row, pos, beat; uint8_t note[NTRK]; } hs;
+static uint32_t hs_row_len(uint32_t row) { return swing_step_len(&trk[0], div_samples(2), row); }
+static void hs_release(uint32_t k)
+{
+    if (hs.note[k])
+        trk_note_off(&trk[k], hs.note[k]);
+    hs.note[k] = 0;
+}
+static void hs_play_row(void)
+{
+    uint32_t k, n;
+    for (k = 0; k < NTRK; k++) {
+        if (!(n = host_song[hs.row][k]))
+            continue;
+        if (n == HS_OFF) {
+            hs_release(k);
+            continue;
+        }
+        if (hs.note[k] == n)
+            hs_release(k);
+        trk_note_on(&trk[k], n, 100);
+        if (hs.note[k])
+            trk_note_off(&trk[k], hs.note[k]);
+        hs.note[k] = (uint8_t)n;
+    }
+}
+static void host_seq(uint32_t n)                  /* (seq.c events_block, every block) */
+{
+    uint32_t k, len;
+    if (!host_rows)
+        return;
+    if (song.playing && song.g[G_CLOCK] && hs.beat && beat_samples() != hs.beat && hs.pos < (uint32_t)FS * 2u)   /* (an */
+        hs.pos = (uint32_t)(((uint64_t)hs.pos * ((beat_samples() << 12) / hs.beat) + 2048u) >> 12);   /* external clock's
+                                                  * tempo moved: as midi_clock.c rescales the metronome's phase) */
+    hs.beat = beat_samples();
+    if (!song.playing || !song.tick) {            /* stopped: the notes end; PLAY (song.tick 0): from where the */
+        for (k = 0; k < NTRK; k++)                /* metronome stands (seq_start: the bar's first 1/16; a plugin */
+            hs_release(k);                        /* host's place: target_host.c seq_locate) */
+        if (!song.playing)
+            return;
+        hs.row = clk_pos == CLK_START ? 0u : clk_step % host_rows;
+        hs.pos = clk_pos == CLK_START ? 0u : clk_pos;
+        if (hs.pos < 2u * HALF_FRAMES) {          /* (less than the host's lateness into the row: it plays at once) */
+            hs_play_row();
+            return;
+        }
+    }
+    hs.pos += n;
+    while (hs.pos >= (len = hs_row_len(hs.row))) {
+        hs.pos -= len;
+        hs.row = hs.row + 1u >= host_rows ? 0u : hs.row + 1u;
+        hs_play_row();
+    }
+}
+static void host_tracks_init(void)                /* as felucca_init: defaults, no song */
 {
     uint32_t i, k;
     for (i = 0; i < G_COUNT; i++)
@@ -79,8 +142,11 @@ static void host_tracks_init(void)                /* as felucca_init: defaults, 
     for (k = 0; k < NTRK; k++)
         for (i = 0; i < P_E0; i++)
             trk[k].p[i] = TP[i].def;
-    tk_defaults();                                /* (1.5: the tracker's song, empty) */
+    trk_mix_defaults();
+    memset(host_song, 0, sizeof host_song);
+    memset(&hs, 0, sizeof hs);
     host_rows = 0;
+    seq_hook = host_seq;
     song.cpu_q8 = 255;                            /* (Fel-Tracker: the host as a loaded device: the voice budget its base,
                                                    * 8, every render as before; 12 voices: regress.c's own check) */
     song.master_q12 = 4096;
@@ -140,20 +206,19 @@ static void host_preset(track_t *t, uint32_t e, uint32_t pi)
 static void host_drums(track_t *t) { host_preset(t, FELUCCA_ENG_KIT ? (uint32_t)ENGI_KIT : 0u, 0); }   /* (no KIT: the first engine) */
 
 /* a step of the renders' songs, written as they were for the step sequencer of 1.4 (the goldens keep their songs): into
- * row i of the tracker's pattern 00, which plays them: its first note, a REST an OFF, a TIE nothing (the note rings);
- * the pattern as long as the longest track written. The other notes of a chord and the flags (accent, slide) are not
- * played (the tracker has no such cell); a row past TK_ROWS nothing */
+ * row i of host_song, which plays them: its first note, a REST an OFF, a TIE nothing (the note rings); the song as long
+ * as the longest track written. The other notes of a chord and the flags (accent, slide) are not played (as the tracker
+ * played them: its cells had none); a row past HS_ROWS nothing */
 enum { ST_NOTE, ST_TIE, ST_REST };                 /* (the 1.4 steps' kinds: the render songs' vocabulary) */
 #define SF_ACCENT 1u
 static void put_step(track_t *t, uint32_t i, uint32_t n, const uint8_t *notes, uint32_t time, uint32_t flags)
 {
     (void)flags;
-    if (i >= TK_ROWS)
+    if (i >= HS_ROWS)
         return;
-    *tk_at(0, i, (uint32_t)(t - trk)) = tk_pack(time == ST_NOTE && n ? notes[0] : time == ST_REST ? TK_OFF : 0u, 0, 0, 0);
+    host_song[i][(uint32_t)(t - trk) % NTRK] = (uint8_t)(time == ST_NOTE && n ? notes[0] : time == ST_REST ? HS_OFF : 0u);
     if (i + 1u > host_rows)
         host_rows = i + 1u;
-    tk.len[0] = (uint8_t)host_rows;
 }
 
 static uint32_t busy_now(void)                   /* sounding voices of the parts (none fading after a block) */
@@ -186,21 +251,23 @@ static uint32_t started_since(const track_t *t, uint32_t a0)
     return n;
 }
 
-/* the demo song (1.5: the tracker's pattern 00, 16 rows): T1 ANALOG ACID, T2 the power-on pad (TRK_DEF: FM6 PAD) holding
- * a note for 14 rows, T3 LOFI PULSE LD, T4 DRUM (a hit a row: kick on the beats, snare on 5 and 13, hats between);
- * 120 BPM, 8 bars. Bars 5..6: live recording: a clap into the drums late in row 3 (into row 4, not triggered twice),
- * MIDI ch 3 into the lead's row 1, two keys at once into the pad's empty row 6 (the first one recorded). solo: 0 = the
- * mix, 1..4 = that track only. Writes DIR/NAME; returns the number of failed checks. */
-static void put_row(uint32_t k, uint32_t r, uint32_t note) { *tk_at(0, r, k) = tk_pack(note, 0, 0, 0); }
+/* the demo song (host_song, 16 rows): T1 ANALOG ACID, T2 a pad holding a note for 14 rows, T3 WASP, T4 DRUM (a hit a
+ * row: kick on the beats, snare on 5 and 13, hats between); 120 BPM, 8 bars. solo: 0 = the mix, 1..4 = that track only.
+ * Writes DIR/NAME; returns the number of failed checks. */
+static void put_row(uint32_t k, uint32_t r, uint32_t note)
+{
+    host_song[r % HS_ROWS][k % NTRK] = (uint8_t)note;
+    if (r + 1u > host_rows)
+        host_rows = r + 1u;
+}
 static int tracks_demo(const char *dir, const char *name, uint32_t solo)
 {
     static const uint8_t ACID[16] = {45, 45, 57, 45, 0, 48, 45, 55, 45, 0, 57, 52, 45, 48, 0, 50};
     static const uint8_t LEAD[16] = {76, 0, 0, 79, 0, 0, 81, 0, 79, 0, 76, 0, 74, 0, 72, 0};
-    const uint32_t frames = 16u * FS, bar = 2u * FS;
+    const uint32_t frames = 16u * FS;
     char path[512];
     FILE *w;
-    uint32_t f, i, bmax = 0, clips = 0, fail = 0, clap_done = 0, lead_done = 0, keys_t = 0, keys_on = 0, keys_done = 0;
-    uint32_t clap_age = 0, clap_hits = 0xFFFFu, clap_pass = 0, kills0;
+    uint32_t f, i, bmax = 0, clips = 0, fail = 0, kills0;
     track_t *t1 = &trk[0], *t2 = &trk[1], *t3 = &trk[2], *td = &trk[3];
     snprintf(path, sizeof path, "%s/%s", dir, name);
     if (!(w = fopen(path, "wb"))) {
@@ -214,14 +281,13 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
                                                     * PAD: the power-on pad until Fel-Tracker's rhythm section came first) */
     host_preset(t3, ENGI_WASP, 0);
     host_drums(td);
-    tk.len[0] = 16;
     for (i = 0; i < 16u; i++) {
         if (ACID[i]) put_row(0, i, ACID[i]);
         if (LEAD[i]) put_row(2, i, LEAD[i]);
         put_row(3, i, i % 4u == 0u ? 36u : i == 4u || i == 12u ? 38u : i % 2u == 0u ? 42u : 0u);
     }
     put_row(1, 0, 57);
-    put_row(1, 14, TK_OFF);
+    put_row(1, 14, HS_OFF);
     if (solo) {                                    /* the other tracks silent */
         for (i = 0; i < NPART; i++)
             if (i + 1u != solo)
@@ -232,39 +298,6 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     wav_hdr(w, frames);
     for (f = 0; f < frames; f += CTL) {
         int32_t o[2 * CTL];
-        uint32_t barn = f / bar, period = tk_row_len(tk_pl.row);
-        if (barn == 4u && !song.rec)
-            song.rec = 0x0Eu;                      /* bars 5..6: tracks 2, 3, 4 armed */
-        if (barn == 6u)
-            song.rec = 0;
-        /* (a) a clap into the drums, late in row 3: lands on row 4, sounds now, row 4 does not play it again */
-        if (song.rec && !clap_done && tk_pl.row == 3u && tk_pl.row_pos > period * 3u / 4u) {
-            input_on(td, 39, 110);
-            clap_done = 1;
-            clap_age = vage;
-            clap_pass = 1;
-        } else if (clap_pass == 1u && tk_pl.row == 4u) {
-            clap_hits = started_since(td, clap_age);   /* what row 4 triggered right after (nothing: the clap sounds) */
-            clap_pass = 2;
-        }
-        /* (b) MIDI ch 3 into the lead, early in row 1 */
-        if (song.rec && !lead_done && tk_pl.row == 1u && tk_pl.row_pos < period / 4u) {
-            midi_in_q[mi_w++ % MQ] = 0x09u | 0x92u << 8 | 84u << 16 | 100u << 24;
-            lead_done = 1;
-        } else if (lead_done == 1u && tk_pl.row == 2u) {
-            midi_in_q[mi_w++ % MQ] = 0x08u | 0x82u << 8 | 84u << 16;
-            lead_done = 2;
-        }
-        /* (c) the keys, track 2 selected: two keys at once into the pad's empty row 6 */
-        if (song.rec && !keys_done && tk_pl.row == 6u && tk_pl.row_pos < period / 4u) {
-            song.sel = 1;
-            fm1_in.notes = (1u << 7) | (1u << 11);
-            keys_on = keys_done = 1;
-            keys_t = f;
-        } else if (keys_on && f - keys_t > period / 2u) {
-            fm1_in.notes = 0;
-            keys_on = 0;
-        }
         mix_block(o, CTL);
         if (busy_now() > bmax)
             bmax = busy_now();
@@ -279,16 +312,9 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     if (solo)
         return bmax > NVOICE;
     {
-        int ok_clap = tk_note(tk_at(0, 4, 3)) == 39u && clap_hits == 0u;
-        int ok_lead = tk_note(tk_at(0, 1, 2)) == 84u;
-        int ok_keys = tk_note(tk_at(0, 6, 1)) == kb_map(t2, 7);
-        printf("tracks: recording: drums row 4 = %u (want the clap, 39), hits when row 4 played right after: %u (want 0: "
-               "not triggered twice) %s\n", tk_note(tk_at(0, 4, 3)), clap_hits, ok_clap ? "ok" : "FAIL");
-        printf("tracks: recording: MIDI ch 3 -> lead row 1 = %u (want 84) %s; two keys -> pad row 6 = %u (the first) %s\n",
-               tk_note(tk_at(0, 1, 2)), ok_lead ? "ok" : "FAIL", tk_note(tk_at(0, 6, 1)), ok_keys ? "ok" : "FAIL");
         printf("tracks: voices sounding at most %u (budget %u) %s; given up to another part %u; %u samples near full "
                "scale\n", bmax, NVOICE, bmax <= NVOICE ? "ok" : "FAIL", voice_kills - kills0, clips);
-        fail = !ok_clap + !ok_lead + !ok_keys + (bmax > NVOICE) + (clips > 0);
+        fail = (bmax > NVOICE) + (clips > 0);
     }
     return (int)fail;
 }
@@ -521,99 +547,11 @@ static int xfade_test(const char *dir)
     return bad || !late_ok;
 }
 
-/* live recording into the tracker's rows (1.5): the nearest row (swung), OFF where the note is let go (not over a
- * note, not in its own row), the first note of a row kept (a chord: its first; MONO legato: each note its row).
- * Blocks are rendered until row idx is at fraction q (1/100) of its (swung) length; the keys go in between */
-static void rec_run_to(uint32_t idx, uint32_t q)
-{
-    int32_t o[2 * CTL];
-    uint32_t guard = 0;
-    do {
-        mix_block(o, CTL);
-    } while (++guard < 100000u && !(tk_pl.row == idx && tk_pl.row_pos >= tk_row_len(idx) * q / 100u));
-}
-static uint32_t rec_note_at(uint32_t k, uint32_t r) { return tk_note(tk_at(0, r, k)); }
-static int rec_test(void)
-{
-    track_t *t1 = &trk[0], *t3 = &trk[2];
-    int ok_len, ok_short, ok_half, ok_swing, ok_mono, ok_chord, fail;
-    host_tracks_init();
-    song.g[G_BPM] = 120;
-    host_preset(t1, 0, 1);                          /* POLY pad */
-    host_preset(t3, 0, 0);                          /* SAW LEAD */
-    t1->p[P_VOICE] = V_POLY;
-    t3->p[P_VOICE] = V_MONO;
-    tk.len[0] = 16;
-    put_row(0, 5, 48);                              /* an older take */
-    song.rec = 0x05u;
-    transport_req = 1;
-    /* (a) held 3.3 rows from row 2: 2 the note, 5 (let go early in it) keeps its note: no OFF over it */
-    rec_run_to(2, 10);
-    input_on(t1, 60, 100);
-    rec_run_to(5, 30);
-    input_off(t1, 60);
-    ok_len = rec_note_at(0, 2) == 60u && !rec_note_at(0, 3) && !rec_note_at(0, 4) && rec_note_at(0, 5) == 48u;
-    /* (b) let go 0.3 row in: its own row, no OFF */
-    rec_run_to(8, 5);
-    input_on(t1, 62, 100);
-    rec_run_to(8, 35);
-    input_off(t1, 62);
-    rec_run_to(9, 50);
-    ok_short = rec_note_at(0, 8) == 62u && !rec_note_at(0, 9);
-    /* (c) let go past the middle of the next row: OFF on the row after it */
-    rec_run_to(10, 10);
-    input_on(t1, 64, 100);
-    rec_run_to(11, 60);
-    input_off(t1, 64);
-    rec_run_to(12, 50);
-    ok_half = rec_note_at(0, 10) == 64u && !rec_note_at(0, 11) && rec_note_at(0, 12) == TK_OFF;
-    /* (d) a two-key chord: the first note; OFF where it is let go */
-    rec_run_to(13, 5);
-    input_on(t1, 67, 100);
-    input_on(t1, 71, 100);
-    rec_run_to(14, 20);
-    input_off(t1, 67);
-    rec_run_to(15, 60);
-    input_off(t1, 71);
-    rec_run_to(0, 10);
-    ok_chord = rec_note_at(0, 13) == 67u && rec_note_at(0, 14) == TK_OFF && !rec_note_at(0, 15);
-    /* (e) MONO, legato: A held from row 10, B in row 12 while A is down, A up, B up late in 13: 10 A, 12 B, 14 OFF */
-    rec_run_to(10, 10);
-    input_on(t3, 60, 100);
-    rec_run_to(12, 10);
-    input_on(t3, 62, 100);
-    rec_run_to(12, 40);
-    input_off(t3, 60);
-    rec_run_to(13, 70);
-    input_off(t3, 62);
-    rec_run_to(14, 50);
-    ok_mono = rec_note_at(2, 10) == 60u && !rec_note_at(2, 11) && rec_note_at(2, 12) == 62u && rec_note_at(2, 14) == TK_OFF;
-    /* (f) CLOCK's SWING 50 %: 0.55 into an even (long) row is before its middle (stays); 0.42 into an odd (short, 0.8)
-     * row is past its middle (the next one) */
-    song.g[G_SWING] = 50;
-    rec_run_to(4, 46);                              /* 0.46 x 1.2 = 0.55 */
-    input_on(t3, 72, 100);
-    input_off(t3, 72);
-    rec_run_to(7, 53);                              /* 0.53 x 0.8 = 0.42 */
-    input_on(t3, 74, 100);
-    input_off(t3, 74);
-    ok_swing = rec_note_at(2, 4) == 72u && !rec_note_at(2, 5) && rec_note_at(2, 8) == 74u && !rec_note_at(2, 7);
-    song.g[G_SWING] = 0;
-    printf("tracks: recording: held 3.3 rows: its row, no OFF over a note %s; 0.3 row: its row alone %s; past the middle of "
-           "the next: OFF after it %s\n", ok_len ? "ok" : "FAIL", ok_short ? "ok" : "FAIL", ok_half ? "ok" : "FAIL");
-    printf("tracks: recording: a chord its first note %s; MONO legato A..B -> A, B, OFF %s\n", ok_chord ? "ok" : "FAIL",
-           ok_mono ? "ok" : "FAIL");
-    printf("tracks: recording with SWING 50 %%: the nearest swung row (0.55 into a long row stays, 0.42 into a short one "
-           "moves on) %s\n", ok_swing ? "ok" : "FAIL");
-    fail = !ok_len + !ok_short + !ok_half + !ok_chord + !ok_mono + !ok_swing;
-    return fail;
-}
-
 /* TRS MIDI IN (midi_uart.c, untested on hardware): bytes through its parser into the same queue as
  * USB, routed by channel: ROUT CH1-4 1..4 -> parts 1..4, others (10 too) ignored; ROUT SEL all -> the
  * selected track; running
  * status, note-on velocity 0 = note-off; a note-off on a "selected track" channel reaches the track
- * its note-on went to after another track was selected; recording into an armed track. */
+ * its note-on went to after another track was selected. */
 static int trs_held(const track_t *t, uint32_t note)
 {
     uint32_t v;
@@ -632,7 +570,7 @@ static void trs_bytes(const uint8_t *b, uint32_t n)
 static int trs_test(void)
 {
     uint32_t i;
-    int ok_parts, ok_ch10, ok_sel, ok_off, ok_hang, ok_rec;
+    int ok_parts, ok_ch10, ok_sel, ok_off, ok_hang;
     host_tracks_init();
     for (i = 0; i < NPART; i++) {
         host_preset(&trk[i], 0, 1);
@@ -657,18 +595,12 @@ static int trs_test(void)
     song.sel = 2;                                   /* another track selected while ch 5's note is down */
     trs_bytes((const uint8_t[]){0x84, 67, 0}, 3);
     ok_hang = !trs_held(&trk[1], 67);
-    song.rec = 1u << 2;                             /* track 3 armed, transport on: ch 3 records */
-    transport_req = 1;
-    trs_bytes((const uint8_t[]){0xF8}, 1);
-    trs_bytes((const uint8_t[]){0x92, 72, 100}, 3);
-    trs_bytes((const uint8_t[]){0x92, 72, 0}, 3);
-    ok_rec = tk_note(tk_at(0, 0, 2)) == 72u && !tk_note(tk_at(0, 0, 1));   /* (1.5: the tracker's row 00) */
     printf("tracks: TRS MIDI IN: ch 1..4 -> parts %s, ch 10 and ch 5 ignored on CH1-4, the selected track on SEL %s %s; note-offs "
            "(running status, vel 0) %s\n", ok_parts ? "ok" : "FAIL", ok_ch10 ? "ok" : "FAIL", ok_sel ? "ok" : "FAIL",
            ok_off ? "ok" : "FAIL");
-    printf("tracks: TRS MIDI IN: note-off after another track was selected reaches the note's track %s; ch 3 records "
-           "into armed track 3 %s\n", ok_hang ? "ok" : "FAIL", ok_rec ? "ok" : "FAIL");
-    return !ok_parts + !ok_ch10 + !ok_sel + !ok_off + !ok_hang + !ok_rec;
+    printf("tracks: TRS MIDI IN: note-off after another track was selected reaches the note's track %s\n",
+           ok_hang ? "ok" : "FAIL");
+    return !ok_parts + !ok_ch10 + !ok_sel + !ok_off + !ok_hang;
 }
 
 static int tracks_test(const char *dir)
@@ -705,16 +637,6 @@ static int tracks_test(const char *dir)
         pid = fork();
         if (!pid) {
             int rc = trs_test();
-            fflush(stdout);
-            _exit(rc);
-        }
-        waitpid(pid, &st, 0);
-        if (!WIFEXITED(st) || WEXITSTATUS(st))
-            fail++;
-        fflush(stdout);
-        pid = fork();
-        if (!pid) {
-            int rc = rec_test();
             fflush(stdout);
             _exit(rc);
         }
@@ -831,7 +753,7 @@ int main(int argc, char **argv)
     if (getenv("STEPS")) {                              /* STEPS=n,n,...: a pattern (0 = rest) played by the sequencer */
         const char *s = getenv("STEPS");
         int nt, k, c = 0;
-        while (c < TK_ROWS && sscanf(s, "%d%n", &nt, &k) == 1) {
+        while (c < (int)HS_ROWS && sscanf(s, "%d%n", &nt, &k) == 1) {
             uint8_t u = (uint8_t)nt;
             put_step(&inst, (uint32_t)c++, nt ? 1u : 0u, &u, nt ? ST_NOTE : ST_REST, 0);
             s += k;

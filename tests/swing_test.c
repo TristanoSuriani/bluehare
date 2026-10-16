@@ -4,8 +4,9 @@
 /* Host test of SWING (issue #31), same sources as the firmware (through hostsim.c):
  *   build/host/swing_test
  * 1. the swing: CLOCK's SWG, 0..100 (core.h track_swing; 1.5: a track's own SWG, the step sequencer's, unread).
- * 2. the tracker: at 100 its rows play 1.4 x / 0.6 x the straight 1/16, measured from the transport.
- * 3. the SLICER: its step lengths are the rows' (one helper), and it stays on the tracker's row at the extremes.
+ * 2. the rows (the tests' song player, hostsim.c host_seq: the sequencer is a placeholder): at 100 they play 1.4 x /
+ *    0.6 x the straight 1/16, measured from the transport.
+ * 3. the SLICER: its step lengths are the rows' (one helper), and it stays on the rows at the extremes.
  * 4. the display: SWG (0..100) shows its value, 100 is "100" (not 79); 0..127 percents unchanged. */
 #define main hostsim_main
 #include "hostsim.c"
@@ -37,17 +38,18 @@ static int test_sum(void)
     return check("the swing: CLOCK's SWG at most 100, a track's own SWG unread (1.5)", !bad);
 }
 
-/* ------------------------------------------------------- 2. tracker --- */
-/* the sample where each row starts (block exact: CTL), n rows from the transport start */
+/* ---------------------------------------------------------- 2. rows --- */
+/* the sample where each row starts (block exact: CTL), n rows from the transport start (an empty song of 64 rows) */
 static uint32_t seq_starts(uint32_t *at, uint32_t n)
 {
     uint32_t f, got = 0, last = 0xFFFFFFFFu;
+    host_rows = HS_ROWS;
     transport_req = 1;
     for (f = 0; got < n && f < 20u * FS; f += CTL) {
         int32_t o[2 * CTL];
         mix_block(o, CTL);
-        if (song.playing && tk_pl.row != last) {
-            last = tk_pl.row;
+        if (song.playing && hs.row != last) {
+            last = hs.row;
             at[got++] = f;
         }
     }
@@ -81,7 +83,7 @@ static int test_seq(void)
             else
                 longs += len;
         }
-        snprintf(what, sizeof what, "tracker rows: SWG %d: rows %.2f x / %.2f x, pairs = 2 rows", C[c],
+        snprintf(what, sizeof what, "rows: SWG %d: rows %.2f x / %.2f x, pairs = 2 rows", C[c],
                  (double)longs / 8.0 / base, (double)shorts / 8.0 / base);
         bad += check(what, got == 17 && !err && abs((int32_t)(longs + shorts) - 16 * (int32_t)base) <= (int32_t)CTL);
     }
@@ -112,7 +114,7 @@ static int test_slicer(void)
             lens += s.len != swing_step_len(&trk[0], s.base, s.idx);
         }
     }
-    bad += check("SLICER step lengths == the tracker's rows (one helper) at every swing", !lens);
+    bad += check("SLICER step lengths == the rows (one helper) at every swing", !lens);
 
     host_tracks_init();
     song.g[G_BPM] = 131;
@@ -126,6 +128,7 @@ static int test_slicer(void)
     }
     song.g[G_SWING] = 100;
     memset(sl, 0, sizeof sl);
+    host_rows = HS_ROWS;                             /* (an empty song: its rows) */
     transport_req = 1;
     for (f = 0; f < 8u * FS; f += CTL) {
         int32_t o[2 * CTL];
@@ -133,11 +136,11 @@ static int test_slicer(void)
         blocks++;
         for (k = 0; k < NTRK; k++) {                 /* the SLICER step that holds the block's first sample */
             uint32_t idx = sl[k].pos >= CTL ? sl[k].idx : (sl[k].idx + 15u) & 15u;
-            miss += song.playing && idx != tk_pl.row % 16u;
+            miss += song.playing && idx != hs.row % 16u;
         }
     }
     transport_req = 2;
-    bad += check("SLICER on the tracker's row, SWG 100, 131 BPM, 4 tracks (their own SWG unread)", !miss && blocks > 1000u);
+    bad += check("SLICER on the rows, SWG 100, 131 BPM, 4 tracks (their own SWG unread)", !miss && blocks > 1000u);
     return bad;
 }
 

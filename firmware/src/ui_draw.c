@@ -31,13 +31,6 @@ static int32_t batt_shown(void)
     return batt_level();
 }
 
-/* REC: filled, the selected track armed; outlined, another track armed */
-static void draw_rec_mark(int32_t x, uint16_t bg)
-{
-    if (song.rec)
-        cv_icon_mid(x, H_HEAD / 2, 16, (song.rec >> song.sel) & 1u ? ICON_X_REC : ICON_X_REC_O, T_REC, bg);
-}
-
 /* the battery: a 16 px Fukiai icon. The stock thresholds give 0..3 bars of 3; the font has 0..4 bars of 4:
  * each level takes the nearest share, 0 -> battery_0 (empty), 1 (1/3) -> battery_1 (1/4), 2 (2/3) ->
  * battery_3 (3/4), 3 (full) -> battery_4 (battery_2 is not used); USB power: battery_charging.
@@ -146,25 +139,24 @@ static int32_t roll_text(uint32_t k, int32_t x, int32_t y, const char *s, uint16
 }
 
 /* the header (y 0..24), three calm slots (1.2):
- *   left    the selected track's cushion (ink 4..20), the REC mark attached (filled: it is armed; outlined: another)
- *   centre  the play state (stop, play, the song's disc), the metronome and the BPM, its ink centred on x 120 (BPM
+ *   left    the selected track's cushion (ink 4..20)
+ *   centre  the play state (stop, play), the metronome and the BPM, its ink centred on x 120 (BPM
  *           LOCK ON: a lock right of it). The metronome swings on the click's beats (seq.c click_beat_now): mirrored
  *           on the bar's 2nd and 4th, the accent's on its 1st; stopped, still and MID
- *   right   the octave, or the song row while a song plays (ending at 208), and the battery (ink 216..236; its bolt
+ *   right   the octave (ending at 208), and the battery (ink 216..236; its bolt
  *           says USB power: no separate USB icon)
  * A message or a layer's label replaces the centre and the octave, centred on x 120, up to
  * 166 px; while the BPM is being changed (a SELECT turn: bpm_t) or in the GLO layer the centre stays and the message
  * goes right of the BPM (over the right slot). Every element's ink centred on row 12 (H_HEAD / 2; ui_test.c
  * test_head_centres): icons by cv_icon_mid, text by its capitals' band (CAP_IN; the odd row left over above it, as
- * everywhere): M (BPM, the song row, the octave, a message: capitals rows 6..16) from y 2, S (OCT, a key hint: rows 7..15)
+ * everywhere): M (BPM, the octave, a message: capitals rows 6..16) from y 2, S (OCT, a key hint: rows 7..15)
  * from y 4 */
 #define HEAD_SY CAP_IN(S, H_HEAD)
 #define HEAD_MY CAP_IN(M, H_HEAD)
 #define HEAD_TRK_X 4                                   /* the track cushion's cell */
-#define HEAD_REC_X 20                                  /* the REC mark's cell (ink 23..33) */
 #define HEAD_BAT_X 214                                 /* the battery's cell */
-#define HEAD_GRP_R 208                                 /* the octave / song row ends here */
-#define HEAD_MSG_W 166                                 /* a message centred on x 120: 37..203 (after the REC mark) */
+#define HEAD_GRP_R 208                                 /* the octave ends here */
+#define HEAD_MSG_W 166                                 /* a message centred on x 120: 37..203 */
 #define HEAD_GAP 4                                     /* ink to ink: the metronome -> the BPM -> the lock */
 #define HEAD_PLAY_GAP 6                                /* the play state -> the metronome */
 /* the header's centre: the pen of the BPM, its ink, the metronome's ink (x0 .. x1), the BPM's rolling strip (sx0 ..
@@ -263,23 +255,16 @@ static void head_msg(int32_t x, int32_t maxw)
     if (lock)
         cv_icon_mid(x + 6, H_HEAD / 2, 16, ICON_X_LOCK, T_THEME, T_BG);
 }
-static int tk_song_playing(void) { return song.playing && tk_pl.mode == TK_SONG; }
-/* the octave, or the song position while the tracker's SONG plays (hex, as its page), its right end at HEAD_GRP_R */
+/* the octave, its right end at HEAD_GRP_R */
 static void head_group(void)
 {
     char b[8];
     int32_t x;
-    if (tk_song_playing()) {
-        tk_hex2(b, tk_pl.pos);
-        x = HEAD_GRP_R - (16 + 4 + text_w(&AF_M, b));
-        x += cv_icon_mid(x, H_HEAD / 2, 16, ICON_X_SONG, T_MID, T_BG);   /* SONG: the disc */
-    } else {
-        str_cpy(b, song.octave > 0 ? "+" : "", sizeof b);
-        fmt_int(b + str_len(b), song.octave);
-        x = HEAD_GRP_R - (text_w(&AF_S, "OCT") + 4 + text_w(&AF_M, b));
-        GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
-        x = cv_text(x, HEAD_SY, &AF_S, "OCT", T_MID);
-    }
+    str_cpy(b, song.octave > 0 ? "+" : "", sizeof b);
+    fmt_int(b + str_len(b), song.octave);
+    x = HEAD_GRP_R - (text_w(&AF_S, "OCT") + 4 + text_w(&AF_M, b));
+    GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
+    x = cv_text(x, HEAD_SY, &AF_S, "OCT", T_MID);
     GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
     cv_text(x + 4, HEAD_MY, &AF_M, b, T_THEME);
 }
@@ -290,14 +275,12 @@ static void draw_head(void)
     char b[16];
     head_geo_t g;
     int32_t beat = -1;                                 /* the metronome stands still (its swing removed in 1.1.5) */
-    uint32_t rec = (song.rec >> song.sel) & 1u ? 2u : song.rec != 0u;   /* 2 the selected track armed, 1 another */
-    uint32_t sig = (uint32_t)song.playing * 3u + rec * 5u + (uint32_t)(song.octave + 8) * 11u + song.sel * 13131u +
+    uint32_t sig = (uint32_t)song.playing * 3u + (uint32_t)(song.octave + 8) * 11u + song.sel * 13131u +
                    (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) + (uint32_t)song.g[G_BPM] * 101u + (ui.bpm_t != 0) * 31u +
                    (ui_prefs & PREF_BPM_LOCK) * 4099u +
-                   (uint32_t)batt_shown() * 7777u + (tk_song_playing() ? (tk_pl.pos + 1u) * 104729u : 0u);
+                   (uint32_t)batt_shown() * 7777u;
     int msg = ui.msg_t || ui.layer;
     int centre = !msg || ui.bpm_t || ui.layer == LAYER_GLO;   /* the BPM being changed: it stays, the message right */
-    int32_t rx = HEAD_REC_X;
     if (song.g[G_BPM] != ui.roll_bpm) {
         char a[8];
         fmt_int(a, ui.roll_bpm);
@@ -330,11 +313,10 @@ static void draw_head(void)
     metro_x = -1;
     cv_begin(240, H_HEAD, T_BG);
     cv_icon_mid(HEAD_TRK_X, H_HEAD / 2, 16, trk_icon(song.sel, 1), T_ACCENT, T_BG);
-    draw_rec_mark(rx, T_BG);
     if (centre) {
         int32_t ib[4], lx = g.bx + g.b[2];             /* lx: the right end of the BPM (and its lock) */
-        uint32_t id = song.playing ? (tk_song_playing() ? ICON_X_SONG : ICON_X_PLAY) : ICON_X_STOP;
-        icon_ink(16, id, ib);                          /* the play state: the song's disc, play, stop */
+        uint32_t id = song.playing ? ICON_X_PLAY : ICON_X_STOP;
+        icon_ink(16, id, ib);                          /* the play state: play, stop */
         cv_icon_mid(g.mx0 - HEAD_PLAY_GAP - ib[2], H_HEAD / 2, 16, id,
                     song.playing ? T_THEME : T_MID, T_BG);
         head_metro(g.mx0, beat);
@@ -355,7 +337,7 @@ static void draw_head(void)
     } else {
         head_msg(-1, HEAD_MSG_W);
     }
-    if (!msg && (tk_song_playing() || song.octave))
+    if (!msg && song.octave)
         head_group();
     if (!(msg && centre))
         draw_battery(HEAD_BAT_X);
@@ -687,20 +669,11 @@ static void draw_foot(void)
         foot_hint(ha, hb);
         sig += str_hash(str_hash(act_ready() ? 7u : 3u, ha), hb) + foot_rename() * 7717u;
     }
-    if (tk_page()) {                                   /* the tracker: the cursor's cell spelled out (ui_tracker.c) */
-        char tf[48];
-        tk_foot(tf, sizeof tf);
-        sig = str_hash(sig ^ 0x7AC4u, tf);
-    }
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
     cv_begin(240, H_FOOT, T_BG);
-    if (tk_page()) {                                  /* row 1: the tracker's cell, or what the knobs do */
-        char tf[48];
-        tk_foot(tf, sizeof tf);
-        cv_free_text(8, 1, &AF_S, tf, T_TEXT, T_BG, 224);
-    } else if (act_cols()) {                          /* row 1: the OCT+ / OCT- hint (other pages: empty) */
+    if (act_cols()) {                          /* row 1: the OCT+ / OCT- hint (other pages: empty) */
         char ha[16], hb[16];
         khint_t kh[3];
         uint32_t rn = foot_rename();
@@ -715,8 +688,7 @@ static void draw_foot(void)
             cv_key_row(8, 232, 2, kh, 2, act_ready() ? 3u : 2u, T_BG);
         }
     }
-    {   /* row 2: engine icon + name, sound, page title at the right with its icon before it (MIXER, the tracker's
-         * PATTERN and SONG); icons: their ink on the names' capitals */
+    {   /* row 2: engine icon + name, sound, page title at the right with its icon before it (MIXER); icons: their ink on the names' capitals */
         uint32_t pi = ui.home ? ICON_NONE : page_icon(pg), ei = FELUCCA_ICONS ? engine_icon(ename) : ICON_NONE;
         int32_t r = 232, tx;
         tx = r - text_w(&AF_S, ti) - (pi != ICON_NONE ? 16 : 0);
@@ -757,10 +729,6 @@ static void draw_columns(void)
     uint32_t c;
     char val[12];
     const char *unit;
-    if (cur_page()->graph == GR_TKLAY) {               /* the SEQ layer's knobs: the tracker's pattern (ui_tracker.c) */
-        tk_layer_columns();
-        return;
-    }
     if (ui.home) {
         for (c = 0; c < 4u; c++) {
             int16_t *vp;
@@ -770,10 +738,10 @@ static void draw_columns(void)
         }
         return;
     }
-    if (cur_page()->graph == GR_TOOLS) {
-        static const char *const labels[] = {"PAT", "SOUND", "SEC", "SONG"};
-        static const uint8_t icons[] = {ICON_AUTO, ICON_AUTO, ICON_X_SONG, ICON_X_SONG};   /* ROW, SONG: the song's */
-        for (c = 0; c < 4u; c++) draw_act_column(c, labels[c], VAL(c), icons[c]);
+    if (cur_page()->graph == GR_TOOLS) {               /* INIT (the selected track's sound), three empty cards */
+        draw_act_column(0, "SOUND", VAL(0u), ICON_AUTO);
+        for (c = 1; c < 4u; c++)
+            draw_column(c, "", "", "", T_THEME, -1, ICON_AUTO);
         return;
     }
     if (cur_page()->scope == SC_TRK) {                 /* LEVEL PAN REV MUTE of the selected track */
@@ -916,17 +884,9 @@ static void confirm_text(char *a, char *b)
     uint32_t k = ui.confirm_trk;
     b[0] = 0;
     switch (ui.confirm) {
-    case CF_CLEAR_TRK:
-        str_cpy(a, "CLEAR TRACK 1?", 24);
-        a[12] = (char)('1' + k % NTRK);
-        break;
     case CF_OVR_PROJ:
         str_cpy(a, "OVERWRITE SONG?", 24);
         (void)project_name(0, b);                    /* the stored song's name */
-        break;
-    case CF_CLEAR_SONG:
-        str_cpy(a, "NEW EMPTY SONG?", 24);
-        str_cpy(b, "SAVE FIRST TO KEEP IT", 24);
         break;
     case CF_INIT_SOUND:
         str_cpy(a, "INITIALIZE SOUND?", 24);
@@ -943,11 +903,8 @@ static void confirm_text(char *a, char *b)
         str_cpy(a + str_len(a), "?", 2);
         up_name(k, b);
         break;
-    default:                                         /* CF_CLEAR_SEQ: the tracker's pattern */
-        str_cpy(a, "CLEAR PATTERN 00?", 24);
-        tk_hex2(a + 14, k % TK_PATS);
-        a[16] = '?';
-        a[17] = 0;
+    default:
+        a[0] = 0;
         break;
     }
 }
@@ -998,6 +955,18 @@ static void style_apply(void)
         palette_set(settings.palette);
         ui.force = 1;
     }
+}
+
+/* SEQ (and GLO): the sequencer's placeholder, TODO in L across the page between the header and the footer */
+static void draw_todo(void)
+{
+    uint32_t c;
+    for (c = 0; c < 4u; c++)                           /* (no cards here: a card's rolling digits are over) */
+        ui.roll[c].from[0] = 0;
+    if (!ui.force)
+        return;
+    lcd_fill(0, H_HEAD, 240, Y_FOOT - H_HEAD, T_BG);
+    draw_text_box(0, 102, 240, &AF_L, "TODO", T_THEME, 1);
 }
 
 static void ui_draw_page(void);
@@ -1056,11 +1025,11 @@ static void ui_draw_page(void)
         ui.page = (uint8_t)page_first(FAM_EDIT);
         page_entered();
     }
-    if (tk_page()) {                                    /* the tracker's pages (ui_tracker.c): no cards, no panel */
+    if (cur_page()->graph == GR_TODO) {                 /* SEQ's placeholder: no cards, no panel */
         felucca_dbg.stage = 3;
         draw_head();
         felucca_dbg.stage = 5;
-        tk_draw();
+        draw_todo();
     } else {
         if (ui.force)
             draw_frame();

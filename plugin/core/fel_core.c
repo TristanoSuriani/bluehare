@@ -138,10 +138,9 @@ static void core_test_ticks(void)
     trk[0].p[P_E2] = 0;                                  /* (KIT's DECAY: a quarter; no sends: a short, dry tick) */
     trk[0].p[P_E7] = 0;
     trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = 0;
+    seq_hook = host_seq;                                 /* (the tests' player: hostsim.c; the sequencer is a placeholder) */
     for (i = 0; i < 16u; i++)
         put_step(&trk[0], i, 1, &hat, ST_NOTE, 0);
-    tk_pl.mode = TK_LOOP;
-    tk_pl.loop_pat = 0;
     ui.force = 1;
 }
 static const uint16_t *core_screen(void) { return web_fb; }

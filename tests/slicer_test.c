@@ -230,11 +230,11 @@ static int test_sync(void)
         blocks++;
         for (k = 0; k < NTRK; k++) {              /* the SLICER step that holds the block's first sample */
             uint32_t idx = sl[k].pos >= CTL ? sl[k].idx : (sl[k].idx + 15u) & 15u;
-            miss += song.playing && idx != tk_pl.row % 16u;   /* (1.5: the tracker's row) */
+            miss += song.playing && idx != hs.row % 16u;   /* (the song's row: hostsim.c host_seq) */
         }
     }
     transport_req = 2;
-    snprintf(what, sizeof what, "sync: 4 tracks, 131 BPM, swing: the tracker's row at %u blocks x 4", blocks);
+    snprintf(what, sizeof what, "sync: 4 tracks, 131 BPM, swing: the song's row at %u blocks x 4", blocks);
     return check(what, !miss);
 }
 

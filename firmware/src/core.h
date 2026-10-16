@@ -210,7 +210,7 @@ typedef struct {
     uint8_t arp;                 /* (Fel-Tracker) an arp figure (ARP_FIG; 0: the arp as the track has it, untouched) */
 } preset_t;
 /* (Fel-Tracker) the arp figures a preset may bring (preset_t.arp): MODE, RATE, OCT, GATE as params.c has them. The arp
- * plays the keys and MIDI (the tracker's notes play as written). 1 the EBM octave bass (16ths, root and octave), 2 its
+ * plays the keys and MIDI. 1 the EBM octave bass (16ths, root and octave), 2 its
  * root bass (16ths on the one note), 3 a gallop (16th triplets) */
 typedef struct { uint8_t mode, rate, oct, gate; } arp_fig_t;
 static const arp_fig_t ARP_FIG[4] = {{0, 0, 0, 0}, {1, 2, 2, 45}, {1, 2, 1, 35}, {1, 5, 1, 40}};   /* (UP; 1/16, 16T) */
@@ -262,67 +262,6 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
 /* ------------------------------------------------- tracks, the song --- */
 #define NLANE 8                  /* the DRUM engine's lanes (shared/drum_map.c) */
 
-/* The tracker (tracker.c): the song is TK_PATS patterns of up to TK_ROWS rows, a cell per track and row, and an order
- * list of TK_ORDER positions naming the pattern each plays. A cell is 4 bytes: 24 bits of the note (bits 0..6: 0 none,
- * 1..126 a MIDI note, TK_OFF its release), the instrument (bits 7..12: 0 none, 1..TK_INSTS a slot of the instrument
- * table), the FX command (bits 13..16: 0 none, TKC_*) and its value (bits 17..23, 0..127); then the chord: two
- * intervals above the note (low nibble, high nibble: 0 none, 1..15 semitones), so a row of a track plays up to three
- * notes. A row's FX sets one parameter of the track for that row only: the track's own value is back on the next row.
- * 24 patterns of 4-byte cells take the RAM 32 of 3 bytes took before the chords */
-#define TK_PATS 24u
-#define TK_ROWS 64u
-#define TK_ORDER 128u
-#define TK_INSTS 63u
-#define TK_OFF 127u
-#define TK_CHORD 3u              /* notes a cell plays at most: the note and its two intervals */
-typedef struct { uint8_t b[4]; } tk_cell_t;
-static inline uint32_t tk_bits(const tk_cell_t *c) { return (uint32_t)c->b[0] | (uint32_t)c->b[1] << 8 | (uint32_t)c->b[2] << 16; }
-static inline uint32_t tk_note(const tk_cell_t *c) { return tk_bits(c) & 127u; }
-static inline uint32_t tk_inst(const tk_cell_t *c) { return tk_bits(c) >> 7 & 63u; }
-static inline uint32_t tk_cmd(const tk_cell_t *c) { return tk_bits(c) >> 13 & 15u; }
-static inline uint32_t tk_val(const tk_cell_t *c) { return tk_bits(c) >> 17 & 127u; }
-static inline uint32_t tk_chord(const tk_cell_t *c) { return c->b[3]; }   /* i1 | i2 << 4 */
-static inline uint32_t tk_iv(const tk_cell_t *c, uint32_t j) { return (uint32_t)c->b[3] >> (j ? 4 : 0) & 15u; }
-static inline tk_cell_t tk_pack_ch(uint32_t note, uint32_t inst, uint32_t cmd, uint32_t val, uint32_t chord)
-{
-    uint32_t v = (note & 127u) | (inst & 63u) << 7 | (cmd & 15u) << 13 | (val & 127u) << 17;
-    tk_cell_t c = {{(uint8_t)v, (uint8_t)(v >> 8), (uint8_t)(v >> 16), (uint8_t)chord}};
-    return c;
-}
-static inline tk_cell_t tk_pack(uint32_t note, uint32_t inst, uint32_t cmd, uint32_t val)
-{
-    return tk_pack_ch(note, inst, cmd, val, 0);
-}
-static inline int tk_empty(const tk_cell_t *c) { return !(c->b[0] | c->b[1] | c->b[2] | c->b[3]); }
-/* the notes cell c plays (out: TK_CHORD): its note, then each interval above it that stays a note (1..126); 0: none
- * (no note, or OFF) */
-static inline uint32_t tk_chord_notes(const tk_cell_t *c, uint8_t *out)
-{
-    uint32_t n = tk_note(c), k = 0, j;
-    if (!n || n == 127u)
-        return 0;
-    out[k++] = (uint8_t)n;
-    for (j = 0; j < 2u; j++) {
-        uint32_t i = tk_iv(c, j);
-        if (i && n + i <= 126u)
-            out[k++] = (uint8_t)(n + i);
-    }
-    return k;
-}
-/* an instrument: a factory preset of an engine (src: its id, < EID_COUNT), a user preset (TK_SRC_USER + its slot), or
- * none */
-#define TK_SRC_NONE 0xFFu
-#define TK_SRC_USER 0x80u
-typedef struct { uint8_t src, preset; } tk_inst_t;
-#define TK_INST_VAL 0xFFu        /* a track's CUT / RES setting: the instrument's own value */
-typedef struct {
-    uint8_t order[TK_ORDER];     /* the pattern of each song position */
-    uint8_t norder;              /* positions in use, 1..TK_ORDER */
-    uint8_t len[TK_PATS];        /* rows of each pattern, 1..TK_ROWS */
-    tk_inst_t instr[TK_INSTS];    /* instruments 01..3F */
-    uint8_t cut[NTRK], res[NTRK];   /* each track's filter over the instruments (0..127, TK_INST_VAL: theirs) */
-} tk_song_t;
-
 typedef struct track {
     int16_t p[P_COUNT];
     uint8_t engine, preset;      /* engine: what the audio ISR renders */
@@ -372,9 +311,8 @@ typedef struct track {
 
 typedef struct {
     int16_t g[G_COUNT];
-    uint8_t playing, seq_mode;
+    uint8_t playing;
     uint8_t keys_mute;           /* 1: NAME (ui_name.c): the keys type, none plays (seq.c keyboard_block) */
-    uint8_t rec;                 /* live recording armed: bit per track */
     uint8_t sel;                 /* selected track 0..NTRK-1: keys, pages, editor */
     int8_t octave;
     uint32_t tick;               /* sub-blocks since play */
@@ -387,20 +325,6 @@ static track_t trk[NTRK];        /* the instrument: four parts */
 static song_t song;
 #define TSEL (&trk[song.sel])    /* the selected track */
 
-/* (Fel-Tracker) a variation's layer over the tracks (tracker.c: set as an order entry with its variation starts, cleared
- * at STOP): what it gives a track's sends and SLICER while it plays, read by the audio path through tp_vo (the track's
- * own values, what the pages and the stores hold, never written), and the tempo it plays at (song_bpm) */
-enum { VO_DIST, VO_CHOR, VO_DLY, VO_REV, VO_SLCR, VO_SLPAT, VO_SLRATE, VO_N };
-static uint8_t trk_vo[NTRK][VO_N];      /* 0: the track's own; else the value + 1 */
-static uint8_t tempo_ovr;               /* 0: the song's BPM (G_BPM); else the BPM the variation playing has */
-static const uint8_t VO_PARAM[VO_N] = {P_DIST, P_CHOR, P_DLY, P_REV, P_SLCR, P_SLPAT, P_SLRATE};
-/* track t's parameter id (one of VO_PARAM: vo) as it plays now */
-static inline int32_t tp_vo(const track_t *t, uint32_t vo)
-{
-    uint32_t k = (uint32_t)(t - trk);
-    return k < NTRK && trk_vo[k][vo] ? (int32_t)trk_vo[k][vo] - 1 : t->p[VO_PARAM[vo]];
-}
-static inline uint32_t song_bpm(void) { return tempo_ovr ? tempo_ovr : (uint32_t)song.g[G_BPM]; }
 
 /* (Fel-Tracker) each track's place in the mix, the song's (SETTINGS' WIDTH and LOW CUT; project.c, version 5):
  *   trk_width   0 off, 1..TW_MAX ms: the Haas effect, on the last TW_N tracks only (5..8, or 3..4 on 4 tracks: the
@@ -441,9 +365,8 @@ static void trk_mix_defaults(void)
     }
 }
 
-/* SWING of a track's step clock (#31): CLOCK's SWING, at most 100. 1.5: the tracker's rows (tracker.c tk_row_len) and
- * the SLICER (slicer.c sl_enter) both swing by it, so the SLICER stays on the rows; a track's own SWG (P_SSWING, the
- * step sequencer's, up to 1.4) is not read any more. At 100 the even steps are 1.4 x the straight length and the odd
+/* SWING of a track's step clock (#31): CLOCK's SWING, at most 100. The SLICER (slicer.c sl_enter) swings by it; a
+ * track's own SWG (P_SSWING, the step sequencer's, up to 1.4) is not read any more. At 100 the even steps are 1.4 x the straight length and the odd
  * ones 0.6 x. */
 #define SWING_MAX 100
 static inline int32_t track_swing(const track_t *t)

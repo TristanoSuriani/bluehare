@@ -4,8 +4,8 @@
 /* MENU's rows and their settings: what ui_menu.c draws and steps, and what the editor reads and sets (editor_menu.c
  * MENU_DESC / MENU_SET). One apply path for both: menu_put. Grouped: the screen (COLOR, STYLE, LARGE, ANIM, LEDS; 1.1.5:
  * SCREEN OFF; 1.2: SCOPE; 1.3: HOME), the
- * controls (HOLD: the layer threshold, KNOB ACCEL, FX LATCH, BPM LOCK; 1.2: SCALE LEDS, the keys, STEP PREVIEW, CHORD
- * ENTRY), the sound (SPEAKER EQ: FLAT LOWCUT BASS+,
+ * controls (HOLD: the layer threshold, KNOB ACCEL, FX LATCH, BPM LOCK; 1.2: SCALE LEDS, the keys; STEP PREVIEW and
+ * CHORD ENTRY until the tracker and the steps went), the sound (SPEAKER EQ: FLAT LOWCUT BASS+,
  * USB LEVEL; 1.1: CLICK, CLICK LEVEL (COUNT-IN until 1.4.1); 1.2: TUNE), MIDI (1.2: MIDI IN), USB SERIAL, RESTORE LAST (1.2), then
  * CALIBRATION (the setup screen: HARDWARE CALIBRATION), INFO (1.2) and ABOUT, the rows with no value (MI_VALUES: the rows
  * before them hold one). 1.0.5: in four tabs (MI_TAB); 1.2: five.
@@ -13,16 +13,17 @@
  * GLO > SYSTEM), the values the project holds and saves as before (no format change; a project load brings its own);
  * nothing of theirs is in the settings record (MI_PROJECT: menu_get / menu_put read and write song.g) */
 enum { MI_COLOR, MI_STYLE, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_SCOPE, MI_HOME, MI_HOLD, MI_ACCEL, MI_LATCH, MI_BPMLOCK, MI_SCLLED,
-       MI_PREVIEW, MI_LOWCUT, MI_USB,
+       MI_LOWCUT, MI_USB,
        MI_CLICK, MI_CLKLVL, MI_TUNE, MI_MIDIIN, MI_SERIAL, MI_RESTORE, MI_PANEL, MI_INFO, MI_ABOUT, MI_COUNT };
                                                        /* (1.1: the metronome's rows in AUDIO; 1.2: RESTORE LAST in
-                                                        * SYSTEM, SCALE LEDS STEP PREVIEW in CONTROL, SCOPE in
-                                                        * DISPLAY, TUNE in AUDIO, MIDI IN in MIDI, INFO in SYSTEM;
-                                                        * 1.3: HOME in DISPLAY; 1.5: CHORD ENTRY gone) */
+                                                        * SYSTEM, SCALE LEDS in CONTROL, SCOPE in DISPLAY, TUNE in
+                                                        * AUDIO, MIDI IN in MIDI, INFO in SYSTEM; 1.3: HOME in
+                                                        * DISPLAY; 1.5: CHORD ENTRY gone; STEP PREVIEW with the
+                                                        * tracker) */
 #define MI_VALUES MI_PANEL
 #define MI_PROJECT(row) ((row) == MI_TUNE || (row) == MI_MIDIIN)   /* the project's values (song.g), not settings */
 static const char *const MI_NAME[MI_COUNT] = {"COLOR", "STYLE", "LARGE", "ANIM", "LEDS", "SCREEN OFF", "SCOPE", "HOME", "HOLD", "KNOB ACCEL",
-                                              "FX LATCH", "BPM LOCK", "SCALE LEDS", "STEP PREVIEW",
+                                              "FX LATCH", "BPM LOCK", "SCALE LEDS",
                                               "SPEAKER EQ", "USB LEVEL", "CLICK", "CLICK LEVEL", "TUNE",
                                               "MIDI IN", "USB SERIAL", "RESTORE LAST", "CALIBRATION", "INFO", "ABOUT"};
 /* 1.0.5: the MENU's tabs (ui_menu.c: ALGORITHM steps between them, PRESETS among one tab's rows; the editor gets a
@@ -41,7 +42,6 @@ static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_DISPLAY,                                                           /* HOME (1.3) */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,                 /* HOLD KNOB ACCEL FX LATCH BPM LOCK */
     MTAB_CONTROL,                                                           /* SCALE LEDS (1.2) */
-    MTAB_CONTROL,                                                           /* STEP PREVIEW (1.2) */
     MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO,                         /* SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL */
     MTAB_AUDIO,                                                             /* TUNE (1.2) */
     MTAB_MIDI,                                                              /* MIDI IN (1.2) */
@@ -85,7 +85,6 @@ static const menu_flag_t MENU_FLAGS[] = {
     {MI_RESTORE, PREF_RESTORE_OFF, {"ON", "OFF"}},     /* 1.2, #130: OFF, no autosave, power-on as new (project.c) */
     {MI_SCLLED, PREF_SCALE_LEDS, {"OFF", "ON"}},      /* 1.2, Discussion #127: ON, the keys show the scale (ui_input.c) */
     {MI_SCOPE, PREF_SCOPE_MIX, {"OUT", "MIX"}},        /* 1.2, Discussion #165: MIX, the scope before MASTER (fx.c) */
-    {MI_PREVIEW, PREF_PREVIEW, {"OFF", "ON"}},         /* 1.2, Discussion #169: ON, the cursor's row sounds (ui_tracker.c) */
 };
 /* SPEAKER EQ (settings.lowcut, fx.c fx_lowcut): an EQ on the master for the small speaker, not a speaker switch
  * (#42: "OFF" read as the speaker off). FLAT is the old OFF (0, stored as before). The built-in speaker cannot be
@@ -93,8 +92,8 @@ static const menu_flag_t MENU_FLAGS[] = {
  * the headphone / line out and USB audio too (one DAC, uac_tap reads the master) */
 static const char *const SPK_EQ[3] = {"FLAT", "LOWCUT", "BASS+"};
 static const char *const HOLD_N[4] = {"0.3 s", "0.4 s", "0.5 s", "0.6 s"};   /* (the editor's names; the menu draws its own) */
-/* 1.1 (Discussion #131): the metronome (click.c) and the count-in (seq.c); ui.c ui_rec_prefs holds them */
-static const char *const CLICK_N[3] = {"OFF", "REC", "ON"};          /* REC: while a track is armed and playing */
+/* 1.1 (Discussion #131): the metronome (click.c); ui.c ui_rec_prefs holds it (REC, while a track was armed: gone) */
+static const char *const CLICK_N[2] = {"OFF", "ON"};
 static const char *const CLKLVL_N[3] = {"LOW", "MID", "HIGH"};
 /* 1.1.5: SCREEN OFF (ui.c scr_*: the screen dark after this long without panel input; NEVER the default since 1.1.5.1) */
 static const char *const SCROFF_N[5] = {"NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"};
@@ -136,7 +135,7 @@ static const menu_flag_t *menu_flag(uint32_t row)
 /* a row's value as 0..menu_n(row) - 1 in the order the menu steps it (LEDS: OFF DIM LO DIM HI INV, LEDS_MENU) */
 static uint32_t menu_n(uint32_t row)
 {
-    return row == MI_COLOR ? NPALETTES : row == MI_LOWCUT || (row >= MI_CLICK && row <= MI_CLKLVL) ? 3u :
+    return row == MI_COLOR ? NPALETTES : row == MI_LOWCUT || row == MI_CLKLVL ? 3u :
            row == MI_HOLD ? 4u : row == MI_LEDS ? LEDS_COUNT : row == MI_SCROFF ? NELEM(SCROFF_N) :
            row == MI_TUNE ? TUNE_N : row == MI_MIDIIN ? NELEM(N_ROUTE) : row == MI_ANIM ? 3u : 2u;
 }
@@ -174,7 +173,7 @@ static const char *menu_vname(uint32_t row, uint32_t v)
     case MI_STYLE: return STYLE_N[v & 1u];
     case MI_LOWCUT: return SPK_EQ[v % 3u];
     case MI_HOLD: return HOLD_N[v & 3u];
-    case MI_CLICK: return CLICK_N[v % 3u];
+    case MI_CLICK: return CLICK_N[v & 1u];
     case MI_CLKLVL: return CLKLVL_N[v % 3u];
     case MI_SCROFF: return SCROFF_N[v % NELEM(SCROFF_N)];
     case MI_ANIM: return ANIM_N[v % 3u];

@@ -5,10 +5,11 @@
  * (audio.c audio_block: the mix, USB audio's tap, the click, the DAC):
  *   the click on the song tempo's quarter notes, sample for sample (beat k in the block a 1/16 track enters step 4k,
  *   no drift), whatever a track's DIV or SWING; the bar's first beat higher (1760 / 1320 Hz) and 6 dB louder; its
- *   length; LOW / MID / HIGH; MASTER scales it; CLICK OFF / REC / ON; never in USB audio (bit for bit the same with it
+ *   length; LOW / MID / HIGH; MASTER scales it; CLICK OFF / ON; never in USB audio (bit for bit the same with it
  *   on), only the DAC; the external clock: a click on every 24 pulses, with the steps;
- *   1.5: no count-in: PLAY armed from a stop plays (and clicks, CLICK REC) at once, internal or external clock.
- *   build/click_demo/: the click at 120 BPM with a pattern (DAC and USB) */
+ *   1.5: no count-in: PLAY from a stop plays (and clicks) at once, internal or external clock.
+ *   build/click_demo/: the click at 120 BPM with a pattern (DAC and USB). The steps are the tests' song player's rows
+ *   (hostsim.c host_seq: the sequencer is a placeholder) */
 #include <sys/stat.h>
 #define main hostsim_main
 #include "hostsim.c"
@@ -50,7 +51,6 @@ static void fresh(void)
     uint32_t p;
     memset(trk, 0, sizeof trk);
     memset(&song, 0, sizeof song);
-    tk_defaults();
     memset(&midi_clock, 0, sizeof midi_clock);
     host_tracks_init();
     for (p = 0; p < NPART; p++) host_preset(&trk[p], 0, 0);
@@ -80,7 +80,7 @@ static void run(uint32_t n)                            /* n blocks through audio
             usbo[nb * CTL + i] = tap_blk[2u * i];
         }
         blk_play[nb] = song.playing;
-        blk_idx[nb] = tk_pl.row;                       /* (1.5: the tracker's row, a 1/16) */
+        blk_idx[nb] = (uint16_t)hs.row;                /* (the song's row, a 1/16: hostsim.c host_seq) */
         blk_beat[nb] = (int8_t)click_beat_now();
         nb++;
         fm1_ms = (uint32_t)((uint64_t)nb * CTL * 1000u / FS);
@@ -118,11 +118,11 @@ static void clicks(uint32_t from)
 }
 #define QB 22048u                                      /* a beat at 120 BPM: four 1/16 steps of 5512 samples */
 static uint32_t ceil_div(uint64_t a, uint32_t b) { return (uint32_t)((a + b - 1u) / b); }
-/* an empty pattern of 16 rows (the tracker's, a row a 1/16): its rows mark the grid, nothing sounds */
+/* an empty song of 16 rows (a row a 1/16): its rows mark the grid, nothing sounds */
 static void grid_track(void)
 {
-    tk_defaults();
-    tk.len[0] = 16;
+    memset(host_song, 0, sizeof host_song);
+    host_rows = 16;
 }
 /* the block in which track 1 entered step s (from block `from`), else MAXB */
 static uint32_t step_block(uint32_t from, uint32_t s)
@@ -235,14 +235,11 @@ static void sound(void)
 
 static void modes(void)
 {
-    uint32_t n_off, n_rec0, n_rec1, n_on, n_stop;
+    uint32_t n_off, n_on, n_stop;
     fresh(); grid_track(); transport_req = 1; run(3000); clicks(0); n_off = nc;
-    fresh(); grid_track(); click_mode = CLICK_REC; transport_req = 1; run(3000); clicks(0); n_rec0 = nc;
-    fresh(); grid_track(); click_mode = CLICK_REC; song.rec = 2u; transport_req = 1; run(3000); clicks(0); n_rec1 = nc;
     fresh(); grid_track(); click_mode = CLICK_ON; transport_req = 1; run(3000); clicks(0); n_on = nc;
     fresh(); grid_track(); click_mode = CLICK_ON; run(3000); clicks(0); n_stop = nc;
-    check("CLICK OFF: no click; REC: only with a track armed (any); ON: always while playing; stopped: never",
-          n_off == 0u && n_rec0 == 0u && n_rec1 == 5u && n_on == 5u && n_stop == 0u);
+    check("CLICK OFF: no click; ON: always while playing; stopped: never", n_off == 0u && n_on == 5u && n_stop == 0u);
 }
 
 /* the USB stream bit for bit the same with the click on, a pattern playing; the DAC differs only by the click */
@@ -254,8 +251,8 @@ static void usb_clean(void)
     for (pass = 0; pass < 2u; pass++) {
         fresh();
         grid_track();
-        for (i = 0; i < 16u; i++)                   /* (the tracker: a note, or OFF on every third row) */
-            *tk_at(0, i, 0) = tk_pack(i % 3u ? 48u + (i * 7u) % 12u : TK_OFF, 0, 0, 0);
+        for (i = 0; i < 16u; i++)                   /* (a note, or OFF on every third row) */
+            host_song[i][0] = (uint8_t)(i % 3u ? 48u + (i * 7u) % 12u : HS_OFF);
         song.g[G_BPM] = 120;
         click_mode = pass ? CLICK_ON : CLICK_OFF;
         transport_req = 1;
@@ -294,8 +291,8 @@ static int16_t scope_run(uint32_t mix, int32_t master, uint32_t click)
     int16_t pk = 0;
     fresh();
     grid_track();
-    for (i = 0; i < 16u; i++)                       /* (the tracker: a note every row) */
-        *tk_at(0, i, 0) = tk_pack(48u + (i * 5u) % 12u, 0, 0, 0);
+    for (i = 0; i < 16u; i++)                       /* (a note every row) */
+        host_song[i][0] = (uint8_t)(48u + (i * 5u) % 12u);
     song.g[G_BPM] = 120; song.master_q12 = (uint16_t)master;
     click_mode = click ? CLICK_ON : CLICK_OFF;
     scope_mix = (uint8_t)mix;
@@ -339,22 +336,19 @@ static void scope(void)
     scope_mix = 0;
 }
 
-/* 1.5: no count-in: PLAY from stop with a track armed plays at once (step 1 in the first block), CLICK REC's first
- * beat with it (accented); nothing armed the same */
+/* 1.5: no count-in: PLAY from stop plays at once (step 1 in the first block), the click's first beat with it
+ * (accented) */
 static void no_count_in(void)
 {
     uint32_t ok;
     fresh(); grid_track();
-    song.g[G_BPM] = 120; click_mode = CLICK_REC; song.rec = 1u;
+    song.g[G_BPM] = 120; click_mode = CLICK_ON;
     transport_req = 1;
     run(ceil_div(QB * 3u, CTL) + 1u);
     clicks(0);
     ok = blk_play[0] && blk_idx[0] == 0u && step_block(0, 0) == 0u && nc >= 3u && c_at[0] == 0u && c_hz[0] > 1600.0 &&
          c_at[1] == step_block(0, 4) * CTL;
-    check("no count-in: PLAY armed from a stop plays step 1 at once, CLICK REC's accented beat with it", ok);
-    fresh(); grid_track(); transport_req = 1; run(2);
-    ok = song.playing && step_block(0, 0) == 0u;
-    check("  nothing armed: PLAY plays at once, as before", ok);
+    check("no count-in: PLAY from a stop plays step 1 at once, the click's accented beat with it", ok);
 }
 
 /* the external clock (USB, 24 pulses a quarter at 120 BPM): Start starts at once (no count-in), a click on every 24th
@@ -365,7 +359,7 @@ static void ext_clock(void)
     double pulse = 22050.0 / 24.0;
     fresh(); grid_track();
     song.g[G_CLOCK] = 1;
-    song.rec = 1u; click_mode = CLICK_ON;
+    click_mode = CLICK_ON;
     run(4);                                            /* (the clock mode taken) */
     for (b = 0; b < ceil_div(QB * 9u, CTL); b++) {
         double now = (double)nb * CTL;
@@ -378,7 +372,7 @@ static void ext_clock(void)
             p++;
         }
         run(1);
-        if (b == 10u) ok = song.playing && tk_pl.row == 0u;
+        if (b == 10u) ok = song.playing && hs.row == 0u;
     }
     {
         int startok = ok;
@@ -393,12 +387,12 @@ static void ext_clock(void)
             ok &= c_at[k] == sb * CTL && (k % 4u == 0u) == (c_hz[k] > 1600.0);
         }
         printf("click: external clock: %u pulses, %u clicks, at samples %u %u %u %u ..\n", p, nc, c_at[0], c_at[1], c_at[2], c_at[3]);
-        check("external clock: Start plays at step 1 at once (a track armed)", startok);
+        check("external clock: Start plays at step 1 at once", startok);
         check("external clock: a click every 24 pulses, in the block the steps 1, 5, 9, 13 start, the bar's first accented", ok);
         check("external clock: the header's metronome on its clicks", beats_agree(nb));
     }
     fresh(); grid_track();
-    song.g[G_CLOCK] = 1; song.rec = 1u;
+    song.g[G_CLOCK] = 1;
     run(2);
     transport_req = 1;                                 /* PLAY on the FM-1 with CLK EXT: as a Start */
     run(2);

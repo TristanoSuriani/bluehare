@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Fuzz harness (1.5: the song store, project.c): random songs saved, their chunks mutated (headers and data, lengths,
- * with and without the stream's hash made valid again: attacker-controlled flash), then found, loaded, played and
- * rendered. run_tests.sh runs it briefly under ASan / UBSan with a fixed seed.   fuzz_proj [ITERATIONS [SEED]] */
+/* Fuzz harness (1.5: the song store, project.c): random projects saved (the tracks' values and their places in the
+ * mix, any value), their chunks mutated (headers and data, lengths, with and without the stream's hash made valid
+ * again: attacker-controlled flash), then found, loaded, played and rendered. run_tests.sh runs it briefly under ASan / UBSan with a fixed seed.   fuzz_proj [ITERATIONS [SEED]] */
 #define EDITOR_TEST_NO_MAIN 1
 #include "editor_test.c"                                /* hostsim, the stubs, RAM flash, reset() */
 static uint32_t rs = 0x2545F491u;
@@ -32,14 +32,16 @@ int main(int argc, char **argv)
     if (argc > 2) rs = (uint32_t)atoi(argv[2]) | 1u;
     reset();
     for (i = 0; i < iters; i++) {
-        uint32_t pats = 1u + rnd() % 8u, n = rnd() % 3000u;
-        tk_defaults();
-        for (j = 0; j < n; j++)                         /* a random song (any field, raw) */
-            *tk_at(rnd() % pats, rnd() % TK_ROWS, rnd() % NTRK) = tk_pack(rnd(), rnd(), rnd() % TKC_N, rnd() % (TKC_RT_MAX + 1u));
-        tk.norder = (uint8_t)(1u + rnd() % TK_ORDER);
-        for (j = 0; j < tk.norder; j++) tk.order[j] = (uint8_t)(rnd() % TK_PATS);
-        for (j = 0; j < TK_INSTS; j++) { tk.instr[j].src = (uint8_t)rnd(); tk.instr[j].preset = (uint8_t)rnd(); }
-        tk_bound();
+        uint32_t n = rnd() % 200u;
+        for (j = 0; j < n; j++)                         /* a random project (any value, raw) */
+            trk[rnd() % NTRK].p[rnd() % P_COUNT] = (int16_t)rnd();
+        for (j = 0; j < NTRK; j++)
+            if (rnd() % 4u == 0) {
+                trk_width[j] = (uint8_t)(rnd() % (TW_MAX + 2u));
+                trk_lowcut[j] = (uint8_t)(rnd() % (TL_N + 1u));
+                trk_duck[j] = (uint8_t)(rnd() % (TD_KEY + 2u));
+                trk_pmode[j] = (uint8_t)(rnd() % 3u);
+            }
         if (project_save(0))
             continue;
         k = rnd() % 64u;
@@ -50,19 +52,20 @@ int main(int argc, char **argv)
         }
         if (rnd() % 2u)
             rehash();
-        tk_defaults();
+        reset();
         project_load(0);
         loaded += str_eq(ui.msg, "LOADED");
-        tk_pl.mode = rnd() % 2u ? TK_SONG : TK_LOOP;
-        tk_pl.loop_pat = (uint8_t)(rnd() % TK_PATS);
         transport_req = 1;
-        for (j = 0; j < 24u; j++) {                     /* played: rows, instruments, FX, notes */
+        for (j = 0; j < 24u; j++) {                     /* played: notes on every track */
+            if (j % 4u == 0u)
+                trk_note_on(&trk[j / 4u % NTRK], 36u + rnd() % 60u, 100);
             events_block(div_samples(2) / 3u + 1u);
             mix_block(o, CTL);
         }
+        for (j = 0; j < NTRK; j++)
+            trk_all_off(&trk[j]);
         transport_req = 2;
         events_block(CTL);
-        if (rnd() % 64u == 0) reset();
     }
     printf("fuzz_proj ok: %u iterations, %u loaded\n", iters, loaded);
     return 0;

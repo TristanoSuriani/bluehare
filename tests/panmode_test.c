@@ -3,7 +3,7 @@
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* PAN MODE (core.h trk_pmode; voice.c voice_start, fx.c mix_part): ALT everywhere at power-on; RND on a POLY track: each
  * new note on a side picked at random (both sides, not in turn); RND on a MONO track at SPRD 0: the notes move too (half
- * the width); the song store (version 7) keeps it, a new song has none; the editor's PAN (TRACKER op 13) and its bounds */
+ * the width); the song store keeps it, the power-on values have none */
 #define EDITOR_TEST_NO_MAIN 1
 #include "editor_test.c"
 #include <math.h>
@@ -71,28 +71,11 @@ int main(void)
     reset();
     trk_pmode[3] = TP_RND;
     ok = !project_save(0);
-    project_new();
+    trk_mix_defaults();
     ok &= trk_pmode[3] == TP_ALT;
     project_load(0);
-    ok &= proj_ram[0][PROJ_HDR] == 7u && trk_pmode[3] == TP_RND;
-    bad += check("the store: version 7 keeps PAN MODE; a new song has none", ok);
-
-    /* the editor's PAN (op 13) */
-    {
-        uint8_t a[3] = {EDT_PAN};
-        uint32_t m = request(ED_TRACKER, a, 1);
-        ok = m == 8u + NTRK && !host_wire[6] && host_wire[7 + 3] == TP_RND && host_wire[7] == TP_ALT;
-        a[1] = 1;
-        a[2] = TP_RND;
-        m = request(ED_TRACKER, a, 3);
-        ok &= m == 8u + NTRK && !host_wire[6] && trk_pmode[1] == TP_RND;
-        a[2] = 2;
-        ok &= request(ED_TRACKER, a, 3) && host_wire[6] == 1 && trk_pmode[1] == TP_RND;
-        a[1] = (uint8_t)NTRK;
-        a[2] = 0;
-        ok &= !request(ED_TRACKER, a, 3);
-        bad += check("the editor's PAN (TRACKER op 13): read, track 2 to RND, 2 refused (rc 1), a track past the last: no reply", ok);
-    }
+    ok &= proj_ram[0][PROJ_HDR] == PROJ_VER && trk_pmode[3] == TP_RND;
+    bad += check("the store keeps PAN MODE; the power-on values have none", ok);
     printf("%s\n", bad ? "PAN MODE TEST FAILED" : "pan mode test passed");
     return bad != 0;
 }

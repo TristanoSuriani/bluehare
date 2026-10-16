@@ -50,8 +50,9 @@ static uint32_t up_gen;                      /* bumped on every user bank change
                                                 * restored at power-on (project.c); clear in every older setting = ON */
 #define fx_latch ui_prefs
 /* MENU > AUDIO CLICK, CLICK LEVEL (1.1, Discussion #131; click.c, seq.c): two bits each in another byte no engine
- * uses, saved with the settings: bits 0-1 CLICK (OFF REC ON), 2-3 CLICK LEVEL (stored 0 MID, 1 LOW, 2 HIGH); 0 in older
- * settings = OFF / MID, so nothing clicks that did not; 3 (unknown) reads as 0 (settings_persist.c puts it back). Bits
+ * uses, saved with the settings: bits 0-1 CLICK (OFF ON; 2, the retired REC, reads as ON), 2-3 CLICK LEVEL (stored 0
+ * MID, 1 LOW, 2 HIGH); 0 in older settings = OFF / MID, so nothing clicks that did not; 3 (unknown) reads as 0
+ * (settings_persist.c puts it back). Bits
  * 4-5 were COUNT-IN (1.1 .. 1.4.1; 1.5 has none): ignored, kept as saved. Bit 6 (1.2): MENU > SCALE LEDS ON (Discussion #127,
  * ui_input.c scale_leds; 0 in older settings = OFF). Bit 7 free (append-only) */
 #define ui_rec_prefs (favorites.factory[15][28])
@@ -59,12 +60,11 @@ static uint32_t up_gen;                      /* bumped on every user bank change
 #define PREF_SCALE_LEDS (0x40u << 8)
 /* 1.2: three more two-valued MENU settings, bits of another byte no engine uses, saved with the settings; 0 in older
  * settings = today's behaviour (append-only, as ui_prefs): bit 0 DISPLAY > SCOPE MIX (Discussion #165, fx.c scope_mix),
- * bit 1 CONTROL > STEP PREVIEW ON (Discussion #169, ui_tracker.c: the cursor's row sounds); bit 2 was CONTROL > CHORD
- * ENTRY ADD (#155, the step sequencer's, 1.2 .. 1.4.1: ignored, kept as saved). Bits 3-7 free */
+ * bit 1 was CONTROL > STEP PREVIEW (Discussion #169, the tracker's, gone with it); bit 2 was CONTROL > CHORD ENTRY ADD
+ * (#155, the step sequencer's, 1.2 .. 1.4.1): both ignored, kept as saved. Bits 3-7 free */
 #define ui_prefs2 (favorites.factory[15][24])
 #define PREF_X 0xFF0000u                       /* (menu_items.c MENU_FLAGS: a bit of ui_prefs2, << 16) */
 #define PREF_SCOPE_MIX (0x01u << 16)
-#define PREF_PREVIEW (0x02u << 16)
 /* 1.3 (Discussions #112, #134): MENU > DISPLAY > HOME, what the HOME page shows under its four cards: 0 SCOPE (the
  * oscilloscope, as before), 1 TRACKS (the four tracks as rows: ui_graph.c draw_home_tracks). A byte of its own no engine
  * uses, saved with the settings; 0 in older settings = SCOPE; an unknown value (a later firmware's view) reads as SCOPE
@@ -73,11 +73,11 @@ static uint32_t up_gen;                      /* bumped on every user bank change
 enum { HV_SCOPE, HV_TRACKS, HV_COUNT };
 static int home_tracks(void) { return ui_home_view == HV_TRACKS; }
 enum { RP_CLICK, RP_LEVEL };
-static uint32_t rp_get(uint32_t f)                     /* a field as the MENU steps it: 0..2 */
+static uint32_t rp_get(uint32_t f)                     /* a field as the MENU steps it: CLICK 0..1, LEVEL 0..2 */
 {
     uint32_t v = (ui_rec_prefs >> (2u * f)) & 3u;
     v = v == 3u ? 0u : v;
-    return f == RP_LEVEL ? (v == 0u ? 1u : v == 1u ? 0u : 2u) : v;   /* (LEVEL: LOW MID HIGH, MID stored as 0) */
+    return f == RP_LEVEL ? (v == 0u ? 1u : v == 1u ? 0u : 2u) : v != 0u;   /* (LEVEL: LOW MID HIGH, MID stored as 0) */
 }
 static void rp_apply(void)                             /* the settings into click.c / seq.c (every frame: ui_input) */
 {
@@ -86,7 +86,7 @@ static void rp_apply(void)                             /* the settings into clic
 }
 static void rp_put(uint32_t f, uint32_t v)
 {
-    uint32_t st = f == RP_LEVEL ? (v == 1u ? 0u : v == 0u ? 1u : 2u) : v % 3u;
+    uint32_t st = f == RP_LEVEL ? (v == 1u ? 0u : v == 0u ? 1u : 2u) : v != 0u;
     ui_rec_prefs = (uint8_t)((ui_rec_prefs & ~(3u << (2u * f))) | st << (2u * f));
     rp_apply();
 }
@@ -134,7 +134,6 @@ static struct {
     uint8_t msg_t;               /* transient message frames */
     uint8_t bpm_t;               /* frames the BPM stays highlighted after a SELECT turn */
     uint8_t act;                 /* action pages: the column whose action OCT+ does, + 1; 0 = none (act_col) */
-    uint32_t rec_t0;             /* REC press time: a tap arms (btn_hold, no hold: held, REC opens its layer) */
     uint32_t save_t0;           /* SAVE press time (btn_hold: held = UNDO) */
     uint8_t confirm;             /* the OCT- / OCT+ dialog: CF_*, 0 = none */
     uint8_t confirm_trk;         /* the track it clears, the slot it overwrites */
@@ -162,9 +161,8 @@ static struct {
     int16_t roll_bpm;            /* the BPM last drawn */
 } ui;
 
-enum { CF_NONE, CF_CLEAR_SEQ, CF_CLEAR_TRK, CF_OVR_PROJ, CF_OVR_USER,
-       CF_DEL_ROW, CF_CLEAR_SONG, CF_INIT_SOUND, CF_ERASE_USER };   /* ui.confirm: TOOLS' clears; SAVE over a used
-                                   * slot; USER ERASE */
+enum { CF_NONE, CF_OVR_PROJ, CF_OVR_USER, CF_INIT_SOUND, CF_ERASE_USER };   /* ui.confirm: SAVE over a used slot;
+                                   * TOOLS' INIT; USER ERASE */
 
 /* MENU > DISPLAY > SCREEN OFF (1.1.5): after a while with no input on the panel the screen goes dark (the backlight
  * stays on: lcd.c lcd_power)
@@ -301,7 +299,7 @@ static const page_t *cur_page(void) { return page_over ? page_over : &PAGES[ui.p
  *            in M or S when L is too wide or lacks a glyph, the unit under it, the gauge), the panel a strip: HOME's
  *            scope, ENV's ADSR, LFO's wave, MIXER's four tracks (name, state, meter) small; the
  *            page's title and number in L on the others (their charts cannot be read that small);
- *   LK_LABEL the list and graph pages (PRESETS, USER, PROJECT, the tracker's PATTERN SONG SETTINGS INSTR, SLICES),
+ *   LK_LABEL the list and graph pages (PRESETS, USER, PROJECT, SEQ's placeholder, SLICES),
  *            HOME with MENU > HOME TRACKS (1.3) and the quick layers' maps: the layout as it
  *            is, the card labels in M;
  *   LK_OFF   LARGE off; the menu (its own LARGE: ui_menu.c), the dialogs and NAME keep their own layout in every case. */
@@ -316,7 +314,7 @@ static uint32_t large_kind(void)
     if (ui.home)                                        /* (HOME > TRACKS: its rows need the panel, the cards as on */
         return home_tracks() ? LK_LABEL : LK_TALL;      /* a list page; the rows' names in M: draw_home_tracks) */
     g = cur_page()->graph;
-    return g == GR_BROWSE || g == GR_SLOTS || g == GR_USER || (g >= GR_TKPAT && g <= GR_TKINST) ? LK_LABEL : LK_TALL;
+    return g == GR_BROWSE || g == GR_SLOTS || g == GR_USER || g == GR_TODO ? LK_LABEL : LK_TALL;
 }
 /* the geometry of the page shown: the cards' height, the panel's top and height */
 static uint32_t card_h(void) { return large_kind() == LK_TALL ? LG_CARD_H : CARD_H; }
@@ -337,7 +335,7 @@ static int32_t ink_w(const aafont_t *f, const char *s)
 }
 
 /* the quick layers (ui_layer.c): a button held, the keys and KNOB 1..4 are its shortcuts, its map over the page */
-enum { LAYER_NONE, LAYER_FX, LAYER_GLO, LAYER_SCL, LAYER_EDIT, LAYER_SEQ, LAYER_REC, LAYER_N };
+enum { LAYER_NONE, LAYER_FX, LAYER_GLO, LAYER_SCL, LAYER_EDIT, LAYER_N };
 static void draw_layer(void);
 static const char *layer_head(void);
 static int layer_locked(void);
@@ -390,13 +388,12 @@ static int transport_busy(void)
 static void page_entered(void)
 {
     const page_t *pg = cur_page();
-    song.seq_mode = !ui.home && pg->fam == FAM_SEQ;
     ui.hot_t = 0;                                /* clear the previous page's emphasis */
     ui.act = pg->graph == GR_USER ? 4u : 0u;     /* the save screen is ready for OCT+ */
     ui.force = 1;
 }
 
-/* a page button tapped (1.2, Discussion #153; 1.5: SEQ the tracker's pages, GLO its SONG, SAVE USER -> PROJECT ->
+/* a page button tapped (1.2, Discussion #153; SEQ and GLO the sequencer's placeholder, SAVE USER -> PROJECT ->
  * TOOLS -> PRESETS; HOME: home_tap). From another
  * family the family's page shown last (SAVE: USER); one that is not the family's any more (a page that moved, as GLOBAL
  * and SYSTEM in 1.2), or not shown for this track, gives the family's first */
@@ -409,13 +406,8 @@ static void open_family(uint32_t fam)
             if (PAGES[i].fam == fam && page_visible(i)) break;
         }
         ui.page = (uint8_t)i;
-    } else if (fam == FAM_SEQ) {                         /* SEQ from elsewhere: the tracker's PATTERN, always */
-        ui.page = (uint8_t)page_first(FAM_SEQ);
-    } else if (fam == FAM_GLO) {                         /* GLO (1.5: no page of its own): the tracker's SONG */
-        uint32_t i;
-        for (i = 0; i < NPAGES && PAGES[i].graph != GR_TKSONG; i++)
-            ;
-        ui.page = (uint8_t)i;
+    } else if (fam == FAM_SEQ || fam == FAM_GLO) {       /* SEQ; GLO (no page of its own; it opened the song): the */
+        ui.page = (uint8_t)page_first(FAM_SEQ);          /* sequencer's placeholder */
     } else if (fam == FAM_SAVE) {
         uint32_t i;
         for (i = 0; i < NPAGES; i++)
@@ -434,7 +426,6 @@ static void go_home(void)
 {
     ui.home = 1;
     ui.hot_t = 0;
-    song.seq_mode = 0;
     ui.force = 1;
 }
 
@@ -907,8 +898,7 @@ static void track_select(uint32_t i)
     ui.force = 1;
 }
 
-/* (Fel-Tracker, 8 tracks) the 4 tracks the 4-wide places show (the tracker's columns, MIXER, GLO's cards and keys, the
- * FX layer's mutes): the selected track's four, 1 .. 4 or 5 .. 8 (selecting a track there brings its four in) */
+/* (Fel-Tracker, 8 tracks) the 4 tracks the 4-wide places show (MIXER, GLO's cards and keys, the FX layer's mutes): the selected track's four, 1 .. 4 or 5 .. 8 (selecting a track there brings its four in) */
 #define VIEW_N 4u
 static uint32_t trk_view(void) { return NTRK > VIEW_N ? song.sel / VIEW_N * VIEW_N : 0u; }
 
@@ -916,7 +906,7 @@ static uint32_t trk_view(void) { return NTRK > VIEW_N ? song.sel / VIEW_N * VIEW
 /* Pages whose purpose is an action (SAVE > USER, PROJECT, TOOLS): the knobs pick,
  * OCT+ does it, OCT- cancels the picked action or goes HOME (ui_input.c). There OCT- / OCT+ do not
  * shift the octave */
-static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_CLRSEQ || id == G_INITSND; }
+static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_INITSND; }
 
 static uint32_t act_cols(void)                   /* the columns that are actions, a bit each; 0 = not such a page */
 {
@@ -924,7 +914,6 @@ static uint32_t act_cols(void)                   /* the columns that are actions
     uint32_t c, m = 0;
     if (ui.home)
         return 0;
-    if (pg->graph == GR_TOOLS) return 15u;
     if (pg->graph == GR_USER)
         return 14u;                              /* LOAD ERASE SAVE */
     if (pg->scope == SC_GLOBAL)
@@ -941,24 +930,17 @@ static const char *act_name(uint32_t c)          /* column c's action (the foote
 {
     static const char *const UP_GO[3] = {"LOAD", "ERASE", "SAVE"};
     uint32_t id = cur_page()->id[c & 3u];
-    if (cur_page()->graph == GR_TOOLS) {
-        static const char *const actions[] = {"CLEAR", "INIT", "-", "NEW"};
-        return actions[c & 3u];
-    }
     if (cur_page()->graph == GR_USER)
         return UP_GO[(c + 2u) % 3u];
-    return id == G_CLRSEQ ? "CLEAR" : id == G_INITSND ? "INIT" : id == G_LOAD ? "LOAD" : "SAVE";
+    return id == G_INITSND ? "INIT" : id == G_LOAD ? "LOAD" : "SAVE";
 }
 
-/* the picked action would do something now (OCT+ breathes): a used slot, stopped for a flash write, a pattern to
- * clear */
+/* the picked action would do something now (OCT+ breathes): a used slot, stopped for a flash write */
 static int act_ready(void)
 {
     uint32_t c = act_col(), id;
     if (!c--)
         return 0;
-    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: CLEAR PATTERN, INIT, -, NEW SONG */
-        return c == 0u ? !tk_pat_empty(tk_pl.loop_pat) : c == 1u ? 1 : c == 3u ? !song.playing : 0;
     if (cur_page()->graph == GR_USER)
         return c == 3u ? !song.playing : up_used(ui.uslot) && (c == 1u || !song.playing);
     id = cur_page()->id[c & 3u];

@@ -80,7 +80,6 @@ static void reset(void)
     memset(nor, 0xFF, sizeof nor);
     memset(&song, 0, sizeof song);
     memset(trk, 0, sizeof trk);
-    tk_defaults();
     memset(&proj_good, 0, sizeof proj_good);
     proj_name[0] = 0;
     proj_cur = PROJ_NO_SLOT;
@@ -119,23 +118,21 @@ static void as_power_on(void)                            /* RAM lost: the defaul
     memset(&as, 0, sizeof as);
     memset(&ui, 0, sizeof ui);
     proj_name[0] = 0;
-    tk_defaults();
     host_tracks_init();
     for (k = 0; k < NTRK; k++)
         trk[k].eng_req = trk[k].engine = (uint8_t)TRK_DEF[k][0];
 }
-static void as_edit(uint32_t i)                          /* a change the project holds: a cell's note (always another) */
+static void as_edit(uint32_t i)                          /* a change the project holds: a track's ATK (always another) */
 {
     static uint32_t n;
-    tk_cell_t *c = tk_at(0, i % 16u, i % NTRK);
-    *c = tk_pack(20u + (tk_note(c) + 1u + n++ % 50u) % 100u, 0, 0, 0);
+    int16_t *a = &trk[i % NTRK].p[P_ATK];
+    *a = (int16_t)(1u + ((uint32_t)*a + 1u + n++ % 50u) % 100u);
 }
-static uint32_t as_cells(void)                           /* pattern 0's cells, hashed */
+static uint32_t as_cells(void)                           /* the tracks' ATK, hashed */
 {
-    uint32_t r, k, h = 2166136261u;
-    for (r = 0; r < TK_ROWS; r++)
-        for (k = 0; k < NTRK; k++)
-            h = (h ^ tk_bits(tk_at(0, r, k))) * 16777619u;
+    uint32_t k, h = 2166136261u;
+    for (k = 0; k < NTRK; k++)
+        h = (h ^ (uint32_t)trk[k].p[P_ATK]) * 16777619u;
     return h;
 }
 static int autosave_test(void)
@@ -218,7 +215,7 @@ static int autosave_test(void)
     ok &= autosave_boot(1) == 1 && st == as_cells() && song.g[G_BPM] == 97 && str_eq(proj_name, "MY TUNE") &&
           ui.msg_t && str_eq(ui.msg, "RESTORED");
     as_run(300000u);
-    bad += check("autosave: power-on restores it (the song, tempo, name; RESTORED); no write after (unchanged)",
+    bad += check("autosave: power-on restores it (the sounds, tempo, name; RESTORED); no write after (unchanged)",
                  ok && !as.writes && as_erases == b0);
     as_power_on();
     ok = autosave_boot(0) == 0 && song.g[G_BPM] != 97;
@@ -266,52 +263,8 @@ static int autosave_test(void)
     fail_after = -1;
     ok = as.err;
     as_power_on();
-    ok &= autosave_boot(1) == 1 && song.g[G_BPM] != 150 && tk_note(tk_at(0, 8, 0)) != 0u;
+    ok &= autosave_boot(1) == 1 && song.g[G_BPM] != 150 && trk[8u % NTRK].p[P_ATK] != 0;
     bad += check("autosave: a write cut short (power off): the copy before is restored", ok);
-    {   /* (Fel-Tracker) a song of several chunks: autosaved whole and restored whole; a write cut after any of its flash
-         * programs (chunks 1 .. first, chunk 0 the commit last): power-on restores the song before it or the new one,
-         * whole, never a mix */
-        uint32_t p, r, cut, cuts = 0, mixed = 0, done = 0;
-        char what[160];
-        st_hdr_t sh;
-        proj_hdr_t ph;
-        as_power_on();
-        autosave_boot(1);
-        for (p = 0; p < 8u; p++)
-            for (r = 0; r < TK_ROWS; r++)
-                for (k = 0; k < NTRK; k++)
-                    *tk_at(p, r, k) = tk_pack(30u + (r + k) % 60u, 1, 0, 0);
-        w = as.writes;
-        as_run(70000u);
-        ok = as.writes == w + 1u && st_current(OBJ_AUTOSAVE, &sh) >= 0;
-        memcpy(&ph, st_buf, sizeof ph);
-        ok &= ph.count > 1u;
-        as_power_on();
-        ok &= autosave_boot(1) == 1 && tk_note(tk_at(7, 63, NTRK - 1u)) == 30u + (63u + NTRK - 1u) % 60u;
-        snprintf(what, sizeof what, "autosave: a song of %u chunks: written whole, power-on restores it whole", ph.count);
-        bad += check(what, ok);
-        for (cut = 1; cut < 400u && !done; cut++) {
-            int32_t b0;
-            as_power_on();
-            if (autosave_boot(1) != 1 || tk_note(tk_at(7, 63, NTRK - 1u)) != 30u + (63u + NTRK - 1u) % 60u) {
-                mixed++;
-                break;
-            }
-            b0 = song.g[G_BPM];
-            song.g[G_BPM] = (int16_t)(b0 < 200 ? b0 + 1 : 60);
-            fail_after = (int)cut;
-            as_run(70000u);
-            done = fail_after > 0;                       /* (the write finished before the cut) */
-            fail_after = -1;
-            cuts += !done;
-            as_power_on();
-            if (autosave_boot(1) != 1 || (song.g[G_BPM] != b0 && song.g[G_BPM] != (b0 < 200 ? b0 + 1 : 60)) ||
-                tk_note(tk_at(7, 63, NTRK - 1u)) != 30u + (63u + NTRK - 1u) % 60u)
-                mixed++;
-        }
-        snprintf(what, sizeof what, "  a write cut after each of its %u flash programs: the song before or the new one, whole, each time", cuts);
-        bad += check(what, done && !mixed && cuts > 30u);
-    }
     /* wear: a 4-hour session: 3 h of editing (a change every 3 s), pauses and playing it back, then an hour away */
     as_power_on();
     autosave_boot(1);
@@ -347,34 +300,35 @@ static int autosave_test(void)
     return bad;
 }
 
-/* 1.5: the song store (project.c): the song in up to four chunks, each an A/B storage object, a save's generation in
- * every header. A save cut short anywhere (any erase, any program) leaves the save before it whole, even two cut short in
- * a row; a damaged chunk of the newest save: the one before; names through flash; a failed rename keeps everything */
+/* 1.5: the song store (project.c): the project in its chunks (one: the sequencer is a placeholder, no song in it),
+ * each an A/B storage object, a save's generation in every header. A save cut short anywhere (any erase, any program)
+ * leaves the save before it whole, even two cut short in a row; a damaged chunk of the newest save: the one before;
+ * names through flash; a failed rename keeps everything */
+static const uint8_t SF_IDS[] = {P_ATK, P_DEC, P_SUS, P_REL, P_LEVEL, P_DIST, P_CHOR, P_DLY, P_REV, P_LFADE};
 static uint32_t song_hash(void)
 {
-    uint32_t p, r, k, h = 2166136261u;
-    for (p = 0; p < TK_PATS; p++)
-        for (r = 0; r < TK_ROWS; r++)
-            for (k = 0; k < NTRK; k++)
-                h = (h ^ tk_bits(tk_at(p, r, k))) * 16777619u;
-    h = (h ^ tk.norder) * 16777619u;
+    uint32_t i, k, h = 2166136261u;
+    for (k = 0; k < NTRK; k++)
+        for (i = 0; i < sizeof SF_IDS; i++)
+            h = (h ^ (uint32_t)trk[k].p[SF_IDS[i]]) * 16777619u;
     return (h ^ (uint32_t)song.g[G_BPM]) * 16777619u;
 }
-static void song_fill(uint32_t seed, uint32_t pats)      /* a song over `pats` patterns (two or more chunks from 4) */
+static void song_fill(uint32_t seed)                     /* a project of its own: the tracks' values and the tempo */
 {
-    uint32_t p, r, k;
-    tk_defaults();
-    for (p = 0; p < pats; p++)
-        for (r = 0; r < TK_ROWS; r += 1u + (p + seed) % 2u)
-            for (k = 0; k < NTRK; k++)
-                *tk_at(p, r, k) = tk_pack(24u + (r * 7u + k * 5u + seed) % 90u, (k + seed) % 4u, (r + seed) % TKC_N, r % 16u);
-    tk.order[1] = (uint8_t)(seed % TK_PATS);
-    tk.norder = 2;
+    uint32_t i, k;
+    for (k = 0; k < NTRK; k++)
+        for (i = 0; i < sizeof SF_IDS; i++) {
+            const param_desc_t *d = &TP[SF_IDS[i]];
+            trk[k].p[SF_IDS[i]] = (int16_t)(d->min + (int32_t)((k * 13u + i * 7u + seed * 5u) % (uint32_t)(d->max - d->min + 1)));
+        }
     song.g[G_BPM] = (int16_t)(60 + seed);
 }
-static void power_cycle(void)                            /* RAM lost: the store found again, the song from it */
+static void power_cycle(void)                            /* RAM lost: the store found again, the project from it */
 {
-    tk_defaults();
+    uint32_t i, k;
+    for (k = 0; k < NTRK; k++)
+        for (i = 0; i < sizeof SF_IDS; i++)
+            trk[k].p[SF_IDS[i]] = TP[SF_IDS[i]].def;
     song.g[G_BPM] = 120;
     proj_find();
     project_load(0);
@@ -386,14 +340,14 @@ static int song_store_test(void)
     uint32_t h1, h2, k, ops, cuts = 0, twice = 0, gen;
     char n[16];
     reset();
-    song_fill(1, 6);
+    song_fill(1);
     h1 = song_hash();
-    ok = project_save(0) == 0 && !strcmp(ui.msg, "SAVED") && proj_good.have && proj_good.count >= 2u;
+    ok = project_save(0) == 0 && !strcmp(ui.msg, "SAVED") && proj_good.have && proj_good.count == 1u;
     power_cycle();
-    bad += check("song store: a song of several chunks saved, found and loaded back whole", ok && song_hash() == h1 &&
+    bad += check("song store: a project saved, found and loaded back whole", ok && song_hash() == h1 &&
                   !strcmp(ui.msg, "LOADED"));
     memcpy(nor1, nor, sizeof nor1);
-    song_fill(2, 7);
+    song_fill(2);
     h2 = song_hash();
     erases = 0;
     project_save(0);
@@ -401,7 +355,7 @@ static int song_store_test(void)
     for (k = 0; k < 4000u; k++) {                        /* cut short after k programs (a power cut) */
         uint32_t got;
         memcpy(nor, nor1, sizeof nor);
-        song_fill(2, 7);
+        song_fill(2);
         fail_after = (int)k;
         project_save(0);
         fail_after = -1;
@@ -418,10 +372,10 @@ static int song_store_test(void)
     for (k = 0; k < 40u; k++) {                          /* two saves, either cut short: the newest complete one loads */
         uint32_t h3, r2, r3, both = 0;
         memcpy(nor, nor1, sizeof nor);
-        song_fill(2, 7);
+        song_fill(2);
         fail_after = (int)(k * 9u + 5u);
         r2 = (uint32_t)project_save(0);
-        song_fill(3, 5);
+        song_fill(3);
         h3 = song_hash();
         fail_after = (int)(k * 5u + 3u);
         r3 = (uint32_t)project_save(0);
@@ -435,18 +389,18 @@ static int song_store_test(void)
                  twice == 40u);
     memcpy(nor, nor1, sizeof nor);
     erase_error = 1;
-    song_fill(2, 7);
+    song_fill(2);
     bad += check("song store: a failing erase: SAVE ERROR, the stored song as it was",
                   project_save(0) == 2 && !strcmp(ui.msg, "SAVE ERROR") && (power_cycle(), song_hash() == h1));
     erase_error = 0;
     /* a damaged chunk of the newest save: the save before it */
     memcpy(nor, nor1, sizeof nor);
-    song_fill(2, 7);
+    song_fill(2);
     project_save(0);
     gen = proj_good.gen;
-    nor[st_sector(OBJ_PROJECT0 + 1u, proj_good.copy[1]) + ST_PAYLOAD_OFF + 300u] ^= 0x40u;
+    nor[st_sector(OBJ_PROJECT0, proj_good.copy[0]) + ST_PAYLOAD_OFF + 40u] ^= 0x40u;
     power_cycle();
-    bad += check("song store: the newest save's chunk 2 damaged: the save before loads", song_hash() == h1 &&
+    bad += check("song store: the newest save damaged: the save before loads", song_hash() == h1 &&
                   proj_good.gen == gen - 1u);
     /* the PROJECT page: a pending PLAY, names, rename */
     memcpy(nor, nor1, sizeof nor);
@@ -455,7 +409,7 @@ static int song_store_test(void)
     ok = project_save(0) != 0 && !strcmp(ui.msg, "STOP TO SAVE") && !erases;
     transport_req = 0;
     bad += check("song store: a pending PLAY: no save, no erase", ok);
-    song_fill(4, 2);
+    song_fill(4);
     project_save_as(0, "LOFI JAM");
     proj_name[0] = 0;
     power_cycle();
@@ -469,7 +423,7 @@ static int song_store_test(void)
     power_cycle();
     bad += check("song store: a failed rename: SAVE ERROR, the name and the song as they were", ok && project_name(0, n) &&
                   !strcmp(n, "LOFI JAM") && song_hash() == h1);
-    song_fill(9, 3);                                     /* (the music now: another song) */
+    song_fill(9);                                     /* (the music now: another song) */
     ok = project_rename(0, "DUB") == 0 && !strcmp(ui.msg, "RENAMED") && project_name(0, n) && !strcmp(n, "DUB");
     power_cycle();
     bad += check("song store: rename: the store has the new name, the song in it as it was", ok && song_hash() == h1 &&

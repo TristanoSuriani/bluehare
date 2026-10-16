@@ -3,8 +3,7 @@
  * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* Each track's place in the mix (core.h trk_width, trk_lowcut; fx.c track_lowcut, mix_haas): the power-on values, LOW
  * CUT's response and its silence after a sound, WIDTH's highs late on one side (the side changing track by track) with
- * the lows as they are on both, the mono sum's lows whole, the song store (version 5) and its bounds, the editor's
- * WIDTH (TRACKER op 11). */
+ * the lows as they are on both, the mono sum's lows whole, the song store (a value out of range: OFF). */
 #define EDITOR_TEST_NO_MAIN 1
 #include "editor_test.c"
 #include <math.h>
@@ -55,7 +54,7 @@ int main(void)
 {
     int bad = 0, ok;
     uint32_t k, i;
-    static int32_t x[FS / 4u], l[FS / 4u], r[FS / 4u];
+    static int32_t x[FS / 4u + CTL], l[FS / 4u + CTL], r[FS / 4u + CTL];   /* (haas_run: whole blocks) */
     reset();
 
     /* power-on */
@@ -125,42 +124,23 @@ int main(void)
         }
     }
 
-    /* the store: version 5 keeps them; a song of before gets them as at power-on */
+    /* the store keeps them */
     trk_width[NTRK - 1u] = 7;
     trk_lowcut[NTRK - 1u] = 2;
     trk_lowcut[0] = 6;
     ok = !project_save(0);
-    project_new();
+    trk_mix_defaults();
     ok &= trk_width[NTRK - 1u] == TW_DEF && trk_lowcut[0] == 0u;
     project_load(0);
-    ok &= proj_ram[0][PROJ_HDR] >= 5u && trk_width[NTRK - 1u] == 7u && trk_lowcut[NTRK - 1u] == 2u && trk_lowcut[0] == 6u;
-    bad += check("the store: version 5 keeps WIDTH and LOW CUT; a new song has them as at power-on", ok);
+    ok &= proj_ram[0][PROJ_HDR] == PROJ_VER && trk_width[NTRK - 1u] == 7u && trk_lowcut[NTRK - 1u] == 2u && trk_lowcut[0] == 6u;
+    bad += check("the store keeps WIDTH and LOW CUT; the power-on values have them as before", ok);
     trk_width[0] = 5;                                 /* (the rhythm section has no WIDTH) */
     trk_width[TW_FIRST] = 99;
     trk_lowcut[1] = 9;
-    tk_bound();
-    bad += check("bounds: WIDTH on a rhythm track -> 0, past 20 -> 0; LOW CUT past the last -> OFF",
-                 !trk_width[0] && !trk_width[TW_FIRST] && !trk_lowcut[1]);
-
-    /* the editor's WIDTH (op 11) */
-    {
-        uint8_t a[4] = {EDT_WIDTH};
-        uint32_t m = request(ED_TRACKER, a, 1);
-        ok = m == 9u + 2u * NTRK && host_wire[7] == TW_FIRST && host_wire[8 + 2u * (NTRK - 1u)] == 7u;
-        a[1] = (uint8_t)(NTRK - 1u); a[2] = 15; a[3] = 3;
-        m = request(ED_TRACKER, a, 4);
-        ok &= m == 9u + 2u * NTRK && !host_wire[6] && trk_width[NTRK - 1u] == 15u && trk_lowcut[NTRK - 1u] == 3u;
-        a[1] = 0; a[2] = 4; a[3] = 0;                 /* (WIDTH on track 1: none) */
-        ok &= request(ED_TRACKER, a, 4) && host_wire[6] == 1 && !trk_width[0];
-        a[1] = (uint8_t)(NTRK - 1u); a[2] = 21;
-        ok &= request(ED_TRACKER, a, 4) && host_wire[6] == 1 && trk_width[NTRK - 1u] == 15u;
-        a[2] = 0; a[3] = TL_N;
-        ok &= request(ED_TRACKER, a, 4) && host_wire[6] == 1 && trk_lowcut[NTRK - 1u] == 3u;
-        a[1] = NTRK;
-        ok &= !request(ED_TRACKER, a, 4);
-        bad += check("the editor's WIDTH: read, written (15 ms, 80 Hz); a rhythm track's WIDTH, 21 ms, a cutoff past the "
-                     "last: rc 1; a track past the last: no reply", ok);
-    }
+    ok = !project_save(0);
+    project_load(0);
+    ok &= !trk_width[0] && !trk_width[TW_FIRST] && !trk_lowcut[1];
+    bad += check("bounds: WIDTH on a rhythm track -> 0, past 20 -> 0; LOW CUT past the last -> OFF (when loaded)", ok);
     printf("%s\n", bad ? "WIDTH TEST FAILED" : "width test passed");
     return bad ? 1 : 0;
 }

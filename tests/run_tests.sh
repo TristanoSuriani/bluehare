@@ -30,8 +30,9 @@
 #                   (build/ui_new/align.txt). MENU > LARGE: every screen again (FLAT, LINE, every palette) and the page / value
 #                   sweep with the tall cards, the same lint and alignment; sheet_LARGE_GREY.png, sheet_LARGE_MONO.png.
 # UI (tests/ui_test.c): the UI sources against stub display / buttons / knobs: sound loads keep the track's
-#                   ARP / SCL / SLICER, the sound's one-step undo (SAVE held), REC (arms only) on every page, ARP while
-#                   recording, MIDI IN ROUT, saves refused while playing and the OVERWRITE? dialog, MUTE on TRACKS KNOB 1.
+#                   ARP / SCL / SLICER, the sound's one-step undo (SAVE held), REC (nothing yet) on every page, SEQ's
+#                   placeholder (TODO), MIDI IN ROUT, saves refused while playing and the OVERWRITE? dialog, MUTE on TRACKS
+#                   KNOB 1.
 # Audio / persistence / editor: the real C paths against simulated DMA and NOR flash: bounded overload
 #                   fades, shared-voice limits, deferred settings and retries, failed-save rollback, the autosave
 #                   (1.2: when it writes, the power-on restore, damaged copies, a write cut short, wear over a session),
@@ -39,13 +40,11 @@
 #                   editor (MENU_DESC / MENU_SET: every item, clamping, unknown ids, saving, USB SERIAL applied later).
 # CHORD (tests/chord_test.c): the chord keys (src/chord.c): diatonic triads / sevenths of several scales and roots,
 #                   the fixed shapes and voicings (at most 4 notes), names, MONO plays the root, a release ends
-#                   exactly what its key / MIDI note started, recording, the ARP, MIDI IN, kits ignore CHRD.
+#                   exactly what its key / MIDI note started, the ARP, MIDI IN, kits ignore CHRD.
 # LFO 2 (tests/lfo2_test.c, 1.2): SYNC one cycle per note value at several tempi and on the external clock, OFF bit for bit
 #                   as before; TRIG NOTE / FREE; POL UNI 0..+1, the matrix's AMP.
-# TRACKER (1.5, in tests/ui_test.c test_tracker_*): LOOP and SONG playback (rows of a 1/16, swing, notes ringing to the next
-#                   or OFF, the pattern cued, the order list round), a row's instrument and its one-row FX, the tracks' CUT,
-#                   live recording into the rows, the pages' knobs / PRESETS / EDIT / keys, the cursor following the
-#                   playing row a page of 8 at a time, the song saved and loaded whole (too big: refused; damaged: refused).
+# SEQUENCER: a placeholder (SEQ shows TODO). The renders' songs play through the tests' own player (tests/hostsim.c
+#                   host_seq, on seq.c's seq_hook): rows of a 1/16, swung, as the tracker played them, so the goldens stay.
 # MOD (tests/mod_test.c): the modulation matrix: slots that do nothing are bit-identical, every source on each
 #                   kind of destination, clamping, MIDI CC1 / CC11 / aftertouch routing, the cost of 4 active
 #                   slots (at most +5 %), demos in build/mod_demo/.
@@ -237,12 +236,12 @@ if [ -f build/gen/felucca_tables.h ]; then
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/scale_test" tests/scale_test.c -lm
     run "scales: white-key mapping and note lifecycle" "$OUT/scale_test"
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/chord_test" tests/chord_test.c -lm
-    run "chord keys: diatonic and fixed chords, voicings, MONO root, releases, recording, ARP, MIDI IN, kits" "$OUT/chord_test"
+    run "chord keys: diatonic and fixed chords, voicings, MONO root, releases, ARP, MIDI IN, kits" "$OUT/chord_test"
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/speaker_test" tests/speaker_test.c -lm
     run "SPEAKER EQ: FLAT / LOWCUT / BASS+ responses, BASS+ harmonics of the bass, the sub cut, no offset after, headroom on a full-scale kick (#180)" "$OUT/speaker_test"
     slow run "DSP render (ANALOG preset 0)" "$OUT/hostsim" 0 0 1 "$OUT/render.wav"
     mkdir -p build/tracks_demo
-    slow run "TRACKS: 4-track pattern, live recording (lengths, swing), voice budget, engine switch, cost" env TRACKS=build/tracks_demo "$OUT/hostsim" 0 0 1 "$OUT/tracks.wav"
+    slow run "TRACKS: 4-track pattern, voice budget, engine switch, cost" env TRACKS=build/tracks_demo "$OUT/hostsim" 0 0 1 "$OUT/tracks.wav"
     compile $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/lfo2_test" tests/lfo2_test.c -lm
     run "1.2 LFO 2: SYNC / TRIG / POL" "$OUT/lfo2_test"
     compile $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/midi_control_test" tests/midi_control_test.c -lm
@@ -258,9 +257,7 @@ if [ -f build/gen/felucca_tables.h ]; then
     compile $CC -O1 -w -Ibuild/gen -o "$OUT/settings_test" tests/settings_test.c
     run "settings: PER1..PER4 migration, palette ids and preference preservation" "$OUT/settings_test"
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test" tests/ui_test.c -lm
-    run "UI: sounds, undo, recording, MIDI overflow, pending saves, panel recovery, the tracker (play, pages, song store), GREY gray, MONO neutral, retired engines" "$OUT/ui_test"
-    compile $CC -w -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/tkplay_test" tests/tkplay_test.c -lm
-    run "tracker RETRIG (the only FX command since 2026-10): its hits in the row; a row without it as before" "$OUT/tkplay_test"
+    run "UI: sounds, undo, MIDI overflow, pending saves, panel recovery, SEQ's placeholder, GREY gray, MONO neutral, retired engines" "$OUT/ui_test"
     FV=$(sed -n 's/^#define FELUCCA_VERSION "\([^"]*\)".*/\1/p' firmware/src/felucca.c)   # (the splash, ABOUT: the real version)
     slow compile $CC -O1 -w "-DFELUCCA_VERSION=\"$FV\"" -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/ui_render" tests/ui_render.c -lm
     mkdir -p build/ui_new/ppm build/ui_slot
@@ -275,15 +272,15 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "UI built with 8 tracks (step 3c): every check above, the view 1..4 / 5..8, GLO / FX on 8 tracks, MIDI IN blocks of 8" "$OUT/ui_test8"
     slow compile $CC -O1 -w "-DFELUCCA_VERSION=\"$FV\"" -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/ui_render8" tests/ui_render.c -lm
     mkdir -p build/ui_8/ppm build/ui_8slot
-    slow run "UI renders built with 8 tracks (step 3c): the layout lint on every screen, the tracker on tracks 5..8" "$OUT/ui_render8" build/ui_8 build/ui_8slot
+    slow run "UI renders built with 8 tracks (step 3c): the layout lint on every screen" "$OUT/ui_render8" build/ui_8 build/ui_8slot
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/audio_test" tests/audio_test.c -lm
     run "audio: overload protection, bounded fades and DMA diagnostics" "$OUT/audio_test"
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/click_test" tests/click_test.c -lm
-    run "metronome: beats sample for sample (internal and external clock), accent, level, MASTER, not in USB, PLAY armed at once (no count-in)" "$OUT/click_test"
+    run "metronome: beats sample for sample (internal and external clock), accent, level, MASTER, not in USB, PLAY at once (no count-in)" "$OUT/click_test"
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/persistence_test" tests/persistence_test.c -lm
     run "persistence: deferred settings, retry and failed-save rollback" "$OUT/persistence_test"
     compile $CC -w -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/persistence_test8" tests/persistence_test.c -lm
-    run "persistence built with 8 tracks (step 3b): the 16-chunk song store, the autosave of many chunks, cut anywhere" "$OUT/persistence_test8"
+    run "persistence built with 8 tracks (step 3b): the song store and the autosave, cut anywhere" "$OUT/persistence_test8"
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/backup_test" tests/backup_test.c -lm
     run "full backup: CRC before writes, stale runtime, USB reset / timeout, malformed objects, older projects" "$OUT/backup_test"
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/editor_test" tests/editor_test.c -lm
@@ -295,21 +292,17 @@ if [ -f build/gen/felucca_tables.h ]; then
         "$OUT/robust_test"
     for n in 4 8; do
         compile $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/width_test$n" tests/width_test.c -lm
-        run "WIDTH and LOW CUT ($n tracks): the Haas effect on the last tracks, the lows whole, the cut, the store, the editor" "$OUT/width_test$n"
+        run "WIDTH and LOW CUT ($n tracks): the Haas effect on the last tracks, the lows whole, the cut, the store" "$OUT/width_test$n"
         compile $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/duck_test$n" tests/duck_test.c -lm
-        run "DUCK ($n tracks): the key ducks a pad at once and lets it back, as deep as its DUCK; none without a key; the store, the editor" "$OUT/duck_test$n"
+        run "DUCK ($n tracks): the key ducks a pad at once and lets it back, as deep as its DUCK; none without a key; the store" "$OUT/duck_test$n"
     done
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/panmode_test" tests/panmode_test.c -lm
-    run "PAN MODE: ALT at power-on (SPREAD in turn), RND a side at random (POLY, and MONO at half width), the store, the editor" "$OUT/panmode_test"
-    for n in 4 8; do
-        compile $CC -w -DFELUCCA_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/patset_test$n" tests/patset_test.c -lm
-        run "a pattern's settings ($n tracks): tempo, mutes, chance, sends and SLICER over the tracks', STOP, the store, bounds, the editor" "$OUT/patset_test$n"
-    done
+    run "PAN MODE: ALT at power-on (SPREAD in turn), RND a side at random (POLY, and MONO at half width), the store" "$OUT/panmode_test"
     compile $CC -w -DFELUCCA_DIST=ref -DFELUCCA_NTRK=4 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test4" tests/engines_test.c -lm
-    run "a build without some engines (the ref build, 4 tracks): ids, substitutes, protocol, songs, presets; a version-2 song for the next" "$OUT/engines_test4"
+    run "a build without some engines (the ref build, 4 tracks): ids, substitutes, protocol, projects, presets; a 4-track project for the next" "$OUT/engines_test4"
     compile $CC -w -DFELUCCA_DIST=ref -DFELUCCA_NTRK=8 -Ibuild/gen -Ifirmware/src -o "$OUT/engines_test" tests/engines_test.c -lm
-    AFTER=$nj                                           # (it reads the 4-track run's song_v2.bin)
-    run "a build without some engines, 8 tracks: the same checks, its power-on, a 4-track song on it" "$OUT/engines_test"
+    AFTER=$nj                                           # (it reads the 4-track run's song_4trk.bin)
+    run "a build without some engines, 8 tracks: the same checks, its power-on, a 4-track project on it" "$OUT/engines_test"
     compile $CC -w -DFELUCCA_DIST=idm -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/idm_test" tests/idm_test.c -lm
     run "IDM: its 8 engines in their order, 4 tracks, power-on, where the engines it lacks load" "$OUT/idm_test"
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/mod_test" tests/mod_test.c -lm
@@ -473,7 +466,7 @@ elif [ -f build/gen/felucca_tables.h ]; then
         "$OUT/plugin_core_test" "$OUT/cores" "$OUT/plugin_core_ref.f32"
     cc -O2 -std=gnu11 -w -o "$OUT/plugin_host_test" tests/plugin_host_test.c plugin/src/fel_host.c plugin/src/fel_resample.c \
         plugin/core/fel_loader.c -lpthread -lm -lz
-    run_now "plugin host: the resampler, the chooser, notes at their frame, a swap while playing; the host's transport (start, 60 s at 48 kHz, a loop), track outputs, the song saved and loaded; the window's view and panel, a switch with the song" \
+    run_now "plugin host: the resampler, the chooser, notes at their frame, a swap while playing; the host's transport (start, 60 s at 48 kHz, a loop), track outputs, the project saved and loaded; the window's view and panel, a switch with the project" \
         "$OUT/plugin_host_test" "$OUT/cores"
 fi
 

@@ -3,8 +3,8 @@
  * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
 /* Robustness against damaged or crafted stored data and editor requests (the 1.0.4 audit's items 5-10): the real
  * C paths of the editor build (editor_test.c is the base: hostsim, stubs, RAM flash).
- *   projects            (1.5: the song's stream) an engine id past the last or retired refused under a valid hash; no
- *                       position, a pattern of no row, an unknown FX refused; values out of range loaded inside it
+ *   projects            (the project's stream) an engine id past the last or retired refused under a valid hash; a
+ *                       PAN MODE out of range refused, a DUCK OFF; values out of range loaded inside it
  *   user presets        a bank from flash or a backup: each record's pattern inside its fields; a retired engine's
  *                       record not valid
  *   editor              SMP_END (no sample slots) / a malformed BACKUP_PUT does not stop the transport */
@@ -28,58 +28,52 @@ static void stream_rehash(void)
         }
 }
 /* a field outside its range is refused even under a valid hash (a crafted or damaged store); a track's value outside
- * its range loads inside it; an instrument naming no engine loads empty */
+ * its range loads inside it */
 static int projects(void)
 {
     int bad = 0;
-    uint32_t e0, off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + (PROJ_VER >= 3u), refused = 1;   /* track 1's engine
-                                                       * byte (version 3 on: after the track count) */
+    uint32_t e0, off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + 1u, refused = 1;   /* track 1's engine byte
+                                                       * (after the track count) */
     uint8_t keep;
     reset();
-    *tk_at(0, 0, 0) = tk_pack(60, 0, 0, 0);
-    bad += check("a song saves and loads", !project_save(0) && (project_load(0), tk_note(tk_at(0, 0, 0)) == 60u));
+    trk[0].p[P_ATK] = 33;
+    bad += check("a project saves and loads", !project_save(0) && (trk[0].p[P_ATK] = 0, project_load(0), trk[0].p[P_ATK] == 33));
     keep = proj_ram[0][off];
     for (e0 = EID_COUNT; e0 < 256u; e0 += 37u) {
         proj_ram[0][off] = (uint8_t)e0;
         stream_rehash();
-        project_new();
+        trk[0].p[P_ATK] = 0;
         project_load(0);
-        refused &= !tk_note(tk_at(0, 0, 0)) && trk[0].eng_req < NENGINES;
+        refused &= trk[0].p[P_ATK] == 0 && trk[0].eng_req < NENGINES;
     }
     for (e0 = 1; e0 < 14u; e0 += e0 == 1u ? 3u : e0 == 4u ? 4u : 5u) {   /* 1 4 8 13: DIGITAL SAMPLE GRAIN SLICE */
         proj_ram[0][off] = (uint8_t)e0;
         stream_rehash();
-        project_new();
+        trk[0].p[P_ATK] = 0;
         project_load(0);
-        refused &= EID_RETIRED(e0) && !tk_note(tk_at(0, 0, 0)) && eng_ok(trk[0].eng_req);
+        refused &= EID_RETIRED(e0) && trk[0].p[P_ATK] == 0 && eng_ok(trk[0].eng_req);
     }
     proj_ram[0][off] = keep;
     stream_rehash();
     project_load(0);
-    bad += check("a song with an engine past the last or retired (a valid hash) is refused, the music as it was",
-                 refused && tk_note(tk_at(0, 0, 0)) == 60u);
-    tk.norder = 0;
+    bad += check("a project with an engine past the last or retired (a valid hash) is refused, the music as it was",
+                 refused && trk[0].p[P_ATK] == 33);
+    trk_pmode[1] = 2;                                   /* (PAN MODE past RND) */
     project_save(0);
-    project_new();
+    trk_pmode[1] = TP_ALT;
     project_load(0);
-    refused = msg_is_ed("LOAD ERROR") && tk.norder == 1u;
-    tk.len[5] = 0;
+    refused = msg_is_ed("LOAD ERROR") && trk_pmode[1] == TP_ALT;
+    bad += check("a PAN MODE past the last: refused", refused);
+    trk_duck[2] = TD_KEY + 1u;                          /* (DUCK past KEY) */
     project_save(0);
+    trk_duck[2] = 3;
     project_load(0);
-    refused &= msg_is_ed("LOAD ERROR");
-    tk.len[5] = TK_ROWS;
-    *tk_at(3, 3, 3) = tk_pack(60, 0, TKC_RETRIG, 16u);   /* (Fel-Tracker: RETRIG past its 15 hits) */
-    project_save(0);
-    project_load(0);
-    refused &= msg_is_ed("LOAD ERROR");
-    bad += check("no position, a pattern of no row, a RETRIG past 15 hits: refused", refused);
+    bad += check("a DUCK past the last: loads OFF", !trk_duck[2] && !msg_is_ed("LOAD ERROR"));
     reset();
     trk[1].p[P_LEVEL] = 999;
-    tk.instr[7].src = EID_COUNT;                        /* (no engine, no user preset) */
     project_save(0);
     project_load(0);
-    bad += check("a track's value out of its range loads inside it; an instrument of no engine loads empty",
-                 trk[1].p[P_LEVEL] == TP[P_LEVEL].max && tk.instr[7].src == TK_SRC_NONE);
+    bad += check("a track's value out of its range loads inside it", trk[1].p[P_LEVEL] == TP[P_LEVEL].max);
     return bad;
 }
 

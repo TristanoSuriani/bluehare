@@ -456,7 +456,7 @@ EXPORT uint8_t *web_anim_levels(void)
 }
 
 /* for the test and the bench (web/emu/emu_test.mjs), a heavy song straight into the tracks (as hostsim's
- * renders set them): T1 VOSIM FORMANT PAD, T2 KARPLUS, T3 WAVE SCAN PAD (a build without one of them: its first
+ * renders set them, played by its host_seq: the sequencer is a placeholder): T1 VOSIM FORMANT PAD, T2 KARPLUS, T3 WAVE SCAN PAD (a build without one of them: its first
  * engine), 4-note chords on all 16 steps, held; T4 KIT, kick snare and hats. PLAY is the page's (or the test's) to
  * press */
 EXPORT void web_test_heavy(void)
@@ -466,6 +466,7 @@ EXPORT void web_test_heavy(void)
 #undef WEB_PICK
     static const uint8_t CH[4][4] = {{48, 55, 60, 64}, {45, 52, 57, 60}, {41, 48, 53, 57}, {43, 50, 55, 59}};
     uint32_t p, i;
+    seq_hook = host_seq;
     for (p = 0; p < 3u; p++) {
         track_t *t = &trk[p];
         host_preset(t, ENG[p][0], ENG[p][1]);

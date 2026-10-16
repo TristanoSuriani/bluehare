@@ -73,16 +73,16 @@ static void slicer_start(void)   /* seq_start: the next block starts step 0 of e
     }
 }
 
-static uint32_t sl_pattern(const track_t *t) { return SL_PAT[(uint32_t)(tp_vo(t, VO_SLPAT) - 1) % SL_NPAT]; }
+static uint32_t sl_pattern(const track_t *t) { return SL_PAT[(uint32_t)(t->p[P_SLPAT] - 1) % SL_NPAT]; }
 
 static uint32_t beat_samples(void);                 /* (fx.c) */
 
 /* the step clock enters the next step */
 static void sl_enter(const track_t *t, sl_t *s)
 {
-    uint32_t mode = (uint32_t)tp_vo(t, VO_SLCR);
+    uint32_t mode = (uint32_t)t->p[P_SLCR];
     s->idx = (uint8_t)((s->idx + 1u) & 15u);
-    s->base = DEV_NAT((uint32_t)FS * 60u / song_bpm(), beat_samples()) / SL_DEN[(uint32_t)tp_vo(t, VO_SLRATE) % 6u];   /* (native:
+    s->base = DEV_NAT((uint32_t)FS * 60u / (uint32_t)song.g[G_BPM], beat_samples()) / SL_DEN[(uint32_t)t->p[P_SLRATE] % 6u];   /* (native:
                                                     * the host's tempo, or the clock's) */
     s->len = swing_step_len(t, s->base, s->idx);   /* core.h, as seq.c step_samples */
     s->pos = 0;
@@ -109,7 +109,7 @@ static void sl_enter(const track_t *t, sl_t *s)
 static inline __attribute__((always_inline)) void sl_seg(const track_t *t, sl_t *s, int16_t *buf, int32_t *b,
                                                           int32_t *sd, uint32_t m)
 {
-    uint32_t mode = (uint32_t)tp_vo(t, VO_SLCR), j, nbit = (sl_pattern(t) >> ((s->idx + 1u) & 15u)) & 1u;
+    uint32_t mode = (uint32_t)t->p[P_SLCR], j, nbit = (sl_pattern(t) >> ((s->idx + 1u) & 15u)) & 1u;
     int32_t depth = t->p[P_SLDEPTH] * 258;          /* Q15, 0..32766 */
     int32_t tc = mode == SL_GATE && !s->bit ? depth : 0;           /* gate closure of this step */
     int32_t tn = mode == SL_GATE && !nbit ? depth : 0;             /* .. of the next one */
@@ -166,7 +166,7 @@ static void slicer_track(const track_t *t, int32_t *b, uint32_t n)
 {
     uint32_t k = (uint32_t)(t - trk), i = 0;
     sl_t *s = &sl[k];
-    int act = b && (tp_vo(t, VO_SLCR) != SL_OFF || s->gc || s->w);
+    int act = b && (t->p[P_SLCR] != SL_OFF || s->gc || s->w);
     while (i < n) {
         uint32_t m;
         if (s->pos >= s->len)
@@ -186,7 +186,7 @@ static __attribute__((noinline)) void slicer_track_sd(const track_t *t, int32_t 
 {
     uint32_t k = (uint32_t)(t - trk), i = 0;
     sl_t *s = &sl[k];
-    int act = tp_vo(t, VO_SLCR) != SL_OFF || s->gc || s->w;
+    int act = t->p[P_SLCR] != SL_OFF || s->gc || s->w;
     while (i < n) {
         uint32_t m;
         if (s->pos >= s->len)
@@ -205,5 +205,5 @@ static __attribute__((noinline)) void slicer_track_sd(const track_t *t, int32_t 
 static int slicer_busy(const track_t *t)
 {
     const sl_t *s = &sl[t - trk];
-    return s->w || (tp_vo(t, VO_SLCR) == SL_STUT && s->loop);
+    return s->w || (t->p[P_SLCR] == SL_STUT && s->loop);
 }

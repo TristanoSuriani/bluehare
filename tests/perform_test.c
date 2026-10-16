@@ -562,7 +562,7 @@ static int test_misc(void)
         song_setup();
         {                                                    /* only track 1 plays, dry */
             uint32_t r;
-            for (r = 0; r < TK_ROWS; r++) *tk_at(0, r, 1) = *tk_at(0, r, 2) = *tk_at(0, r, 3) = tk_pack(0, 0, 0, 0);
+            for (r = 0; r < HS_ROWS; r++) host_song[r][1] = host_song[r][2] = host_song[r][3] = 0;
         }
         trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = 0;
         transport_req = 1;

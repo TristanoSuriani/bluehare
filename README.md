@@ -8,7 +8,8 @@ the browser emulator it introduces itself as Fel-Tracker, naming Felucca and its
 
 What Fel-Tracker adds, all by Tristano Suriani:
 
-- **The tracker**, in place of the step sequencer.
+- **The sequencer:** a placeholder for now (SEQ shows TODO). Felucca's step sequencer is gone, and so is the tracker
+  that took its place until 2026-10.
 - **Distributions:** builds of any set of up to 16 engines, with stable engine ids, each with its own palette (the
   device's and the emulator page's: IDM electric cyan and magenta on indigo, FOUNDRY molten orange, WAREHOUSE acid green
   and UV violet, CHIP the Game Boy's greens). Since the 2026-10 plan every build has **4 tracks** and at most **8
@@ -48,9 +49,9 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 - Install: [web installer](https://hugelton.github.io/Felucca/) (Chrome or Edge, USB), or `tools/fm1_install.py` from a terminal
 - Try: [Felucca in your browser](https://hugelton.github.io/Felucca/webapp/try/): the same firmware compiled to
   WebAssembly, with the panel on screen (mouse, touch, computer keyboard, Web MIDI in)
-- Editor: `web/editor.html` in this repository edits the tracker (see [Tracker in the web editor](#tracker-in-the-web-editor));
-  the [web editor](https://hugelton.github.io/Felucca/webapp/editor/) on the site
-  ([Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp)) edits the sounds but not the tracker
+- Editor: `web/editor.html` in this repository (its Sequencer tab says TODO with this firmware); the
+  [web editor](https://hugelton.github.io/Felucca/webapp/editor/) on the site
+  ([Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp)) edits the sounds
 - Build: [BUILDING.md](BUILDING.md)
 
 <a href="https://hugelton.itch.io/felucca"><img src="https://static.itch.io/images/badge-color.svg" alt="Available on itch.io" width="74"></a>
@@ -70,20 +71,12 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 - **Four tracks**, one synth part each with its own engine and sound (drums are KIT, BREAKS or WAR);
   12 voices shared between them (Fel-Tracker; 8 when the device is busy: voices 9 .. 12 start only while the audio's
   measured load is under 75 %, a heavy song keeps to 8 on its own). ALGORITHM selects the track on every page
-- **Tracker** *(Fel-Tracker, by Tristano Suriani; replaces Felucca's step sequencer)*: 24 patterns of up to 64 rows (a row is a 1/16), a column per
-  track; each cell a note (or OFF) with an optional chord (up to three notes: a shape such as MAJ or MIN7, or two
-  intervals), an instrument (01..3F, changing the track's sound on any row) and *(Fel-Tracker, 2026-10)* RETRIG, the
-  one FX left (the row's notes struck again, below). PLAY on
-  PATTERN loops the pattern; PLAY on SONG plays the order list (up to 128 positions), each position a pattern with its
-  own settings (PAT SET: its tempo, mutes, note chance, sends and SLICER over the tracks'). The instruments are factory or
-  user presets; each track's ENV, filter and sends stay its own (SEQ > SETTINGS). Live recording into the rows, step
-  entry at the cursor (REC armed, stopped); playing, the screen follows the row playing, 8 rows a page. Undo / redo
-  of pattern edits (SAVE held), copy and paste of a track or a pattern, row insert / delete, PLAY from the cursor's
-  row (all on SEQ held). The web editor's Sequencer tab edits all of it. See [Tracker](#tracker)
-- **Metronome:** CLICK (OFF, while recording, or always) with three levels; the click goes to the headphones
-  and speaker only, never to USB audio or into a pattern. There is no count-in: PLAY starts at once, armed or not
+- **Sequencer:** a placeholder for now: SEQ (and GLO) show TODO. PLAY runs the transport (the ARP, the click, the
+  SLICER, the FX layer's grid follow it). See [Sequencer](#sequencer)
+- **Metronome:** CLICK (OFF or ON) with three levels; the click goes to the headphones and speaker only, never to
+  USB audio. There is no count-in: PLAY starts at once
 - **Chord keys:** one finger plays an in-key chord (triads or sevenths of the scale, or fixed chord
-  shapes), with voicings; on the keys, MIDI in, recording and the arpeggiator
+  shapes), with voicings; on the keys, MIDI in and the arpeggiator
 - **Arpeggiator** with UP, DN, UPDN, RND, ORD (the notes in the order you pressed them), REPEAT and, for chords,
   DNUP, UP+8, CONV, DIVG, PINKY, THUMB, WALK and CHORD; a beat LED; 16 scales with a white-key mode, glide,
   MONO / LEGATO / UNISON
@@ -114,24 +107,24 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   so nothing has to stay held
 - **MOMENTARY:** hold LFO and turn a knob on HOME or a sound / FX page; let go of LFO and the value jumps back
   (OCT+ while holding keeps it)
-- **Quick layers:** hold FX, GLO, SCL, EDIT, REC or SEQ for shortcuts on the keys and knobs, or double-tap it to
-  keep the layer open; one-step undo (SAVE held); REC on every page; OCT+ confirms, OCT- goes back; what can be
+- **Quick layers:** hold FX, GLO, SCL or EDIT for shortcuts on the keys and knobs, or double-tap it to
+  keep the layer open; one-step undo (SAVE held); OCT+ confirms, OCT- goes back; what can be
   pressed breathes softly instead of blinking
 - **Presets:** factory presets and 32 user preset slots, named on the device (an FM6 sound keeps its own patch);
-  user presets get a category. One song (the tracker's) is saved on SAVE > PROJECT and can get a random name; projects
-  of Felucca 1.4 and before do not open (see [Tracker](#tracker)). The PRESETS knob changes the sound from every page
+  user presets get a category. One project (the tracks' sounds and settings) is saved on SAVE > PROJECT and can get a
+  random name; projects of earlier versions do not open (see [Sequencer](#sequencer)). The PRESETS knob changes the sound from every page
   that is not a list.
   Turn the FM-1 off and on and the music is as you left it (MENU > RESTORE LAST, an autosave of its own,
   written only when stopped and idle)
 - **Screen:** flat UI with Inter Tight and Fukiai icons, FLAT or LINE style, 10 palettes including
   grayscale, black and white, high contrast and NIGHT; type in sizes by role (what you read in the larger size,
   labels and hints in the smaller); MENU > LARGE for tall knob cards with larger labels and values; the menu in
-  five tabs. The header shows the track, the play state (and while a song plays, its position) and the tempo. HOME
+  five tabs. The header shows the track, the play state and the tempo. HOME
   shows the oscilloscope or, with MENU > HOME TRACKS, **the four tracks** with their sounds, mutes and meters; the
   screen can go dark when the panel is left alone (MENU > SCREEN OFF)
 - **LEDs:** idle buttons and keys glow dim so the panel can be found in the dark (MENU > LEDS: OFF,
   DIM LO, DIM HI or INV, the official firmware's look); PLAY turns green while playing; the keys show
-  the notes the tracker and MIDI IN play; MENU > SCALE LEDS shows the track's scale on the keys;
+  the notes the ARP and MIDI IN play; MENU > SCALE LEDS shows the track's scale on the keys;
   a soft light sweeps over the keys at power-on, and with MENU > ANIM IDLE drifts over them while the FM-1 waits
 - **USB:** class-compliant MIDI in and out, and a stereo audio input ("Felucca") at 44.1 or 48 kHz
   (the computer picks) that records the master output on the computer, no driver needed (at a fixed level with MENU > USB LEVEL FIXED;
@@ -142,7 +135,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   track parameters: 5 GLIDE, 7 LEVEL, 10 PAN, 71 resonance, 72 / 73 / 75 release / attack / decay, 74 brightness,
   91 / 93 / 94 the reverb, chorus and delay sends
 - **Web:** editor for every parameter (with a 6-operator FM patch editor that also sends a whole 32-voice bank),
-  the tracker (patterns, song, instruments, track settings, transport), mixer, preset library, sample upload and
+  mixer, preset library, sample upload and
   recording with trim, the MENU settings; full backup and restore
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
@@ -193,7 +186,7 @@ where marked here:
 ![FM-1 controls with Felucca](docs/controls.jpg)
 
 - Tap a page button for its page, again for the next; HOME returns home. Page buttons act when let go
-- Hold FX, GLO, SCL, EDIT, REC or SEQ for its quick layer; hold SAVE to undo, HOME for the menu; hold LFO and turn a
+- Hold FX, GLO, SCL or EDIT for its quick layer; hold SAVE to undo, HOME for the menu; hold LFO and turn a
   knob for a MOMENTARY change
 - Double-tap a layer's button to keep its layer open without holding; tap it again to close
 - On action pages and in dialogs, OCT+ does it and OCT− goes back; in the menu, OCT+ / OCT− change the value and HOME closes it
@@ -204,162 +197,31 @@ The pages by button:
 | Button | Taps go round | Held |
 |---|---|---|
 | HOME | HOME, MIXER, CLOCK (BPM, swing, clock source) | the menu |
-| SEQ | PATTERN (always first from another page), SONG, SETTINGS, INSTR | the pattern edited, its length, EDIT STEP (KNOB 1–3) |
-| GLO | the tracker's SONG | the GLO layer (mutes, solos, levels, TAP tempo) |
-| SAVE | USER, PROJECT (the song), TOOLS, PRESETS | UNDO |
+| SEQ | the sequencer's placeholder (TODO) | (as a tap) |
+| GLO | the sequencer's placeholder (TODO) | the GLO layer (mutes, solos, levels, TAP tempo) |
+| SAVE | USER, PROJECT, TOOLS (INIT SOUND), PRESETS | UNDO |
 | LFO | LFO, LFO 2, LFO DEST, MOD | MOMENTARY (with a knob) |
 | EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
 | FX, SCL, ENV, ARP | their pages, as before | FX and SCL: their layers |
-| REC | arms / disarms the selected track (never starts PLAY: PLAY then records) | the REC layer (CLEAR, CLICK, CLICK LEVEL) |
+| REC | nothing for now (no recording) | nothing |
 
-## Tracker
+## Sequencer
 
-The step sequencer and everything that came with it are gone, code and all: the STEP page and the DRUM grid, the
-AUTOMATION list (automation, parameter locks, CHANCE, RATCH, NUDGE), the old SEQ TOOLS, PHRASES (the factory patterns,
-a preset's suggested pattern), the A–D song and MENU > CHORD ENTRY. A tracker replaces them. Projects of Felucca 1.4
-and before do not open here; a user preset still loads its sound (a pattern stored with it is kept but never played,
-and a new one stores none).
+A placeholder for now: SEQ (and GLO, which opened the song) show a page that says TODO. Felucca's step sequencer, its
+automation, PHRASES and the A–D song are gone, and so is the tracker that took their place until 2026-10 (git
+history keeps it). PLAY still runs the transport: the ARP, the click, the SLICER and the FX layer's grid follow it,
+on the internal, USB or TRS clock or the plugin's host. REC does nothing for now.
 
-**PATTERN** (SEQ): 24 patterns (00..17), 8 rows at a time, a column per track (ALGORITHM picks the cursor's column).
-Each cell shows the note (`C-4`, `OFF`, `---` none), the instrument (`01`..`3F`, `..` none) and the FX (`T04`: RETRIG,
-4 hits; `...` none); a mark between the note and the instrument says the cell has a chord. The footer spells
-out the cell under the cursor ("C-4 MAJ  SAW LEAD  RETRIG 4") and names the pattern ("PATTERN 05").
+A project (SAVE > PROJECT, the autosave, the plugin's state) holds the tracks' sounds, the globals and each track's
+place in the mix (WIDTH, LOW CUT, DUCK, PAN MODE: their power-on values, as no page sets them for now). Projects of
+earlier versions, the tracker's songs among them, do not open.
 
-*(Fel-Tracker, 2026-10)* **RETRIG** is the only FX command: the row's notes, its chord's too, struck again, its value
-the hits in the row, evenly (2..15; KNOB 4). The parameter commands (LEVEL .. GLIDE) and NOTE DELAY, ARPEGGIO, SLIDE and
-CHANCE went with the plan that makes a cell its note: a pattern's sound and mix are its settings (PAT SET, below).
-
-The column headers ("1 05 ANLG") show the instrument each track sounds *at that moment* and its engine: any cell's
-instrument can change it. A track whose sound isn't an instrument (the power-on sound, or one loaded with PRESETS
-since, or an instrument changed on INSTR) shows its engine alone ("1 ANLG"). A silent track's header is dim with "M"
-for its number: muted, or another track soloed (hold GLO: the black keys F#3..A#3 mute tracks 1–4, the white keys
-F3..B3 solo them while held, C4 unmutes all). KNOB 1 moves the cursor at half speed: the first click of a turn moves a
-row at once, then a row every second click.
-
-| Control | On PATTERN |
-|---|---|
-| KNOB 1 | the row (playing: the cursor is the row playing) |
-| KNOB 2 | the note (from none: the last one entered; below the lowest: OFF, then none) |
-| KNOB 3 | the instrument (the keys then record with it) |
-| KNOB 4 | RETRIG's hits, 2..15 (none: a new RETRIG of 4) |
-| PRESETS | right: RETRIG on (4 hits, or as it was); left: off |
-| EDIT | clears the cell (stopped: the cursor moves EDIT STEP rows on) |
-| SAVE held | undoes the last edit of a pattern; held again, redoes it (below) |
-| keys | play; with the track armed (REC) and stopped they write their note at the cursor; armed and playing they record into the rows. Keys pressed while the first is held add to its cell's chord (stopped or playing) |
-| SEQ held | KNOB 1 the pattern edited (while LOOP plays, it starts after the one playing), KNOB 2 its length, KNOB 3 EDIT STEP, KNOB 4 the chord of the cursor's cell; the white keys the tools (below); PLAY loops the pattern from the cursor's row; OCT− puts the pattern back as it was when SEQ went down |
-| PLAY | loops the pattern from row 00 |
-
-**Undo**: SAVE held on a tracker page puts back the pattern edited last as it was before that edit (its cells and its
-length); held again, it redoes. One edit is one undo: a single turn of a knob on a cell (until you pause for 1.5 s or
-move), an EDIT, a key's note, a tool. Undo works while playing. It covers the patterns, not the song order,
-instruments or settings, and edits from the web editor or live recording are not undone.
-
-**Tools** (hold SEQ, then a white key; the map shows them, a paste dim while nothing is copied):
-
-| Key | Tool |
-|---|---|
-| F3 COPY TRK | copies the cursor's track (its column of the pattern) |
-| G3 PASTE TRK | pastes it into the cursor's track (any pattern, any track) |
-| A3 COPY PAT | copies the whole pattern, with its length |
-| B3 PASTE PAT | pastes it over the pattern edited (SEQ + KNOB 1 picks it: copy, turn, paste) |
-| C4 INS ROW | inserts an empty cell at the cursor in its track; the rows below move down, the last one of the length goes |
-| D4 DEL ROW | deletes the cursor's cell in its track; the rows below move up, an empty one at the end |
-| E4 INS ALL | INS ROW on every track |
-| F4 DEL ALL | DEL ROW on every track |
-
-Each tool is one undo. The clipboard keeps until power-off.
-
-**Chords**: a cell's note can carry two more notes, 1 to 15 semitones above it, so a track plays up to three notes on a
-row. SEQ held + KNOB 4 picks a shape: NONE, MAJ, MIN, SUS2, SUS4, DIM, AUG, MAJ6, MAJ7 (1 3 7), DOM7 (1 3 ♭7), MIN7
-(1 ♭3 ♭7), 5TH, 5+OCT, OCT. Holding keys together writes any chord: the first key is the note, the next two (higher, at
-most 15 semitones up) its intervals; this works for step entry and live recording. KNOB 2 moves the chord with its
-note; OFF or no note drops it. A chord sounds only when the track is POLY (the instrument's voice mode): a MONO, LEGATO
-or UNISON track plays the note alone. The tracks share 12 voices (8 when the device is busy), so chords on every track
-at once take voices from each other.
-
-**Changing the instrument on a step**: on PATTERN, KNOB 1 to the row, ALGORITHM to the column, KNOB 3 the instrument
-(`01`..`3F`; `..` keeps the one the column played last). The instrument picked is also the one new notes are entered
-and recorded with. What each number plays is set on INSTR (below).
-
-**SONG** (SEQ again, or GLO): the order list, each position a pattern (`PATTERN 03`). KNOB 1 the position (past the
-last: + ADD), KNOB 2 its pattern (on + ADD: a new position), KNOB 4 right a copy after it, left deletes it (EDIT too). A
-pattern's length is SEQ held + KNOB 2. PLAY plays the song from the position picked, round and round; the PATTERN page
-then shows the pattern playing.
-
-**PAT SET** (SEQ after SONG) *(Fel-Tracker)*: a pattern's own settings, over the tracks while it plays (until 2026-10
-a pattern had up to four of these, the variations A..D; one now, the variations dropped):
-
-| Row | Sets | KEEP / default |
-|---|---|---|
-| TEMPO | the tempo, 40..240 BPM (KNOB 1) | SONG: the song's |
-| MUTE | a track silent (KNOB 1–4: right mutes, left plays) | PLAY |
-| CHANCE | the chance each of the track's notes plays, 0..100 % (the same notes at every PLAY) | 100 % |
-| DIST, CHORUS, DELAY, REVERB | the track's send | KEEP: the track's own |
-| SLICER, SL PAT, SL RATE | the track's SLICER mode, pattern and rate | KEEP: the track's own |
-
-It edits the pattern of the SONG page's position (past the last position: the one LOOP plays). PRESETS picks the
-row; KNOB 1–4 set it for the tracks in view; EDIT puts the selected track's value back (TEMPO: SONG; a send or the
-SLICER: KEEP). Turning a value up from KEEP starts at the track's own. An edit while the pattern plays is heard at
-once, and PLAY on this page loops its pattern. The tracks' own settings never change: STOP returns to them.
-
-**SETTINGS**: each track's ATTACK, DECAY, SUSTAIN, RELEASE, CUTOFF, RESO, FLT ENV, DIST, CHORUS, DELAY, REVERB, LEVEL,
-PAN, WIDTH, LOW CUT, DUCK and PAN MODE. PRESETS picks the row, KNOB 1–4 set it for tracks 1–4. CUTOFF and RESO hold the engine's filter
-over every instrument; INST (EDIT) leaves it to the instrument. *(Fel-Tracker)* **WIDTH** (OFF, 1–20 ms; the last four
-tracks only, or the last two of four, so the rhythm section stays in the middle) is the Haas effect: the track's highs,
-above about 250 Hz, play a little late on one side and its lows as they are on both, so it widens without hollowing
-the bass in a mono sum; the late side changes track by track (track 5 sits left, 6 right, and so on, as their pans).
-**LOW CUT** (OFF, 40, 60, 80, 120, 160, 240, 320 Hz) takes a track's lows away after DIST and the SLICER, so pads and
-leads leave the bass its room. At power-on the wide tracks have WIDTH 12 ms and LOW CUT 120 Hz, the rhythm section
-neither; EDIT puts that back. The song keeps them.
-**DUCK** *(Fel-Tracker)* (OFF, 1–15, KEY): the track set to KEY (the kick) lowers the tracks with a depth for a moment
-each time it sounds, at once and back over about a quarter of a second (15: some 24 dB under at its loudest, 5: about
-a third down): the pump of industrial, EBM and techno, and room for the kick. Their sends go down with them; the
-reverb's and delay's tails already playing do not. Off on every track at power-on (EDIT: OFF); the song keeps it.
-**PAN MODE** *(Fel-Tracker, 2026-10)* (ALT, RND): ALT is SPREAD as it always was, the voices left, right, left .. of PAN
-by SPRD on a POLY or UNISON track; RND puts each new note on a side picked at random, in any voice mode, by SPRD (half
-the width at SPRD 0): hats, plucks and arps that move without an LFO. A sounding note keeps its side. ALT at power-on;
-the song keeps it.
-
-**INSTR**: the instruments 01..3F. KNOB 1 the slot, KNOB 2 its engine (or USER), KNOB 3 its preset; the selected
-track plays it at once. EDIT empties the slot. A row's instrument sets the track's engine, its EDIT values and voice
-mode from that row on; the track's settings stay.
-
-**The song store** (SAVE > PROJECT): one song, saved over the four project storage areas; a save cut short leaves
-the song saved before it whole. About 3,300 cells fit, about 2,200 if every one has a chord (SONG TOO BIG beyond;
-songs saved before the chords do not open); RESTORE LAST keeps a song that fits one
-storage area (a bigger one says SONG NOT RESTORED at power-on: save it). The full backup (web editor, Projects tab)
-holds the song too.
-
-**Swing**: CLOCK's SWING swings the rows (up to 1.4 × / 0.6 × at 100); a track's own SWG of the step sequencer is
-not used any more. The SLICER follows the rows.
-
-### Tracker in the web editor
-
-`web/editor.html` (open it in Chrome or Edge; `?mock=1` tries it without a device) shows the tracker on its
-**Sequencer** tab when the firmware has one:
-
-- **Pattern:** the pattern, its length, PLAY LOOP / STOP, CLEAR. Every cell is a text field: `C-4 01 C40` (note,
-  instrument, FX), `C-4 MAJ 01 C40` or `C-4 +3+10 01` (a chord after the note: a shape or two intervals), `OFF`,
-  `---` / `..` / `...` for none; an empty field clears the cell. Fields can be left out from the front (`01 C40` sets
-  the instrument and FX only). Up / Down and Enter move
-  between rows. While playing, the row playing is highlighted and, with *Follow playback*, the view keeps up with it,
-  8 rows at a time, and switches to each new pattern
-- **Song:** the order list: a pattern per position, ▶ plays the song from
-  there, × removes it, + ADD appends one. Picking another pattern while a loop plays cues it, as on the device
-- **Pattern settings:** a pattern's tempo (empty: the song's), and per track MUTE, CHANCE, the sends and the SLICER (empty / KEEP: the track's own)
-- **Instruments:** 01..3F, each none, an engine's factory preset, or a user preset
-- **Track settings:** CUTOFF and RESO over the instruments (empty: INST), and each track's ATTACK, DECAY, SUSTAIN,
-  RELEASE, FLT ENV, DIST, CHORUS, DELAY, REVERB, LEVEL and PAN
-- What changes on the device (the panel, live recording, a load) shows up in the editor by itself
-- **Projects** has the one song (load / save) instead of the slots A–D; the step grid, AUTOMATION and the A–D song chain
-  are gone from the editor with a tracker firmware (an older firmware still gets them)
-
-The protocol (SysEx commands 78 TRACKER and 79 TRACKER_CHANGED) is in [web/EDITOR_PROTOCOL.md](web/EDITOR_PROTOCOL.md).
+The web editor's Sequencer tab says TODO with this firmware (an older Felucca firmware still gets its step grid).
 
 ## Menu
 
 Hold **HOME** for the menu, in five tabs: **DISPLAY** (COLOR, STYLE, LARGE, ANIM, LEDS, SCREEN OFF, SCOPE, HOME),
-**CONTROL** (HOLD, KNOB ACCEL, FX LATCH, BPM LOCK, SCALE LEDS, STEP PREVIEW), **AUDIO** (SPEAKER EQ,
+**CONTROL** (HOLD, KNOB ACCEL, FX LATCH, BPM LOCK, SCALE LEDS), **AUDIO** (SPEAKER EQ,
 USB LEVEL, CLICK, CLICK LEVEL, TUNE), **MIDI** (MIDI IN) and **SYSTEM** (USB SERIAL, RESTORE LAST,
 HARDWARE CALIBRATION, INFO, ABOUT).
 ALGORITHM moves between the tabs and PRESETS through the rows of one; any of KNOB 1–4, or OCT+ / OCT−,
@@ -372,12 +234,12 @@ way as from the menu, in the same tabs.
   (black and white)
 - **STYLE:** FLAT (filled cards) or LINE (areas divided by thin lines)
 - **LARGE:** OFF or ON: on HOME and the value pages the four knob cards grow tall, marked K1–K4, with
-  larger labels and values about twice the size; the graph below becomes a strip. Lists, the tracker's pages
+  larger labels and values about twice the size; the graph below becomes a strip. Lists, SEQ's placeholder
   and the quick layers keep their layout with larger labels
 - **ANIM:** ON, OFF or IDLE. OFF shows every change at once, without rolling digits or
   the LED sweep at power-on. IDLE is ON plus a gentle LED animation after a minute without input: a soft light drifts
   over the keys and the buttons breathe; any key, button or knob ends it and does what it always does. It never runs
-  while playing, with a track armed, in a layer, the menu or a dialog
+  while playing, in a layer, the menu or a dialog
 - **LEDS:** OFF (no glow), DIM LO, DIM HI (default) or INV (the idle LEDs lit, the active ones dark).
   What can be pressed breathes up to about 60 % of a lit LED, about 30 % with DIM LO
 - **SCREEN OFF:** NEVER (default), 5 MIN, 15 MIN, 30 MIN or 60 MIN: after that long with no button, key or knob
@@ -397,16 +259,14 @@ way as from the menu, in the same tabs.
   layer or use HOME > CLOCK instead
 - **SCALE LEDS:** OFF or ON: the keys show the selected track's scale all the time (the root a little
   brighter); not on DRUM tracks
-- **STEP PREVIEW:** OFF (default) or ON: on SEQ > PATTERN with the transport stopped, moving the cursor plays the
-  cell it lands on once (its note, through its instrument)
 - **SPEAKER EQ:** FLAT, LOWCUT or BASS+, a tone setting for the built-in speaker (not a switch). It also
   shapes the headphone out and USB audio, so keep it on FLAT when recording. The firmware cannot turn
   the speaker off, but headphones in the jack do
 - **USB LEVEL:** MASTER (the MASTER knob sets the USB audio level too) or FIXED (USB always at full
   level, MASTER sets only the speaker and headphones)
-- **CLICK:** OFF (default), REC (while a track is armed) or ON: a click on every beat while playing, the
+- **CLICK:** OFF (default) or ON: a click on every beat while playing, the
   bar's first beat higher. **CLICK LEVEL:** LOW, MID (default) or HIGH; MASTER sets it too
-- **TUNE:** the global tuning, −50 to +50 cents. It is the song's, saved and loaded with it
+- **TUNE:** the global tuning, −50 to +50 cents. It is the project's, saved and loaded with it
 - **MIDI IN:** CH1-4 (default), SEL, CH5-8, CH9-12 or CH13-16 (see MIDI above). The project's too
 - **USB SERIAL:** ON or OFF, applied when the menu closes (the FM-1 reconnects). OFF leaves out the
   serial console, a developer tool, so the FM-1 is a plain audio + MIDI device; this lets macOS 13–15
@@ -577,7 +437,7 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     low-pass (CUT, RES) and EDGE, a high-pass after it (thin, icy, laser cuts)
   - *(Fel-Tracker)* RAZOR and DARK each have three EBM basslines, presets that set the arp too: EBM OCTAVES (16ths,
     root and octave), EBM ROOT (16ths on the one note), EBM GALLOP (16th triplets). Hold a key, or a MIDI note, and it
-    plays the line at the tempo (the tracker's notes play as written: the arp plays the keys and MIDI)
+    plays the line at the tempo (the arp plays the keys and MIDI)
   - **SLAG**: hot walls and drones: 2 .. 4 oscillators wandering in tune (DRIFT), HEAT's saturation, a low-pass that
     MELT lets sink over each note, NOISE sparks
   - **WAR**: an industrial kit, a key each from C2 (as DRUM): KICK, HARD, SNARE, CLAP, HAT, OPEN, TOM L, TOM H, METAL,
@@ -664,11 +524,8 @@ A project plays the TYPE it was saved with (one of the native image's own, on th
 
 On the **SCL** page, set **QNT** to WHITE to play the selected scale using only the
 white keys (SNAP keeps every key and rounds it down to the scale). C4 plays **ROOT**; consecutive white keys play consecutive scale notes
-above and below it. Black keys are silent, including during live recording and
-step entry. **TRN** transposes the resulting notes; the octave buttons shift them
-by full octaves. Set QNT to OFF for the normal chromatic keyboard. QNT SEQ snaps the keys like SNAP and
-also maps the tracker's notes onto the current ROOT / SCALE as they play (the cells are not changed; drum
-kits are never quantized).
+above and below it. Black keys are silent. **TRN** transposes the resulting notes; the octave buttons shift them
+by full octaves. Set QNT to OFF for the normal chromatic keyboard.
 
 Available scales: chromatic (CHR), major (MAJ), natural minor (MIN), Dorian (DOR),
 Mixolydian (MIX), major pentatonic (PEN), minor pentatonic (MPEN), harmonic minor
@@ -688,7 +545,7 @@ sevenths, or a fixed shape) and VOIC the voicing.
 | `firmware/` | firmware sources: `src/` app, `hal/` hardware layer, `loader/` update loader |
 | `tools/` | build script, generators, package maker and installer |
 | `assets/` | UI font, icon names |
-| `web/` | the web installer, the editor with the tracker (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
+| `web/` | the web installer, the editor (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
 | `native/` | *(Fel-Tracker)* the native image: Fel-Tracker as a desktop application (SDL2), BUILDING.md "Native image" |
 | `plugin/` | *(Fel-Tracker)* the plugin (VST3, AU, CLAP by DPF, `plugin/dpf`): its cores (a library a distribution), their instances, the host side and its window (`src/`), `install.sh`, BUILDING.md "Plugin" |
 | `tests/` | tests that run on the build machine |

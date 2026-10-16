@@ -411,27 +411,6 @@ static int up_load(uint32_t k)
     return 0;
 }
 
-/* a user preset as the tracker's instrument (tracker.c tk_user_sound, the audio ISR or the main loop with it held off):
- * its engine, its EDIT values, its voice mode, its FM6 patch into track t; the track's settings stay (tracker.c). A
- * slot emptied since changes nothing */
-static void up_tk_sound(track_t *t, uint32_t k)
-{
-    const up_rec_t *r;
-    int16_t v[P_COUNT];
-    uint32_t i;
-    if (!up_used(k) || up_engine(k) == ENG_NO)
-        return;
-    r = up_rec(k);
-    up_values(r, v);
-    t->eng_req = (uint8_t)eng_for_track(t, up_engine(k));   /* (DUBSIREN off the last track: DUBSIREN8) */
-    for (i = 0; i < 8u; i++)
-        t->p[P_E0 + i] = v[P_E0 + i];
-    t->p[P_VOICE] = v[P_VOICE];
-    t->p[P_OCT] = v[P_OCT];                             /* (the sound's octave goes with it) */
-    t->preset = 0;
-    t->user = (uint8_t)(k + 1u);
-}
-
 
 
 /* the PRESETS list's user presets: the used slots of an engine the build has */

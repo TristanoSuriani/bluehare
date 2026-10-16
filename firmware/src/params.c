@@ -15,9 +15,8 @@ static const char *const N_DIV[] = {"1/4", "1/8", "1/16", "1/32", "8T", "16T", "
 static const char *const N_SCALE[] = {"CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM",
                                     "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"};
 static const char *const N_ONOFF[] = {"OFF", "ON"};
-/* seq.c kb_map; 1 = SNAP (stored projects: the former ON); 3 = SEQ: SNAP, and the sequencer's notes snap too as
- * they play (seq.c seq_step; the steps keep what was written). Append-only: older projects hold 0..2 */
-static const char *const N_QUANT[] = {"OFF", "SNAP", "WHITE", "SEQ"};
+/* seq.c kb_map; 1 = SNAP (stored projects: the former ON). (3, SEQ, the sequencer's notes snapped too: gone with it) */
+static const char *const N_QUANT[] = {"OFF", "SNAP", "WHITE"};
 /* chord keys (chord.c): OFF, the diatonic triad / seventh of the track's ROOT and SCALE on the key, fixed shapes */
 static const char *const N_CHRD[] = {"OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"};
 static const char *const N_VOIC[] = {"CLOSE", "OPEN", "INV1", "INV2", "+OCT"};   /* VC_CLOSE .. VC_BASS */
@@ -170,7 +169,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_SAVE] = PE("SAVE", N_GO, 0),
     [G_ENGSEL] = PE("ENG", N_ENGNAME, 0),
     [G_ENGGO] = PE("SET", N_GO, 0),
-    [G_CLRSEQ] = PE("CLRSQ", N_GO, 0),
+    [G_CLRSEQ] = PE("CLRSQ", N_GO, 0),          /* (unused: the sequencer is a placeholder; the id stays, as G_ENGGO) */
     [G_INITSND] = PE("INIT", N_GO, 0),
     /* the reverb's model on the REVERB page: the id of the old GM drum channel (G_DRCH, inert since 1.0) */
     [G_RTYPE] = PE("TYPE", N_RTYPE, 2),         /* HALL at power-on since 1.2 (ROOM before; projects keep theirs) */
@@ -348,7 +347,7 @@ enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE,
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_TRK };   /* SC_TRK: the TRACKS page (ui_input.c tracks_edit) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_ARP, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
        GR_SLCR, GR_MOD, GR_TOOLS, GR_CHORD,
-       GR_TKPAT, GR_TKSONG, GR_TKVAR, GR_TKSET, GR_TKINST, GR_TKLAY };   /* (GR_TK*: the tracker's, ui_tracker.c) */
+       GR_TODO };                  /* (GR_TODO: SEQ's placeholder, ui_draw.c draw_todo) */
 
 typedef struct {
     const char *title;
@@ -382,16 +381,11 @@ static const page_t PAGES[] = {
     {"PRESETS", FAM_SAVE, SC_GLOBAL, GR_BROWSE, {0xFF, 0xFF, 0xFF, 0xFF}},   /* browser: PRESETS knob / KNOB 1 */
     {"USER", FAM_SAVE, SC_GLOBAL, GR_USER, {0xFF, 0xFF, 0xFF, 0xFF}},       /* user presets: SLOT LOAD ERASE SAVE */
     {"PROJECT", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {0xFF, 0xFF, G_LOAD, G_SAVE}},   /* the song store (1.5: one song) */
-    {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_CLRSEQ, G_INITSND, 0xFF, 0xFF}},
+    {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},
     {"ARP", FAM_ARP, SC_TRACK, GR_ARP, {P_AMODE, P_ARATE, P_AOCT, P_AGATE}},
     {"ARP 2", FAM_ARP, SC_TRACK, GR_NONE, {P_ASWING, P_APROB, P_AHOLD, P_AORDER}},
-    /* 1.5: the tracker (ui_tracker.c). SEQ opens PATTERN, its taps go round these; GLO opens SONG */
-    {"PATTERN", FAM_SEQ, SC_GLOBAL, GR_TKPAT, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"SONG", FAM_SEQ, SC_GLOBAL, GR_TKSONG, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"PAT SET", FAM_SEQ, SC_GLOBAL, GR_TKVAR, {0xFF, 0xFF, 0xFF, 0xFF}},   /* (Fel-Tracker: a pattern's own settings; the
-                                                                           * variations' A, the only one since 2026-10) */
-    {"SETTINGS", FAM_SEQ, SC_GLOBAL, GR_TKSET, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"INSTR", FAM_SEQ, SC_GLOBAL, GR_TKINST, {0xFF, 0xFF, 0xFF, 0xFF}},
+    /* (Fel-Tracker) the sequencer's placeholder: SEQ (and GLO, which opened the song) shows TODO */
+    {"SEQ", FAM_SEQ, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5
      * GLO > GLOBAL; its TUNE is MENU > AUDIO's now), again HOME (ui.c home_tap) */
     {"MIXER", FAM_TRK, SC_TRK, GR_TRK, {0, 1, 2, 3}},

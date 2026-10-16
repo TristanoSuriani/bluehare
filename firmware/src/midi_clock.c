@@ -45,10 +45,8 @@ static __attribute__((noinline)) void midi_clock_pulse(uint32_t ms)
             uint32_t old_beat = beat_samples(), new_beat = (uint32_t)FS * dt / 250u;
             if (song.playing && new_beat != old_beat) {
                 uint32_t ratio = (new_beat << 12) / old_beat;
-                /* Preserve the tracker's fractional row phase when the master
+                /* Preserve the metronome's fractional step phase when the master
                  * changes tempo. The next pulse then lands on its new boundary. */
-                if (tk_pl.row_pos < (uint32_t)FS * 2u)
-                    tk_pl.row_pos = (uint32_t)(((uint64_t)tk_pl.row_pos * ratio + 2048u) >> 12);
                 if (clk_pos < (uint32_t)FS * 2u)   /* (the metronome's beat as the steps) */
                     clk_pos = (uint32_t)(((uint64_t)clk_pos * ratio + 2048u) >> 12);
             }

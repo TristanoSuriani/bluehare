@@ -67,23 +67,21 @@ int main(void)
                  "-> KIT; GUTS -> WASP; ANVIL -> MODAL; retired (0 .. 13, 27): none", ok);
 
     /* power-on */
-    reset();                                            /* (tk_defaults: the instruments of the power-on parts) */
+    reset();
 #if NPART == 8
     bad += check("power-on: FM KIT, BREAKS, SID BASS, FAT BASS (centred), DUBCHORD, FORMANT PAD, SYNC LEAD, the siren (left "
-                 "and right in turn); the instruments by id",
+                 "and right in turn)",
                  TRK_DEF[0][0] == ENGI_KIT && TRK_DEF[1][0] == ENGI_BREAKS && TRK_DEF[2][0] == ENGI_SID && TRK_DEF[2][1] == 0u &&
                  TRK_DEF[3][0] == ENGI_WASP && str_eq(ENGINES[ENGI_WASP]->presets[TRK_DEF[3][1]].name, "FAT BASS") &&
                  TRK_DEF[4][0] == ENGI_DUBCHORD && TRK_DEF[5][0] == ENGI_VOSIM &&
                  str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[5][1]].name, "FORMANT PAD") && TRK_DEF[6][0] == ENGI_SID &&
-                 TRK_DEF[6][1] == 2u && TRK_DEF[7][0] == ENGI_DUBSIREN && tk.instr[0].src == EID_KIT &&
-                 tk.instr[5].src == EID_VOSIM && !TRK_PAN[0] && !TRK_PAN[2] && !TRK_PAN[3] && TRK_PAN[4] < 0 &&
+                 TRK_DEF[6][1] == 2u && TRK_DEF[7][0] == ENGI_DUBSIREN && !TRK_PAN[0] && !TRK_PAN[2] && !TRK_PAN[3] && TRK_PAN[4] < 0 &&
                  TRK_PAN[5] > 0 && TRK_PAN[6] < 0 && TRK_PAN[7] > 0);
 #else
-    bad += check("power-on (4 tracks): FM KIT, SID BASS, FORMANT PAD, SYNC LEAD; the pad and the lead apart; the "
-                 "instruments by id",
+    bad += check("power-on (4 tracks): FM KIT, SID BASS, FORMANT PAD, SYNC LEAD; the pad and the lead apart",
                  TRK_DEF[0][0] == ENGI_KIT && TRK_DEF[1][0] == ENGI_SID && TRK_DEF[1][1] == 0u && TRK_DEF[2][0] == ENGI_VOSIM &&
                  str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[2][1]].name, "FORMANT PAD") && TRK_DEF[3][0] == ENGI_SID &&
-                 TRK_DEF[3][1] == 2u && tk.instr[0].src == EID_KIT && tk.instr[2].src == EID_VOSIM && !TRK_PAN[0] &&
+                 TRK_DEF[3][1] == 2u && !TRK_PAN[0] &&
                  !TRK_PAN[1] && TRK_PAN[2] < 0 && TRK_PAN[3] > 0);
 #endif
 
@@ -111,7 +109,7 @@ int main(void)
     bad += check("  G_ENGSEL BLISS: WAVE; PRESET HOOVER 3: SID's first preset (replies its id); NAMES HOOVER: none", ok);
 
     /* OCT (Fel-Tracker): a preset sets it, the next preset puts it back (FMPERC's 6 kicks carry -3: FMPERC is not in this
-     * distribution, its table is read as it stands); a tracker instrument sets it too; a song keeps it; a stored value
+     * distribution, its table is read as it stands); a song keeps it; a stored value
      * outside -4 .. 4 (ENV DEST FX, which it was) loads as 0 */
     for (i = 0, ok = 1, off = 0; i < NELEM(FMPERC_PRESETS); i++) {
         int kick = strstr(FMPERC_PRESETS[i].name, "KICK") != 0;
@@ -123,15 +121,10 @@ int main(void)
     trk[0].p[P_OCT] = -2;
     apply_preset_to(&trk[0], 6);                        /* a preset with OCT 0 puts it back */
     ok &= trk[0].p[P_OCT] == 0 && off == 6u;
-    trk[0].p[P_OCT] = 3;
-    tk.instr[0].src = EID_SID;
-    tk.instr[0].preset = 1;
-    tk_inst_apply(&trk[0], 1);                          /* .. so does a tracker instrument */
-    ok &= trk[0].p[P_OCT] == 0;
-    bad += check("OCT: FMPERC's 6 KICK presets carry -3, the others 0; a preset load and an instrument set it", ok);
+    bad += check("OCT: FMPERC's 6 KICK presets carry -3, the others 0; a preset load sets it", ok);
     trk[0].p[P_OCT] = -3;
     project_save(0);
-    project_new();
+    trk[0].p[P_OCT] = 0;
     project_load(0);
     ok = trk[0].p[P_OCT] == -3 && param_oct(P_OCT, 30) == 0 && param_oct(P_OCT, -65) == 0 && param_oct(P_OCT, -2) == -2 &&
          param_oct(P_DIST, 30) == 30 && TP[P_OCT].min == -4 && TP[P_OCT].max == 4 && str_eq(TP[P_OCT].label, "OCT");
@@ -175,30 +168,26 @@ int main(void)
     }
 
     /* DUBSIREN's echo is the last track's alone; IDM has no DUBSIREN8 since MODAL took its place (engines.c
-     * eng_for_track): on another track DUBSIREN plays itself, dry. A pick, an instrument, a song */
+     * eng_for_track): on another track DUBSIREN plays itself, dry. A pick, a song */
     reset();
     set_engine_of(&trk[0], ENGI_DUBSIREN);
     ok = trk[0].eng_req == ENGI_DUBSIREN && ENGI_DUBSIREN8 == ENG_ABSENT && ENGINES[ENGI_DUBSIREN]->last_track;
     set_engine_of(&trk[NPART - 1], ENGI_DUBSIREN);
     ok &= trk[NPART - 1].eng_req == ENGI_DUBSIREN;
-    tk.instr[0].src = EID_DUBSIREN;
-    tk.instr[0].preset = 4;                             /* LASER */
-    tk_inst_apply(&trk[1], 1);
-    ok &= trk[1].eng_req == ENGI_DUBSIREN && trk[1].preset == 4u && trk[1].p[P_E4] == DUBSIREN_PRESETS[4].e[4];
-    bad += check("DUBSIREN: no DUBSIREN8 in IDM: on any track itself (its echo the last track's), a pick, an instrument", ok);
+    bad += check("DUBSIREN: no DUBSIREN8 in IDM: on any track itself (its echo the last track's), a pick", ok);
     reset();
     set_engine_of(&trk[0], ENGI_DUBSIREN);
     apply_preset_to(&trk[0], 4);
     trk[0].p[P_E1] = 99;
     project_save(0);
-    project_new();
+    set_engine_of(&trk[0], ENGI_WAVE);
     project_load(0);
     bad += check("  a song with DUBSIREN on track 1 loads it so, its preset and values as saved",
                  trk[0].eng_req == ENGI_DUBSIREN && trk[0].preset == 4u && trk[0].p[P_E1] == 99);
     {   /* DUBSIREN on track 1 plays dry, and its voice ends once let go */
         int32_t o[2 * CTL];
         uint32_t f, end = 0, pk = 0;
-        reset();                                        /* (no song, no instruments of the tests above) */
+        reset();
         host_tracks_init();
         host_preset(&trk[0], ENGI_DUBSIREN, 8);         /* RUNAWAY ECHO */
         panic_req = 0;                                  /* (reset's preset loads: their release is not this note's) */
@@ -227,16 +216,14 @@ int main(void)
     set_engine_of(&trk[0], ENGI_WAVE);
     apply_preset_to(&trk[0], 2);
     trk[0].p[P_ATK] = 33;
-    *tk_at(0, 0, 0) = tk_pack(60, 0, 0, 0);
     project_save(0);
-    off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + (PROJ_VER >= 3u);   /* (v3: the track count first) */    /* track 1's engine byte */
+    off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + 1u;   /* track 1's engine byte (after the track count) */
     ok = proj_ram[0][off] == EID_WAVE;
     proj_ram[0][off] = EID_HOOVER;
     stream_rehash();
-    project_new();
     project_load(0);
     e = trk[0].eng_req;
-    ok &= e == ENGI_SID && trk[0].preset == 0u && trk[0].p[P_ATK] == 33 && tk_note(tk_at(0, 0, 0)) == 60u;
+    ok &= e == ENGI_SID && trk[0].preset == 0u && trk[0].p[P_ATK] == 33;
     for (i = 0; i < 8u; i++)
         ok &= trk[0].p[P_E0 + i] == ENGINES[ENGI_SID]->presets[0].e[i];
     bad += check("project: a track of HOOVER (left out) loads as SID, its first preset's engine values, the rest as saved",
@@ -248,14 +235,6 @@ int main(void)
     up_rec(4)->engine = EID_BYTE;                         /* (a record a build with BYTE stored) */
     ok = up_used(4) && up_engine(4) == ENG_NO && !up_avail(4) && up_count() == 0u && up_load(4) == 1;
     bad += check("user preset of BYTE (left out): kept (used), in no list, loads nothing", ok);
-
-    /* the song */
-    reset();
-    tk.instr[9].src = EID_BLISS; tk.instr[9].preset = 3;
-    fm1_irq_off();
-    tk_inst_apply(&trk[2], 10);
-    fm1_irq_on();
-    bad += check("instrument of BLISS (left out): plays WAVE's first preset", trk[2].eng_req == ENGI_WAVE && trk[2].preset == 0u);
 
     /* sound */
     {
@@ -281,47 +260,32 @@ int main(void)
             }
         bad += check("every engine left renders every preset (not silent)", loud == n && n > 40u);
     }
-    /* the song format (Fel-Tracker step 3b): an 8-track build writes version 3 (a cell's place 2 bytes, the track count
-     * after the name; every build version 4 now, the variations); a song of more tracks than the build is refused, one of fewer fills its
-     * first tracks. build/host/song_v2.bin carries a 4-track song from this test's 4-track run to its 8-track one */
+    /* the project format: every build writes version 8 (the track count after the name); a project of more tracks than
+     * the build is refused, one of fewer fills its first tracks. build/host/song_4trk.bin carries a 4-track project from
+     * this test's 4-track run to its 8-track one */
     {
-        static const char V2[] = "build/host/song_v2.bin";
-        uint32_t c, k;
+        static const char V4[] = "build/host/song_4trk.bin";
+        uint32_t k;
         reset();
         set_engine_of(&trk[1], ENGI_WEST);
         apply_preset_to(&trk[1], 3);
         trk[1].p[P_E1] = 77;
-        *tk_at(0, 63, NTRK - 1u) = tk_pack(60, 1, 0, 0);       /* the last place: past 255 at 8 tracks */
-        *tk_at(TK_PATS - 3u, 40, 0) = tk_pack_ch(48, 2, 0, 0, 0x37);   /* pattern 22 (the pool's at 8), a chord */
+        trk[NTRK - 1u].p[P_ATK] = 21;
         project_save(0);
-        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 7u;   /* (every build: the version of PAN MODE) */
-        project_new();
+        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 8u;   /* (every build: no song) */
+        set_engine_of(&trk[1], ENGI_SID);
+        trk[NTRK - 1u].p[P_ATK] = 0;
         project_load(0);
-        ok &= tk_note(tk_at(0, 63, NTRK - 1u)) == 60u && tk_chord(tk_at(TK_PATS - 3u, 40, 0)) == 0x37u &&
-              trk[1].eng_req == ENGI_WEST && trk[1].p[P_E1] == 77;
-        snprintf(dbg2, sizeof dbg2, "song: version %u at %u tracks, the last place (row 64, track %u) and a chord in pattern 22 kept",
-                 PROJ_VER, NTRK, NTRK);
+        ok &= trk[1].eng_req == ENGI_WEST && trk[1].p[P_E1] == 77 && trk[NTRK - 1u].p[P_ATK] == 21;
+        snprintf(dbg2, sizeof dbg2, "project: version %u at %u tracks, every track's sound kept", PROJ_VER, NTRK);
         bad += check(dbg2, ok);
-        reset();                                        /* a big song: past 4 chunks at 8 tracks, refused at 4 */
-        for (c = 0, k = 0; c < TK_PATS * TK_ROWS * NTRK && k < 4200u; c++, k++)
-            *tk_at(c / (TK_ROWS * NTRK), (c / NTRK) % TK_ROWS, c % NTRK) = tk_pack(36 + c % 48u, 1 + c % 9u, 0, 0);
-        snprintf(dbg2, sizeof dbg2, "  4,200 cells: %s", NTRK == 8 ? "saved in more than 4 chunks, loaded the same" : "SONG TOO BIG (4 chunks)");
-        if (NTRK == 8) {
-            ok = !project_save(0) && proj_good.count > 4u && proj_good.count <= PROJ_CHUNKS;
-            project_new();
-            project_load(0);
-            ok &= tk_note(tk_at(0, 0, 0)) == 36u && tk_note(tk_at(4199u / (TK_ROWS * NTRK), (4199u / NTRK) % TK_ROWS, 4199u % NTRK)) == 36u + 4199u % 48u;
-        } else {
-            ok = project_save(0) != 0;
-        }
-        bad += check(dbg2, ok);
-        if (NTRK == 4) {                                /* a version-3 song of 8 tracks: refused, the music as it was */
+        if (NTRK == 4) {                                /* a project of 8 tracks: refused, the music as it was */
             FILE *f;
             reset();
             set_engine_of(&trk[1], ENGI_WEST);
-            *tk_at(5, 10, 2) = tk_pack(64, 1, 0, 0);
+            trk[2].p[P_ATK] = 64;
             project_save(0);
-            if ((f = fopen(V2, "wb"))) {                /* (for the 8-track run: a 4-track song) */
+            if ((f = fopen(V4, "wb"))) {                /* (for the 8-track run: a 4-track project) */
                 for (k = 0; k < PROJ_CHUNKS; k++) {
                     uint16_t n = proj_ram_len[k];
                     fwrite(&n, 2, 1, f);
@@ -329,17 +293,16 @@ int main(void)
                 }
                 fclose(f);
             }
-            off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN;   /* (where version 3 has the track count) */
-            proj_ram[0][PROJ_HDR] = 3;
+            off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN;   /* (the track count) */
             proj_ram[0][off] = 8;
             set_engine_of(&trk[2], ENGI_SID);
             project_load(0);
-            bad += check("  a version-3 song of 8 tracks on a 4-track build: SONG HAS 8 TRACKS, the music as it was",
+            bad += check("  a project of 8 tracks on a 4-track build: SONG HAS 8 TRACKS, the music as it was",
                          !strcmp(ui.msg, "SONG HAS 8 TRACKS") && trk[2].eng_req == ENGI_SID);
-        } else {                                        /* a 4-track song (version 2) on 8 tracks */
-            FILE *f = fopen(V2, "rb");
+        } else {                                        /* a 4-track project on 8 tracks */
+            FILE *f = fopen(V4, "rb");
             if (!f) {
-                printf("editor:   (no %s: run the 4-track engines test first; the version-2 load is not checked)\n", V2);
+                printf("editor:   (no %s: run the 4-track engines test first; the 4-track load is not checked)\n", V4);
             } else {
                 reset();
                 memset(proj_ram_len, 0, sizeof proj_ram_len);
@@ -354,11 +317,10 @@ int main(void)
                 fclose(f);
                 set_engine_of(&trk[5], ENGI_SID);       /* (track 6 before: back to its power-on sound) */
                 trk[5].p[P_E1] = 99;
-                project_new();
                 project_load(0);
-                ok = trk[1].eng_req == ENGI_WEST && tk_note(tk_at(5, 10, 2)) == 64u && !tk_note(tk_at(5, 10, 6)) &&
+                ok = trk[1].eng_req == ENGI_WEST && trk[2].p[P_ATK] == 64 &&
                      trk[5].eng_req == eng_for_track(&trk[5], TRK_DEF[5][0]) && trk[5].p[P_E1] != 99;
-                bad += check("  a 4-track song (version 2) on 8 tracks: tracks 1 .. 4 as saved, 5 .. 8 as at power-on", ok);
+                bad += check("  a 4-track project on 8 tracks: tracks 1 .. 4 as saved, 5 .. 8 as at power-on", ok);
             }
         }
     }

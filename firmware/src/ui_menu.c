@@ -164,17 +164,14 @@ static void menu_head(void)
     cv_icon_mid(8, H_HEAD / 2, 16, ui.menu >= 2 ? ICON_X_INFO : ICON_X_COG, T_THEME, T_BG);   /* (as draw_head's) */
     GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
     cv_text(30, HEAD_MY, &AF_M, ui.menu == 3 ? "INFO" : ui.menu == 2 ? "ABOUT / CREDITS" : "MENU", T_TEXT);
-    if (ui.menu >= 2) {                               /* the way back at the right, the REC mark before it (then */
-        const char *w = song.rec ? 0 : "BACK";        /* the keycap goes without its word: no room for both) */
-        int32_t x = 232 - kh_w(KC_OCTDN, w);
+    if (ui.menu >= 2) {                               /* the way back at the right */
+        int32_t x = 232 - kh_w(KC_OCTDN, "BACK");
         GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
-        cv_key_hint(x, HALF_UP(H_HEAD - KC_H), KC_OCTDN, w, 1, T_BG);
-        draw_rec_mark(x - 20, T_BG);
+        cv_key_hint(x, HALF_UP(H_HEAD - KC_H), KC_OCTDN, "BACK", 1, T_BG);
     } else {
         int32_t x = 232 - (12 + (int32_t)(MTAB_COUNT - 1u) * 8) - 8 - kh_w(KC_HOME, "CLOSE");   /* (menu_dots' left) */
         GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
         cv_key_hint(x, HALF_UP(H_HEAD - KC_H), KC_HOME, "CLOSE", 1, T_BG);
-        draw_rec_mark(x - 20, T_BG);
         menu_dots();
     }
     cv_blit(0, Y_HEAD);
@@ -408,7 +405,7 @@ static void draw_menu(void)
     if (ui.menu == 1)
         mt_follow();
     sig = ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings.lowcut * 7919u + settings_hold * 3511u +
-          settings_leds * 6151u + ui_prefs * 4099u + ui_style * 257u + song.rec * 65537u + song.sel * 13u +
+          settings_leds * 6151u + ui_prefs * 4099u + ui_style * 257u + song.sel * 13u +
           ui_rec_prefs * 92821u + ui_scr * 131071u +          /* (#157: SCREEN OFF's value redraws its row) */
           ui_prefs2 * 524287u + ui_idle * 1048573u +      /* (1.2: ANIM IDLE's value redraws its row) */
           ui_home_view * 7340033u +    /* (1.3: HOME) */

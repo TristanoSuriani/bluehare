@@ -493,6 +493,28 @@ static void test_outputs(void)
 }
 
 /* ---------------------------------------------------------------- state --- */
+/* a closed hat (GM 42) on channel 1 every 1/16 at 120 BPM for 2 s at 48 kHz, played as MIDI notes (the sequencer is a
+ * placeholder: a state holds the tracks' sounds, no song); the hats heard */
+static uint32_t midi_hats(fel_host_t *h)
+{
+    static float rec[48000u * 2u + 256u];
+    float l[256], r[256], *o[2] = {l, r};
+    uint32_t at, i, hits[64];
+    for (at = 0; at < 48000u * 2u; at += 256u) {
+        fel_event_t ev[2];
+        uint32_t ne = 0, f = (at + 5999u) / 6000u * 6000u;
+        if (f < at + 256u) {
+            ev[ne++] = (fel_event_t){f - at, {0x90, 42, 100}};
+            if (f - at + 100u < 256u)
+                ev[ne++] = (fel_event_t){f - at + 100u, {0x80, 42, 0}};
+        }
+        fel_host_run(h, o, 2, 256, ev, ne, 0);
+        for (i = 0; i < 256u; i++)
+            rec[at + i] = l[i];
+    }
+    return onsets(rec, 48000u * 2u, 480u, hits, 64u);
+}
+
 static void test_state(void)
 {
     char err[256], what[200];
@@ -508,7 +530,7 @@ static void test_state(void)
     for (k = 0; k < 40u; k++)
         fel_host_run(a, buf, 2, 256, 0, 0, 0);
     n = fel_host_save(a, &blob);                  /* (taken at once: the device has not autosaved yet) */
-    snprintf(what, sizeof what, "a state taken: the song stream alone (no flash image), %zu bytes compressed", n);
+    snprintf(what, sizeof what, "a state taken: the project stream alone (no flash image), %zu bytes compressed", n);
     ck(what, n > 8u && n < 16384u);
     b = fel_host_new(dir, 48000.0, err, sizeof err);
     ck("loaded into another instance, with IDM (the chooser's second)",
@@ -516,19 +538,9 @@ static void test_state(void)
     n2 = fel_host_save(b, &blob2);
     for (k = 0; k < 200u; k++)                    /* (its boot) */
         fel_host_run(b, buf, 2, 256, 0, 0, 0);
-    nh = 0;
-    {
-        uint32_t at;
-        static float rec[48000u * 2u + 256u];
-        for (at = 0; at < 48000u * 2u; at += 256u) {
-            fel_transport_t tr = {1, 1, 120.0, at / 24000.0};
-            fel_host_run(b, buf, 2, 256, 0, 0, &tr);
-            for (i = 0; i < 256u; i++)
-                rec[at + i] = l[i];
-        }
-        nh = onsets(rec, 48000u * 2u, 480u, hits, 64u);
-    }
-    snprintf(what, sizeof what, "... and played there: its hats (%u in 2 s at 120 BPM), its state the same song again (%zu bytes)", nh, n2);
+    nh = midi_hats(b);
+    (void)hits; (void)i;
+    snprintf(what, sizeof what, "... and played there: track 1's sound kept (%u hats of 16 in 2 s by MIDI), its state again (%zu bytes)", nh, n2);
     ck(what, nh >= 12u && n2 > 8u);
     ck("a damaged state is refused, the instance plays on as it was", fel_host_load(b, 0, blob, n / 2u, err, sizeof err) != 0 &&
                                                                           fel_host_dist(b) == 1u);
@@ -626,20 +638,12 @@ static void test_window(void)
     h = fel_host_new(dir, 48000.0, err, sizeof err);
     ((const fel_core_api_t *)fel_host_core(h))->test_ticks();
     blocks(h, 40, 0);
-    ck("a distribution switched with the song: IDM NATIVE -> IDM", fel_host_switch(h, 1, err, sizeof err) == 0 && fel_host_dist(h) == 1u);
+    ck("a distribution switched with the project: IDM NATIVE -> IDM", fel_host_switch(h, 1, err, sizeof err) == 0 && fel_host_dist(h) == 1u);
     {
-        static float rec[48000u * 2u + 256u];
-        float l[256], r[256], *o[2] = {l, r};
-        uint32_t at, hits[64], nh;
+        uint32_t nh;
         blocks(h, 200, 0);
-        for (at = 0; at < 48000u * 2u; at += 256u) {
-            fel_transport_t tr = {1, 1, 120.0, at / 24000.0};
-            fel_host_run(h, o, 2, 256, 0, 0, &tr);
-            for (i = 0; i < 256u; i++)
-                rec[at + i] = l[i];
-        }
-        nh = onsets(rec, 48000u * 2u, 480u, hits, 64u);
-        snprintf(what, sizeof what, "... its song plays there (%u hats in 2 s)", nh);
+        nh = midi_hats(h);
+        snprintf(what, sizeof what, "... its sounds there (%u hats of 16 in 2 s by MIDI)", nh);
         ck(what, nh >= 12u);
     }
     fel_host_free(h);
