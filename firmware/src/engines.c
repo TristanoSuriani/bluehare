@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Engine table (this build's engines in display order: the indices; their ids: core.h) and the parts' sounds at
  * power-on. */
 #include "dsp.c"
 #include "shared/phys_dsp.c"   /* the resonators MODAL and ANVIL play (PHYS's, DaisySP's: MIT) */
 #include "shared/drum_map.c"   /* the drum lanes and GM map KIT, WAR and GLITCH play */
-/* (Fel-Tracker) the engines' own memory of a track (a cavern, a ring, a voice's grains), one block a track that every
+/* (Blue Hare) the engines' own memory of a track (a cavern, a ring, a voice's grains), one block a track that every
  * such engine borrows: a track plays one engine at a time (voice.c: the old one's voices fade and go before the new one
  * takes the track), so the block is as big as the largest of this build's engines needs, not their sum. An engine
  * asks for it with its key (eng_slab, after the engines): the first ask of a key the block was not lent to clears it
@@ -59,28 +59,28 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_risers.c"         /* RISERS: build-ups and landings, timed to the song (1.5) */
 #include "eng_chipkit.c"        /* CHIPKIT: the drums of the 8-bit consoles (1.5, CHIP) */
 #include "eng_sandstorm.c"      /* SANDSTORM: the late-90s trance lead (1.5, WAREHOUSE) */
-#ifdef FELUCCA_NATIVE           /* (the native image's alone: engine_ids.h, core.h FELUCCA_NATIVE) */
+#ifdef BLUEHARE_NATIVE           /* (the native image's alone: engine_ids.h, core.h BLUEHARE_NATIVE) */
 #include "eng_nebula.c"         /* NEBULA: PARTICLE's cloud whole (native) */
 #include "eng_canyon.c"         /* CANYON: ECHOES' repeats, all of them (native) */
 #endif
 
-/* the block's size: the largest this build's engines ask for (core.h FELUCCA_ENG_*) */
+/* the block's size: the largest this build's engines ask for (core.h BLUEHARE_ENG_*) */
 #define SLAB_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define SLAB_IF(on, sz) ((on) ? (uint32_t)(sz) : 0u)
 #define ENG_SLAB_BYTES                                                                                                  \
-    SLAB_MAX(SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_ABYSS, sizeof(ab_cav_t)),                                          \
-                               SLAB_IF(FELUCCA_ENG_SHRED, sizeof(int16_t) * SH_LEN)),                                 \
-                      SLAB_MAX(SLAB_IF(FELUCCA_ENG_MODAL || FELUCCA_ENG_ANVIL, sizeof(md_voice_t) * MD_POLY),         \
-                               SLAB_IF(FELUCCA_ENG_ECHOES, sizeof(ec_g_t) * EC_POLY * EC_NG))),                       \
-             SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_PARTICLE, sizeof(pt_grain_t) * PT_POLY * PT_NG),                   \
-                               SLAB_IF(FELUCCA_ENG_GLITCH, sizeof(gl_voice_t) * GL_POLY)),                            \
-                      SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_FLUIDS, sizeof(int32_t) * FL_POLY * FL_NAP),              \
-                                        SLAB_IF(FELUCCA_ENG_SCREAM, sizeof(sc_t))),                                   \
-                               SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_KARPLUS, sizeof(int16_t) * KP_POLY * KP_LEN),    \
-                                                 SLAB_IF(FELUCCA_ENG_DUBSIREN8, sizeof(ds8_echo_t))),                 \
-                                        SLAB_MAX(SLAB_MAX(SLAB_IF(FELUCCA_ENG_STRINGS, sizeof(st_ens_t)),             \
-                                                          SLAB_IF(FELUCCA_ENG_FLOOR, sizeof(fl_part_t))),             \
-                                                 SLAB_IF(FELUCCA_ENG_SANDSTORM, sizeof(ss_voice_t) * SS_POLY))))))
+    SLAB_MAX(SLAB_MAX(SLAB_MAX(SLAB_IF(BLUEHARE_ENG_ABYSS, sizeof(ab_cav_t)),                                          \
+                               SLAB_IF(BLUEHARE_ENG_SHRED, sizeof(int16_t) * SH_LEN)),                                 \
+                      SLAB_MAX(SLAB_IF(BLUEHARE_ENG_MODAL || BLUEHARE_ENG_ANVIL, sizeof(md_voice_t) * MD_POLY),         \
+                               SLAB_IF(BLUEHARE_ENG_ECHOES, sizeof(ec_g_t) * EC_POLY * EC_NG))),                       \
+             SLAB_MAX(SLAB_MAX(SLAB_IF(BLUEHARE_ENG_PARTICLE, sizeof(pt_grain_t) * PT_POLY * PT_NG),                   \
+                               SLAB_IF(BLUEHARE_ENG_GLITCH, sizeof(gl_voice_t) * GL_POLY)),                            \
+                      SLAB_MAX(SLAB_MAX(SLAB_IF(BLUEHARE_ENG_FLUIDS, sizeof(int32_t) * FL_POLY * FL_NAP),              \
+                                        SLAB_IF(BLUEHARE_ENG_SCREAM, sizeof(sc_t))),                                   \
+                               SLAB_MAX(SLAB_MAX(SLAB_IF(BLUEHARE_ENG_KARPLUS, sizeof(int16_t) * KP_POLY * KP_LEN),    \
+                                                 SLAB_IF(BLUEHARE_ENG_DUBSIREN8, sizeof(ds8_echo_t))),                 \
+                                        SLAB_MAX(SLAB_MAX(SLAB_IF(BLUEHARE_ENG_STRINGS, sizeof(st_ens_t)),             \
+                                                          SLAB_IF(BLUEHARE_ENG_FLOOR, sizeof(fl_part_t))),             \
+                                                 SLAB_IF(BLUEHARE_ENG_SANDSTORM, sizeof(ss_voice_t) * SS_POLY))))))
 #define ENG_SLAB_WORDS ((ENG_SLAB_BYTES + 3u) / 4u + 1u)
 static uint32_t eng_slab_mem[NPART][ENG_SLAB_WORDS] __attribute__((section(".pool")));
 static uint8_t eng_slab_key[NPART];
@@ -114,11 +114,11 @@ static const engine_t ENG_NONE = {
     .knob = {P_ATK, P_DEC, P_SUS, P_REL},
 };
 
-/* this build's engines, in the distribution's order (core.h FELUCCA_DIST_ENGINES: the ENGI_ indices). Only what is
+/* this build's engines, in the distribution's order (core.h BLUEHARE_DIST_ENGINES: the ENGI_ indices). Only what is
  * listed here is linked */
 static const engine_t *const ENGINES[NENGINES] = {
 #define X(N) &ENG_##N,
-    FELUCCA_DIST_ENGINES(X)
+    BLUEHARE_DIST_ENGINES(X)
 #undef X
 };
 
@@ -128,7 +128,7 @@ static inline uint32_t eng_idx(uint32_t e) { return e < NENGINES ? e : 0u; }
 /* ids <-> indices. eng_id(e): engine e's id. eng_of_id(id): the index of the engine with that id, ENG_NO when the build
  * has none (a retired id, an engine left out, an id past the last) */
 #define ENG_NO 0xFFu
-#define EID_IDX(X) (FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : ENG_NO)
+#define EID_IDX(X) (BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : ENG_NO)
 static const uint8_t ENG_OF_ID[EID_COUNT] = {
     [0] = ENG_NO, [1] = ENG_NO, [2] = ENG_NO, [3] = ENG_NO, [4] = ENG_NO, [5] = ENG_NO, [6] = ENG_NO, [7] = ENG_NO,
     [8] = ENG_NO, [9] = ENG_NO, [10] = ENG_NO, [11] = ENG_NO, [12] = ENG_NO, [13] = ENG_NO, [27] = ENG_NO,   /* (retired) */
@@ -148,7 +148,7 @@ static const uint8_t EID_SUB[EID_COUNT] = {     /* (engine_ids.h: each engine's 
 #include "engine_ids.h"
 #undef ENGINE
 };
-/* (Fel-Tracker, 2026-10: 8 engines a distribution) a chain that finds none of the build's: a kit (an engine of drum
+/* (Blue Hare, 2026-10: 8 engines a distribution) a chain that finds none of the build's: a kit (an engine of drum
  * lanes) loads as the kit track's power-on engine, any other sound as the mid track's (track 3: a pad, a chord), not as
  * the build's first engine (a pad as drums) */
 static uint32_t trk_def_engine(uint32_t i);
@@ -171,7 +171,7 @@ static uint32_t eng_load_id(uint32_t id, int *sub)
     return n < EID_COUNT ? eng_of_id(id) : trk_def_engine(eid_kit(id0) ? 0u : NPART > 2u ? 2u : 0u);
 }
 
-/* (Fel-Tracker) engine e as track t may play it: one on the last track alone (engine_t.last_track: DUBSIREN) is its
+/* (Blue Hare) engine e as track t may play it: one on the last track alone (engine_t.last_track: DUBSIREN) is its
  * substitute anywhere else (DUBSIREN8: the same controls and preset order, so the sound carries over), or itself
  * when the build has none (it then plays as it can: DUBSIREN dry). Every load goes through this: a pick, a preset, a
  * project, an instrument, a user preset */
@@ -195,29 +195,29 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
     return (eng_rank(e) + (dir > 0 ? 1u : NENGINES - 1u)) % NENGINES;
 }
 
-/* the parts at power-on (engine index, preset). (Fel-Tracker) The rhythm section first, the wide parts last: with 8
+/* the parts at power-on (engine index, preset). (Blue Hare) The rhythm section first, the wide parts last: with 8
  * tracks 1..4 the drums (KIT's FM KIT, BREAKS) and the basses (SID BASS, WASP's FAT BASS), centred, 5..8 the chords
  * (DUBCHORD), the pad (VOSIM's FORMANT PAD), the lead (SID SYNC LEAD) and the siren (the last track's), spread left and
  * right in turn; with 4, the drums and the bass, then the pad (CHIP: BYTE's arpeggio) and the lead. An engine the build
  * leaves out: the second
  * pick, else its first engine, preset 0 */
-#define TRK_PICK(X, p) {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : 0u, FELUCCA_ENG_##X ? (uint8_t)(p) : 0u}
+#define TRK_PICK(X, p) {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : 0u, BLUEHARE_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
-    {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
-     FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : 0u}
+    {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : BLUEHARE_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
+     BLUEHARE_ENG_##X ? (uint8_t)(p) : BLUEHARE_ENG_##Y ? (uint8_t)(q) : 0u}
 #define TRK_PICK3(X, p, Y, q, Z, r)                                                                                    \
-    {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : FELUCCA_ENG_##Z ? (uint8_t)ENGI_##Z : 0u,  \
-     FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : FELUCCA_ENG_##Z ? (uint8_t)(r) : 0u}
+    {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : BLUEHARE_ENG_##Y ? (uint8_t)ENGI_##Y : BLUEHARE_ENG_##Z ? (uint8_t)ENGI_##Z : 0u,  \
+     BLUEHARE_ENG_##X ? (uint8_t)(p) : BLUEHARE_ENG_##Y ? (uint8_t)(q) : BLUEHARE_ENG_##Z ? (uint8_t)(r) : 0u}
 #define TRK_PICK5(V, o, X, p, Y, q, Z, r, W, u)                                                                        \
-    {FELUCCA_ENG_##V ? (uint8_t)ENGI_##V : FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y :     \
-     FELUCCA_ENG_##Z ? (uint8_t)ENGI_##Z : FELUCCA_ENG_##W ? (uint8_t)ENGI_##W : 0u,                                   \
-     FELUCCA_ENG_##V ? (uint8_t)(o) : FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) :                 \
-     FELUCCA_ENG_##Z ? (uint8_t)(r) : FELUCCA_ENG_##W ? (uint8_t)(u) : 0u}
+    {BLUEHARE_ENG_##V ? (uint8_t)ENGI_##V : BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : BLUEHARE_ENG_##Y ? (uint8_t)ENGI_##Y :     \
+     BLUEHARE_ENG_##Z ? (uint8_t)ENGI_##Z : BLUEHARE_ENG_##W ? (uint8_t)ENGI_##W : 0u,                                   \
+     BLUEHARE_ENG_##V ? (uint8_t)(o) : BLUEHARE_ENG_##X ? (uint8_t)(p) : BLUEHARE_ENG_##Y ? (uint8_t)(q) :                 \
+     BLUEHARE_ENG_##Z ? (uint8_t)(r) : BLUEHARE_ENG_##W ? (uint8_t)(u) : 0u}
 #define TRK_PICK4(X, p, Y, q, Z, r, W, u)                                                                              \
-    {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : FELUCCA_ENG_##Y ? (uint8_t)ENGI_##Y : FELUCCA_ENG_##Z ? (uint8_t)ENGI_##Z :     \
-     FELUCCA_ENG_##W ? (uint8_t)ENGI_##W : 0u,                                                                         \
-     FELUCCA_ENG_##X ? (uint8_t)(p) : FELUCCA_ENG_##Y ? (uint8_t)(q) : FELUCCA_ENG_##Z ? (uint8_t)(r) :                 \
-     FELUCCA_ENG_##W ? (uint8_t)(u) : 0u}
+    {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : BLUEHARE_ENG_##Y ? (uint8_t)ENGI_##Y : BLUEHARE_ENG_##Z ? (uint8_t)ENGI_##Z :     \
+     BLUEHARE_ENG_##W ? (uint8_t)ENGI_##W : 0u,                                                                         \
+     BLUEHARE_ENG_##X ? (uint8_t)(p) : BLUEHARE_ENG_##Y ? (uint8_t)(q) : BLUEHARE_ENG_##Z ? (uint8_t)(r) :                 \
+     BLUEHARE_ENG_##W ? (uint8_t)(u) : 0u}
 /* (FOUNDRY: WAR's WAR KIT and EBM KIT, DARK's SUB WEIGHT, RAZOR's COLD BASS; DUBCHORD, VOSIM; RAZOR LEAD, SCREAM's
  * SIREN CRY. WAREHOUSE: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS; DUBCHORD, VOSIM; SANDSTORM's LEAD, SIREN8's BIT SIREN) */
 #if NPART == 8
@@ -229,7 +229,7 @@ static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(KIT, 0, WAR, 0), TRK_PICK4(F
                                                                                  * HOOVER's SIREN, SCREAM's SIREN CRY) */
 static const int8_t TRK_PAN[NPART] = {0, -8, 0, 0, -24, 24, -16, 16};
 #else
-/* (Fel-Tracker, 2026-10: 4 tracks everywhere) a role a track: the kit, the bass (both centred), the mid (left), the
+/* (Blue Hare, 2026-10: 4 tracks everywhere) a role a track: the kit, the bass (both centred), the mid (left), the
  * high (right). CHIP: CHIPKIT's NES KIT, SID BASS, BYTE ARP, SID's SYNC LEAD; IDM: BREAKS, WASP's FAT BASS, WAVE's
  * WARM PAD, MODAL's KALIMBA; FOUNDRY: WAR KIT, DARK's SUB WEIGHT, SLAG's EMBER PAD, RAZOR LEAD; WAREHOUSE: FLOOR,
  * VENOM ACID, DUBCHORD's DUB STAB, SANDSTORM. (KIT and VOSIM first where a build has them: IDM NATIVE, and the host

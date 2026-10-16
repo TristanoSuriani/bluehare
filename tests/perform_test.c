@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Host test of the FX hold layer's effects (firmware/src/perform.c), same sources as the firmware (through
  * hostsim.c).   build/host/perform_test [DEMO_DIR]          (run_tests.sh: build/perform_demo)
  * 1. timing: REPEAT and REVERSE start on the next 1/16 of the transport (sample exact) and end when let go
@@ -24,7 +24,7 @@
  *    away after the input stops; KNOB 4 at 0 is plain (the delay holds only the input); the cost: over the
  *    idle song, and the harmonizer's own over REPEAT 1/16 alone (the layer's stage, which every effect of it
  *    pays): about 2 % at most (device estimate: 1.7 % per 100 instructions per sample).
- * 10. (Felucca 1.2's FLANGER and PHASER: gone in Fel-Tracker.)
+ * 10. (Felucca 1.2's FLANGER and PHASER: gone in Blue Hare.)
  * 11. the key map (perform.c perf_map_of / perf_map_put, seq.c): 0 = the default; any effect or NONE on any key, the
  *    others kept; the codes of the retired FLANGER and PHASER read as the default; the keys of a remapped layer; a
  *    key remapped while held takes its new effect; two keys with one effect; FX LATCH follows a remap; the default
@@ -724,7 +724,7 @@ static int test_map(void)
     bad += check("map: settings of 0 (before 1.2) read as the default (1.1.5's ten, 6 none)",
                  ok && PF_DEF[9] == PF_ODN && PF_DEF[10] == PF_N && PF_DEF[11] == PF_N && PF_DEF[0] == PF_R8);
     ok = 1;
-    for (p = 0; p < PF_KEYS; p++)                       /* FLANGER (12), PHASER (13) stored by Felucca 1.2 .. Fel-Tracker
+    for (p = 0; p < PF_KEYS; p++)                       /* FLANGER (12), PHASER (13) stored by Felucca 1.2 .. Blue Hare
                                                          * 1.5: the key's default */
         for (e = 12u; e <= 13u; e++) {
             uint32_t i = 5u * p;

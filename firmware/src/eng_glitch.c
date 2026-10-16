@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* GLITCH (1.5): a kit of micro-sounds, the clicks and cuts of the form (Fel-Tracker's own). Every key from C2 is another
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* GLITCH (1.5): a kit of micro-sounds, the clicks and cuts of the form (Blue Hare's own). Every key from C2 is another
  * sound, made anew at each hit (as DRUM's lanes; the octave above the same sixteen, an octave up): CLICK, POP, TICK,
  * ZAP (a sweep down), BITERR (a square jumping between random pitches), DATA (noise gated by random bits), DROP (a
  * dropout: a thump, a gap, a click), FAX and MODEM (the chirps of a line), CRACKL (dust on a record), SPARK, BLIP,

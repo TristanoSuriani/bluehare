@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* MENU's settings for the editor (EDITOR_PROTOCOL.md "MENU settings"): MENU_DESC describes one, MENU_SET sets one;
  * INFO 4E 01 count. The editor builds its settings from these; the values, names and the apply path are the menu's
  * own (menu_items.c), so the two cannot differ. CALIBRATION and ABOUT are not offered (no value). 1.0.5: each reply
@@ -39,7 +39,7 @@ static const uint8_t ED_MENU[][2] = {
 static uint32_t ed_menu_save(void)
 {
     settings_save();
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     if (!flash_ok || persist_pending == 2u) return 3;
     if (persist_pending == 1u) return 4;
     {

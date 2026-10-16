@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* STRINGS (1.5, WAREHOUSE): a string ensemble, after the Waldorf Streichfett and the string machines before it
- * (Fel-Tracker's own). Each voice is three saws, 16', 8' and 4' (the octave under the note, the note, the octave
+ * (Blue Hare's own). Each voice is three saws, 16', 8' and 4' (the octave under the note, the note, the octave
  * over), and a square, blended by REG from contrabass through cello, viola and violin to an organ-like registration,
  * BODY the 16' weight on top; DTN detunes the 16' and the 4' against the 8' (the machines' slightly loose divider
  * tuning); a gentle low-pass at BRITE (each registration a little brighter or darker), ANIM a slow sweep of it (the

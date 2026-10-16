@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank TECH: machines and technology, the Latin-rooted words of the control room (the format: num.txt); 32 words
 SYSTEM   S IH1 S T AH0 M
 COMPUTER K AH0 M P Y UW1 T ER0

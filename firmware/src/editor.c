@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Editor protocol: SysEx for the web editor (web/EDITOR_PROTOCOL.md; v2 = user presets + live sync,
  * v3 = four tracks: the v1 / v2 commands act on the selected track, cmds 27-30 reach any track;
  * v4 = TRACK_PARAM (31) and the TRACK_CHANGED push (32), enabled by WATCH bit 1;
@@ -15,7 +15,7 @@
 #define ED_HDR1 0x46
 #define ED_HDR2 0x4C
 /* 1.5: 6 STEP_GET, 7 STEP_SET, 26 STEP_CHANGED, 30 TRACK_STEP and 64 MOTION (the step sequencer and its automation)
- * are gone: no reply. Fel-Tracker: 68..71 (FM6's patches) and 74..77 (its voice bank) with FM6: no reply */
+ * are gone: no reply. Blue Hare: 68..71 (FM6's patches) and 74..77 (its voice bank) with FM6: no reply */
 enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_PRESET = 8, ED_PROJECT, ED_NAMES,
        ED_SMP_BEGIN, ED_SMP_WRITE, ED_SMP_END, ED_SMP_ERASE, ED_SMP_INFO,
        ED_UP_LIST, ED_UP_GET, ED_UP_PUT, ED_UP_STORE, ED_UP_LOAD, ED_UP_ERASE,   /* v2: user presets */
@@ -300,7 +300,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     if (ed_menu_handle(cmd, a, na)) { ed_send(); return; }
     switch (cmd) {
     case ED_INFO:
-        ed_str("FEL-TRACKER " FELUCCA_VERSION_DIST, 24);   /* (Fel-Tracker: was "FELUCCA ") */
+        ed_str("BLUE HARE " BLUEHARE_VERSION_DIST, 24);   /* (Blue Hare: was "BLUE HARE ") */
         ed_b(EID_COUNT);                                  /* (NENGINES of the protocol: the ids, "-" none here) */
         ed_b(P_COUNT);
         ed_b(G_COUNT);

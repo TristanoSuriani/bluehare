@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* DUBSIREN (1.5): the sound-system siren box (Fel-Tracker's own, in the manner of the boxes): an oscillator (WAVE: SQR,
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* DUBSIREN (1.5): the sound-system siren box (Blue Hare's own, in the manner of the boxes): an oscillator (WAVE: SQR,
  * TRI, SAW, SINE) whose pitch an LFO swings DEPTH semitones up at RATE (~0.1 .. 20 Hz) in SHAPE (SQR the two-tone
  * "nee-naw", UP a whoop up, DOWN a whoop down, TRI a wail); SWEEP slides the whole pitch up or down from the note on
  * (+-32 semitones a second, on through the release: the dive), and the box's own tape echo: TIME (20 .. 460 ms; turned
@@ -10,7 +10,7 @@
  * saturated as a tape loop is.
  * Its own envelope: ATK and REL of the ADSR (DEC, SUS are not used: a siren is on or off); the voice lasts until
  * the echoes have died away (ownenv). One voice a part (the echo is the part's).
- * The last track only (Fel-Tracker, the 8-track plan): its 16-bit echo is one line, the last track's (track 4, or 8 in
+ * The last track only (Blue Hare, the 8-track plan): its 16-bit echo is one line, the last track's (track 4, or 8 in
  * an 8-track build); a DUBSIREN sound loaded on another track becomes DUBSIREN8 (engines.c eng_for_track), and one
  * that plays there anyway (no line: a build without DUBSIREN8) plays its siren dry.
  * Voice state: ph[0] the oscillator, ph[1] the LFO, s[0] the envelope (Q15), s[1] the sweep (1/16 semitone, Q8),

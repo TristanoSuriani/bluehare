@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* MONO LOWS (fx.c mono_lows, the master before the bus compressor): a 40 Hz tone hard left comes out on both sides
  * nearly alike, 60 Hz mostly; a 2 kHz tone hard left stays left (20 dB and more); a centred signal passes untouched; silence after ends in exact zeros */
 #define main hostsim_main

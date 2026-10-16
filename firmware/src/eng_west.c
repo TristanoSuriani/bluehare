@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* WEST (1.5): west coast. A complex oscillator, a wavefolder and a low-pass gate, after the Buchla way of building a
- * voice (Fel-Tracker's own design: no circuit modelled).
+ * voice (Blue Hare's own design: no circuit modelled).
  *
  * A modulating sine at RATIO times the note (whole and half ratios, and four inharmonic ones for bells and metal)
  * moves the phase of the carrier sine by FM; FDBK feeds the modulator back into itself (sine -> saw-like -> noise).
@@ -19,7 +19,7 @@ static const char *const N_WEST_RATIO[] = {"1/2", "1", "3/2", "2", "5/2", "3", "
 static const uint16_t WEST_RATIO[16] = {128, 256, 384, 512, 640, 768, 1024, 1280, 1536, 1792, 2048, 361, 443, 707, 909,
                                         1180};   /* Q8 */
 #define WEST_BW 1558264779u     /* 16 kHz as a phase increment (16000 x 2^32 / 44100): the spectrum's top; / (inc >> 8):
-                                 * that in notes, Q8. (Fel-Tracker: was 14 kHz; 16 keeps the aliasing ~-43 dB or less
+                                 * that in notes, Q8. (Blue Hare: was 14 kHz; 16 keeps the aliasing ~-43 dB or less
                                  * up to C7, measured against 8x: high notes keep more of their FM and fold) */
 
 static void west_note_on(track_t *t, voice_t *v)
@@ -95,7 +95,7 @@ static const preset_t WEST_PRESETS[] = {
     {"FOLD LEAD", {1, 0, 70, 20, 30, 40, 110, 8}, {2, 70, 90, 40}, 0, 1, FX(0, 0, 40, 20)},
     {"DRONE", {3, 25, 40, 0, 0, 30, 90, 0}, {70, 90, 110, 90}, 0, 0, FX(0, 50, 25, 70)},
     {"RIM NOISE", {15, 60, 30, 0, 90, 120, 120, 100}, {0, 30, 0, 25}, 0, 0, FX(0, 0, 30, 20)},
-    /* (Fel-Tracker, the IDM review) warm: the gate hardly closing, slow envelopes */
+    /* (Blue Hare, the IDM review) warm: the gate hardly closing, slow envelopes */
     {"FOLD PAD", {1, 15, 35, 10, 20, 20, 80, 0}, {80, 90, 110, 100}, 0, 0, FX(0, 70, 25, 80)},
     {"WARM DRONE", {0, 10, 30, 5, 0, 10, 70, 0}, {100, 90, 120, 110}, 0, 0, FX(0, 70, 25, 80)},
     /* struck and plucked */
@@ -103,7 +103,7 @@ static const preset_t WEST_PRESETS[] = {
     {"FOLD MARIMBA", {6, 25, 0, 0, 80, 120, 100, 0}, {0, 50, 0, 45}, 0, 0, FX(0, 0, 25, 35)},
     {"GONG", {13, 60, 30, 10, 60, 60, 110, 20}, {0, 115, 0, 110}, 0, 0, FX(0, 20, 30, 70)},
     {"WOOD BASS", {1, 20, 20, 0, 60, 100, 70, 0}, {0, 60, 40, 30}, 0, 1, FX(0, 0, 10, 10)},
-    /* (Fel-Tracker, the 8-track plan) plucks, KARPLUS's place in IDM: struck bright (TMBR), the gate shutting (LPG high) */
+    /* (Blue Hare, the 8-track plan) plucks, KARPLUS's place in IDM: struck bright (TMBR), the gate shutting (LPG high) */
     {"LPG HARP", {3, 20, 5, 0, 60, 110, 115, 0}, {0, 105, 0, 95}, 0, 0, FX(0, 10, 30, 45)},
     {"NYLON GATE", {1, 25, 15, 10, 50, 105, 110, 0}, {0, 98, 0, 85}, 0, 0, FX(0, 10, 20, 30)},
     {"KOTO FOLD", {5, 35, 30, 20, 80, 115, 115, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 0, 30, 35)},

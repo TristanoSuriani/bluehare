@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* ABYSS (1.5, FOUNDRY): a cavern that rings (Fel-Tracker's own). One voice a track excites a feedback network of
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* ABYSS (1.5, FOUNDRY): a cavern that rings (Blue Hare's own). One voice a track excites a feedback network of
  * four delay lines (a cavern's walls: SIZE their lengths, ~15 .. ~70 ms, in ratios no two share; TUNE pulls them
  * towards the key's period instead, a cavern that sings the note), FDBK how long it rings (from a slap to near
  * forever), DAMP the walls soaking up the highs, MOD the walls moving a little (a slow, seasick wobble), DRIVE

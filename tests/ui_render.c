@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Renders of the firmware UI (firmware/src/ui*.c on tests/ui_test.c's stubs), the layout lint, the GREY and MONO
  * checks and the host draw cost.
  *   ui_render OUTDIR [SLOTDIR]   (run by tests/run_tests.sh; tests/ui_render.py makes the PNGs;
@@ -715,7 +715,7 @@ static void setup(int s)
         fx_say(key_at(0, 1), PF_TAPE, "");
         break;
     case S_REVERB: go_title("REVERB"); song.g[G_RTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: SPRING */
-    case S_DLY2: go_title("DLY 2"); song.g[G_DTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: TAPE (Fel-Tracker) */
+    case S_DLY2: go_title("DLY 2"); song.g[G_DTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: TAPE (Blue Hare) */
     case S_MENU_HOLD: ui.menu = 1; ui.menu_sel = MI_HOLD; settings_hold = 2; break;
     case S_MENU_LEDS: ui.menu = 1; ui.menu_sel = MI_LEDS; settings_leds = LEDS_INV; break;
     case S_MENU_ANIM_IDLE: ui.menu = 1; ui.menu_sel = MI_ANIM; menu_put(MI_ANIM, 2); break;   /* (1.2: ANIM IDLE, #135) */
@@ -814,8 +814,8 @@ static void draw(int s)
         return;
     }
     if (s == S_SPLASH) {                          /* the power-on splash (main.c, before the UI): its lines, the version
-                                                   * shown FELUCCA_VERSION (run_tests.sh: src/felucca.c's) */
-        static const char WANT[] = "Fel-Tracker|" FELUCCA_VERSION_DIST "|Tristano Suriani|after Felucca";   /* (with its distribution: "v0.10.0 IDM") */
+                                                   * shown BLUEHARE_VERSION (run_tests.sh: src/bluehare.c's) */
+        static const char WANT[] = "Blue Hare|" BLUEHARE_VERSION_DIST "|Tristano Suriani|after Felucca";   /* (with its distribution: "v0.10.0 IDM") */
         splash_seen[0] = 0;
         in_splash = 1;
         draw_splash();
@@ -850,7 +850,7 @@ static void draw(int s)
             nfind++;
         } else {
             static uint8_t said;
-            if (!said++) printf("ui_render: the splash shows the version " FELUCCA_VERSION_DIST " (FELUCCA_VERSION_DIST) and its lines\n");
+            if (!said++) printf("ui_render: the splash shows the version " BLUEHARE_VERSION_DIST " (BLUEHARE_VERSION_DIST) and its lines\n");
         }
         return;
     }

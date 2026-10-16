@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* CHOKE (1.5, FOUNDRY): gated noise, hard limited (Fel-Tracker's own): snappy industrial snares, air-brakes, hisses.
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* CHOKE (1.5, FOUNDRY): gated noise, hard limited (Blue Hare's own): snappy industrial snares, air-brakes, hisses.
  * Noise through a resonant band-pass at the key (TONE moves it, Q narrows it), with BODY a sine at the key falling an
  * octave (the snare's shell), SNAP a click at the start; the whole held open for GATE (5 ms .. ~1.3 s) then shut over
  * TAIL, SWEEP letting the band-pass fall across the gate (an air-brake's sigh), LIMIT driving it all into a hard

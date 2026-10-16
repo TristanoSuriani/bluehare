@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The WAREHOUSE distribution (cc -DFELUCCA_DIST=warehouse), since the 2026-10 plan: its 8 engines in their order, two a
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* The WAREHOUSE distribution (cc -DBLUEHARE_DIST=warehouse), since the 2026-10 plan: its 8 engines in their order, two a
  * track's role (kit, bass, mid, high; RISERS for any), 4 tracks; its power-on sounds; where a sound of an engine it does
  * not have loads (the sirens HOOVER, by their substitutes; any other kit FLOOR, any other sound DUBCHORD, the mid
  * track's); SANDSTORM: GATE plucks again at the tempo, DIVE takes the pitch down once let go */

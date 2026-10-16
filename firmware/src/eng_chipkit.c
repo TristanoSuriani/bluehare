@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* CHIPKIT (1.5, CHIP): the drums of the 8-bit consoles, made as their sound chips made them (Fel-Tracker's own: no
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* CHIPKIT (1.5, CHIP): the drums of the 8-bit consoles, made as their sound chips made them (Blue Hare's own: no
  * chip emulated, no samples). Every key from C2 another drum, made anew at each hit (DRUM's map; the octave above the
  * same twelve again): KICK, SNARE, HAT, OPEN (an open hat), TOM L, TOM M, TOM H, CRASH, CLAP, ZAP (a laser), COIN (the
  * two-note pickup), NOISE (a metallic buzz). A drum is the chips' three kinds of channel at once: a 4-bit stepped

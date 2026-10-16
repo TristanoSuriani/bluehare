@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* The USB descriptors of Felucca 1.0 / 1.0.1 (src/usb.c as released), as a host read them: the reference
- * the default build must still send byte for byte (tests/usb_desc_test.c). CDC = FELUCCA_CDC=1, NOCDC = FELUCCA_CDC=0,
- * both with FELUCCA_UAC=1; CDC_NOUAC and MIDI without the audio input (MIDI = the update loader's layout). */
+ * the default build must still send byte for byte (tests/usb_desc_test.c). CDC = BLUEHARE_CDC=1, NOCDC = BLUEHARE_CDC=0,
+ * both with BLUEHARE_UAC=1; CDC_NOUAC and MIDI without the audio input (MIDI = the update loader's layout). */
 static const uint8_t V10_CDC_DEV[18] = {
     0x12, 0x01, 0x00, 0x02, 0xEF, 0x02, 0x01, 0x40, 0x09, 0x12, 0x01, 0x00, 0x11, 0x03, 0x01, 0x02,
     0x00, 0x01};

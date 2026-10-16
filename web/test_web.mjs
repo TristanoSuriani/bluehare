@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-// Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
+// Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md
 //
 // Node checks of the web pages' JS (no browser, no hardware). Run from the repo root:
 //   node web/test_web.mjs
 // - editor.html: the protocol section (between PROTO-BEGIN/END) against its mock device (v1 commands,
 //   the user preset bank / librarian, library files, live pushes, older-firmware fallback, the v3 tracks
 //   and the mixer, the v5 drum grid in steps and user presets), its tab layout and ja/en strings
-// - fm1pkg.js: productOf and logicalImage on build/felucca.fwsc (skipped without a build)
+// - fm1pkg.js: productOf and logicalImage on build/bluehare.fwsc (skipped without a build)
 // - fm1ota.js: a full install and an unplug during the write against a simulated FM-1
 
 import { execFileSync } from "node:child_process";
@@ -24,10 +24,10 @@ const eq = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 const py = (code, ...args) => execFileSync("python3", ["-c", code, ...args], { maxBuffer: 1 << 26 });
 const HERE = new URL(".", import.meta.url).pathname;
 /* what lives outside web/, each overridable (a web-only checkout passes them, or the checks skip):
-   FELUCCA_DESC  the firmware's parameter / protocol table (tests/descdump.c -> build/host/desc.json)
-   FELUCCA_ROOT  the Felucca tree with a ./build.sh build (the package check) */
-const DESC = process.env.FELUCCA_DESC || join(HERE, "../build/host/desc.json");
-const FW_ROOT = process.env.FELUCCA_ROOT || join(HERE, "..");
+   BLUEHARE_DESC  the firmware's parameter / protocol table (tests/descdump.c -> build/host/desc.json)
+   BLUEHARE_ROOT  the Blue Hare tree with a ./build.sh build (the package check) */
+const DESC = process.env.BLUEHARE_DESC || join(HERE, "../build/host/desc.json");
+const FW_ROOT = process.env.BLUEHARE_ROOT || join(HERE, "..");
 
 /* ------------------------------------------------------------ editor protocol --- */
 const html = readFileSync(join(HERE, "editor.html"), "utf8");
@@ -277,7 +277,7 @@ async function editorMock() {
       "editor: REVERB TYPE (ROOM / SPRING / HALL / GATED / CONCERT, global id 24; 26 still inert)");
   }
   {
-    /* FX > DLY 2 TYPE (G_DTYPE 25, the old drum level's id, Fel-Tracker 1.5): CLEAN (0, the default) / TAPE / WORN / PING / DUAL;
+    /* FX > DLY 2 TYPE (G_DTYPE 25, the old drum level's id, Blue Hare 1.5): CLEAN (0, the default) / TAPE / WORN / PING / DUAL;
      * 10 clamps to the last */
     const dd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 25)));
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 25, 10)));
@@ -406,11 +406,11 @@ async function editorRetired() {
   const rc = await E.bank.put(rq, 9, { name: "OLD", engine: 8, p: d.p.slice(), pattern: null });
   ok(rc === 1 && !(await E.bank.get(rq, info, 9)).used, "retired: UP_PUT of a GRAIN sound refused");
   const ctx = { keys: null, engines: info.engines, pe0: info.pe0 };
-  const lib = E.readLibraryFile({ format: "felucca-library", version: 1, engines: ["SID", "DIGITAL"], patches: [
+  const lib = E.readLibraryFile({ format: "bluehare-library", version: 1, engines: ["SID", "DIGITAL"], patches: [
     { name: "OLD PAD", engine: 1, engineName: "DIGITAL", params: d.p.slice(), pattern: null, tags: [] },
     { name: "PERC", engine: 4, engineName: "SAMPLE", params: d.p.slice(), pattern: null, tags: [] },
     { name: "A", engine: 0, engineName: "SID", params: d.p.slice(), pattern: null, tags: [] }] }, ctx);
-  const one = E.readLibraryFile({ format: "felucca-patch", version: 1, engine: 13, engineName: "SLICE", p: d.p.slice() }, ctx);
+  const one = E.readLibraryFile({ format: "bluehare-patch", version: 1, engine: 13, engineName: "SLICE", p: d.p.slice() }, ctx);
   ok(lib.patches.length === 1 && lib.skipped === 2 && lib.patches[0].engine === 24 && !one.patches.length && one.skipped === 1,
     "retired: a library file's DIGITAL / SAMPLE / SLICE patches are skipped, the rest imported");
   done();
@@ -437,7 +437,7 @@ async function editorLibrarian() {
   const { m, rq, done } = attachMock({});
   const C = E.CMD;
   const info = E.parse[C.INFO](await rq(E.req.info()));
-  await rq(E.req.track(1));                        /* (Fel-Tracker: SID BASS with ACID is track 2 since the rhythm section came first) */
+  await rq(E.req.track(1));                        /* (Blue Hare: SID BASS with ACID is track 2 since the rhythm section came first) */
   const pdesc = [];
   for (let i = 0; i < info.pcount; i++) pdesc.push(E.parse[C.DESC](await rq(E.req.desc(0, i))));
   const keys = E.paramKeys(pdesc, info.pe0, info.pcount);
@@ -524,7 +524,7 @@ async function editorLibrarian() {
   const ctx = { keys, engines: info.engines, firmware: info.version, pe0: info.pe0 };
   const pts = [cap, { ...bass, engineName: info.engines[bass.engine], tags: ["bass", "device"] }];
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
-  ok(file.format === "felucca-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
+  ok(file.format === "bluehare-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
     file.paramLabels[83] === "KICK" && file.paramLabels[90] === "BELL" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
     file.engines.length === 61,
     "library file: versioned, with P_COUNT, labels and engines");
@@ -546,7 +546,7 @@ async function editorLibrarian() {
   {   /* files from the 69-parameter firmware (P_E0 61): the engine's 8 land on E0..E7 (96..103), FM op ENV, the
          chord keys and the lane levels stay unset */
     const p69 = [...cap.p.slice(0, 61), ...cap.p.slice(96, 104)];
-    const sp = E.readLibraryFile({ format: "felucca-patch", version: 1, engine: cap.engine, engineName: info.engines[cap.engine], p: p69 }, ctx).patches[0].p;
+    const sp = E.readLibraryFile({ format: "bluehare-patch", version: 1, engine: cap.engine, engineName: info.engines[cap.engine], p: p69 }, ctx).patches[0].p;
     const keys69 = [...keys.slice(0, 61), ...keys.slice(96)];
     const lp = E.readLibraryFile({ ...file, pCount: 69, paramLabels: keys69, patches: [{ ...file.patches[0], params: p69 }] }, ctx).patches[0].p;
     const nk = E.readLibraryFile({ ...file, paramLabels: undefined, patches: [{ ...file.patches[0], params: p69 }] }, ctx).patches[0].p;
@@ -557,7 +557,7 @@ async function editorLibrarian() {
          op ENV in place, CHRD VOIC unset (left as the track has them), the lane levels unset */
     const p89 = [...cap.p.slice(0, 81), ...cap.p.slice(96, 104)];
     const keys89 = [...keys.slice(0, 81), ...keys.slice(96)];
-    const sp = E.readLibraryFile({ format: "felucca-patch", version: 1, engine: cap.engine, engineName: info.engines[cap.engine], p: p89 }, ctx).patches[0].p;
+    const sp = E.readLibraryFile({ format: "bluehare-patch", version: 1, engine: cap.engine, engineName: info.engines[cap.engine], p: p89 }, ctx).patches[0].p;
     const lp = E.readLibraryFile({ ...file, pCount: 89, pE0: 81, paramLabels: keys89, patches: [{ ...file.patches[0], params: p89 }] }, ctx).patches[0].p;
     const nk = E.readLibraryFile({ ...file, paramLabels: undefined, patches: [{ ...file.patches[0], params: p89 }] }, ctx).patches[0].p;
     const good = (q) => q.length === 104 && eq(q.slice(0, 81), cap.p.slice(0, 81)) && q.slice(81, 96).every((v) => v === null) && eq(q.slice(96), cap.p.slice(96));
@@ -568,14 +568,14 @@ async function editorLibrarian() {
          chord keys in place, the lane levels unset (a sound load sets them to 100 %) */
     const p91 = [...cap.p.slice(0, 83), ...cap.p.slice(96, 104)];
     const keys91 = [...keys.slice(0, 83), ...keys.slice(96)];
-    const sp = E.readLibraryFile({ format: "felucca-patch", version: 1, engine: cap.engine, engineName: info.engines[cap.engine], p: p91 }, ctx).patches[0].p;
+    const sp = E.readLibraryFile({ format: "bluehare-patch", version: 1, engine: cap.engine, engineName: info.engines[cap.engine], p: p91 }, ctx).patches[0].p;
     const lp = E.readLibraryFile({ ...file, pCount: 91, pE0: 83, paramLabels: keys91, patches: [{ ...file.patches[0], params: p91 }] }, ctx).patches[0].p;
     const nk = E.readLibraryFile({ ...file, paramLabels: undefined, patches: [{ ...file.patches[0], params: p91 }] }, ctx).patches[0].p;
     const good = (q) => q.length === 104 && eq(q.slice(0, 83), cap.p.slice(0, 83)) && q.slice(83, 96).every((v) => v === null) && eq(q.slice(96), cap.p.slice(96));
     ok(keys91[83] === "E0" && good(sp) && good(lp) && good(nk),
       "library file: 91-parameter files (1.0.x: patch, labelled, unlabelled) map the engine's 8 to 96..103, the lane levels unset");
   }
-  const old = E.readLibraryFile({ format: "felucca-patch", version: 1, engine: 24, preset: 0, engineName: "SID", presetName: "SID BASS", p: d2.p, steps: E.stepsFromPattern(cap.pattern) }, ctx);
+  const old = E.readLibraryFile({ format: "bluehare-patch", version: 1, engine: 24, preset: 0, engineName: "SID", presetName: "SID BASS", p: d2.p, steps: E.stepsFromPattern(cap.pattern) }, ctx);
   ok(old.patches.length === 1 && eq(old.patches[0].p, d2.p) && js(old.patches[0].pattern) === js(cap.pattern), "library file: reads the old \"Save to file\" format");
   let threw = false;
   try { E.readLibraryFile({ format: "something" }, ctx); } catch (e) { threw = true; }
@@ -1078,7 +1078,7 @@ function editorIcons() {
 
 /* ------------------------------------------------------- packages: JS == Python --- */
 async function packages() {
-  const pkg = join(FW_ROOT, "build/felucca.fwsc");
+  const pkg = join(FW_ROOT, "build/bluehare.fwsc");
   if (!existsSync(pkg)) {
     console.log("packages: skipped (run ./build.sh first)");
     return;
@@ -1133,8 +1133,8 @@ class FakeFM1 {
       this.waiting = null;
       this.served++;
       if (this.served >= this.unplugAfter) { this.input.state = this.output.state = "disconnected"; return; }
-      if (addr === 0xE0000000) setTimeout(() => this.boot("ota-FM-1_900", "Felucca Update"), 300);
-      else if (addr === 0xF0000000) setTimeout(() => this.boot("FM-1_900", "Felucca"), 300);
+      if (addr === 0xE0000000) setTimeout(() => this.boot("ota-FM-1_900", "Blue Hare Update"), 300);
+      else if (addr === 0xF0000000) setTimeout(() => this.boot("FM-1_900", "Blue Hare"), 300);
       else this.next();
     }
   }
@@ -1157,10 +1157,10 @@ async function updater() {
   const steps = [];
   const got = await new Updater(dev.access).install(image, "FM-1_900", (k) => steps.push(k));
   ok(got === "FM-1_900" && dev.bad === 0 && steps.includes("write") && steps.at(-1) === "done",
-    `fm1ota.js: install: running firmware -> loader -> Felucca (${dev.served} reads)`);
+    `fm1ota.js: install: running firmware -> loader -> Blue Hare (${dev.served} reads)`);
 
   const dev2 = new FakeFM1(image, { unplugAfter: 3 });
-  dev2.boot("ota-FM-1_900", "Felucca Update");
+  dev2.boot("ota-FM-1_900", "Blue Hare Update");
   const t0 = Date.now();
   const done = await new Updater(dev2.access).resume(image);
   ok(done === false && Date.now() - t0 < 6000, "fm1ota.js: unplugged during the write -> stops at once");

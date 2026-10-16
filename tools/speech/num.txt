@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank NUM: the numbers 0 .. 10. NAME (at most 8, as shown) then its phonemes (tools/gen_speech.py, ARPAbet),
 # the stress 0 1 2 after each vowel; at most 32 words a bank
 ZERO     Z IH1 R OW0

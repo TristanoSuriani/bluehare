@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* The real audio ISR with a simulated DMA and clock: overload must free work
  * within one block without cutting another part's lead or bass. */
 #define main hostsim_main
@@ -20,7 +20,7 @@ static void fm1_audio_ack_half(void) { host_acks++; }
 static void fm1_audio_init(int32_t *b, uint32_t n, void (*isr)(void), uint32_t p)
 { (void)b; (void)n; (void)isr; (void)p; }
 void isr_alnk0(void) {}
-#define FELUCCA_UAC 1                                  /* audio.c taps USB audio: here into host_tap */
+#define BLUEHARE_UAC 1                                  /* audio.c taps USB audio: here into host_tap */
 static int32_t host_tap[2 * 64];
 static uint32_t host_tap_n;
 static void uac_tap(const int32_t *out, uint32_t n) { memcpy(host_tap, out, 8u * n); host_tap_n = n; }
@@ -44,7 +44,7 @@ static void fresh(void)
     memset(&song, 0, sizeof song);
     host_tracks_init();
     for (p = 0; p < NPART; p++) host_preset(&trk[p], 0, 0);
-    memset(&felucca_dbg, 0, sizeof felucca_dbg);
+    memset(&bluehare_dbg, 0, sizeof bluehare_dbg);
     audio_cpu_rem = audio_halves = audio_max_us = 0;
     shed_req = 0; shed_count = 0; shed_over = 0;
     host_clock = host_us = host_half_reads = host_dma_advanced = host_acks = host_nest = 0;
@@ -116,22 +116,22 @@ static void dma(void)
     fresh();
     host_pending = 0;
     fm1_alnk0_irq();
-    check("an auxiliary interrupt does not render a DMA half", !host_acks && !audio_halves && !felucca_dbg.in_audio);
+    check("an auxiliary interrupt does not render a DMA half", !host_acks && !audio_halves && !bluehare_dbg.in_audio);
     host_pending = FM1_AUDIO_HALF;
     host_us = 5000;
     fm1_alnk0_irq();
-    check("one slow half records elapsed load but does not shed yet", host_acks == 1u && !shed_req && felucca_dbg.last_us == 5000u && !felucca_dbg.late);
+    check("one slow half records elapsed load but does not shed yet", host_acks == 1u && !shed_req && bluehare_dbg.last_us == 5000u && !bluehare_dbg.late);
     fm1_alnk0_irq();
     check("a second slow half in a row requests shedding", host_acks == 2u && shed_req);
     shed_req = 0;
     host_half_reads = 0; host_dma_advanced = 1; host_us = 100;
     fm1_alnk0_irq();
-    check("DMA advancing during a render is counted once", host_acks == 3u && felucca_dbg.late == 1u && !felucca_dbg.in_audio && !shed_req);
+    check("DMA advancing during a render is counted once", host_acks == 3u && bluehare_dbg.late == 1u && !bluehare_dbg.in_audio && !shed_req);
     fresh();
     expected = HALF_FRAMES * 1000000u / FS;            /* the half's deadline in us */
     host_us = expected * 90u / 100u; host_nest = expected * 30u / 100u;   /* the render 60 %, TIMER5 nested 30 % */
     fm1_alnk0_irq(); fm1_alnk0_irq();
-    check("TIMER5 nested in the render counts toward the deadline", shed_req && felucca_dbg.last_us == host_us - host_nest);
+    check("TIMER5 nested in the render counts toward the deadline", shed_req && bluehare_dbg.last_us == host_us - host_nest);
     fresh();
     host_us = 5000;
     fm1_alnk0_irq(); host_us = 100; fm1_alnk0_irq(); host_us = 5000; fm1_alnk0_irq();
@@ -211,7 +211,7 @@ static double boot_run(int32_t pot, int boot, uint32_t *splash_peak, uint32_t *f
     uint32_t b, i, peak = 0;
     double r = 0;
     boot_fresh();
-    song.master_q12 = 2048;                            /* felucca_init */
+    song.master_q12 = 2048;                            /* bluehare_init */
     master_knob = 512 * 16;
     host_pot = pot;
     if (boot) {

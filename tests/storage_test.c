@@ -100,7 +100,7 @@ int main(void)
     nor[st_sector(OBJ_PROJECT0 + 2, 0) + 8] ^= 0x01;    /* both headers broken */
     nor[st_sector(OBJ_PROJECT0 + 2, 1) + 8] ^= 0x01;
     bad += check("both headers broken -> nothing", st_load(OBJ_PROJECT0 + 2, got, sizeof got) < 0);
-    bad += check("data stays in the Felucca regions",
+    bad += check("data stays in the Blue Hare regions",
                  st_sector(OBJ_SETTINGS, 1) + 4096 <= 0xFF000 && st_sector(OBJ_PROJECT0 + 3, 1) + 4096 <= 0xE0000 &&
                      st_sector(OBJ_UPRESET0, 0) >= 0xDC000 && st_sector(OBJ_UPRESET0 + 1, 1) + 4096 <= 0xE0000);
     /* the user presets' FM6 patches (1.0.3) in the two sectors of the retired FM6 bank: 0x9F000 (after the projects)
@@ -124,7 +124,7 @@ int main(void)
               !memcmp(got, a, sizeof a) && !memcmp(snap, nor, 0xE5000u) && !memcmp(snap + 0xE7000u, nor + 0xE7000u, 0x19000u);
         bad += check("the autosave in its own sectors 0xE5000 / 0xE6000, nothing else touched", ok);
     }
-    {   /* (Fel-Tracker) the song's chunks 4 .. 15 (8 tracks): A/B pairs from 0xA0000 to 0xB7FFF; the autosave's chunks
+    {   /* (Blue Hare) the song's chunks 4 .. 15 (8 tracks): A/B pairs from 0xA0000 to 0xB7FFF; the autosave's chunks
          * 1 .. 15: from 0xB8000 to 0xD5FFF; each sector its own (no other object's, none of each other's), past every
          * object of before */
         uint32_t o, c, o2, c2, ok = OBJ_AUTO1 == OBJ_PROJECT4 + 12u && OBJ_COUNT == OBJ_AUTO1 + 15u &&

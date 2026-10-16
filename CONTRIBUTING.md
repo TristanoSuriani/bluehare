@@ -1,7 +1,7 @@
 # Contributing
 
-**Fel-Tracker** (this repository, Tristano Suriani's fork of Felucca) takes issues and pull requests at
-<https://github.com/TristanoSuriani/fel-tracker>. Please don't send Fel-Tracker problems to Felucca. The rest of
+**Blue Hare** (this repository, Tristano Suriani's fork of Felucca) takes issues and pull requests at
+<https://github.com/TristanoSuriani/fel-tracker>. Please don't send Blue Hare problems to Felucca. The rest of
 this file is Felucca's own guide (Leo Kuroshita, Hügelton Instruments), for contributing to Felucca itself.
 
 ## Contributing to Felucca

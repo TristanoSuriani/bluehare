@@ -1,12 +1,12 @@
-# Fel-Tracker
+# Blue Hare
 
-**Fel-Tracker** is a fork of [Felucca](https://github.com/hugelton/Felucca), the multi-engine synthesizer firmware
+**Blue Hare** is a fork of [Felucca](https://github.com/hugelton/Felucca), the multi-engine synthesizer firmware
 for the M-VAVE FM-1 by Leo Kuroshita ([Hügelton Instruments](https://hugelton.com)). It is developed by
 **Tristano Suriani** (<https://github.com/TristanoSuriani/fel-tracker>). It is an independent fork, not an official
 Felucca release. Version **0.10.0** (its own numbering; it grew from Felucca 1.4.1). On the device, the editor and
-the browser emulator it introduces itself as Fel-Tracker, naming Felucca and its makers as what it is built on.
+the browser emulator it introduces itself as Blue Hare, naming Felucca and its makers as what it is built on.
 
-What Fel-Tracker adds, all by Tristano Suriani:
+What Blue Hare adds, all by Tristano Suriani:
 
 - **The sequencer:** a placeholder for now (SEQ shows TODO). Felucca's step sequencer is gone, and so is the tracker
   that took its place until 2026-10.
@@ -23,10 +23,10 @@ What Fel-Tracker adds, all by Tristano Suriani:
   DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, KIT, BREAKS and RISERS.
 
 Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
-Fel-Tracker's parts are marked *(Fel-Tracker)*.
+Blue Hare's parts are marked *(Blue Hare)*.
 
 The rest of this README started as Felucca's. Its install links, site, sponsorship and issue tracker are Felucca's
-(Hügelton Instruments). They install official Felucca, not Fel-Tracker; to build Fel-Tracker, see
+(Hügelton Instruments). They install official Felucca, not Blue Hare; to build Blue Hare, see
 [BUILDING.md](BUILDING.md).
 
 ---
@@ -58,8 +58,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 
 ## Features
 
-- **Native image** *(Fel-Tracker)*: Fel-Tracker as a desktop application for each distribution (`native/build.sh`:
-  `Fel-Tracker IDM.app` on macOS), the same firmware in a window with the panel, the computer's sound out and MIDI in,
+- **Native image** *(Blue Hare)*: Blue Hare as a desktop application for each distribution (`native/build.sh`:
+  `Blue Hare IDM.app` on macOS), the same firmware in a window with the panel, the computer's sound out and MIDI in,
   its saves in a file: the base for heavier engines and effects than the FM-1 can hold. Every track has its own 16
   voices there, three more reverbs (CONCERT: HALL at the full rate and twice the lines; CAVERN: a cave's echoes and
   a 30 s tail; SHIMMER: a tail climbing in octaves), a 23.8 s delay line, and a distribution of its own, IDM NATIVE,
@@ -69,7 +69,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   "Distributions"), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
 - **Four tracks**, one synth part each with its own engine and sound (drums are KIT, BREAKS or WAR);
-  12 voices shared between them (Fel-Tracker; 8 when the device is busy: voices 9 .. 12 start only while the audio's
+  12 voices shared between them (Blue Hare; 8 when the device is busy: voices 9 .. 12 start only while the audio's
   measured load is under 75 %, a heavy song keeps to 8 on its own). ALGORITHM selects the track on every page
 - **Sequencer:** a placeholder for now: SEQ (and GLO) show TODO. PLAY runs the transport (the click, the
   SLICER, the FX layer's grid follow it). See [Sequencer](#sequencer)
@@ -87,18 +87,18 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   side at random: SETTINGS' **PAN MODE** RND, below); **OCT** beside it moves
   the whole sound up or down by octaves (a preset can set it: FMPERC's kicks play 3 octaves under the note)
 - **Effects:** distortion and the SLICER per track; chorus, delay and reverb sends (the reverb as
-  **HALL**, ROOM, SPRING or *(Fel-Tracker)* **GATED** or **CONCERT**; HALL is a smooth stereo reverb, the default on a
+  **HALL**, ROOM, SPRING or *(Blue Hare)* **GATED** or **CONCERT**; HALL is a smooth stereo reverb, the default on a
   fresh start; the delay **CLEAN**, **TAPE**, **WORN**, **PING** or **DUAL** on DLY 2: TAPE and WORN a tape echo with
   wow and flutter, repeats that darken and saturate and run away into a howl past FDBK ~95; PING echoes left, then
   right, and so on, up to 0.74 s; DUAL a true stereo delay, the left at TIME and the right at three quarters of it,
-  each its own loop, a quarter fed across); master limiter. *(Fel-Tracker)* The chorus and ROOM are stereo (the chorus's two sides sweep in opposition; SPRING and the
+  each its own loop, a quarter fed across); master limiter. *(Blue Hare)* The chorus and ROOM are stereo (the chorus's two sides sweep in opposition; SPRING and the
   tape echoes stay mono, as the real ones are), and the delay's and the reverb's sends lose their lows below about
   220 Hz first, so the bass and the kick stay dry and the tails stay clear. A gentle bus compressor (3:1, slow) sits in
   front of the master limiter, so a full mix keeps its punch at the top of MASTER instead of being held down all the time.
-  *(Fel-Tracker, 2026-10)* **2x oversampling** around the drives of RAZOR, VENOM and SANDSTORM and GUTS's fold: what a
+  *(Blue Hare, 2026-10)* **2x oversampling** around the drives of RAZOR, VENOM and SANDSTORM and GUTS's fold: what a
   hard drive adds above the band no longer folds back into it (6 to 7 dB fewer aliases on a high, driven note); a voice
   of RAZOR costs ~17 % more, of VENOM ~31 %.
-  *(Fel-Tracker, 2026-10)* **MONO LOWS**: before it, the mix's stereo difference under about 120 Hz is taken out (40 Hz
+  *(Blue Hare, 2026-10)* **MONO LOWS**: before it, the mix's stereo difference under about 120 Hz is taken out (40 Hz
   hard left plays on both sides), as a club's system wants the bass; the width above stays
 - **FX layer:** hold FX for repeat, reverse, filter sweeps, tape stop, freeze, a harmonizer
   (OCT UP / OCT DN with shimmer), and mutes on the black keys;
@@ -155,7 +155,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   replaced once a new one arrived whole; projects, presets, samples and settings are not touched. **The full backup
   does not include the bank: keep the .syx file.**
 - 1.4.1 opens and saves everything 1.4 does, in the same formats.
-- (Fel-Tracker: FM6 and DRUM are gone, with the bank and the DRUM quick actions; KIT has the lane mutes on the black
+- (Blue Hare: FM6 and DRUM are gone, with the bank and the DRUM quick actions; KIT has the lane mutes on the black
   keys now.)
 
 ## ⚠ Coming from 1.1.5
@@ -280,108 +280,108 @@ way as from the menu, in the same tabs.
 ## Engines
 
 Felucca's own engines, by Leo Kuroshita (ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM), are not in
-Fel-Tracker any more (below); what other engines build on of them stays (PHYS's resonators in MODAL and ANVIL, DRUM's
+Blue Hare any more (below); what other engines build on of them stays (PHYS's resonators in MODAL and ANVIL, DRUM's
 lanes and General MIDI map in KIT, WAR and GLITCH).
 
-Fel-Tracker's engines, by Tristano Suriani, marked *(Fel-Tracker)* below: WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC,
+Blue Hare's engines, by Tristano Suriani, marked *(Blue Hare)* below: WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC,
 KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES,
 GLITCH, KIT, BREAKS and RISERS.
 
 A build holds the engines of its distribution (BUILDING.md "Distributions"). In the order the device lists them:
 
-- **WAVE** *(Fel-Tracker)*: wavetables. TBL picks one of 8 tables of 8 frames each (BASIC: sine to narrow pulses;
+- **WAVE** *(Blue Hare)*: wavetables. TBL picks one of 8 tables of 8 frames each (BASIC: sine to narrow pulses;
   ADDTV: one partial to many; SYNC: a hard-sync sweep; RESO: a resonant peak climbing; VOX: vowels; FM: two-operator
   FM; DIGI: sparse, metallic spectra; BITS: stepped and 1-bit shapes), POS the place between its frames; the SHP
   routings move POS (ENV DEST / LFO DEST SHP, the matrix's SHP), so an envelope or the LFO scans the table. SYNC reads
   the frame up to 8x faster (windowed sync), DTN adds a detuned second oscillator, then DRV, a resonant low-pass and
   CRSH (sample-rate and bit reduction). The tables are band-limited per octave: high notes do not alias
-- **WEST** *(Fel-Tracker)*: west coast. A complex oscillator, a wavefolder and a low-pass gate: a modulating sine at RATIO
+- **WEST** *(Blue Hare)*: west coast. A complex oscillator, a wavefolder and a low-pass gate: a modulating sine at RATIO
   times the note (whole and half ratios, and 1.41, 1.73, 2.76, 3.55, 4.61 for bells and metal) moves the carrier's
   phase by FM (FDBK feeds the modulator back into itself, up to noise); FOLD folds the carrier over (the SHP routings
   move it), SYM shifts the fold off centre; the low-pass gate's cutoff follows the envelope through a vactrol-like lag,
   LPG of the way down from CUT, so a note darkens as it fades (the plucked, struck sound); TMBR opens FM and FOLD with
   the same envelope. FM and FOLD ease off on high notes so they do not alias. Its plucks (LPG HARP, NYLON GATE, KOTO
   FOLD, THUMB WOOD, BUZZ PLUCK, PIZZ GATE, GLASS PLUCK, RUBBER PLUCK) take KARPLUS's place in the IDM distribution
-- **HOOVER** *(Fel-Tracker)*: the early-90s rave lead, after the Alpha Juno's patch. Two oscillators, each a saw plus the
+- **HOOVER** *(Blue Hare)*: the early-90s rave lead, after the Alpha Juno's patch. Two oscillators, each a saw plus the
   same saw PW of a cycle on (a pulse-width-modulated saw: sweeping PW moves notches through the spectrum), PWM sweeping
   PW with the voice's own LFO at RATE (the SHP routings move PW too), DTN detuning the second, SUB a square an octave
   down; BEND starts each note up to two octaves away and slides it in over BTIM (the swoop); CUT, a low-pass. Its
   presets send plenty to the chorus, which makes the rest of the sound
-- **FMPERC** *(Fel-Tracker; in no distribution since IDM gave its slot to DUBSIREN8: its voices play in KIT and BREAKS,
+- **FMPERC** *(Blue Hare; in no distribution since IDM gave its slot to DUBSIREN8: its voices play in KIT and BREAKS,
   and a stored FMPERC sound loads as KIT)*: FM percussion. A modulating sine at RATIO (whole, half and inharmonic ratios)
   moves a carrier's phase by INDEX, and every hit sweeps both down over FDEC: the pitch from SWEEP semitones above the
   note, the index to a tenth, so a hit starts bright and high and settles. FDBK (towards noise); NOISE mixes in noise
   of the kind NTYP sets (SNAP a short burst, CLAP four bursts and a tail, HISS as long as the note); TONE darkens below
   0, thins above. 23 presets: six kicks (deep, sub, hard, distorted, punchy), snare, two claps, rim, closed and open
   hats, crash, ride, toms, conga, clave, cowbell, metal, a zap, a bell, a glitch
-- **KARPLUS** *(Fel-Tracker; in no distribution since IDM gave its slot to DUBCHORD: a stored KARPLUS sound loads as
+- **KARPLUS** *(Blue Hare; in no distribution since IDM gave its slot to DUBCHORD: a stored KARPLUS sound loads as
   PHYS where there is one, else WEST)*: a plucked string, Karplus-Strong. EXCT fills the string at the pluck (NOIS,
   PLUK filtered by BRIGHT, SAW, CLIK), POS plucks nearer the bridge or the middle, DAMP lets the highs die first, DECAY
   rings 0.1 .. 10 s, STIFF sharpens the overtones towards a bell, MUTE damps it on release, DRIVE saturates. Presets:
   nylon, steel, harp, koto, pizzicato, muted bass, dub and acid plucks, a bell string, a dulcimer
-- **VOSIM** *(Fel-Tracker; the IDM distribution)*: VOice SIMulation, two formants. Each period starts a train of PULS sin^2 pulses,
+- **VOSIM** *(Blue Hare; the IDM distribution)*: VOice SIMulation, two formants. Each period starts a train of PULS sin^2 pulses,
   each DECAY times the last; their width sets the formants F1 and F2, which stay put whatever the note (KTRK makes them
   follow it). SWEEP moves them at each note and lets them glide back (wah, brass, "yow"); BAL mixes them; BRTH adds
   breath. Presets: four vowels, talk lead, basses, brass, yow, choir, reed, whistle, growl, formant pad
-- **PARTICLE** *(Fel-Tracker; the IDM distribution)*: a cloud of synthesized grains. DENS grains a second (1 .. 400), each SIZE long
+- **PARTICLE** *(Blue Hare; the IDM distribution)*: a cloud of synthesized grains. DENS grains a second (1 .. 400), each SIZE long
   (2 .. 200 ms), at the note give or take SCAT semitones (QNT: free, semitones, octaves, fifths), gliding CHIRP; WAVE
   sine, triangle, FM or noise under SHAPE (a hit, a swell, backwards); TONE. Rain, bubbles, crackle, swarms, stardust,
   grain pads, drips, insects
-- **CHAOS** *(Fel-Tracker; the IDM distribution)*: chaotic systems as oscillators. MODEL: the Lorenz and Rossler attractors (flows
+- **CHAOS** *(Blue Hare; the IDM distribution)*: chaotic systems as oscillators. MODEL: the Lorenz and Rossler attractors (flows
   run at the note's speed: tones that wander) or the logistic and Henon maps (a new value each period: buzz that
   changes every cycle). CHAOS is the system's parameter, from order to wild; OUT the variable heard; SMTH; FOLD; SINE
   mixes in the note's sine; SEED: the same attack every note or a new one; TONE
-- **SID** *(Fel-Tracker; the IDM distribution)*: a voice of the C64's sound chip, in its manner. WAVE TRI SAW PUL NOIS (the chip's
+- **SID** *(Blue Hare; the IDM distribution)*: a voice of the C64's sound chip, in its manner. WAVE TRI SAW PUL NOIS (the chip's
   pitched shift-register noise) or the chip's combined waves (TS PT PS PTS); PW, PWM; MOD RING / SYNC / both against a
   master at the note, the oscillator MDTN semitones above it (the sync lead, ring bells); FILT the 12 dB multimode
   filter (LP BP HP) at CUT with RES, a little gritty. The SHP routings move PW and MDTN
-- **DUBSIREN** *(Fel-Tracker; the IDM distribution)*: the sound-system siren box with its own tape echo. WAVE, an LFO on the pitch
+- **DUBSIREN** *(Blue Hare; the IDM distribution)*: the sound-system siren box with its own tape echo. WAVE, an LFO on the pitch
   (RATE, DEPTH, SHAPE: two-tone, whoop up or down, wail), SWEEP (the dive or the rise), TIME (turned while it sounds,
   the echoes bend), FDBK (runs away while held, settles when let go), MIX. ATK and REL are its envelope; the voice
   lasts until the echoes die away. It plays on the last track only (track 4; its 16-bit echo is that track's): on
   another track it shows dimmed, and a DUBSIREN sound loaded there (a pick, a song, an instrument, a user preset)
   becomes SIREN8 with the same preset and values where the build has it (IDM no longer does: there it plays dry)
-- **SIREN8** (DUBSIREN8) *(Fel-Tracker; in no distribution since IDM gave its slot to MODAL)*: DUBSIREN's 8-bit cousin, on every track. The same siren
+- **SIREN8** (DUBSIREN8) *(Blue Hare; in no distribution since IDM gave its slot to MODAL)*: DUBSIREN's 8-bit cousin, on every track. The same siren
   and the same 8 controls, made of fewer bits: the siren held a sample in two and cut to 8 bits after its envelope (a
   fading siren grows grittier), the echo 8 bits a sample (464 ms in 5 KB a track), each pass rougher. Its first 12
   presets are DUBSIREN's 12 in 8 bits, then ARCADE ZAP, DIRTY DUB, POCKET HORN, BROKEN TAPE
-- **DUBCHORD** *(Fel-Tracker; the IDM distribution)*: the dub-techno chord stab, a whole chord in one voice: a key plays
+- **DUBCHORD** *(Blue Hare; the IDM distribution)*: the dub-techno chord stab, a whole chord in one voice: a key plays
   CHORD on its note (MIN7, MIN9, MIN11, MAJ7, SUS2, SUS4, 5THS, MIN; the same quality wherever the root goes), four notes
   through one resonant low-pass, so a chord costs one voice of the budget. VOIC CLOSE, OPEN, SPREAD; WAVE SAW, SQR, SINE,
   ORGAN; DTN detunes the notes in turn; CUT, RES, and the filter's ENV and DEC (the stab's opening). Its presets send
   plenty to the delay (TAPE suits it) and the reverb; up to 4 chords a track
-- **BLISS** *(Fel-Tracker; FMKEYS until 2026-10; the FOUNDRY distribution; elsewhere a stored BLISS sound loads as
+- **BLISS** *(Blue Hare; FMKEYS until 2026-10; the FOUNDRY distribution; elsewhere a stored BLISS sound loads as
   WAVE)*: FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
   index falls over DECAY, harder notes brighter by VEL) and the tine (the metallic strike of the attack, TINE; DTUNE
   its beating against the body); KSCL softens the top of the keyboard. Electric pianos, bells, tubular bells, marimba,
   vibes, clav, organ, harpsichord, kalimba, celesta, music box; Rhodes, Wurly, the DX and LATELY basses, FM bells,
   crystal, an FM pad, brass, flute, a harp pluck
-- **WASP** *(Fel-Tracker; the IDM distribution)*: two oscillators into a gritty multimode filter, after the little
+- **WASP** *(Blue Hare; the IDM distribution)*: two oscillators into a gritty multimode filter, after the little
   black-and-yellow synth of 1978. WAVE pairs them (SAW, SQR, a 25 % PUL, NOIS), OSC2 sits -24 .. +24 semitones away,
   DTN detunes them (each voice drifts a little too), MIX balances them. A 12 dB state-variable filter (MODE LP, BP, HP,
   NOTCH; CUT, the key half tracked) keeps its lows however hard RES is pushed (its passband stays put while the peak
   rises: no thinning); from ~115 it sings by itself, past that a saturating, unsteady self-oscillation. GRIT drives
   the filter and cuts its integrators to fewer bits (16 .. 8): steps, fizz and limit cycles as it rings. 30 presets:
   leads, basses resonant and not, reeses, pads, keys, a clav, self-oscillating and gritty oddities
-- **MODAL** *(Fel-Tracker; the IDM distribution; its resonators are PHYS's, DaisySP's)*: a modal resonator. An exciter
+- **MODAL** *(Blue Hare; the IDM distribution; its resonators are PHYS's, DaisySP's)*: a modal resonator. An exciter
   strikes 12 tuned resonators, the modes of a material: MATRL BAR, MRMBA, BELL, GLASS, PLATE, DRUM, TUBE, STRING; EXCIT
   MALLET, PLUCK, BOW (noise while the key is held), CLICK. STRUCT stretches the modes (inharmonic), POS the strike's
   place, DECAY the ring (50 ms .. 8 s), DAMP how much sooner the highs die, BRIGHT the strike's hardness, BEAT detunes
   the modes a little each (a bell's beating). Presets: marimba, vibes, bells, glass, plates, drums, harp, kalimba,
   gamelan, bowed glass and bells, a drone pipe, clanks and glitches
-- **VECTOR** *(Fel-Tracker; the IDM distribution)*: vector synthesis. Four of WAVE's frames at the corners of a square
+- **VECTOR** *(Blue Hare; the IDM distribution)*: vector synthesis. Four of WAVE's frames at the corners of a square
   (SET: VOXSTR, GLASS, ORGAN, DIGI, AIR, METAL, CHOIR, SYNTH), a point moving over it: PATH HOLD (at X, Y), ENV (each
   note round the corners, then to X, Y), LOOP, CIRCLE, EIGHT, RANDOM, RATE ~0.02 .. 5 Hz; the SHP routings move X too.
   DTN detunes A, C against B, D; CUT, RES. Presets: evolving pads, morphing choirs and organs, keys, a moving bass
-- **ECHOES** *(Fel-Tracker; the IDM distribution)*: a note and its echoes as one instrument; every repeat is played
+- **ECHOES** *(Blue Hare; the IDM distribution)*: a note and its echoes as one instrument; every repeat is played
   anew, so each can differ. SRC (BLIP, PLUCK, STAB, NOISE, FM), then COUNT repeats at the tempo: TIME (1/4 .. 1/64,
   dotted, triplets), SHAPE (EVEN, BOUNCE: each shorter, SLOW, SWING, RANDOM), DECAY (what each keeps), PITCH (semitones
   a repeat), TONE (each darker or thinner), SCAT (chance in time and pitch). The echoes go on after the key is let go
-- **GLITCH** *(Fel-Tracker; the IDM distribution)*: a kit of micro-sounds, a key each from C2 (as DRUM): CLICK, POP,
+- **GLITCH** *(Blue Hare; the IDM distribution)*: a kit of micro-sounds, a key each from C2 (as DRUM): CLICK, POP,
   TICK, ZAP, BITERR, DATA, DROP, FAX, MODEM, CRACKL, SPARK, BLIP, SHARD, BUZZ, SKIP, PING (the octave above: the same,
   an octave up). KIT CLEAN, HARSH, LOFI, BROKEN; PITCH, DECAY, ROLL (a ratchet at the tempo while held, 1/32 ..
   1/128), CRUSH, VARY (each hit different), DENS (extra micro-hits), TONE
-- **WAREHOUSE** *(Fel-Tracker; the warehouse raves: four on the floor and breakbeats, acid, chord stabs and strings,
+- **WAREHOUSE** *(Blue Hare; the warehouse raves: four on the floor and breakbeats, acid, chord stabs and strings,
   hoovers and the trance lead, build-ups; 4 tracks, its own palette RAVE, acid green and UV violet on concrete)*. Its 8
   engines: FLOOR, BREAKS, VENOM, DUBCHORD, STRINGS, HOOVER, SANDSTORM, RISERS. At power-on: FLOOR, VENOM ACID,
   DUBCHORD's DUB STAB, SANDSTORM's LEAD. (LINNKIT, KIT, FMPERC, CHOKE, GUTS, VOSIM, SIREN8 and ABYSS left it in 2026-10;
@@ -406,7 +406,7 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     24 presets (LEAD, STAB, GATE 16, GATE 32, DIVE, ANTHEM, SUPERSAW ..). SIREN8 plays on every
   track (there is no DUBSIREN to keep the last one). At power-on: KIT, FLOOR, GUTS' GUT ACID, HOOVER's REESE BASS,
   DUBCHORD, VOSIM's FORMANT PAD, SANDSTORM's LEAD and SIREN8's BIT SIREN
-- **CHIP** *(Fel-Tracker; chiptune, the 8-bit consoles' four channels: 4 tracks, its own palette CHIP, the Game Boy's
+- **CHIP** *(Blue Hare; chiptune, the 8-bit consoles' four channels: 4 tracks, its own palette CHIP, the Game Boy's
   four greens)*. The engines already in the tree that sound the part, and CHIPKIT: CHIPKIT, SID, WAVE, BYTE, ECHOES,
   SPEECH, SIREN8 (seven since 2026-10: KIT, GLITCH, WASP, VECTOR, VOSIM, CHAOS and RISERS left it).
   - **CHIPKIT**: the drums of the 8-bit consoles, made as their sound chips made them (no chip emulated, no samples):
@@ -416,7 +416,7 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     noise), SMS (squares only, 2 dB volume steps, three noise rates and its tonal periodic noise), C64 (smooth);
     TUNE, DECAY, SWEEP (the pitch falls), NOISE, RATE (the frames: a quarter .. four times the console's), VARY, VEL.
     At power-on: CHIPKIT's NES KIT, SID BASS, BYTE ARP and SID's SYNC LEAD
-- **IDM NATIVE** *(Fel-Tracker; the native image's alone: `native/build.sh idm_native`, no FM-1 build)*: IDM with its
+- **IDM NATIVE** *(Blue Hare; the native image's alone: `native/build.sh idm_native`, no FM-1 build)*: IDM with its
   two most CPU-bound engines as the native engines grown from them, which share their controls (a sound loads on the
   FM-1 as the engine it grew from): SID, WASP, WAVE, BREAKS, WEST, VECTOR, DUBSIREN, MODAL, DUBCHORD, VOSIM, NEBULA,
   CHAOS, CANYON, KIT, SPEECH, GLITCH.
@@ -426,7 +426,7 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   - **CANYON**: ECHOES' repeats, all of them: COUNT up to 64, every repeat ringing to its end (ECHOES keeps 6), 8
     voices; ECHOES' presets and CANYON, BELL CASCADE, PLUCK STORM, ENDLESS DUB, LONG BOUNCE, FM RAIN, WHOLE TONE,
     AVALANCHE
-- **FOUNDRY** *(Fel-Tracker; industrial and EBM: war drums and struck metal, sub bass and saw stacks, molten walls and
+- **FOUNDRY** *(Blue Hare; industrial and EBM: war drums and struck metal, sub bass and saw stacks, molten walls and
   corroded noise, screams and power tools; 4 tracks, its own palette, molten orange)*. Its 8 engines, in their order on
   the device: WAR, ANVIL, DARK, RAZOR, SLAG, RUST, SCREAM, DRILL. Every one has at least 24 presets. At power-on: WAR
   KIT, DARK's SUB WEIGHT, SLAG's EMBER PAD, RAZOR LEAD. (VOSIM, SCRATCH, FLUIDS, DUBCHORD, MODAL, BLISS, ECHOES and WAVE
@@ -435,7 +435,7 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
     bite), PUNCH (the pitch from up to two octaves above, falling over PDEC: an 808's thud), DRIVE, TONE
   - **RAZOR**: up to 7 saws spread apart (VOICES, SPREAD: reeses, supersaws), SUB, NOISE, DRIVE into a resonant
     low-pass (CUT, RES) and EDGE, a high-pass after it (thin, icy, laser cuts)
-  - *(Fel-Tracker)* RAZOR and DARK each have three EBM bass sounds: EBM OCTAVES, EBM ROOT, EBM GALLOP (until 2026-10
+  - *(Blue Hare)* RAZOR and DARK each have three EBM bass sounds: EBM OCTAVES, EBM ROOT, EBM GALLOP (until 2026-10
     they set the arpeggiator's figure too)
   - **SLAG**: hot walls and drones: 2 .. 4 oscillators wandering in tune (DRIFT), HEAT's saturation, a low-pass that
     MELT lets sink over each note, NOISE sparks
@@ -470,18 +470,18 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
       in feedback (SIZE, FDBK, DAMP, TUNE towards the key, MOD, DRIVE in the loop), MIX
     - **SHRED**: a sound torn apart as it plays: SRC (SAW, SQR, FM, NOISE) into a 35 ms ring read by two grains (GRAIN,
       STRETCH, PITCH), STUTTER, TEAR (jumps, backwards), SYNC to the grid, MIX
-- **KIT** *(Fel-Tracker; the IDM distribution)*: a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
+- **KIT** *(Blue Hare; the IDM distribution)*: a whole drum kit on one part, of FMPERC's voices, on DRUM's lanes and General MIDI
   map (its lane LEVELs and the EDIT layer's lane MUTEs too). KIT: FM, METAL, BIT, GLITCH, DEEP; TUNE, DECAY, PUNCH, FM,
   SNAP, TONE move every lane; VARY gives every hit its own small differences. A closed hat chokes the open one
-- **BREAKS** *(Fel-Tracker; the IDM distribution)*: a synthesized breakbeat player at the song's tempo. The key picks one of 12 breaks
+- **BREAKS** *(Blue Hare; the IDM distribution)*: a synthesized breakbeat player at the song's tempo. The key picks one of 12 breaks
   (FUNKY, CLASSIC, THINK, HALFTIME, BOOM BAP, JUNGLE, TWO STEP, SHUFFLE, BUSY, DRILL, SPARSE, GALLOP), looping while
   held; SLICE the 16th it starts from (chops), RATE (half .. double time), SWING, STUTR (rolls into 32nds and 64ths),
   SHUF (jumps to other 16ths), TUNE, DECAY, CRUSH
-- **RISERS** *(Fel-Tracker; in no distribution since IDM gave its slot to GLITCH: a stored RISERS sound loads as
+- **RISERS** *(Blue Hare; in no distribution since IDM gave its slot to GLITCH: a stored RISERS sound loads as
   NOISE where there is one, else SID)*: build-ups and landings timed to the song: LEN beats (1 .. 32) of a climb RANGE
   semitones along CURVE. NOIS (a resonant noise sweep), SAW (a detuned stack, SPRD), SINE, SHEP (an endless Shepard
   rise), DOWN (a downlifter), BOOM (an impact, a sub drop); BUILD gates it faster and faster, NOISE mixes noise in
-- **SPEECH** *(Fel-Tracker; the IDM distribution)*: words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
+- **SPEECH** *(Blue Hare; the IDM distribution)*: words, as the LPC speech chips of the late 70s spoke them: a buzz or a hiss
   through a 10-pole lattice filter at 8.8 kHz whose coefficients glide from sound to sound; no recordings, the words
   are phonemes (`tools/speech/`). BANK: NUM (the numbers 0 .. 10), TECH (machines and technology, the Latin-rooted
   words of the control room: IGNITION, REACTOR, OVERRIDE ..), COSMOS (the planets, the bright stars, NEBULA, QUASAR,
@@ -490,7 +490,7 @@ A build holds the engines of its distribution (BUILDING.md "Distributions"). In 
   DOO, YEAH ..), PHON (single phonemes); WORD picks one. Presets: sung vowels, syllables, the keys as words, screams MODE TONE plays WORD at the keys' pitch, WORDS makes every key a word; RATE, INTN (the intonation, 0
   monotone), BUZZ (to a whisper), FORM (the filter's clock: every formant up or down), END (STOP, HOLD the last vowel
   while held, LOOP)
-- **BYTE** *(Fel-Tracker)*: bytebeat. A counter restarts at every note and runs at 8 kHz on C4 (following the key; RATE
+- **BYTE** *(Blue Hare)*: bytebeat. A counter restarts at every note and runs at 8 kHz on C4 (following the key; RATE
   shifts it); FORM picks a formula of it (SAW, PWM, SIERP, XOR, OR, CHIRP, 42, MELO, OCTS, GLTCH, NOISE, MASK), A B C
   are its constants (A mostly the pitch, B how fast the pattern moves, C a mask or a melody); LOOP restarts the counter
   (1K .. 256K steps) so a pattern repeats while held; BITS and TONE shape the 8-bit output
@@ -502,7 +502,7 @@ numbers (1, 4, 8, 13) are retired, so a project with a track on one of them is r
 an empty slot, a song's instrument of one is dropped, and a library file's patch of one is skipped. A complete backup
 restores without its samples.
 
-**Fel-Tracker removed Felucca's own engines** (ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE, DRUM) and the
+**Blue Hare removed Felucca's own engines** (ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE, DRUM) and the
 default distribution that held them, with FM6's whole patch editing: the 6-OP FM tab of the web editor, its voice
 bank (the B slots, its flash sector) and the user presets' FM6 patches. Their ids (0, 2, 3, 5 .. 7, 9 .. 12) are
 retired as the four above, with the same clean break: a project with a track on one is refused, a user preset of one
@@ -512,9 +512,9 @@ shows empty, a song's instrument of one is dropped. The plain build is IDM.
 
 **Reverb** (FX > REVERB, TYPE): **HALL** (since 1.4, the default on a fresh start: eight delay lines feeding each
 other with slowly drifting taps, stereo, SIZE the decay up to about 4.5 s, DAMP how fast the highs die), **ROOM** (the
-default up to 1.1.5), **SPRING** and *(Fel-Tracker)* **GATED**: HALL cut off sharply, the 80s gated snare. A hit in
+default up to 1.1.5), **SPRING** and *(Blue Hare)* **GATED**: HALL cut off sharply, the 80s gated snare. A hit in
 the send opens it; it holds for SIZE (about 60 ms at 0 to 500 ms at 127) after the last one, then shuts in about 10 ms.
-*(Fel-Tracker, 2026-10)* **CONCERT**: HALL grown into the memory four tracks freed, sixteen longer lines instead of
+*(Blue Hare, 2026-10)* **CONCERT**: HALL grown into the memory four tracks freed, sixteen longer lines instead of
 eight, a 12 ms pre-delay and four diffusers: a denser, smoother, wider tail at HALL's level (SIZE and DAMP as HALL's;
 the native image plays its own floating-point CONCERT).
 A project plays the TYPE it was saved with (one of the native image's own, on the FM-1: HALL).
@@ -545,8 +545,8 @@ sevenths, or a fixed shape) and VOIC the voicing.
 | `tools/` | build script, generators, package maker and installer |
 | `assets/` | UI font, icon names |
 | `web/` | the web installer, the editor (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
-| `native/` | *(Fel-Tracker)* the native image: Fel-Tracker as a desktop application (SDL2), BUILDING.md "Native image" |
-| `archive/` | *(Fel-Tracker)* what is kept but neither built nor tested: the plugin (VST3, AU, CLAP by DPF), `archive/plugin/README.md` |
+| `native/` | *(Blue Hare)* the native image: Blue Hare as a desktop application (SDL2), BUILDING.md "Native image" |
+| `archive/` | *(Blue Hare)* what is kept but neither built nor tested: the plugin (VST3, AU, CLAP by DPF), `archive/plugin/README.md` |
 | `tests/` | tests that run on the build machine |
 | `LICENSES/` | licence texts of the bundled fonts, icons, ported DSP and SDK files |
 
@@ -564,8 +564,8 @@ the FM-1 can be brought back:
 
 ## Support
 
-Fel-Tracker: issues and ideas go to [TristanoSuriani/fel-tracker](https://github.com/TristanoSuriani/fel-tracker/issues).
-Please don't report Fel-Tracker problems to Felucca's tracker.
+Blue Hare: issues and ideas go to [TristanoSuriani/fel-tracker](https://github.com/TristanoSuriani/fel-tracker/issues).
+Please don't report Blue Hare problems to Felucca's tracker.
 
 Felucca: if Felucca is useful to you, [sponsoring on GitHub](https://github.com/sponsors/hugelton) or a donation
 on [itch.io](https://hugelton.itch.io/felucca) helps keep its development going.
@@ -576,7 +576,7 @@ moved there. Pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## AI disclaimer
 
-Fel-Tracker is developed by Tristano Suriani with the help of AI coding agents (for coding, testing and
+Blue Hare is developed by Tristano Suriani with the help of AI coding agents (for coding, testing and
 documentation). He decides its design, features, sound design and direction.
 
 Felucca (Leo Kuroshita's disclaimer): Felucca is developed with the assistance of AI coding agents. These tools are used for coding, testing, documentation, translation, and maintenance.
@@ -586,14 +586,14 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 
 ## Credits
 
-- **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Fel-Tracker, meaning the tracker,
+- **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Blue Hare, meaning the tracker,
   the distributions and engine ids, the engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE,
   CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, KIT, BREAKS and RISERS,
   and the changes to
   Felucca listed in
   [AUTHORS.md](AUTHORS.md)
 - **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):
-  Felucca itself, its own engines (removed in Fel-Tracker) and the DRUM lanes' General MIDI map KIT uses; the
+  Felucca itself, its own engines (removed in Blue Hare) and the DRUM lanes' General MIDI map KIT uses; the
   [Fukiai](https://github.com/hugelton/Fukiai) icon font ([MIT](LICENSES/MIT-Fukiai.txt))
 - Fonts: [Inter Tight](https://github.com/rsms/inter-tight) by The Inter Project Authors, [SIL OFL 1.1](LICENSES/OFL-InterTight.txt);
   the browser emulator's labels: [DotGothic16](https://github.com/fontworks-fonts/DotGothic16) by The DotGothic16 Project Authors, [SIL OFL 1.1](LICENSES/OFL-DotGothic16.txt)
@@ -612,8 +612,8 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
 Free software: [GPL-3.0-only](LICENSE). The bundled fonts and the
 ported DSP keep their own licences ([LICENSES/](LICENSES/)); details in [LICENSING.md](LICENSING.md).
 
-M-VAVE and FM-1 are trademarks of their respective owners. Neither Felucca nor Fel-Tracker is affiliated with or
-endorsed by them. "Felucca" is Hügelton Instruments' name for its firmware; Fel-Tracker is an independent fork.
+M-VAVE and FM-1 are trademarks of their respective owners. Neither Felucca nor Blue Hare is affiliated with or
+endorsed by them. "Felucca" is Hügelton Instruments' name for its firmware; Blue Hare is an independent fork.
 
 Felucca: Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-Fel-Tracker's additions and changes: Copyright (C) 2026 Tristano Suriani (see [AUTHORS.md](AUTHORS.md))
+Blue Hare's additions and changes: Copyright (C) 2026 Tristano Suriani (see [AUTHORS.md](AUTHORS.md))

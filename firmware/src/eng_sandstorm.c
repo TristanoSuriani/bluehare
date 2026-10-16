@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* SANDSTORM (1.5, WAREHOUSE): the late-90s trance lead, named after Darude's track of 1999 (Fel-Tracker's own: no
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* SANDSTORM (1.5, WAREHOUSE): the late-90s trance lead, named after Darude's track of 1999 (Blue Hare's own: no
  * samples, nothing of the record). Five band-limited saws, SPRD apart (0 .. 50 cents, the outer two the widest),
  * into two resonant low-passes in a row (24 dB, CUT and RES, the key half tracked) that every note opens by ENV and
  * lets close over DEC: the pluck. GATE (OFF, 1/8, 1/16, 1/32 at the song's tempo) plucks it again on every step
@@ -47,7 +47,7 @@ static void sandstorm_note_on(track_t *t, voice_t *v)
 
 static void sandstorm_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
-    os2_t *os = os2_of(t, v);                         /* (Fel-Tracker 2026-10: the shaper's 2x, dsp.c) */
+    os2_t *os = os2_of(t, v);                         /* (Blue Hare 2026-10: the shaper's 2x, dsp.c) */
     const int16_t *p = t->p;
     ss_voice_t *s = ss_voice(t, v);
     int32_t pluck = v->s[0], into = v->s[1], dive = v->s[2], chop = v->s[3], k, cut, drive = p[P_E7];
@@ -89,7 +89,7 @@ static void sandstorm_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, c
         y = tsvf_lp(&flt, y, &s->f[2], &s->f[3]);
         if (drive && os2_off)
             y = softclip(y * (64 + drive) >> 6);
-        else if (drive) {                             /* (Fel-Tracker 2026-10: the drive at twice the rate, dsp.c os2) */
+        else if (drive) {                             /* (Blue Hare 2026-10: the drive at twice the rate, dsp.c os2) */
             int32_t ya, yb;
             os2_up(os, y, &ya, &yb);
             y = os2_down(os, softclip(ya * (64 + drive) >> 6), softclip(yb * (64 + drive) >> 6));

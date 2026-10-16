@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # CHIP: chiptune, the 8-bit consoles' four channels: their drums (CHIPKIT), pulse and noise (SID), wave channels
 # (WAVE), bytebeat (BYTE), echo arpeggios (ECHOES), the speech chips (SPEECH), 8-bit sirens (DUBSIREN8).
 # The engines in display order, one a line (names: firmware/src/engine_ids.h; at most 8 since the 2026-10 plan: two a

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* RUST (1.5, FOUNDRY): corroded noise (Fel-Tracker's own): metallic sizzle, lo-fi decay. Noise (COLOR: dark .. white)
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* RUST (1.5, FOUNDRY): corroded noise (Blue Hare's own): metallic sizzle, lo-fi decay. Noise (COLOR: dark .. white)
  * and a pulse at the key (TONE: how much of it), held at a lower rate (RATE: 1 .. 32 samples a step) and cut to fewer
  * bits (BITS 16 .. 2), CORRUPT flipping bits and jumping samples now and then; through two resonances at the key and
  * at 2.76 times it (METAL: how much of their ringing, RES how long), a low-pass last (FILTER). The ADSR shapes it.

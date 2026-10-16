@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* MODAL (1.5): a modal resonator (Fel-Tracker's own voice; its resonators are PHYS's, DaisySP's ResonatorSvf in fixed
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* MODAL (1.5): a modal resonator (Blue Hare's own voice; its resonators are PHYS's, DaisySP's ResonatorSvf in fixed
  * point: phys_dsp.c, MIT). An exciter strikes a bank of MD_NM tuned resonators, the modes of a material: MATRL BAR (a
  * free bar), MRMBA (a tuned marimba bar), BELL (a church bell's partials, the hum an octave down), GLASS, PLATE, DRUM (a
  * membrane), TUBE (odd harmonics, a closed pipe), STRING (harmonics, a little stiff). EXCIT: MALLET (a soft pulse, its

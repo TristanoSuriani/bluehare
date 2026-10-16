@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* MENU's rows and their settings: what ui_menu.c draws and steps, and what the editor reads and sets (editor_menu.c
  * MENU_DESC / MENU_SET). One apply path for both: menu_put. Grouped: the screen (COLOR, STYLE, LARGE, ANIM, LEDS; 1.1.5:
  * SCREEN OFF; 1.2: SCOPE; 1.3: HOME), the
@@ -105,9 +105,9 @@ static const uint8_t ANIM_ORD[3] = {1, 0, 2};          /* (a value's place in th
 /* 1.3 (Discussions #112, #134): what HOME shows under its cards (ui.c ui_home_view): the scope, or the four tracks */
 static const char *const HOME_N[HV_COUNT] = {"SCOPE", "TRACKS"};
 
-/* MENU > USB SERIAL (#67). The serial console is a developer tool (README: FELUCCA_CDC). ON (the default) presents it,
+/* MENU > USB SERIAL (#67). The serial console is a developer tool (README: BLUEHARE_CDC). ON (the default) presents it,
  * the descriptors byte for byte as before; OFF re-enumerates as audio + MIDI only, device class 0 (the bytes of a
- * FELUCCA_CDC=0 build): macOS 13-15 then attach their USB audio driver (with the console Apple's CDC composite driver
+ * BLUEHARE_CDC=0 build): macOS 13-15 then attach their USB audio driver (with the console Apple's CDC composite driver
  * takes the device and the audio input never appears). USB-MIDI stays, and with it the editor, the update installer
  * and the soft key (SysEx on EP1). Applied at boot before USB starts (main.c: enumerated with it from the start, never
  * on then off) and while the menu is closed (ui_input: one re-enumeration when it closes, not one per KNOB 1 step).
@@ -116,11 +116,11 @@ static const char *const HOME_N[HV_COUNT] = {"SCOPE", "TRACKS"};
 static uint32_t menu_serial_at;                        /* fm1_ms | 1 of the editor's change; 0 none */
 static void usb_serial_apply(void)
 {
-#if FELUCCA_CDC
+#if BLUEHARE_CDC
     if (menu_serial_at && fm1_ms - (menu_serial_at & ~1u) < 200u)   /* (& ~1: at an even fm1_ms the | 1 was 1 ms ahead) */
         return;
     menu_serial_at = 0;
-    usb_cdc_switch(FELUCCA_CDC_DEFAULT && !(ui_prefs & PREF_SERIAL_OFF));   /* (a FELUCCA_CDC_DEFAULT=0 build: off) */
+    usb_cdc_switch(BLUEHARE_CDC_DEFAULT && !(ui_prefs & PREF_SERIAL_OFF));   /* (a BLUEHARE_CDC_DEFAULT=0 build: off) */
 #endif
 }
 static const menu_flag_t *menu_flag(uint32_t row)

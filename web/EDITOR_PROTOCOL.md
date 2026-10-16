@@ -1,10 +1,10 @@
-# Felucca editor protocol (SysEx over USB-MIDI)
+# Blue Hare editor protocol (SysEx over USB-MIDI)
 
-This is Felucca's protocol, by Leo Kuroshita. Fel-Tracker (Tristano Suriani) changed it in 1.5: the tracker's
+This is Felucca's protocol, by Leo Kuroshita. Blue Hare (Tristano Suriani) changed it in 1.5: the tracker's
 commands, the engine ids and their count, the distribution tag, and the removal of the step sequencer's and the
 samples' commands. Those parts are marked 1.5. Whose work is whose: [AUTHORS.md](../AUTHORS.md).
 
-**Fel-Tracker without Felucca's engines:** ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM are
+**Blue Hare without Felucca's engines:** ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM are
 gone, their ids (0, 2, 3, 5, 6, 7, 9, 10, 11, 12) retired like 1, 4, 8, 13 and 27: `INFO` names them `-`, a
 `PRESET` / `G_ENGSEL` of one plays the first engine's first preset, `UP_PUT` of one is refused. With FM6 went its
 commands (68..71, 74..77: no reply), its INFO tags (`46`, `50`, `56`: not sent; an editor steps over them when an
@@ -84,7 +84,7 @@ a user preset's stored pattern is still read and written (and kept in flash), bu
 `UP_STORE` stores an empty one. `PROJECT` saves and loads the one song whatever the slot. See "1.5: the tracker (78,
 79)" below.
 
-**Fel-Tracker, 2026-10 (the tracker removed):** the tracker is gone too; the sequencer is a placeholder (the device's
+**Blue Hare, 2026-10 (the tracker removed):** the tracker is gone too; the sequencer is a placeholder (the device's
 SEQ page says TODO). `TRACKER` (78) gets no reply, `TRACKER_CHANGED` (79) is never pushed, INFO no longer ends with
 the `58` tag, and `WATCH` does not take bit 2 (7 answers 3). `PROJECT` keeps the tracks' sounds and their places in
 the mix (WIDTH, LOW CUT, DUCK, PAN MODE), no song. The MENU's CLICK is OFF / ON (REC, while a track was armed, is
@@ -106,7 +106,7 @@ multimode filter), 34 MODAL (a modal resonator), 35 VECTOR (vector synthesis), 3
 40 GUTS, 41 SLAG, 42 VENOM, 43 HONKS, 44 WAR, 45 CHOKE, 46 RUST, 47 DRILL, 48 ANVIL, 49 SCREAM,
 50 FLUIDS, 51 SCRATCH, 52 ABYSS, 53 SHRED, and WAREHOUSE's 54 LINNKIT, 55 STRINGS, 56 FLOOR, and the native image's 57 NEBULA, 58 CANYON (no device has them: an editor sees `-`), and CHIP's 59 CHIPKIT, WAREHOUSE's 60 SANDSTORM (SANDSTRM); the user-slot engine of `FAV_GET` / `FAV_SET` is 61. DUBSIREN plays on the last track
 alone: a `SET` of `G_ENGSEL` or a `PRESET` of it on another track gives DUBSIREN8 with the same preset. `NAMES`, `DESC` and the rest treat them as any
-engine. `INFO`'s version string carries the distribution after the version ("FELUCCA v1.5 IDM"; the default: none).
+engine. `INFO`'s version string carries the distribution after the version ("BLUE HARE v1.5 IDM"; the default: none).
 
 A build holds a set of the engines, its distribution (BUILDING.md "Distributions"); an id it has no engine for is named "-" in `INFO`, `NAMES`
 lists no presets for it, and no track ever plays it:
@@ -148,7 +148,7 @@ watches (v2, `WATCH`), the device also sends push frames (cmds 23, 24, 26) at an
 | string | ASCII bytes, ended by a 0 byte |
 | scope | 0 = parameter of the selected track (`P_*`, 0..P_COUNT−1); 1 = global parameter (`G_*`, 0..G_COUNT−1) |
 | track | 0..3: tracks 1..4 (synth parts) |
-| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 retired (DIGITAL), 2 PHASE, 3 LOFI, 4 retired (SAMPLE), 5 VOICE, 6 TRIO, 7 WHEEL, 8 retired (GRAIN), 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 retired (SLICE), 14 WAVE, 15 BYTE, 16 WEST, 17 HOOVER, 18 SPEECH, 19 FMPERC, 20 KARPLUS, 21 VOSIM, 22 PARTICLE, 23 CHAOS, 24 SID, 25 DUBSIREN, 26 BLISS, 27 retired (ACID), 28 KIT, 29 BREAKS, 30 RISERS, 31 DUBSIREN8, 32 DUBCHORD, 33 WASP, 34 MODAL, 35 VECTOR, 36 ECHOES, 37 GLITCH, 38 DARK, 39 RAZOR, 40 GUTS, 41 SLAG, 42 VENOM, 43 HONKS, 44 WAR, 45 CHOKE, 46 RUST, 47 DRILL, 48 ANVIL, 49 SCREAM, 50 FLUIDS, 51 SCRATCH, 52 ABYSS, 53 SHRED (1.5: NENGINES 49, 31 before DUBSIREN8; 1.0.4 .. 1.4.1: 14, a build with `FELUCCA_SLICE=0` 13; a retired number is named "-", see 1.5 above). The device and the editor list them in another order (the distribution's order; the default: ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM); the numbers stay |
+| engine byte | 0..NENGINES−1 (firmware before 1.0: NENGINES = its drum track, no engine). The numbers are fixed, new engines are appended: 0 ANALOG, 1 retired (DIGITAL), 2 PHASE, 3 LOFI, 4 retired (SAMPLE), 5 VOICE, 6 TRIO, 7 WHEEL, 8 retired (GRAIN), 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6, 13 retired (SLICE), 14 WAVE, 15 BYTE, 16 WEST, 17 HOOVER, 18 SPEECH, 19 FMPERC, 20 KARPLUS, 21 VOSIM, 22 PARTICLE, 23 CHAOS, 24 SID, 25 DUBSIREN, 26 BLISS, 27 retired (ACID), 28 KIT, 29 BREAKS, 30 RISERS, 31 DUBSIREN8, 32 DUBCHORD, 33 WASP, 34 MODAL, 35 VECTOR, 36 ECHOES, 37 GLITCH, 38 DARK, 39 RAZOR, 40 GUTS, 41 SLAG, 42 VENOM, 43 HONKS, 44 WAR, 45 CHOKE, 46 RUST, 47 DRILL, 48 ANVIL, 49 SCREAM, 50 FLUIDS, 51 SCRATCH, 52 ABYSS, 53 SHRED (1.5: NENGINES 49, 31 before DUBSIREN8; 1.0.4 .. 1.4.1: 14, a build with `BLUEHARE_SLICE=0` 13; a retired number is named "-", see 1.5 above). The device and the editor list them in another order (the distribution's order; the default: ANALOG FM6 WAVE WEST HOOVER PHASE LOFI VOICE TRIO WHEEL PHYS NOISE BYTE DRUM); the numbers stay |
 
 The engine parameters are `P_E0..P_E7`: P_COUNT−8 .. P_COUNT−1 (96..103 since 1.2; 91..98 in 1.1), and `INFO` gives `P_E0`.
 Their meaning, range and names depend on the current engine, so re-read `DESC` for them
@@ -417,7 +417,7 @@ grid lives in the steps themselves, so every engine has it:
   DRUM engine on any part: the first C key is the kick (C2 = 36), notes are GM numbers.
 - The globals `G_DRCH`, `G_DRLVL`, `G_DRREV` (ids 24..26: the old drum track's MIDI channel, level and
   reverb send) keep their ids, and `G_COUNT` stays 27. `G_DRREV` is inert: `DESC` gives label "-", range 0..0,
-  and no page shows it. Id 25 (`G_DRLVL`, inert since 1.0: every song holds 0) is `G_DTYPE` since Fel-Tracker 1.5:
+  and no page shows it. Id 25 (`G_DRLVL`, inert since 1.0: every song holds 0) is `G_DTYPE` since Blue Hare 1.5:
   the delay's type, `DESC` label "TYPE", enum CLEAN (0, the delay as before) / TAPE (1) / WORN (2), on the DLY 2
   page (FX), power-on CLEAN. Id 24 (`G_DRCH`, never read since 1.0) is `G_RTYPE`
   since 1.0: the reverb's model, `DESC` label "TYPE", enum ROOM (0) / SPRING (1) / HALL (2, since 1.2), on the
@@ -463,7 +463,7 @@ grid lives in the steps themselves, so every engine has it:
   (about 10 ms each); with the next piece sent before the reply, every second piece was dropped.
 - **Following the device.** With v2 firmware, `WATCH` and `PING` (above). Older firmware pushes
   nothing (no reply to `PING`): poll `DUMP` about every 300–500 ms while the page is visible.
-- **Port.** The device's MIDI port is named "Felucca" (USB 1209:0001). Updates use the same
+- **Port.** The device's MIDI port is named "Blue Hare" (USB 1209:0001). Updates use the same
   port with other SysEx (the `F0 22 24 35 …` keys, `00 59 …` frames); never send those
   from the editor. Since 1.0 the same USB device also has an audio input ("Felucca",
   44.1 kHz stereo; bcdDevice 3.11; since 1.1 44.1 or 48 kHz, the host's choice, bcdDevice 3.21
@@ -683,7 +683,7 @@ in 1/16 of a step) after the locks tag (`4C 01 1`). Firmware without them: 64 re
   and no MIDI CC sets them. 95 `SPRD` (0..127, PCT, default 0: every voice on PAN, as before): a POLY / UNISON
   track's voices alternate left and right of PAN by SPRD / 2 (127: hard left / right); MONO and LEGATO ignore it. It is
   the sound's (a factory preset sets 0, user presets store it) and can be recorded as motion. The engine parameters are
-  96..103. Fel-Tracker 1.5: id 8, the ENV DEST page's `FX` (read by nothing, on no device page), is `OCT` (-4..4,
+  96..103. Blue Hare 1.5: id 8, the ENV DEST page's `FX` (read by nothing, on no device page), is `OCT` (-4..4,
   INT, default 0): the sound's octave, added to every voice's pitch (keys, tracker cells and MIDI alike); on VOICE 3
   beside SPRD. A factory preset sets it (FMPERC's six kicks -3, every other preset 0), user presets store it, a
   tracker instrument carries it; a stored value outside -4..4 (an old ENV DEST FX set in the editor) loads as 0. ANALOG's `WAVE` (E0) gained 5 SYNC (OSC 2 hard-synced to OSC 1, DTN its interval, the SHP routings sweep it)
@@ -755,7 +755,7 @@ the settings record's size for id 1, 3840, 3648, 3584, 3388 or 0 (empty the slot
 version and slot count checked; 0 clears the patches). FUN9, FUN8, FUN7 and FUN6 become FUN10 (1.2; firmware before
 1.2 refuses a 3840-byte project at begin, rc 1).
 An archive without id 8 (written before FM6) still restores; the web editor reads all three kinds (11, 12, 13 objects).
-Fel-Tracker, a build of 8 tracks (a distribution's `TRACKS 8`): the list has 25 objects, ids 10..21 the stored song's
+Blue Hare, a build of 8 tracks (a distribution's `TRACKS 8`): the list has 25 objects, ids 10..21 the stored song's
 chunks 4..15 (as 2..5 its 0..3); the web editor reads that kind too, and sends 10..21 after 2..5. `INFO`'s track count
 (after P_E0's v3 byte) is 8 there: `TRACK`, `TRACK_DUMP`, `TRACK_MIX`, `TRACK_PARAM` take tracks 0..7, the tracker's
 `PATTERN` reply holds 8 cells a row and at most 8 rows (its count says how many: ask again from there), `FILTER` 8
@@ -784,7 +784,7 @@ earlier objects restored; the file is still the source.
 `BACKUP_LIST` answers `1, rc, 0` when rc is not 0. `GET` and `PUT` answer id 127 when they got no arguments.
 A `LIST` replaces the snapshot, and a `PUT` begin ends it: a `GET` after a begin gets rc 5.
 
-## FM6 patches (68-71; Felucca only: not in Fel-Tracker)
+## FM6 patches (68-71; Felucca only: not in Blue Hare)
 
 The FM6 engine (12) plays a 6-operator patch per track; its eight EDIT parameters are macros on top of it
 (ALG 0 = the patch's algorithm, 1..32 another; FB, MLVL, MRAT, MEG, VMOD offsets; DTUN; SLOT). The patch itself
@@ -848,7 +848,7 @@ read too. Pick a voice, edit it, send it to a track (target 0); to keep it, SAVE
 project) on the device. It exports single voices. Its librarian reads and writes a user preset's patch (target 3)
 with the record when the firmware has FM6 v2 bit 1, and keeps it in library files as `fm6` (128 numbers).
 
-## FM6 voice bank (74-77; 1.4.1; Felucca only: not in Fel-Tracker)
+## FM6 voice bank (74-77; 1.4.1; Felucca only: not in Blue Hare)
 
 32 voices in flash, written whole from the editor (a 32-voice SysEx file: its 128-byte packed records, the format
 `FM6_PUT` takes), picked on the device with SLOT B1..B32 (9..40). Loading one copies it into the track's patch as F1..F8
@@ -1058,8 +1058,8 @@ bus reset (send `INFO` and `WATCH` again after reconnecting), and a backup in pr
 
 INFO ends with `58 05 pats rows insts ncmd order-lo order-hi vars wfirst` (24, 64, 63, 16, 128 as two 7-bit bytes, 4,
 then 4 with 8 tracks, 2 with 4): the patterns, their most rows, the instruments, the FX commands, the order list's most
-positions, a pattern's most variations and the first track with WIDTH. Version 05 (Fel-Tracker) adds DUCK (op 12)
-and the FX command PLAY (15); 04 (Fel-Tracker), the same length, WIDTH and LOW CUT (op 11); 03, one byte shorter, the variations (ops 9, 10, the order entries' letters); 02, one byte shorter still,
+positions, a pattern's most variations and the first track with WIDTH. Version 05 (Blue Hare) adds DUCK (op 12)
+and the FX command PLAY (15); 04 (Blue Hare), the same length, WIDTH and LOW CUT (op 11); 03, one byte shorter, the variations (ops 9, 10, the order entries' letters); 02, one byte shorter still,
 had the 6-byte cells below without them (01, 4-byte cells without the chord and 32 patterns, was never released: an
 editor that knows only 01 shows no tracker). The firmware side is
 `firmware/src/editor_tracker.c`; the song itself `firmware/src/tracker.c` (see the README's Tracker section).
@@ -1099,7 +1099,7 @@ device shows):
 The value 0..127 spans the parameter's range (64: the middle of a bipolar one). The track's own value comes back on
 its next row.
 
-*(Fel-Tracker)* PLAY (15) changes how the row's note plays, not a parameter: its value is a command in bits 4..6 and its
+*(Blue Hare)* PLAY (15) changes how the row's note plays, not a parameter: its value is a command in bits 4..6 and its
 amount in bits 0..3, and the device (and the editor's text) writes it with the command's own letter and the amount in
 hex, `T04`:
 

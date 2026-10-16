@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The CHIP distribution (cc -DFELUCCA_DIST=chip): its 7 engines in their order on 4 tracks (since the 2026-10 plan), its palette and its
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* The CHIP distribution (cc -DBLUEHARE_DIST=chip): its 7 engines in their order on 4 tracks (since the 2026-10 plan), its palette and its
  * power-on sounds; CHIPKIT: each of its 12 drums sounds and ends (its voice free again), each console sounds its own
  * way, RATE moves its steps */
 #define main hostsim_main
@@ -61,7 +61,7 @@ int main(void)
     char what[200];
     for (e = 0; ok && e < NENGINES; e++)
         ok &= !strcmp(ENGINES[e]->name, ORDER[e]);
-    ck("its 7 engines in their order (CHIPKIT, SID, WAVE, BYTE, ECHOES, SPEECH, SIREN8), 4 tracks, the CHIP palette first", ok && NPART == 4u && !strcmp(STR(FELUCCA_DIST_PALETTE), "UI_PAL_CHIP"));
+    ck("its 7 engines in their order (CHIPKIT, SID, WAVE, BYTE, ECHOES, SPEECH, SIREN8), 4 tracks, the CHIP palette first", ok && NPART == 4u && !strcmp(STR(BLUEHARE_DIST_PALETTE), "UI_PAL_CHIP"));
     ok = TRK_DEF[0][0] == eng_of("CHIPKIT") && TRK_DEF[0][1] == 0u && TRK_DEF[1][0] == eng_of("SID") &&
          TRK_DEF[2][0] == eng_of("BYTE") && !strcmp(ENGINES[TRK_DEF[2][0]]->presets[TRK_DEF[2][1]].name, "BYTE ARP") &&
          TRK_DEF[3][0] == eng_of("SID") && TRK_DEF[3][1] == 2u;

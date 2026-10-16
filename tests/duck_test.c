@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* DUCK (core.h trk_duck; fx.c duck_key, mix_ducked): none at power-on; a key (the kick on track 1) ducks a pad held on
  * track 2 at once and lets it back over ~a quarter second, as deep as the pad's DUCK; a track at OFF, and every track
  * without a key, plays as it did; the song store keeps it, the power-on values have none. */

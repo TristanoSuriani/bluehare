@@ -62,7 +62,7 @@ static int settings_import(persist_t *p, int n)
     settings.zoom = p->zoom;
     settings_hold = (uint8_t)hold_from_stored(p->bold);
     settings_leds = (uint8_t)leds_from_stored(p->zoom);
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     memcpy(&favorites, &p->favorites, sizeof favorites);
     favorites.filter = favorites.filter == 1u;
     if (!(favorites.factory[15][12] & FAV_ROWS_FREED)) {   /* the retired ids' rows: their old stars cleared, once */
@@ -86,7 +86,7 @@ static void settings_export(persist_t *p)
     p->zoom = settings.zoom = leds_to_stored(settings.zoom, settings_leds);
     p->panel = panel;
     p->bold = hold_to_stored(p->bold, settings_hold);
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     memcpy(&p->favorites, &favorites, sizeof favorites);
 #endif
 }

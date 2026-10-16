@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Felucca menu (HOME held): its rows in tabs (1.0.5: DISPLAY CONTROL AUDIO SYSTEM; 1.2: MIDI before SYSTEM; ALGORITHM
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare menu (HOME held): its rows in tabs (1.0.5: DISPLAY CONTROL AUDIO SYSTEM; 1.2: MIDI before SYSTEM; ALGORITHM
  * between them, PRESETS within one; no scrolling), the rows in menu_items.c (the settings, shared with the editor's
  * MENU_DESC / MENU_SET; 1.2: TUNE and MIDI IN, the project's). No BACK row: HOME closes it (ui_input.c). The two-valued
  * rows are bits of ui_prefs (MENU_FLAGS). PRESETS scrolls from ABOUT through all credits (OCT- back to the tabs).
@@ -37,7 +37,7 @@ static void draw_about_qr(int32_t x, int32_t y)
 enum { MC_TEXT, MC_TITLE, MC_URL };
 typedef struct { const char *text; uint8_t kind; } menu_credit_t;
 static const menu_credit_t MENU_CREDITS[] = {
-    {"FEL-TRACKER", MC_TITLE},              /* Fel-Tracker: this fork of Felucca (AUTHORS.md) */
+    {"BLUE HARE", MC_TITLE},              /* Blue Hare: this fork of Felucca (AUTHORS.md) */
     {"Tristano Suriani", MC_TEXT},
     {"The tracker, the distributions, the engines WAVE BYTE WEST HOOVER SPEECH FMPERC KARPLUS VOSIM PARTICLE CHAOS SID "
      "DUBSIREN SIREN8 DUBCHORD BLISS WASP MODAL VECTOR ECHOES GLITCH DARK RAZOR GUTS SLAG VENOM HONKS WAR CHOKE RUST DRILL ANVIL SCREAM FLUIDS SCRATCH ABYSS SHRED KIT BREAKS RISERS LINNKIT STRINGS FLOOR NEBULA CANYON CHIPKIT SANDSTORM: GPL-3.0", MC_TEXT},
@@ -118,16 +118,16 @@ static int32_t menu_document(int32_t y, int draw)
 {
     uint32_t i;
     if (draw) {
-        cv_text(6, y + 2, &AF_L, "FEL-TRACKER", T_THEME);   /* (Fel-Tracker: its name, its developer; Felucca, */
+        cv_text(6, y + 2, &AF_L, "BLUE HARE", T_THEME);   /* (Blue Hare: its name, its developer; Felucca, */
         cv_text(6, y + 38, &AF_S, "Tracker, multi-engine synth", T_TEXT);   /* what it grew from, and its makers) */
-        cv_text(6, y + 58, &AF_M, FELUCCA_VERSION_DIST, T_THEME);
+        cv_text(6, y + 58, &AF_M, BLUEHARE_VERSION_DIST, T_THEME);
         cv_text_r(232, y + 61, &AF_S, __DATE__, T_MID, T_BG);
         cv_text(6, y + 82, &AF_S, "(C) 2026 Tristano Suriani", T_TEXT);
         cv_text(6, y + 100, &AF_S, "after Felucca, Leo Kuroshita", T_TEXT);
         cv_text(6, y + 118, &AF_S, "H\xFCgelton Instruments", T_TEXT);
         cv_text(6, y + 138, &AF_S, "GPL-3.0-only", T_TEXT);
         cv_text(6, y + 160, &AF_S, "github.com/Tristano", T_MID);
-        cv_text(6, y + 178, &AF_S, "Suriani/fel-tracker", T_MID);
+        cv_text(6, y + 178, &AF_S, "Suriani/blue-hare", T_MID);
         draw_about_qr(158, y + 122);
     }
     y = menu_text("CREDITS", y + 216, T_THEME, draw) + 8;
@@ -382,7 +382,7 @@ static void info_rows(void)                            /* (in screen rows: cv_oy
             GFX_HOOK_ALIGN(0, 0, 0, vy + AF_M.asc, AL_B, "info row unit on its value's baseline");
             cv_text_r(cv_text_r(MR_VR, vy + AF_M.asc - AF_S.asc, &AF_S, "%", T_MID, T_SURF) - 3, vy, &AF_M, cpu, T_THEME, T_SURF);
         } else {
-            cv_text_r(MR_VR, vy, &AF_M, k ? USB_N[info_usb()] : FELUCCA_VERSION_DIST, T_THEME, T_SURF);
+            cv_text_r(MR_VR, vy, &AF_M, k ? USB_N[info_usb()] : BLUEHARE_VERSION_DIST, T_THEME, T_SURF);
         }
     }
 }

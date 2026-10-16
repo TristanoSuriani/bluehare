@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* Felucca update loader, the portable part (step 2 of the M-UPGRADE update
+/* Blue Hare update loader, the portable part (step 2 of the M-UPGRADE update
  * protocol).
  *
  * The host serves the package ("logical image") with cmd 0x30 reads (ota.c).

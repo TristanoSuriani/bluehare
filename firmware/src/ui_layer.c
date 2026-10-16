@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Felucca quick layers: while a page button is held, the keys and KNOB 1..4
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare quick layers: while a page button is held, the keys and KNOB 1..4
  * are its shortcuts and its map shows over the page. One table (LAYERS) drives the gesture, the keys, the knobs,
  * the LEDs and the overlay:
  *   FX   HOLD  the performance effects (perform.c) and the track mutes while held; KNOB 1..4 its macros. The white
@@ -60,7 +60,7 @@ static const page_t *ly_page(uint32_t l) { return l == LAYER_SCL ? &LY_SCL : 0; 
 #define LY_COMBO 4u                    /* .. by a combo */
 #define LY_DEAD 8u                     /* .. pressed where there is no layer: does nothing */
 /* EDIT: the white key of INIT, the one after the engines (13: E5), its map cell. 15 engines at most have a key: a
- * build with more (every FELUCCA_ engine on: 16) leaves the last ones in PRESETS order to KNOB 1 */
+ * build with more (every BLUEHARE_ engine on: 16) leaves the last ones in PRESETS order to KNOB 1 */
 #define LY_INIT ((uint32_t)(NENG_SHOWN < 16 ? NENG_SHOWN : 16))
 #define LY_INIT_BK (NENG_SHOWN >= 16)                   /* INIT on the last black key (F#5: place 10) */
 #define LY_INIT_P 10u
@@ -429,7 +429,7 @@ static uint32_t eqa_drum_on(const track_t *t, uint32_t l) { return !((drum_mute[
 static const eqa_t EQA_DRUM[NLANE] = {EQA_LANE(0), EQA_LANE(1), EQA_LANE(2), EQA_LANE(3), EQA_LANE(4), EQA_LANE(5),
     EQA_LANE(6), EQA_LANE(7)};
 static const eqa_set_t EQA[] = {
-    {FELUCCA_ENG_KIT ? (uint8_t)ENGI_KIT : ENG_NO, NLANE, EQA_DRUM},     /* (KIT: the lanes of drum_map.c, drum_mute) */
+    {BLUEHARE_ENG_KIT ? (uint8_t)ENGI_KIT : ENG_NO, NLANE, EQA_DRUM},     /* (KIT: the lanes of drum_map.c, drum_mute) */
 };
 typedef char eqa_fits[NLANE <= 11 ? 1 : -1];       /* (11 black keys) */
 

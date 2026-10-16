@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* LINNKIT (1.5, WAREHOUSE): the 80s sampled drum machine, after the LinnDrum (Fel-Tracker's own, synthesized: no
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* LINNKIT (1.5, WAREHOUSE): the 80s sampled drum machine, after the LinnDrum (Blue Hare's own, synthesized: no
  * samples). Every key from C2 another drum, made anew at each hit (DRUM's map; the octave above the same twelve again):
  * KICK, SNARE, RIM, CLAP, HAT, OPEN (an open hat), TOM L, TOM M, TOM H, CONGA, COWBELL, TAMB. Each is a body (a sine,
  * or a triangle for the snare and the rim, two squares for the cowbell) whose pitch falls from BODY semitones above

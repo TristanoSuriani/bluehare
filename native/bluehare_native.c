@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* Fel-Tracker as a native desktop application: the firmware, as the browser emulator runs it (web/emu/felucca_web.c:
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* Blue Hare as a native desktop application: the firmware, as the browser emulator runs it (web/emu/bluehare_web.c:
  * the simulated FM-1, its clock driven by the audio asked for), in a window of its own (SDL2), its sound out of the
  * computer's (SDL audio, 44.1 kHz), MIDI in from every source (CoreMIDI on macOS), its saves in a file.
  * It is the base the heavier things are built on: no device's CPU, RAM or flash under it, only the computer's. Built
- * FELUCCA_NATIVE (core.h): every track has its own 16 voices (no budget shared, no note taken from another track), the
+ * BLUEHARE_NATIVE (core.h): every track has its own 16 voices (no budget shared, no note taken from another track), the
  * reverbs CONCERT, CAVERN and SHIMMER (fx_native.c), a 23.8 s delay line, the native engines (NEBULA, CANYON: in a
  * NATIVE distribution, idm_native), and MENU > INFO's CPU is the computer's load. The device's engines are as they are.
- *   native/build.sh [DIST]  ->  build/native/fel-tracker-<dist> (and Fel-Tracker <DIST>.app on macOS)
+ *   native/build.sh [DIST]  ->  build/native/blue-hare-<dist> (and Blue Hare <DIST>.app on macOS)
  * The window: the screen (3x), the knobs (dragged up or down, or the wheel or trackpad over one, turns it; MASTER the
  * level), the buttons (a click
  * holds one while the mouse button is down, LEDs as the device lights them) and the 27 keys. The computer keyboard as
@@ -18,12 +18,12 @@
  * Threads: the audio callback runs the device (web_render); the window's thread hands it the buttons and keys through
  * a queue (each change held HOLD_MS of the device's time, as worklet.js does: a click's down and up never fall within
  * one scan) and reads the screen and the LEDs with the audio device locked; MIDI arrives in a ring the callback empties.
- *   fel-tracker [--selftest [FILE.bmp]]   --selftest: boots with dummy video and audio drivers, plays 3 s, checks the
+ *   blue-hare [--selftest [FILE.bmp]]   --selftest: boots with dummy video and audio drivers, plays 3 s, checks the
  *                              screen drew and the sound runs, exits 0 or 1 (tests/run_tests.sh); FILE.bmp: the
  *                              window as drawn, saved */
 #include <stdint.h>
 #include <time.h>
-#define FELUCCA_NATIVE 1                                  /* (core.h: every track its own 16 voices; fx.c: the native
+#define BLUEHARE_NATIVE 1                                  /* (core.h: every track its own 16 voices; fx.c: the native
                                                            * reverbs, the long delay; audio.c: the load meter the computer's) */
 static uint32_t native_ticks(void)                        /* the computer's clock in the device's TIMER4 ticks (24 MHz) */
 {
@@ -31,7 +31,7 @@ static uint32_t native_ticks(void)                        /* the computer's cloc
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint32_t)((uint64_t)ts.tv_sec * 24000000u + (uint64_t)ts.tv_nsec * 24u / 1000u);
 }
-#include "../web/emu/felucca_web.c"
+#include "../web/emu/bluehare_web.c"
 #include <SDL.h>
 #include <math.h>
 #include <stdio.h>
@@ -117,11 +117,11 @@ static void midi_scan(void)                               /* every source, again
         MIDIPortConnectSource(midi_port, MIDIGetSource(i), 0);
     midi_connected = n;
     if (n)
-        fprintf(stderr, "fel-tracker: MIDI in from %lu source(s)\n", (unsigned long)n);
+        fprintf(stderr, "blue-hare: MIDI in from %lu source(s)\n", (unsigned long)n);
 }
 static void midi_open(void)
 {
-    if (MIDIClientCreate(CFSTR("Fel-Tracker"), 0, 0, &midi_client) == 0)
+    if (MIDIClientCreate(CFSTR("Blue Hare"), 0, 0, &midi_client) == 0)
         MIDIInputPortCreate(midi_client, CFSTR("in"), midi_read, 0, &midi_port);
     midi_scan();
 }
@@ -392,7 +392,7 @@ static void draw(SDL_Renderer *r, SDL_Texture *tex)
         }
     }
     SDL_SetRenderDrawColor(r, 150, 150, 160, 255);
-    text(r, PX, WIN_H - 26, 2, letter_knobs ? "QE AD ZC: KNOB 2 3 4" : "FEL-TRACKER");
+    text(r, PX, WIN_H - 26, 2, letter_knobs ? "QE AD ZC: KNOB 2 3 4" : "BLUE HARE");
     SDL_RenderPresent(r);
 }
 
@@ -468,10 +468,10 @@ int main(int argc, char **argv)
         SDL_setenv("SDL_AUDIODRIVER", "dummy", 1);
     }
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
-        fprintf(stderr, "fel-tracker: %s\n", SDL_GetError());
+        fprintf(stderr, "blue-hare: %s\n", SDL_GetError());
         return 1;
     }
-    pref = SDL_GetPrefPath("Fel-Tracker", FELUCCA_DIST_TAG[0] ? FELUCCA_DIST_TAG + 1 : "default");
+    pref = SDL_GetPrefPath("Blue Hare", BLUEHARE_DIST_TAG[0] ? BLUEHARE_DIST_TAG + 1 : "default");
     snprintf(flash_path, sizeof flash_path, "%sflash.bin", pref ? pref : "./");
     SDL_free(pref);
     web_nor_erase();
@@ -487,15 +487,15 @@ int main(int argc, char **argv)
     want.callback = audio_cb;
     audio_dev = SDL_OpenAudioDevice(0, 0, &want, &got, 0);
     if (!audio_dev || got.freq != 44100 || got.format != AUDIO_F32SYS || got.channels != 2) {
-        fprintf(stderr, "fel-tracker: no 44.1 kHz stereo audio out (%s)\n", SDL_GetError());
+        fprintf(stderr, "blue-hare: no 44.1 kHz stereo audio out (%s)\n", SDL_GetError());
         return 1;
     }
-    w = SDL_CreateWindow("Fel-Tracker" FELUCCA_DIST_TAG, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_W, WIN_H,
+    w = SDL_CreateWindow("Blue Hare" BLUEHARE_DIST_TAG, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_W, WIN_H,
                          SDL_WINDOW_ALLOW_HIGHDPI);
     r = w ? SDL_CreateRenderer(w, -1, test ? SDL_RENDERER_SOFTWARE : SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) : 0;
     tex = r ? SDL_CreateTexture(r, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, SCR, SCR) : 0;
     if (!tex) {
-        fprintf(stderr, "fel-tracker: %s\n", SDL_GetError());
+        fprintf(stderr, "blue-hare: %s\n", SDL_GetError());
         return 1;
     }
     SDL_RenderSetLogicalSize(r, WIN_W, WIN_H);
@@ -503,7 +503,7 @@ int main(int argc, char **argv)
     SDL_PauseAudioDevice(audio_dev, 0);
     if (test)
         return selftest(argc > 2 ? argv[2] : 0);
-    fprintf(stderr, "fel-tracker%s: saves in %s\n", FELUCCA_DIST_TAG, flash_path);
+    fprintf(stderr, "blue-hare%s: saves in %s\n", BLUEHARE_DIST_TAG, flash_path);
     t0 = SDL_GetTicks();
     while (!quit) {
         SDL_Event e;

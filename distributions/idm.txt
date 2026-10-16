@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # IDM: edited breaks and micro-sounds, acid and folded bass, wavetable and vector pads, struck metal and grains.
 # The engines in display order, one a line (names: firmware/src/engine_ids.h; at most 8 since the 2026-10 plan: two a
 # track's role, kit, bass, mid, high). TRACKS: the build's track count (4 in every build); PALETTE: the one a device

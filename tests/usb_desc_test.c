@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Host test of the USB descriptor layouts in src/usb.c (#67), one build per variant:
- *   -DT_CDC=0/1 (FELUCCA_CDC)  -DT_UAC=0/1 (FELUCCA_UAC)  -DT_LAYOUT=0..3 (FELUCCA_USB_LAYOUT)
- *   -DT_ON=0/1 (usb_cdc_on: the console presented or not)  -DT_48K=0/1 (FELUCCA_UAC_48K, default 1)
+ *   -DT_CDC=0/1 (BLUEHARE_CDC)  -DT_UAC=0/1 (BLUEHARE_UAC)  -DT_LAYOUT=0..3 (BLUEHARE_USB_LAYOUT)
+ *   -DT_ON=0/1 (usb_cdc_on: the console presented or not)  -DT_48K=0/1 (BLUEHARE_UAC_48K, default 1)
  * The device and configuration descriptors come from get_desc(), as GET_DESCRIPTOR sends them, and are
  * parsed as a host does: lengths and wTotalLength, bNumInterfaces, interface numbers 0..n-1 in order, the
  * endpoints of each setting and their addresses (EP1 MIDI, EP2 / EP3 CDC, EP4 audio, each once), the IADs
  * (in front of their first interface, contiguous, the function's class, no interface in two), the AC
  * header's collection (the MIDI and audio streaming interfaces), the CDC union / call management (the data
  * interface), the device class of the layout, bcdDevice. Layout 0 and the console left out must equal the
- * 1.0 descriptors (tests/usb_desc_v10.h): byte for byte without FELUCCA_UAC_48K, and with it (1.1) exactly 1.0
+ * 1.0 descriptors (tests/usb_desc_v10.h): byte for byte without BLUEHARE_UAC_48K, and with it (1.1) exactly 1.0
  * plus the 48 kHz changes (v11_from_v10: the type I format lists 44100 and 48000, EP 0x84 takes 49 frames,
  * wTotalLength + 3, bcdDevice + 0.10). Last, the device descriptor against the IOUSBHostDevice
  * personalities of macOS 27.2's AppleUSBCDC / AppleUSBAudio / AppleUSBHostCompositeDevice (the same on the
@@ -21,15 +21,15 @@
 #include <string.h>
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
 #define HALF_FRAMES 128
-#define FELUCCA_OTA 1                                    /* (the M-UPGRADE / editor SysEx frames: the update path) */
-#define FELUCCA_CDC T_CDC
-#define FELUCCA_UAC T_UAC
-#define FELUCCA_USB_LAYOUT T_LAYOUT
-#define FELUCCA_CDC_DEFAULT T_ON
+#define BLUEHARE_OTA 1                                    /* (the M-UPGRADE / editor SysEx frames: the update path) */
+#define BLUEHARE_CDC T_CDC
+#define BLUEHARE_UAC T_UAC
+#define BLUEHARE_USB_LAYOUT T_LAYOUT
+#define BLUEHARE_CDC_DEFAULT T_ON
 #ifndef T_48K
 #define T_48K 1
 #endif
-#define FELUCCA_UAC_48K T_48K
+#define BLUEHARE_UAC_48K T_48K
 static void fm1_delay_ms(uint32_t ms) { (void)ms; }
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"   /* SIE register macros (never touched here) */
 #include "../firmware/src/usb.c"
@@ -253,8 +253,8 @@ int main(void)
               T_UAC ? same_as(dev, c, n, V10_CDC_DEV, V10_CDC_CFG, sizeof V10_CDC_CFG)
                     : same_as(dev, c, n, V10_CDC_NOUAC_DEV, V10_CDC_NOUAC_CFG, sizeof V10_CDC_NOUAC_CFG));
     if (!CDC_SHOWN)
-        check(AUDIO_48K ? "without the console = 1.0's FELUCCA_CDC=0 build + the 48 kHz rate, nothing else"
-                        : "without the console = a FELUCCA_CDC=0 build of 1.0 byte for byte",
+        check(AUDIO_48K ? "without the console = 1.0's BLUEHARE_CDC=0 build + the 48 kHz rate, nothing else"
+                        : "without the console = a BLUEHARE_CDC=0 build of 1.0 byte for byte",
               T_UAC ? same_as(dev, c, n, V10_NOCDC_DEV, V10_NOCDC_CFG, sizeof V10_NOCDC_CFG)
                     : same_as(dev, c, n, V10_MIDI_DEV, V10_MIDI_CFG, sizeof V10_MIDI_CFG));
     if (T_UAC) {                                       /* the audio streaming format, as a host lists the rates */

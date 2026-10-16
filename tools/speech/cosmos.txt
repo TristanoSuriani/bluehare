@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank COSMOS: the planets, the bright stars and what else is up there (the format: num.txt); 32 words
 MERCURY  M ER1 K Y ER0 IY0
 VENUS    V IY1 N AH0 S

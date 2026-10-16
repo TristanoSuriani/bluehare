@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* DARK (1.5, FOUNDRY): sub-bass from sines (Fel-Tracker's own). A sine at the note with SUB1 (an octave down) and SUB2
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* DARK (1.5, FOUNDRY): sub-bass from sines (Blue Hare's own). A sine at the note with SUB1 (an octave down) and SUB2
  * (two down) under it, their sum through a sine folder: FOLD how far it folds (0: clean sines, the chest's weight;
  * up: grit and harmonics over the sub), FENV how much more each note's start folds (a bite, then the round body).
  * PUNCH starts the pitch up to 2 octaves above and lets it fall over PDEC (the 808's thud, a kick from a bass);
@@ -86,7 +86,7 @@ static const preset_t DARK_PRESETS[] = {
     {"DEEP KEYS", {80, 80, 6, 20, 20, 40, 0, 60}, {0, 80, 40, 60}, 0, 0, FX(0, 20, 20, 40)},
     {"SUB PLUCK", {90, 30, 0, 30, 40, 30, 0, 60}, {0, 40, 0, 30}, 0, 1, FX(0, 0, 10, 10)},
     {"GLASS SUB", {60, 100, 0, 0, 0, 40, 0, 90}, {20, 0, 127, 60}, 0, 0, FX(0, 30, 20, 50)},
-    /* (Fel-Tracker) EBM basses */
+    /* (Blue Hare) EBM basses */
     {"EBM OCTAVES", {100, 30, 10, 50, 30, 30, 40, 70}, {0, 30, 60, 10}, 0, 0, FX(10, 0, 5, 5)},
     {"EBM ROOT", {110, 20, 20, 60, 40, 25, 50, 60}, {0, 25, 50, 8}, 0, 0, FX(15, 0, 5, 5)},
     {"EBM GALLOP", {90, 40, 15, 55, 35, 30, 40, 65}, {0, 25, 50, 8}, 0, 0, FX(10, 0, 10, 5)},

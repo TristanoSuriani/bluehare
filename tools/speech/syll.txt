@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank SYLL: vowels and sung syllables (the format: num.txt); 32 words
 AA       AA1
 EE       IY1

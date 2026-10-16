@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-// Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
+// Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md
 // Local, complete musical archives. Requests name whitelisted objects, never flash addresses.
 // 8: the FM6 patch bank of 1.0..1.0.2 (listed empty since 1.0.3: a restore of an older archive's bank moves its patches
 // into the user presets restored before it); 9: the user presets' FM6 patches (1.0.3)
 export const BACKUP_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34];
-// Fel-Tracker, TRACKS 8: ids 10..21 are the song's chunks 4..15 (25 objects); a restore sends them after 2..5, in order
+// Blue Hare, TRACKS 8: ids 10..21 are the song's chunks 4..15 (25 objects); a restore sends them after 2..5, in order
 export const BACKUP_IDS_8 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 32, 33, 34];
 const BACKUP_IDS_V2 = BACKUP_IDS.filter((id) => id !== 9);              // 1.0..1.0.2, and their archives
 const BACKUP_IDS_V1 = BACKUP_IDS_V2.filter((id) => id !== 8);           // firmware before FM6, and its archives
@@ -66,8 +66,8 @@ const bkBase64 = (bytes) => { let s = ""; for (const b of bytes) s += String.fro
 export function readBackup(file) {
   if (typeof file === "string") file = JSON.parse(file);
   const ids = file && Array.isArray(file.objects) ? idsOf(file.objects.length) : null;
-  if (!file || file.format !== "felucca-backup" || file.version !== 1 || !ids)
-    throw new Error("Not a complete Felucca backup");
+  if (!file || file.format !== "bluehare-backup" || file.version !== 1 || !ids)
+    throw new Error("Not a complete Blue Hare backup");
   const objects = file.objects.map((o, i) => {
     if (!o || o.id !== ids[i] || !Number.isInteger(o.size) || o.size < 0 || o.size > (o.id >= 32 ? 81920 : 3840) ||
         !Number.isInteger(o.crc) || o.crc < 0 || o.crc > 0xffffffff || typeof o.data !== "string" ||
@@ -108,7 +108,7 @@ export async function captureBackup(request, firmware, onProgress = () => {}) {
     if (bkCrc(bytes) !== o.crc) throw new Error("The device changed during backup. Try again while stopped.");
     objects.push({ ...o, data: bkBase64(bytes) });
   }
-  const file = { format: "felucca-backup", version: 1, firmware, created: new Date().toISOString(), objects };
+  const file = { format: "bluehare-backup", version: 1, firmware, created: new Date().toISOString(), objects };
   readBackup(file); return file;
 }
 // The user sample slots were removed in 1.5: an archive's sample objects (ids 32..34) are never restored

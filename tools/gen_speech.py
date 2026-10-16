@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
-# Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
+# Copyright (C) 2026 Tristano Suriani (Blue Hare)
+# Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 """The SPEECH engine's data (firmware/src/eng_speech.c): its words, from the vocabulary files in tools/speech/ (a word:
 its name and its phonemes with the stress), and the filter of every sound they use.
 
@@ -285,4 +285,4 @@ def main(path):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "felucca_speech.h")
+    main(sys.argv[1] if len(sys.argv) > 1 else "bluehare_speech.h")

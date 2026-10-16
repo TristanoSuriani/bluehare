@@ -1,15 +1,15 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
      Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-     Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md -->
+     Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md -->
 <!-- Sample input recording and waveform trimming adapted from Andrea (@andreahaku), PR #29.
-     Felucca web editor. One file, no libraries. Protocol: EDITOR_PROTOCOL.md.
+     Blue Hare web editor. One file, no libraries. Protocol: EDITOR_PROTOCOL.md.
      Add ?mock=1 to the URL to use a built-in simulated device. -->
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Felucca Editor</title>
+<title>Blue Hare Editor</title>
 <style>
   /* Fukiai: Hügelton Instruments' icon font (MIT, FUKIAI-LICENSE.txt). Icons are text in .ic spans;
      they stay hidden until the face has loaded (html.fk), so a missing font never shows boxes. */
@@ -146,7 +146,7 @@
 <body>
 <main>
   <button class="lang" id="lang"></button>
-  <h1>Felucca Editor</h1>
+  <h1>Blue Hare Editor</h1>
   <p class="dim"><a href="../installer/" style="color:inherit" data-t="installer"></a></p>
   <!-- always visible: connection, version, sync mode, the tabs and (Sound / Sequencer / Tracks) the track selector -->
   <header class="top">
@@ -186,7 +186,7 @@
   </section>
 
   <section class="panel" id="p-sequencer" data-tab="sequencer" data-dev hidden>
-    <!-- firmware of no steps (Fel-Tracker): the sequencer is a placeholder, TODO; the step sequencer below is hidden -->
+    <!-- firmware of no steps (Blue Hare): the sequencer is a placeholder, TODO; the step sequencer below is hidden -->
     <div id="seqtodo" hidden><p data-t="seqTodo"></p></div>
     <div class="groups" id="seqgroups"></div>
     <div id="steps">
@@ -400,7 +400,7 @@ const parse = {
     o.ratchet = 0;                                /* a step's ratchet (STEP_SET's byte after the chance), 0 = none */
     if (o.uiCaps && trailer[4] === 0x4d && trailer[5] === 1 && trailer[6] === 64) {
       o.motionMax = 64; o.chance = trailer[7] === 1;
-      /* then tags of 3 bytes (tag, version 1, a value) in any order; Felucca's FM6 tag 46 has 4 (FM6: gone in Fel-Tracker,
+      /* then tags of 3 bytes (tag, version 1, a value) in any order; Felucca's FM6 tag 46 has 4 (FM6: gone in Blue Hare,
          an older firmware's stepped over); the tracker's 58, last, is gone with it */
       for (let p = 8; p + 2 < trailer.length && trailer[p + 1] === 1;) {
         const t = trailer[p];
@@ -741,9 +741,9 @@ const RETIRED = ["DIGITAL", "SAMPLE", "GRAIN", "SLICE"];
 
    Library / bank / single-patch file (JSON):
      {
-       "format": "felucca-library", "version": 1,
+       "format": "bluehare-library", "version": 1,
        "kind": "library" | "bank" | "patch",
-       "firmware": "FELUCCA 0.5 ...",          device version string when exported ("" if unknown)
+       "firmware": "BLUE HARE 0.5 ...",          device version string when exported ("" if unknown)
        "pCount": 57, "pE0": 49,                 P_COUNT and the first engine parameter id
        "paramLabels": ["LVL", "ATK", ...],      one key per parameter id: the DESC label, "#2", "#3" appended to
                                                 a repeated label (PIT, PIT#2), and "E0".."E7" for the engine
@@ -757,8 +757,8 @@ const RETIRED = ["DIGITAL", "SAMPLE", "GRAIN", "SLICE"];
      }
    Reading maps every parameter by its key, so a firmware with other ids (or more parameters) still gets
    the right values; parameters the file does not have are null (left at the engine default). Engines are
-   matched by name. The old single-sound file ("felucca-patch" version 1, "Save to file") is read too. */
-const LIB = { FORMAT: "felucca-library", VERSION: 1 };
+   matched by name. The old single-sound file ("bluehare-patch" version 1, "Save to file") is read too. */
+const LIB = { FORMAT: "bluehare-library", VERSION: 1 };
 
 /* parameter keys by id from the instrument DESCs */
 function paramKeys(pdesc, pe0, pcount) {
@@ -865,8 +865,8 @@ function readLibraryFile(obj, ctx) {
     }
     return idx;
   };
-  if (obj.format === "felucca-patch") {               /* "Save to file": the whole current sound */
-    if (!Array.isArray(obj.p) || !Number.isInteger(obj.engine)) throw new Error("felucca-patch without engine / p");
+  if (obj.format === "bluehare-patch") {               /* "Save to file": the whole current sound */
+    if (!Array.isArray(obj.p) || !Number.isInteger(obj.engine)) throw new Error("bluehare-patch without engine / p");
     const e = engIndex(obj.engineName, obj.engine);
     if (e < 0) return { patches: [], skipped: 1, keys: null };
     const p = ctx.keys && ctx.pe0 && obj.p.length !== ctx.keys.length ? tailParams(obj.p, ctx.keys.length, ctx.pe0)
@@ -997,7 +997,7 @@ function makeMockDevice(opt = {}) {
   const TP = [
     D("LVL", F.DB, 0, 127, 104),
     D("ATK", F.TIME, 0, 127, 10), D("DEC", F.TIME, 0, 127, 70), D("SUS", F.PCT, 0, 127, 90), D("REL", F.TIME, 0, 127, 60),
-    D("FLT", F.BIPCT, -64, 63, 0), D("PIT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("OCT", F.INT, -4, 4, 0),   /* 8: OCT (Fel-Tracker; was ENV DEST FX, inert) */
+    D("FLT", F.BIPCT, -64, 63, 0), D("PIT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("OCT", F.INT, -4, 4, 0),   /* 8: OCT (Blue Hare; was ENV DEST FX, inert) */
     D("RATE", F.LFOHZ, 0, 127, 60), E("WAVE", ["SIN", "TRI", "SAW", "SQR", "S&H"], 0), D("PHS", F.INT, 0, 127, 0), D("FADE", F.TIME, 0, 127, 0),
     D("PIT", F.BIPCT, -64, 63, 0), D("FLT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("AMP", F.PCT, 0, 127, 0),
     ...Array.from({ length: 8 }, () => D("-", F.INT, 0, 0, 0)),   /* 17..24: the arpeggiator's until 2026-10 (inert) */
@@ -1020,8 +1020,8 @@ function makeMockDevice(opt = {}) {
   /*MOCK-ENGSEL-END*/
     E("SET", NGO, 0),
     E("CLRSQ", NGO, 0), E("INIT", NGO, 0),          /* (CLRSQ: unused, the id kept) */
-    E("TYPE", ["ROOM", "SPRING", "HALL", "GATED", "CONCERT"], 2),   /* G_RTYPE (id 24, was G_DRCH): the reverb's model (HALL: 1.2; GATED, CONCERT: Fel-Tracker) */
-    E("TYPE", ["CLEAN", "TAPE", "WORN", "PING", "DUAL"], 0),   /* G_DTYPE (id 25, was G_DRLVL): the delay's (Fel-Tracker 1.5; PING, DUAL after) */
+    E("TYPE", ["ROOM", "SPRING", "HALL", "GATED", "CONCERT"], 2),   /* G_RTYPE (id 24, was G_DRCH): the reverb's model (HALL: 1.2; GATED, CONCERT: Blue Hare) */
+    E("TYPE", ["CLEAN", "TAPE", "WORN", "PING", "DUAL"], 0),   /* G_DTYPE (id 25, was G_DRLVL): the delay's (Blue Hare 1.5; PING, DUAL after) */
     D("-", F.INT, 0, 0, 0),                         /* G_DRREV: inert since 1.0 */
   ];
   const NONE = D("-", F.INT, 0, 0, 0);
@@ -1638,7 +1638,7 @@ function makeMockDevice(opt = {}) {
     st.bank[slot] = snapshot(name);
     clearSteps(); st.p[29] = 16;
   });
-  /* the power-on sounds (engines.c TRK_DEF; Fel-Tracker: the rhythm section first): KIT FM KIT, SID BASS, VOSIM
+  /* the power-on sounds (engines.c TRK_DEF; Blue Hare: the rhythm section first): KIT FM KIT, SID BASS, VOSIM
      FORMANT PAD, SID SYNC LEAD; the pad and the lead apart (TRK_PAN) */
   [3, 2, 1, 0].forEach((i) => { st.sel = i; setEngine(TRK_DEF[i][0]); applyPreset(TRK_DEF[i][1]); });
   /* the device powers on with its sequencers empty; the mock starts as a little demo to look at: track 1 with
@@ -1782,7 +1782,7 @@ function makeMockDevice(opt = {}) {
         break;
       }
       case CMD.INFO:
-        s(opt.legacy ? "FELUCCA 0.4 BETA (MOCK)" : "FELUCCA v1.0 (MOCK)"); b(ENG.length); b(P_COUNT); b(G_COUNT); b(NSTEP); b(P_E0);
+        s(opt.legacy ? "BLUE HARE 0.4 BETA (MOCK)" : "BLUE HARE v1.0 (MOCK)"); b(ENG.length); b(P_COUNT); b(G_COUNT); b(NSTEP); b(P_E0);
         ENG.forEach((e) => s(e.name));
         if (!opt.legacy) b(NTRK);
         if (!opt.legacy && !opt.v3 && !opt.v5) {
@@ -1909,11 +1909,11 @@ function makeMockDevice(opt = {}) {
     return frame(cmd, out);
   }
 
-  /* a WebMIDI-like access object: one input and one output named "Felucca" */
-  const input = { id: "mock-in", name: "Felucca", type: "input", state: "connected", onmidimessage: null };
+  /* a WebMIDI-like access object: one input and one output named "Blue Hare" */
+  const input = { id: "mock-in", name: "Blue Hare", type: "input", state: "connected", onmidimessage: null };
   let busy = false;
   const output = {
-    id: "mock-out", name: "Felucca", type: "output", state: "connected",
+    id: "mock-out", name: "Blue Hare", type: "output", state: "connected",
     send(data) {
       const f = unframe(data);
       if (!f) { console.error("mock: refused a frame that is not F0 7D 46 4C ... F7", data); return; }
@@ -2166,9 +2166,9 @@ const TEXT = {
     foot: "Chrome か Edge で使えます。", iconsCredit: "アイコン: Fukiai（MIT）Hügelton Instruments",
     nomidi: "このブラウザでは使えません。Chrome か Edge で開いてください。",
     denied: "MIDI（SysEx）の使用が許可されませんでした。",
-    nodevice: "Felucca が見つかりません。USB で接続して、もう一度押してください。",
+    nodevice: "Blue Hare が見つかりません。USB で接続して、もう一度押してください。",
     connecting: "接続中", reading: "読み込み中 ", steploading: "ステップを読み込み中 ",
-    ready: "接続しました", disconnected: "切断されました", lost: "Felucca が外されました",
+    ready: "接続しました", disconnected: "切断されました", lost: "Blue Hare が外されました",
     noreply: "応答がありません", error: "エラー: ", busy: "処理中",
     applying: "書き込み中 ", applied: "読み込みました", badfile: "ファイルを読み込めません: ",
     savedSlot: "保存しました: スロット ", loadedSlot: "読み込みました: スロット ", emptySlot: "空のスロットです: ",
@@ -2198,7 +2198,7 @@ const TEXT = {
     putDone: "本体に書き込みました: スロット ", storedSlot: "本体に保存しました: スロット ", erasedSlot: "消去しました: スロット ",
     loadedUser: "音色を読み込みました（シーケンスはそのまま。パターンは本体の SAVE > PHRASES から。SAVE 長押しで元に戻せます）: ", reloaded: "本体で音色が変わったので読み直しました", readingBank: "スロットを読み込み中",
     badEngine: "このファームウェアにないエンジンです: ", flashFail: "書き込みに失敗しました（rc {rc}）",
-    installer: "Felucca インストーラー",
+    installer: "Blue Hare インストーラー",
     tabSeq: "シーケンサー", tabTracks: "トラック", tabSettings: "設定",
     needDevice: "FM-1 を接続すると編集できます。",
     bankConnect: "FM-1 を接続すると本体のユーザープリセットも扱えます。", bankNone: "このファームウェアにはユーザープリセットがありません。",
@@ -2246,9 +2246,9 @@ const TEXT = {
     foot: "Works in Chrome or Edge.", iconsCredit: "Icons: Fukiai (MIT), Hügelton Instruments",
     nomidi: "This browser cannot do it. Open the page in Chrome or Edge.",
     denied: "MIDI (SysEx) access was not allowed.",
-    nodevice: "Felucca not found. Connect it by USB and press Connect again.",
+    nodevice: "Blue Hare not found. Connect it by USB and press Connect again.",
     connecting: "Connecting", reading: "Reading ", steploading: "Reading steps ",
-    ready: "Connected", disconnected: "Disconnected", lost: "Felucca was unplugged",
+    ready: "Connected", disconnected: "Disconnected", lost: "Blue Hare was unplugged",
     noreply: "No reply from the device", error: "Error: ", busy: "Busy",
     applying: "Writing ", applied: "Loaded", badfile: "Cannot read the file: ",
     savedSlot: "Saved to slot ", loadedSlot: "Loaded slot ", emptySlot: "Empty slot: ",
@@ -2278,7 +2278,7 @@ const TEXT = {
     putDone: "Written to the device: slot ", storedSlot: "Stored on the device: slot ", erasedSlot: "Erased slot ",
     loadedUser: "Sound loaded (the sequence stays; its pattern is on the device under SAVE > PHRASES; hold SAVE to undo): ", reloaded: "The sound changed on the device: read again", readingBank: "Reading the slots",
     badEngine: "This firmware has no such engine: ", flashFail: "Write failed (rc {rc})",
-    installer: "Felucca installer",
+    installer: "Blue Hare installer",
     tabSeq: "Sequencer", tabTracks: "Tracks", tabSettings: "Settings",
     needDevice: "Connect the FM-1 to edit.",
     bankConnect: "Connect the FM-1 to see its user presets too.", bankNone: "This firmware has no user presets.",
@@ -2314,7 +2314,7 @@ $("lang").addEventListener("click", () => { lang = lang === "ja" ? "en" : "ja"; 
 /* ---------------------------------------------------------------- tabs --- */
 /* one panel at a time; the last one is remembered (localStorage) and in the URL hash (#sound ...) */
 const TABS = ["sound", "sequencer", "tracks", "library", "projects", "settings"];
-const TAB_KEY = "felucca-editor-tab";
+const TAB_KEY = "bluehare-editor-tab";
 const TRACK_TABS = new Set(["sound", "sequencer", "tracks"]);
 let tab = (() => {
   const h = location.hash.slice(1);
@@ -2420,7 +2420,7 @@ const LAYOUT = (pe0) => [
   ...(pe0 >= 61 ? [{ t: "MOD", mod: 49 }] : []),   /* the matrix: P_M1SRC 49 .. P_M4AMT 60, one row per slot */
   { t: "EDIT", engine: true, pages: [["EDIT 1", 0, [pe0, pe0 + 1, pe0 + 2, pe0 + 3]], ["EDIT 2", 0, [pe0 + 4, pe0 + 5, pe0 + 6, pe0 + 7]],
     ...(pe0 >= 91 && engName() === "DRUM" ? [["LANES", 0, P_LANES.slice(0, 4)], ["LANES 2", 0, P_LANES.slice(4)]] : [])] },   /* lane levels 83..90 */
-  { t: "VOICE", pages: [["LEVEL", 0, [0]], ["VOICE", 0, [37, 38, 41, 42]], ["VOICE 2", 0, [43, 44, 39, 40]], ...(pe0 >= 96 ? [["VOICE 3", 0, [95, 8]]] : [])] },   /* SPRD 95, OCT 8 (Fel-Tracker) */
+  { t: "VOICE", pages: [["LEVEL", 0, [0]], ["VOICE", 0, [37, 38, 41, 42]], ["VOICE 2", 0, [43, 44, 39, 40]], ...(pe0 >= 96 ? [["VOICE 3", 0, [95, 8]]] : [])] },   /* SPRD 95, OCT 8 (Blue Hare) */
   { t: "FX", pages: [["FX", 0, [33, 34, 35, 36]], ["SLICER", 0, [45, 46, 47, 48]], ["DLY", 1, [4, 5, 6, 7]], ["DLY 2", 1, [25]], ["REVERB", 1, [24, 8, 9]], ["CHORUS", 1, [10, 11]]] },   /* G_RTYPE 24: ROOM / SPRING / HALL / GATED; G_DTYPE 25: CLEAN / TAPE / WORN */
   { t: "SCL", pages: [["SCL", 0, [25, 26, 27, 28]], ...(pe0 >= 83 ? [["CHORD", 0, P_CHORD]] : [])] },   /* CHRD VOIC 81, 82 */
   { t: "SEQ PATTERN", tab: "seqgroups", pages: [["PATTERN", 0, [29, 30, 31, 32]]] },
@@ -2456,7 +2456,7 @@ async function connect() {
       }
       access.onstatechange = onState;
     }
-    const isF = (p) => /felucca/i.test(p.name || "") && p.state !== "disconnected";
+    const isF = (p) => /blue ?hare/i.test(p.name || "") && p.state !== "disconnected";
     const input = [...access.inputs.values()].find(isF);
     const output = [...access.outputs.values()].find(isF);
     if (!input || !output) { sayK("nodevice"); return; }
@@ -2509,7 +2509,7 @@ function disconnect(reasonKey = "disconnected") {
 
 function onState(e) {
   const p = e.port;
-  if (!p || !/felucca/i.test(p.name || "")) return;
+  if (!p || !/blue ?hare/i.test(p.name || "")) return;
   if (dev && p.state === "disconnected" && (p.id === dev.input.id || p.id === dev.output.id)) {
     disconnect("lost");
   } else if (!dev && wantConnected && p.state === "connected" && p.type === "output") {
@@ -2942,7 +2942,7 @@ $("backup-export").addEventListener("click", () => op(async () => {
   assertSession(d);
   const file = await captureBackup((r, o) => sessionRequest(d, r, o), d.info.version, backupProgress);
   assertSession(d);
-  download(`Felucca-backup-${new Date().toISOString().slice(0, 10)}.json`, file);
+  download(`BlueHare-backup-${new Date().toISOString().slice(0, 10)}.json`, file);
   sayK("backupDone");
 }));
 $("backup-import").addEventListener("click", () => { if (dev?.info?.backupCaps & 2) $("backup-file").click(); });
@@ -3154,7 +3154,7 @@ $("clearseq").addEventListener("click", async () => {
 });
 
 /* ------------------------------------------------------ sequencer (1.5) --- */
-/* Firmware of no steps (INFO NSTEP 0: Fel-Tracker): one song (PROJECT slot 0), no STEP_GET / MOTION / SONG lanes. Its
+/* Firmware of no steps (INFO NSTEP 0: Blue Hare): one song (PROJECT slot 0), no STEP_GET / MOTION / SONG lanes. Its
    sequencer is a placeholder for now: the Sequencer tab says TODO (the tracker of 1.5, TRACKER 78 / 79, is gone) */
 const seqTodo = (d = dev) => !!d && !!d.info && !d.info.nstep;
 function renderSeqTodo() {
@@ -3575,11 +3575,11 @@ setInterval(() => {
 $("savefile").addEventListener("click", () => {
   if (!dev) return;
   const engine = dev.dump.engine, preset = dev.dump.preset;
-  const data = { format: "felucca-patch", version: 1, firmware: dev.info.version,
+  const data = { format: "bluehare-patch", version: 1, firmware: dev.info.version,
     engineName: dev.info.engines[engine], presetName: (dev.names[engine] || [])[preset],
     engine, preset, p: dev.dump.p.slice(), g: dev.dump.g.slice(),
     steps: dev.steps.map((s) => ({ n: s.n, notes: s.notes.slice(), time: s.time, flags: s.flags, vel: s.vel })) };
-  download(`felucca-${fileSlug(data.engineName || "patch")}-${fileSlug(data.presetName || preset)}.json`, data);
+  download(`bluehare-${fileSlug(data.engineName || "patch")}-${fileSlug(data.presetName || preset)}.json`, data);
 });
 $("loadfile").addEventListener("click", () => { $("file").value = ""; $("file").click(); });
 $("file").addEventListener("change", async () => {
@@ -3624,14 +3624,14 @@ $("file").addEventListener("change", async () => {
 });
 
 /* ----------------------------------------------------------- library --- */
-/* Patches live in IndexedDB "felucca-editor": store "patches" (by id), store "meta" ("layout": the
+/* Patches live in IndexedDB "bluehare-editor": store "patches" (by id), store "meta" ("layout": the
    parameter keys / engine names the stored values are in). Without IndexedDB (some private windows)
    the library is kept in memory only. */
 const store = (() => {
   let dbp = null;
   const open = () => dbp || (dbp = new Promise((res) => {
     try {
-      const r = indexedDB.open("felucca-editor", 1);
+      const r = indexedDB.open("bluehare-editor", 1);
       r.onupgradeneeded = () => { r.result.createObjectStore("patches", { keyPath: "id" }); r.result.createObjectStore("meta"); };
       r.onsuccess = () => res(r.result);
       r.onerror = r.onblocked = () => res(null);
@@ -3770,7 +3770,7 @@ function renderLib() {
         el("td", { text: new Date(p.modified).toLocaleDateString(lang) }));
       tr.addEventListener("click", () => { libSel = p.id; renderLib(); });
       tr.addEventListener("dblclick", () => libAudition(p.id));
-      tr.addEventListener("dragstart", (e) => { libSel = p.id; e.dataTransfer.setData("text/x-felucca-lib", p.id); e.dataTransfer.effectAllowed = "copy"; });
+      tr.addEventListener("dragstart", (e) => { libSel = p.id; e.dataTransfer.setData("text/x-bluehare-lib", p.id); e.dataTransfer.effectAllowed = "copy"; });
       tb.append(tr);
     }
     box.replaceChildren(tb, ...(v.length ? [] : [el("div", { class: "none", text: t("noMatch") })]));
@@ -3802,13 +3802,13 @@ function renderBank() {
       el("td", { text: x.used ? dev.info.engines[x.engine] ?? String(x.engine) : "" }));
     tr.addEventListener("click", () => { bankSel = x.slot; renderBank(); renderLib(); });
     tr.addEventListener("dblclick", () => { if (x.used) bankLoad(x.slot); });
-    tr.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/x-felucca-slot", String(x.slot)); e.dataTransfer.effectAllowed = "copy"; });
-    tr.addEventListener("dragover", (e) => { if (e.dataTransfer.types.includes("text/x-felucca-lib")) { e.preventDefault(); tr.classList.add("over"); } });
+    tr.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/x-bluehare-slot", String(x.slot)); e.dataTransfer.effectAllowed = "copy"; });
+    tr.addEventListener("dragover", (e) => { if (e.dataTransfer.types.includes("text/x-bluehare-lib")) { e.preventDefault(); tr.classList.add("over"); } });
     tr.addEventListener("dragleave", () => tr.classList.remove("over"));
     tr.addEventListener("drop", (e) => {
       e.preventDefault();
       tr.classList.remove("over");
-      const id = e.dataTransfer.getData("text/x-felucca-lib");
+      const id = e.dataTransfer.getData("text/x-bluehare-lib");
       if (id) { bankSel = x.slot; libPut(id, x.slot); }
     });
     tb.append(tr);
@@ -3824,12 +3824,12 @@ function renderBank() {
   $("bkexport").disabled = !used || !idle;
 }
 /* a slot dropped on the library: copy it there */
-$("liblist").addEventListener("dragover", (e) => { if (e.dataTransfer.types.includes("text/x-felucca-slot")) { e.preventDefault(); $("liblist").classList.add("over"); } });
+$("liblist").addEventListener("dragover", (e) => { if (e.dataTransfer.types.includes("text/x-bluehare-slot")) { e.preventDefault(); $("liblist").classList.add("over"); } });
 $("liblist").addEventListener("dragleave", () => $("liblist").classList.remove("over"));
 $("liblist").addEventListener("drop", (e) => {
   e.preventDefault();
   $("liblist").classList.remove("over");
-  const s = e.dataTransfer.getData("text/x-felucca-slot");
+  const s = e.dataTransfer.getData("text/x-bluehare-slot");
   if (s !== "") bankGet(+s);
 });
 
@@ -3943,9 +3943,9 @@ const fileSlug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").repl
 const today = () => new Date().toISOString().slice(0, 10);
 $("libexp1").addEventListener("click", () => {
   const p = lib.find((x) => x.id === libSel);
-  if (p) download(`felucca-patch-${fileSlug(p.name)}.json`, libraryFile("patch", [p], libCtx()));
+  if (p) download(`bluehare-patch-${fileSlug(p.name)}.json`, libraryFile("patch", [p], libCtx()));
 });
-$("libexport").addEventListener("click", () => download(`felucca-library-${today()}.json`, libraryFile("library", lib, libCtx())));
+$("libexport").addEventListener("click", () => download(`bluehare-library-${today()}.json`, libraryFile("library", lib, libCtx())));
 $("libimport").addEventListener("click", () => { $("libfile").value = ""; $("libfile").click(); });
 $("libfile").addEventListener("change", async () => {
   let n = 0, skipped = 0;
@@ -4029,7 +4029,7 @@ $("bkexport").addEventListener("click", () => libOp(async (d, rqf) => {
     if (u.used) out.push({ name: u.name, engine: u.engine, p: u.p, pattern: u.pattern, grid: u.grid, slot: x.slot,
       engineName: dev.info.engines[u.engine] });
   }
-  download(`felucca-bank-${today()}.json`, libraryFile("bank", out, libCtx()));
+  download(`bluehare-bank-${today()}.json`, libraryFile("bank", out, libCtx()));
   sayK("ready");
 }));
 

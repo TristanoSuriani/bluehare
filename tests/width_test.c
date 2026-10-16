@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* Each track's place in the mix (core.h trk_width, trk_lowcut; fx.c track_lowcut, mix_haas): the power-on values, LOW
  * CUT's response and its silence after a sound, WIDTH's highs late on one side (the side changing track by track) with
  * the lows as they are on both, the mono sum's lows whole, the song store (a value out of range: OFF). */

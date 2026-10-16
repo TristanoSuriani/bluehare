@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Keyboard, scale and transport (the sequencer: a placeholder).
  * Everything here runs in the audio ISR, once per CTL-sample block, and
  * ends in trk_note_on / trk_note_off: engines never see where a note came from.
@@ -478,6 +478,6 @@ static void events_block(uint32_t n)
     tgt_block_end(n);
 }
 
-#ifdef FELUCCA_NATIVE
-#include "target_host.c"                /* (Fel-Tracker) the host targets' side of target.h */
+#ifdef BLUEHARE_NATIVE
+#include "target_host.c"                /* (Blue Hare) the host targets' side of target.h */
 #endif

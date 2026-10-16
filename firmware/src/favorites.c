@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-#define FELUCCA_FAVORITES 1
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+#define BLUEHARE_FAVORITES 1
 /* Stable engine/preset references: by engine id (core.h EID_*; EID_COUNT: a user preset), whatever the build has. */
 typedef struct {
     uint8_t factory[16][32]; /* engine id 0..15, preset 0..255 (the stored layout: [15][10..31] hold settings) */
@@ -14,7 +14,7 @@ static favorites_t favorites;
  * once: settings_persist.c FAV_ROWS_FREED), their first halves (presets 0 .. 127); ids 22 .. 25 the second halves of
  * the same rows (presets 0 .. 127); ids 26 .. 36 the last 8 bytes of the rows of ids 0 .. 14 still in the layout
  * (FAV_ROW26: presets 0 .. 63; those rows' own engines keep presets 0 .. 127 since ids 36 .., more than any has). WEST and HOOVER
- * (16, 17) star presets 8 .. 63 in the last two of those tails (their 0 .. 7 stay in [15][8], [15][9]). (Fel-Tracker)
+ * (16, 17) star presets 8 .. 63 in the last two of those tails (their 0 .. 7 stay in [15][8], [15][9]). (Blue Hare)
  * 35 (VECTOR) takes the tail of 27, retired (ACID: its stars of before show on VECTOR's first presets); ids 36 .. 46
  * bytes 16 .. 23 of the same rows as 26 .. (presets 0 .. 63), ids 47 .. 57 their bytes 8 .. 15, whose own engines
  * keep presets 0 .. 63 (bytes 8 .. 23 were their presets 64 .. 191: none has). Ids 57 .. 66 (the native image's

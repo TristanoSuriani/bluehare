@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Felucca UI: the panel (Y_GRAPH .. Y_GRAPH + H_GRAPH) between the cards and the footer: a SURF area
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare UI: the panel (Y_GRAPH .. Y_GRAPH + H_GRAPH) between the cards and the footer: a SURF area
  * (rounded, on BG) holding the page graphs (ADSR, LFO, scale, FX, SLICER, MOD, lists: presets, user presets, the
  * song store), the HOME oscilloscope, the
  * instrument diagrams; the MIXER page draws four SURF columns instead. Each graph is redrawn only when
@@ -737,7 +737,7 @@ static void home_track_row(uint32_t c)
         xr -= 6;
     }
     x = 24;
-    if (FELUCCA_ICONS && !large) {                   /* the engine's icon on the name's capitals */
+    if (BLUEHARE_ICONS && !large) {                   /* the engine's icon on the name's capitals */
         uint32_t ei = engine_icon(ENGINES[t->eng_req % NENGINES]->name);
         if (ei != ICON_NONE)
             GFX_HOOK_ALIGN(0, TR_NY(large), 0, TR_NY(large) + ch, AL_V, "tracks row icon on the name's line");

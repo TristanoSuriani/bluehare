@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* VENOM (1.5, FOUNDRY): caustic acid from two filters biting each other (Fel-Tracker's own). WAVE (SAW, SQR, band-
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* VENOM (1.5, FOUNDRY): caustic acid from two filters biting each other (Blue Hare's own). WAVE (SAW, SQR, band-
  * limited) into a resonant low-pass at CUT1 and then a resonant band-pass at CUT2 (both RES); XMOD lets each one's
  * output move the other's cutoff at audio rate (the band-pass's the low-pass's, the low-pass's the band-pass's: a
  * toxic, unstable squelch that bubbles and spits), every note opens them by ENV, closing over DEC, DRIVE at the end.
@@ -25,7 +25,7 @@ static inline int32_t vn_f(int32_t cut)
 
 static void venom_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
-    os2_t *os = os2_of(t, v);                         /* (Fel-Tracker 2026-10: the shaper's 2x, dsp.c) */
+    os2_t *os = os2_of(t, v);                         /* (Blue Hare 2026-10: the shaper's 2x, dsp.c) */
     const int16_t *p = t->p;
     uint32_t i, ph = v->ph[0], inc = m->inc, sq = p[P_E0] != 0;
     int32_t l1 = v->s[0], b1 = v->s[1], l2 = v->s[2], b2 = v->s[3], fe = v->s[4], tau = 2 + p[P_E6] * p[P_E6] / 10;
@@ -52,7 +52,7 @@ static void venom_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         h = (b2 >> 1) + (l1 >> 2);
         if (os2_off)
             h = softclip((h * drive) >> 8);
-        else {                                        /* (Fel-Tracker 2026-10: the drive at twice the rate, dsp.c os2) */
+        else {                                        /* (Blue Hare 2026-10: the drive at twice the rate, dsp.c os2) */
             int32_t ha, hb;
             os2_up(os, h, &ha, &hb);
             h = os2_down(os, softclip((ha * drive) >> 8), softclip((hb * drive) >> 8));

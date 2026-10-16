@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* DELAY TYPE DUAL (G_DTYPE 4, fx.c fx_buses): the delay bus alone, a click into its send. The left's first echo at
  * TIME, the right's at three quarters of it, each on its own side; the echoes go on and die away (FDBK); at FDBK 127
  * the loop stays bounded; it is in every build's list */

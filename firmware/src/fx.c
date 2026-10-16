@@ -1,20 +1,20 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Effects: per-track DIST insert, then sends into three
- * shared buses (chorus, tempo delay, reverb), stereo dry mix. (Fel-Tracker) The buses give a mid (wet: to both sides)
+ * shared buses (chorus, tempo delay, reverb), stereo dry mix. (Blue Hare) The buses give a mid (wet: to both sides)
  * and a side (wside: + to the left, - to the right): the chorus reads its line twice, half a sweep apart (the left
  * one as it always was, the right one opposite); DELAY TYPE PING echoes left, then right, and so on (one line: the
  * left at the time, the right at twice it, the loop round both; FDBK an echo's share of the one before, as CLEAN's;
  * up to 0.74 s); ROOM's combs signed in turn give its side; TAPE, WORN and SPRING stay mono, HALL has its own
  * (rev_side). The delay's and the reverb's sends lose their lows first (12 dB/oct ~220 Hz: send_lowcut), so the bass
  * stays dry and out of the tails.
- * DELAY TYPE (G_DTYPE, Fel-Tracker 1.5): CLEAN the delay as it always was; TAPE and WORN a tape echo in the same line
+ * DELAY TYPE (G_DTYPE, Blue Hare 1.5): CLEAN the delay as it always was; TAPE and WORN a tape echo in the same line
  * (dly_tape): the read wobbles (wow ~0.5 Hz, flutter ~6 Hz, read between samples), the time glides (TIME turned, the
  * tempo changed: the echoes bend in pitch), the loop low-passed (COLR) and high-passed (thinner each pass) and
  * saturated, so FDBK past ~95 runs away into a bounded howl and settles when turned back. WORN: more wow and flutter,
  * darker, thinner, driven harder.
- * DUAL (Fel-Tracker 2026-10): a true stereo delay, two lines in dly_buf's halves (up to 0.74 s each, as PING): the left
+ * DUAL (Blue Hare 2026-10): a true stereo delay, two lines in dly_buf's halves (up to 0.74 s each, as PING): the left
  * echoes at TIME, the right at three quarters of it (a straight time against its dotted one: 1/4 left, 3/16 right),
  * each its own low-passed loop (COLR, FDBK), a quarter of each fed into the other's (the echoes cross and smear) */
 #define DLY_LEN DEV_NAT(65536u, 1048576u)   /* 1.49 s: 1/4 at 40 BPM fits (native: 23.8 s, 4BAR at 41 BPM; PING's right
@@ -140,7 +140,7 @@ static void track_dist(track_t *t, int32_t *b, uint32_t n)
  * get quieter instead of crushed. */
 #define LIM_T 18000
 static int32_t lim_env = LIM_T;
-/* (Fel-Tracker) the bus compressor in front of it (bus_comp): 3:1 above BC_T (6 dB under the limiter's threshold), the
+/* (Blue Hare) the bus compressor in front of it (bus_comp): 3:1 above BC_T (6 dB under the limiter's threshold), the
  * level the block's peak smoothed (~3 ms attack, ~190 ms release), the gain moving across each block. Eight tracks
  * summed ran the limiter nearly all the time at the top of MASTER (96 % of the blocks of a full song, down to -10 dB):
  * the compressor takes the body of the mix down smoothly, the limiter only the fast peaks */
@@ -180,7 +180,7 @@ static inline int32_t dc_block(int32_t x, int32_t *dc, int32_t *err)
 }
 
 static int32_t lce[4];
-static int32_t slc[4];                   /* (Fel-Tracker) send_lowcut's states: delay, reverb; two poles each */
+static int32_t slc[4];                   /* (Blue Hare) send_lowcut's states: delay, reverb; two poles each */
 static inline int32_t lowcut1(int32_t x, int32_t *lc, int32_t *err, uint32_t sh)   /* x minus its one-pole low-pass */
 {
     int32_t e = x - *lc + *err, d = e >> sh;
@@ -268,7 +268,7 @@ static uint32_t delay_samples(void)
     return s < 16u ? 16u : s >= DLY_LEN ? DLY_LEN - 1u : s;
 }
 
-/* ROOM (G_RTYPE 0): 4 damped combs + 2 allpasses (Freeverb-like), added to out; (Fel-Tracker) the combs signed in turn,
+/* ROOM (G_RTYPE 0): 4 damped combs + 2 allpasses (Freeverb-like), added to out; (Blue Hare) the combs signed in turn,
  * + - + -, its side (to side: uncorrelated with their sum, the room's width) */
 static __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *out, int32_t *side, uint32_t n)
 {
@@ -520,8 +520,8 @@ static __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *o
     hl.side = 1;
 }
 
-#ifndef FELUCCA_NATIVE
-/* (Fel-Tracker, 2026-10) CONCERT on the device (G_RTYPE 4; the native image has its own, floating point, fx_native.c):
+#ifndef BLUEHARE_NATIVE
+/* (Blue Hare, 2026-10) CONCERT on the device (G_RTYPE 4; the native image has its own, floating point, fx_native.c):
  * HALL grown into the memory four tracks freed. At half the rate as HALL (22.05 kHz): the send (two samples
  * averaged, ROOM's level) -> a low cut (~110 Hz) -> a pre-delay (12 ms) -> 4 allpass diffusers -> 16 lines (26 .. 67
  * ms, mutually prime: twice HALL's lines, twice as long: a denser, smoother, longer tail), each read through its own
@@ -632,14 +632,14 @@ static __attribute__((noinline)) void rev_concert(const int32_t *rev_in, int32_t
 }
 #endif
 
-#ifdef FELUCCA_NATIVE
-#include "fx_native.c"                                   /* (Fel-Tracker) the native image's reverbs: CONCERT, CAVERN, SHIMMER */
+#ifdef BLUEHARE_NATIVE
+#include "fx_native.c"                                   /* (Blue Hare) the native image's reverbs: CONCERT, CAVERN, SHIMMER */
 #define RT_LAST 6
 #else
 #define RT_LAST 4                                        /* (2026-10: the device's CONCERT) */
 #endif
 
-/* (Fel-Tracker) GATED (G_RTYPE 3): HALL, dense, cut off sharply: a hit in the send opens the gate, it stays open for
+/* (Blue Hare) GATED (G_RTYPE 3): HALL, dense, cut off sharply: a hit in the send opens the gate, it stays open for
  * SIZE's hold (~60 .. ~500 ms) after the last one, then shuts over ~10 ms (the 80s gated snare; LINNKIT's, WAR's).
  * DAMP as HALL's. Its stereo difference (rev_side) gated with it */
 #define GT_OPEN 1500                     /* the send's block peak that opens the gate */
@@ -681,9 +681,9 @@ static void rev_clear(void)
         hl.lp[i] = hl.le[i] = 0;
     fx.sp_lp = fx.sp_hp = fx.sp_he = 0;
     hl.x = hl.m = hl.s = hl.hp = hl.he = 0;
-    gt.g = 0;                                           /* (Fel-Tracker: GATED shut) */
+    gt.g = 0;                                           /* (Blue Hare: GATED shut) */
     gt.hold = 0;
-#ifdef FELUCCA_NATIVE
+#ifdef BLUEHARE_NATIVE
     rev_native_clear();
 #else
     concert_clear();
@@ -694,7 +694,7 @@ static int32_t part_buf[CTL];                            /* a part's block (mix_
 
 /* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are
  * cleared, the new one starts from silence */
-static int32_t wside[CTL];               /* (Fel-Tracker) the buses' side: + left, - right (mix_block) */
+static int32_t wside[CTL];               /* (Blue Hare) the buses' side: + left, - right (mix_block) */
 static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t *wet, uint32_t n, int32_t rt)
 {
     static int32_t ts[CTL];                         /* (ROOM's side, faded with it) */
@@ -702,7 +702,7 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
     uint32_t i;
     for (i = 0; i < n; i++)
         t[i] = ts[i] = 0;
-#ifdef FELUCCA_NATIVE
+#ifdef BLUEHARE_NATIVE
     if (fx.rtype >= 4u)
         rev_native(fx.rtype, rev_in, t, ts, n);
     else
@@ -884,7 +884,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     hl.side = 0;
     if (rt != fx.rtype)
         rev_switch(rev_in, wet, n, rt);
-#ifdef FELUCCA_NATIVE
+#ifdef BLUEHARE_NATIVE
     else if (rt >= 4)
         rev_native((uint32_t)rt, rev_in, wet, wside, n);
 #else
@@ -901,7 +901,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         rev_room(rev_in, wet, wside, n);
 }
 
-/* (Fel-Tracker) the delay's and the reverb's sends without their lows: two one-pole high-passes each (~220 Hz, 12
+/* (Blue Hare) the delay's and the reverb's sends without their lows: two one-pole high-passes each (~220 Hz, 12
  * dB/oct), so the bass stays in the dry mix and out of the tails. A step is the difference / 32, floored, and at least
  * 1 up when the difference is 1 .. 31 (sl_step): the state reaches its input exactly (silence in, silence out: a
  * floored step alone would stop up to 31 below it, an offset into the tails), cheaper than master_out's error feedback */
@@ -940,7 +940,7 @@ static __attribute__((noinline)) void rev_side_mix(int32_t *l, int32_t *r, uint3
 static void events_block(uint32_t n);                    /* seq.c */
 static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_r[CTL];
 
-static void track_lowcut(uint32_t k, int32_t *b, uint32_t n);   /* (Fel-Tracker: LOW CUT, below) */
+static void track_lowcut(uint32_t k, int32_t *b, uint32_t n);   /* (Blue Hare: LOW CUT, below) */
 
 /* SPREAD (#148): a POLY or UNISON part whose SPRD is above 0. Its voices start left and right of PAN in turn (voice.c
  * voice_start; UNISON's detuned voices alternate), at PAN -/+ SPRD / 2 (SPRD 127: hard left and right), with the pan
@@ -970,7 +970,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     track_dist(t, b, n);
     slicer_track_sd(t, b, d, n);
     if (trk_lowcut[(t - trk) % NTRK])
-        track_lowcut((uint32_t)(t - trk) % NTRK, b, n);   /* (Fel-Tracker; the side d passes it, as it passes DIST) */
+        track_lowcut((uint32_t)(t - trk) % NTRK, b, n);   /* (Blue Hare; the side d passes it, as it passes DIST) */
     if ((pf.mute >> (t - trk)) & 1u)
         perf_mute_sd((uint32_t)(t - trk), b, d, n);
     for (i = 0; i < n; i++) {
@@ -990,7 +990,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     t->peak = pk;
 }
 
-/* (Fel-Tracker) LOW CUT (core.h trk_lowcut): two one-pole high-passes at TL_HZ[] on the track's block, after DIST and the
+/* (Blue Hare) LOW CUT (core.h trk_lowcut): two one-pole high-passes at TL_HZ[] on the track's block, after DIST and the
  * SLICER (so the sends lose the lows too). The states are Q8 and step by the difference / 256 * k / 128, at least one
  * unit while they differ (tl_pole), so they reach their input exactly: silence in, silence out */
 static const int16_t TL_K[TL_N] = {0, 186, 279, 371, 555, 739, 1101, 1458};   /* Q15: 1 - e^(-2 pi f / 44100) */
@@ -1013,7 +1013,7 @@ static __attribute__((noinline)) void track_lowcut(uint32_t k, int32_t *b, uint3
     tmix[k].s2 = s2;
 }
 
-/* (Fel-Tracker) WIDTH (core.h trk_width): the Haas effect on one of the last TW_N tracks. The track's sample x (its level
+/* (Blue Hare) WIDTH (core.h trk_width): the Haas effect on one of the last TW_N tracks. The track's sample x (its level
  * applied) splits at ~250 Hz (high: two one-pole high-passes, 12 dB/oct, so 60 Hz is ~-25 dB in it; low = x - high);
  * one side plays x, the other low + the high of WIDTH ms before (tw_buf, the highs halved into 16 bits). The first of these tracks is late on the right (it sits
  * left, as its PAN), the next on the left, and so on. The sends take x, as always; the mono sum keeps the lows whole */
@@ -1084,10 +1084,10 @@ static void mix_part(track_t *t, uint32_t n)
         track_dist(t, b, n);
         slicer_track(t, b, n);                          /* slicer.c: before the level, pan and sends */
         if (trk_lowcut[k])
-            track_lowcut(k, b, n);                      /* (Fel-Tracker) LOW CUT */
+            track_lowcut(k, b, n);                      /* (Blue Hare) LOW CUT */
         if ((pf.mute >> (t - trk)) & 1u)
             perf_mute((uint32_t)(t - trk), b, n);       /* perform.c: a black key in the FX layer */
-        if (tw_has(k) && trk_width[k]) {                /* (Fel-Tracker) WIDTH */
+        if (tw_has(k) && trk_width[k]) {                /* (Blue Hare) WIDTH */
             mix_haas(t, k, b, n, lvl, gl, gr, c, d, r, xmax);
             if (mod.on)
                 mod_end(t);
@@ -1142,8 +1142,8 @@ static __attribute__((noinline)) void perf_master(int32_t *out, uint32_t n)
         out[2u * i] = mix_l[i];
         out[2u * i + 1u] = mix_r[i];
     }
-    mono_lows(out, n);                                  /* (Fel-Tracker, 2026-10) */
-    bus_comp(out, n);                                   /* (Fel-Tracker) */
+    mono_lows(out, n);                                  /* (Blue Hare, 2026-10) */
+    bus_comp(out, n);                                   /* (Blue Hare) */
     for (i = 0; i < n; i++) {
         int32_t l = out[2u * i], r = out[2u * i + 1u];
         master_out(&l, &r);
@@ -1152,7 +1152,7 @@ static __attribute__((noinline)) void perf_master(int32_t *out, uint32_t n)
     }
 }
 
-/* (Fel-Tracker, 2026-10) the lows in mono, as a club's system wants them: the mix's side (L - R) / 2 high-passed at
+/* (Blue Hare, 2026-10) the lows in mono, as a club's system wants them: the mix's side (L - R) / 2 high-passed at
  * ~120 Hz, 12 dB/oct (LOW CUT's two one-pole high-passes: tl_pole, so silence ends in exact silence), the rest of it (its
  * lows) taken out of both sides: 40 Hz a tenth of its width, 60 Hz a fifth, 120 Hz half. The chorus's and the reverbs'
  * width stays above; a centred track is untouched (its side is nothing) */
@@ -1173,7 +1173,7 @@ static __attribute__((noinline)) void mono_lows(int32_t *out, uint32_t n)
     }
 }
 
-/* (Fel-Tracker) the bus compressor (above) on a block of the mix (out: L R interleaved, MASTER applied) */
+/* (Blue Hare) the bus compressor (above) on a block of the mix (out: L R interleaved, MASTER applied) */
 static __attribute__((noinline)) void bus_comp(int32_t *out, uint32_t n)
 {
     uint32_t i;
@@ -1203,7 +1203,7 @@ static __attribute__((noinline)) void bus_comp(int32_t *out, uint32_t n)
     bc_g = g1;
 }
 
-/* (Fel-Tracker) DUCK (core.h trk_duck): the key track's level (its share of the mix, the block's peak) as an envelope,
+/* (Blue Hare) DUCK (core.h trk_duck): the key track's level (its share of the mix, the block's peak) as an envelope,
  * at once up, down over ~90 ms; a ducked track's dry share and sends scaled by 1 - depth x envelope (Q12, ramped over
  * the block from the last one's) */
 #define DK_REF 12000                     /* the key's peak that is the envelope's full (a kick at its LEVEL: ~0 dB) */
@@ -1266,7 +1266,7 @@ static void mix_block(int32_t *out, uint32_t n)
         send_c[i] = send_d[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
     events_block(n);
     perf = perf_begin(n);                               /* the FX hold layer at work (perform.c) */
-    for (i = 0; i < NPART; i++)                       /* (Fel-Tracker) DUCK: the key first, if one ducks */
+    for (i = 0; i < NPART; i++)                       /* (Blue Hare) DUCK: the key first, if one ducks */
         if (trk_duck[i] == TD_KEY) {
             uint32_t k;
             for (k = 0; k < NPART && !(trk_duck[k] && trk_duck[k] <= TD_MAX && k != i); k++)
@@ -1287,7 +1287,7 @@ static void mix_block(int32_t *out, uint32_t n)
     tgt_mix_end(n);
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);
-    send_lowcut(send_d, send_r, n);                     /* (Fel-Tracker) */
+    send_lowcut(send_d, send_r, n);                     /* (Blue Hare) */
     fx_buses(send_c, send_d, send_r, wet, n);
     if (hl.side)
         rev_side_mix(mix_l, mix_r, n);                  /* HALL: stereo */
@@ -1301,8 +1301,8 @@ static void mix_block(int32_t *out, uint32_t n)
         out[2u * i] = (((mix_l[i] + wet[i] + wside[i]) >> 2) * mg) >> 10;
         out[2u * i + 1u] = (((mix_r[i] + wet[i] - wside[i]) >> 2) * mg) >> 10;
     }
-    mono_lows(out, n);                                  /* (Fel-Tracker, 2026-10) */
-    bus_comp(out, n);                                   /* (Fel-Tracker) */
+    mono_lows(out, n);                                  /* (Blue Hare, 2026-10) */
+    bus_comp(out, n);                                   /* (Blue Hare) */
     for (i = 0; i < n; i++) {
         int32_t l = out[2u * i], r = out[2u * i + 1u];
         master_out(&l, &r);

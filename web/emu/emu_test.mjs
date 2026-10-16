@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-// Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
-// The browser build (build/emu/felucca.wasm, web/emu/felucca_web.c) in Node, as the worklet runs it. After X0X's
+// Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md
+// The browser build (build/emu/bluehare.wasm, web/emu/bluehare_web.c) in Node, as the worklet runs it. After X0X's
 // tests/host/emu_test.mjs (charlesvestal/fm1-x0x, GPL-3.0).
-//   node web/emu/emu_test.mjs build/emu/felucca.wasm [NATIVE.f32]
+//   node web/emu/emu_test.mjs build/emu/bluehare.wasm [NATIVE.f32]
 // Checks: the page's script parses; it boots (splash, then HOME on the screen, the HOME LED; the power-on LED sweep under the splash, over by
 // 1 s), a held key sounds and lights its LED, PLAY
 // starts the sequencer (PLAY's green LED), a user preset saved from the panel (SAVE, OCT+, OCT+) reaches the flash,
@@ -14,14 +14,14 @@
 import fs from "fs";
 import { storeSectors, restoreSectors } from "./worklet.js";
 
-const wasmPath = process.argv[2] || "build/emu/felucca.wasm", nativePath = process.argv[3];
+const wasmPath = process.argv[2] || "build/emu/bluehare.wasm", nativePath = process.argv[3];
 const bytes = fs.readFileSync(wasmPath);
 const B = { FX: 0, SCL: 1, ENV: 2, LFO: 3, EDIT: 4, GLO: 5, HOME: 6, SAVE: 7, ARP: 8, SEQ: 9, PLAY: 10, REC: 11, OCTDN: 12, OCTUP: 13 };
 const EN = { SELECT: 0, ALGO: 1, PRESETS: 2, K1: 3, K2: 4, K3: 5, K4: 6 };
 let fails = 0;
 const check = (what, ok) => { console.log(`emu: ${what.padEnd(76)} ${ok ? "ok" : "FAIL"}`); if (!ok) fails++; };
 
-{   /* (Fel-Tracker) the page's own script parses: a syntax error there leaves Switch on dead, the wasm fine */
+{   /* (Blue Hare) the page's own script parses: a syntax error there leaves Switch on dead, the wasm fine */
   const { spawnSync } = await import("child_process"), os = await import("os"), path = await import("path");
   const html = fs.readFileSync(new URL("./index.html", import.meta.url), "utf8");
   const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);

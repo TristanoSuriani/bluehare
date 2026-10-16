@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Host test of the UI (firmware/src/ui*.c with the sound sources of hostsim.c;
  * the display and the HAL are stubs, the buttons and knobs are driven through them):
  *   SOUNDS     a sound load (PRESETS knob / page, TOOLS INIT, user preset) changes the sound only: SCL,
@@ -21,13 +21,13 @@
  *              the pages edit written alone, SLOT OWN, the sound following, one undo per gesture, the macros on top,
  *              projects and user presets keep the patch; FM6 only.
  *   USB SERIAL #67: MENU > USB SERIAL ON (default, the descriptors as before) / OFF (audio + MIDI only, class 0):
- *              the menu, the settings, the descriptor at boot (built with the console, as the firmware: FELUCCA_CDC).
+ *              the menu, the settings, the descriptor at boot (built with the console, as the firmware: BLUEHARE_CDC).
  *   SCREEN OFF (1.1.5): MENU > DISPLAY > SCREEN OFF against a simulated clock and the panel's commands (lcd_power):
  *              dark after the time, nothing drawn, any input wakes it (SLPOUT, 120 ms, redraw, DISPON) and is
  *              swallowed; dialogs / UPDATE MODE keep it on; saved; the sound bit for bit while dark.
  * Built and run by tests/run_tests.sh. */
-#ifndef FELUCCA_CDC
-#define FELUCCA_CDC 1                                    /* (as src/felucca.c: the console built in, MENU > USB SERIAL) */
+#ifndef BLUEHARE_CDC
+#define BLUEHARE_CDC 1                                    /* (as src/bluehare.c: the console built in, MENU > USB SERIAL) */
 #endif
 #include <stddef.h>
 #include <stdint.h>
@@ -126,10 +126,10 @@ static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint1
     for (j = 0; j < h && y + j < 240u; j++)
         for (i = 0; i < w && x + i < 240u; i++) host_put((y + j) * 240u + x + i, p[j * w + i]);
 }
-static struct { uint32_t stage; } felucca_dbg;
-#define FELUCCA_FLASH 0
-#ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "TEST"
+static struct { uint32_t stage; } bluehare_dbg;
+#define BLUEHARE_FLASH 0
+#ifndef BLUEHARE_VERSION
+#define BLUEHARE_VERSION "TEST"
 #endif
 #include "../firmware/src/gfx.c"
 #include "../firmware/src/panel.c"
@@ -152,7 +152,7 @@ static int check(const char *what, int ok)
     return ok ? 0 : 1;
 }
 
-/* (Fel-Tracker) the sounds these tests power on with: the layout they were written against (a bass on track 1, the
+/* (Blue Hare) the sounds these tests power on with: the layout they were written against (a bass on track 1, the
  * pad on 2, a lead on 3, the kit on 4; 5..8 chords, a pluck, a break, the siren), every pan centred. The device's own
  * power-on (engines.c TRK_DEF, TRK_PAN: the rhythm section first) is engines_test.c's to check */
 static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(VOSIM, 13), TRK_PICK(SID, 2), TRK_PICK(KIT, 0)
@@ -161,7 +161,7 @@ static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(VOSIM, 13), 
                                          TRK_PICK2(DUBSIREN, 0, HOOVER, 5)
 #endif
 };
-/* main.c felucca_init, with these tests' sounds (UT_DEF) */
+/* main.c bluehare_init, with these tests' sounds (UT_DEF) */
 static void ui_power_on(void)
 {
     uint32_t i;
@@ -351,7 +351,7 @@ static int test_sound_loads(void)
                  t->preset == (uint8_t)((before.preset + 1u) % ENGINES[0]->npresets) && t->p[P_SDIV] == 1);
     bad += check("..SCL, the SLICER and the mix stay the track's", t->p[P_ROOT] == 3 && t->p[P_SCALE] == 2 &&
                  t->p[P_TRANS] == 5 && t->p[P_SLCR] == SL_GATE && t->p[P_SLPAT] == 4 && t->p[P_LEVEL] == 90);
-    i = ENGINES[0]->npresets - 2u;                /* (ANALOG's RAVE until Fel-Tracker: a preset near the end) */
+    i = ENGINES[0]->npresets - 2u;                /* (ANALOG's RAVE until Blue Hare: a preset near the end) */
     t->preset = (uint8_t)(i - 1u);
     turn(EN_PRESET, 1);
     bad += check("a factory preset loads", t->preset == i);
@@ -976,7 +976,7 @@ static int test_display_preferences(void)
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
     turn(EN_K1, 1);
     bad += check("COLOR KNOB 1 steps on to HI-CON, NIGHT (#50: true black), MONO (1.0.2: black and white), IDM, SIGNAL, "
-                 "FOUNDRY, RAVE, CHIP (Fel-Tracker: the distributions'), then wraps to GREY",
+                 "FOUNDRY, RAVE, CHIP (Blue Hare: the distributions'), then wraps to GREY",
                  settings.palette == 7 && (turn(EN_K1, 1), settings.palette == 8u) && T_BG == 0u &&
                  str_eq(UI_PALETTES[8].name, "NIGHT") && (turn(EN_K1, 1), settings.palette == UI_BW_INDEX) &&
                  str_eq(UI_PALETTES[UI_BW_INDEX].name, "MONO") && T_BG == 0u && T_TEXT == 0xFFFFu &&
@@ -2130,7 +2130,7 @@ static int test_layer(void)
     key_up(white(8)); key_down(white(9)); frame();
     ok &= perf_held == PF_BIT(PF_ODN) && !gates() && mo_w == mo;
     key_up(white(9)); key_down(white(10)); frame();
-    ok &= !perf_held && (kb_layer >> white(10)) & 1u && !gates();   /* (B4: nothing, FLANGER's key until Fel-Tracker) */
+    ok &= !perf_held && (kb_layer >> white(10)) & 1u && !gates();   /* (B4: nothing, FLANGER's key until Blue Hare) */
     key_up(white(10)); key_down(white(12)); frame();
     ok &= !perf_held && (kb_layer >> white(12)) & 1u && !gates();
     key_up(white(12)); btn_up(B_FX); frame();
@@ -2147,7 +2147,7 @@ static int test_layer(void)
     turn(EN_K1, 1);
     ok &= song.g[G_RTYPE] == 1 && str_eq(GP[G_RTYPE].names[song.g[G_RTYPE]], "SPRING");
     turn(EN_K1, 5);
-    ok &= song.g[G_RTYPE] == GP[G_RTYPE].max;   /* (Fel-Tracker: its last, GATED) */
+    ok &= song.g[G_RTYPE] == GP[G_RTYPE].max;   /* (Blue Hare: its last, GATED) */
     turn(EN_K1, -(int32_t)GP[G_RTYPE].max + 1);
     ok &= song.g[G_RTYPE] == 1;
     song.playing = 0;
@@ -2157,9 +2157,9 @@ static int test_layer(void)
     project_load(2);
     bad += check("REVERB page: TYPE HALL (power-on) / ROOM / SPRING on KNOB 1 (SIZE, DAMP beside it); a project keeps SPRING",
                  ok && song.g[G_RTYPE] == 1);
-    /* DLY 2 > TYPE (Fel-Tracker): CLEAN (power-on) / TAPE / WORN on KNOB 1, kept by a project */
+    /* DLY 2 > TYPE (Blue Hare): CLEAN (power-on) / TAPE / WORN on KNOB 1, kept by a project */
     ui_power_on();
-    go_title("VOICE 3");                                /* (Fel-Tracker) OCT beside SPREAD */
+    go_title("VOICE 3");                                /* (Blue Hare) OCT beside SPREAD */
     bad += check("  VOICE 3 page: SPRD, OCT (-4 .. 4, the sound's octave)", cur_page()->id[0] == P_SPRD && cur_page()->id[1] == P_OCT &&
                  TP[P_OCT].min == -4 && TP[P_OCT].max == 4);
     go_title("DLY 2");
@@ -2172,7 +2172,7 @@ static int test_layer(void)
     turn(EN_K1, 1);
     ok &= song.g[G_DTYPE] == 3 && str_eq(GP[G_DTYPE].names[3], "PING");
     turn(EN_K1, 5);
-    ok &= song.g[G_DTYPE] == 4 && str_eq(GP[G_DTYPE].names[4], "DUAL");   /* (Fel-Tracker 2026-10: the last) */
+    ok &= song.g[G_DTYPE] == 4 && str_eq(GP[G_DTYPE].names[4], "DUAL");   /* (Blue Hare 2026-10: the last) */
     turn(EN_K1, -3);
     song.playing = 0;
     project_save(2);
@@ -3078,7 +3078,7 @@ static int test_bughunt_ui2(void)
 /* L is a sparse face (tools/gen_aa_font.py L_CHARS): every string drawn in it has all its glyphs */
 static int test_large_face(void)
 {
-    static const char *const FIXED[] = {"FELUCCA", "0123456789"};   /* main.c, ui_menu.c; ui_draw.c draw_uboot */
+    static const char *const FIXED[] = {"BLUE HARE", "0123456789"};   /* main.c, ui_menu.c; ui_draw.c draw_uboot */
     uint32_t i, missing = 0;
     const char *s;
     for (i = 0; i < NB + NE + 2u; i++)                              /* ui_input.c setup_show: the control names */
@@ -4927,7 +4927,7 @@ static int test_click_menu(void)
 }
 
 /* #67 MENU > USB SERIAL: ON by default (and in every older setting): the console presented, the descriptors as
- * before. OFF: audio + MIDI only, device class 0, bcdUSB 1.10 (CFG_DESC_PLAIN: a FELUCCA_CDC=0 build's bytes), applied
+ * before. OFF: audio + MIDI only, device class 0, bcdUSB 1.10 (CFG_DESC_PLAIN: a BLUEHARE_CDC=0 build's bytes), applied
  * when the menu closes (one re-enumeration); saved; at boot the saved choice before USB starts (never on then off) */
 static int dev_class(void)                              /* the device class GET_DESCRIPTOR sends now (-1: none) */
 {
@@ -5774,7 +5774,7 @@ static int test_edit_quick_actions(void)
 }
 
 #if NTRK == 8
-/* (Fel-Tracker, TRACKS 8) the view: the 4-wide places show the selected track's four (1 .. 4 or 5 .. 8); GLO's knobs, SOLO
+/* (Blue Hare, TRACKS 8) the view: the 4-wide places show the selected track's four (1 .. 4 or 5 .. 8); GLO's knobs, SOLO
  * keys and cards follow it, its 8 black keys mute every track; FX's 8 black keys too; MIDI IN in blocks of 8; tracks 5 .. 8
  * at power-on */
 static int test_eight_tracks(void)

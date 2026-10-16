@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The native image's reverbs (FELUCCA_NATIVE: fx.c includes this; REVERB TYPE 3 .. 5, params.c N_RTYPE). On the FM-1 a
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* The native image's reverbs (BLUEHARE_NATIVE: fx.c includes this; REVERB TYPE 3 .. 5, params.c N_RTYPE). On the FM-1 a
  * song's CONCERT, CAVERN or SHIMMER loads as HALL (project.c clamps the type to the device's last). Floating point, at
  * the full rate, in memory the device does not have (some 0.7 MB):
  *   CONCERT  HALL without the device's economies: 16 lines instead of 8, at 44.1 kHz instead of 22.05 (the air up to

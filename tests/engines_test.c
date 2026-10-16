@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as FELUCCA_DIST=ref (the
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* A distribution without some engines (1.5, distributions/*.txt): run_tests.sh builds this as BLUEHARE_DIST=ref (the
  * host tests' build: IDM's sixteen engines as they were before the 2026-10 plan; tests/idm_test.c has today's IDM), which
  * has no HOOVER, BYTE, KARPLUS, FMPERC, DUBSIREN8, BLISS, RISERS nor FOUNDRY's engines (Felucca's own ANALOG .. FM6 are
- * retired ids since Fel-Tracker removed them). The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
+ * retired ids since Blue Hare removed them). The engines left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a
  * stored sound of an engine left out loads as its substitute (engines.c eng_load_id):
  *   the table      the indices in order, the ids both ways, the left-out ids map to none, the substitutes
  *   power-on       the parts whose engine is left out: the build's first engine
@@ -43,9 +43,9 @@ int main(void)
     char dbg2[200];
 
     /* the table */
-    ok = NENGINES == NELEM(ORDER) && !FELUCCA_ENG_HOOVER && !FELUCCA_ENG_BYTE && !FELUCCA_ENG_KARPLUS && !FELUCCA_ENG_FMPERC &&
-         !FELUCCA_ENG_DUBSIREN8 && !FELUCCA_ENG_BLISS && !FELUCCA_ENG_RISERS && !FELUCCA_ENG_DARK && FELUCCA_ENG_MODAL &&
-         FELUCCA_ENG_VECTOR && FELUCCA_ENG_ECHOES && FELUCCA_ENG_GLITCH;
+    ok = NENGINES == NELEM(ORDER) && !BLUEHARE_ENG_HOOVER && !BLUEHARE_ENG_BYTE && !BLUEHARE_ENG_KARPLUS && !BLUEHARE_ENG_FMPERC &&
+         !BLUEHARE_ENG_DUBSIREN8 && !BLUEHARE_ENG_BLISS && !BLUEHARE_ENG_RISERS && !BLUEHARE_ENG_DARK && BLUEHARE_ENG_MODAL &&
+         BLUEHARE_ENG_VECTOR && BLUEHARE_ENG_ECHOES && BLUEHARE_ENG_GLITCH;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
     ok &= eng_of_id(EID_HOOVER) == ENG_NO && eng_of_id(EID_BYTE) == ENG_NO && eng_of_id(EID_DARK) == ENG_NO &&
@@ -108,7 +108,7 @@ int main(void)
     ok &= host_wire[5] == EID_HOOVER && host_wire[6] == 0;
     bad += check("  G_ENGSEL BLISS: WAVE; PRESET HOOVER 3: SID's first preset (replies its id); NAMES HOOVER: none", ok);
 
-    /* OCT (Fel-Tracker): a preset sets it, the next preset puts it back (FMPERC's 6 kicks carry -3: FMPERC is not in this
+    /* OCT (Blue Hare): a preset sets it, the next preset puts it back (FMPERC's 6 kicks carry -3: FMPERC is not in this
      * distribution, its table is read as it stands); a song keeps it; a stored value
      * outside -4 .. 4 (ENV DEST FX, which it was) loads as 0 */
     for (i = 0, ok = 1, off = 0; i < NELEM(FMPERC_PRESETS); i++) {
@@ -325,7 +325,7 @@ int main(void)
         }
     }
 
-    {   /* (Fel-Tracker) the engines' block of a track (engines.c eng_slab): one a track, as big as this build's
+    {   /* (Blue Hare) the engines' block of a track (engines.c eng_slab): one a track, as big as this build's
          * largest needs; lent to a key, cleared when another key asks; nothing for a non-part or too big an ask */
         uint8_t *x = eng_slab(&trk[2], SLAB_ECHOES, 16), *y;
         ok = x && sizeof eng_slab_mem[0] >= sizeof(ec_g_t) * EC_POLY * EC_NG &&

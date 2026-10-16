@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-// Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
+// Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md
 // fm1backup.js against a simulated device: 7-bit packing, CRC, manifest checks, a full capture,
 // validation before the first write, restore order (live music last) and abort on a failed chunk.
 import { BACKUP_IDS, BACKUP_IDS_8, BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc, bkManifest, readBackup, captureBackup, restoreBackup } from "./fm1backup.js";
@@ -67,7 +67,7 @@ await restoreBackup(target.request, file);
 const order = target.log.filter((x) => typeof x === "number");
 ok(order.at(-1) === 0 && order.at(-2) === 1 && order.indexOf(2) < order.indexOf(1), "backup: restore order: projects, banks, settings, live music last");
 ok([0, 1, 2, 6].every((id) => target.objs.get(id).every((v, i) => v === objs.find((o) => o[0] === id)[1][i])), "backup: restored objects equal the source");
-{   /* (Fel-Tracker, TRACKS 8) 25 objects: the song's chunks 4..15 as ids 10..21, restored after 2..5 in order */
+{   /* (Blue Hare, TRACKS 8) 25 objects: the song's chunks 4..15 as ids 10..21, restored after 2..5 in order */
   const big = [[0, rnd(10, 9)], [1, rnd(1200, 3)], ...[2, 3, 4, 5, 10, 11].map((id, i) => [id, rnd(3840, 20 + i)])];
   const d8 = device(big, { ids: BACKUP_IDS_8, maxId: 21 }), f8 = await captureBackup(d8.request, "TEST8");
   const t8 = device([], { ids: BACKUP_IDS_8, maxId: 21 });

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* The metronome (1.1, Ideas Discussion #131; src/click.c, src/seq.c), through the real audio path
  * (audio.c audio_block: the mix, USB audio's tap, the click, the DAC):
  *   the click on the song tempo's quarter notes, sample for sample (beat k in the block a 1/16 track enters step 4k,
@@ -26,7 +26,7 @@ static void fm1_audio_ack_half(void) {}
 static void fm1_audio_init(int32_t *b, uint32_t n, void (*isr)(void), uint32_t p)
 { (void)b; (void)n; (void)isr; (void)p; }
 void isr_alnk0(void) {}
-#define FELUCCA_UAC 1                                  /* audio.c taps USB audio: here into tap */
+#define BLUEHARE_UAC 1                                  /* audio.c taps USB audio: here into tap */
 static int32_t tap_blk[2 * CTL];
 static void uac_tap(const int32_t *out, uint32_t n) { memcpy(tap_blk, out, 8u * n); }
 static void uac_render_start(void) {}

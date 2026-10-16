@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* 2x OVERSAMPLING (dsp.c os2_up / os2_down: a polyphase IIR halfband) around the engines' shapers. The pair alone (no
  * shaper): 1 kHz and 15 kHz come out at their level; silence ends in zeros. The engines (this
  * build's of RAZOR, VENOM, SANDSTORM): C7 (2093 Hz) at DRIVE 127, the filter open, one voice, no detune: the energy off

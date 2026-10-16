@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* PARTICLE (1.5): a cloud of synthesized grains (Fel-Tracker's own: no samples). While a note sounds, grains start at
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* PARTICLE (1.5): a cloud of synthesized grains (Blue Hare's own: no samples). While a note sounds, grains start at
  * random times, DENS a second on average (~1 .. 400), each SIZE long (~2 .. 200 ms), at the note give or take SCAT
  * semitones (random; QNT snaps the offset to FREE, SEMI semitones, OCT octaves, 5TH fifths and octaves), gliding CHIRP
  * over its length (up: bubbles, down: drips). Each grain is a WAVE (SINE, TRI, FM a bright bell-ish sine, NOIS a
- * crackle) under SHAPE (PERC a hit, HANN a swell, REV backwards: its last 64 samples faded, Fel-Tracker); TONE a
+ * crackle) under SHAPE (PERC a hit, HANN a swell, REV backwards: its last 64 samples faded, Blue Hare); TONE a
  * low-pass over the cloud. The ADSR shapes the
  * cloud. Up to PT_NG grains at once a voice (the rest are dropped); the level follows how many overlap.
  * Voice state: the grains in the track's block (engines.c eng_slab), s[0] samples to the next grain, s[1] the random

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* RAZOR (1.5, FOUNDRY): a stack of saws and a sharp edge (Fel-Tracker's own). VOICES saws (1 .. 7, band-limited)
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* RAZOR (1.5, FOUNDRY): a stack of saws and a sharp edge (Blue Hare's own). VOICES saws (1 .. 7, band-limited)
  * spread SPREAD apart in tune (up to ~+-50 cents at the outside: the reese's beating, the supersaw's sheen), SUB a
  * square an octave down, NOISE on top, DRIVE into a resonant low-pass (CUT, RES, the key half tracked, ENV ->
  * FILTER) and EDGE a high-pass after it (the cut's sharpness: thin, icy, laser). 4 voices a track (7 saws each).
@@ -23,7 +23,7 @@ static void razor_note_on(track_t *t, voice_t *v)
 
 static void razor_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
-    os2_t *os = os2_of(t, v);                         /* (Fel-Tracker 2026-10: the shaper's 2x, dsp.c) */
+    os2_t *os = os2_of(t, v);                         /* (Blue Hare 2026-10: the shaper's 2x, dsp.c) */
     const int16_t *p = t->p;
     uint32_t nv = (uint32_t)clamp(p[P_E0], 1, RZ_N), inc[RZ_N], ph[RZ_N], i, k, sph = (uint32_t)v->s[7], sinc;
     int32_t lvl = RZ_LVL[nv], sub = p[P_E6] * 258, noise = p[P_E7] * 100, drive = 256 + p[P_E5] * 8;
@@ -51,7 +51,7 @@ static void razor_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
             s += ((int32_t)(int16_t)((ph[0] * 2654435761u) >> 16) * noise) >> 15;
         if (os2_off)
             s = softclip(((s >> 1) * drive) >> 8);    /* DRIVE: into the filter */
-        else {                                        /* (Fel-Tracker 2026-10: at twice the rate, dsp.c os2) */
+        else {                                        /* (Blue Hare 2026-10: at twice the rate, dsp.c os2) */
             int32_t sa, sb;
             os2_up(os, s >> 1, &sa, &sb);
             s = os2_down(os, softclip((sa * drive) >> 8), softclip((sb * drive) >> 8));
@@ -99,7 +99,7 @@ static const preset_t RAZOR_PRESETS[] = {
     {"TEAR GAS", {5, 110, 75, 60, 30, 90, 0, 60}, {0, 40, 110, 30}, 20, 1, FX(40, 20, 30, 30)},
     {"SUB RAZOR", {2, 30, 35, 30, 0, 40, 127, 0}, {0, 50, 100, 15}, 20, 1, FX(10, 0, 0, 5)},
     {"GLASS LEAD", {4, 30, 120, 60, 110, 20, 0, 10}, {0, 40, 100, 30}, 30, 1, FX(0, 30, 35, 35)},
-    /* (Fel-Tracker) EBM basses */
+    /* (Blue Hare) EBM basses */
     {"EBM OCTAVES", {2, 40, 55, 40, 0, 50, 70, 0}, {0, 30, 60, 10}, 30, 0, FX(15, 0, 10, 10)},
     {"EBM ROOT", {2, 30, 50, 45, 0, 60, 80, 0}, {0, 25, 50, 8}, 35, 0, FX(20, 0, 10, 10)},
     {"EBM GALLOP", {3, 45, 60, 40, 10, 50, 60, 0}, {0, 25, 50, 8}, 30, 0, FX(15, 0, 15, 10)},

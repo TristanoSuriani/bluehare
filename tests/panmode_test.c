@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* PAN MODE (core.h trk_pmode; voice.c voice_start, fx.c mix_part): ALT everywhere at power-on; RND on a POLY track: each
  * new note on a side picked at random (both sides, not in turn); RND on a MONO track at SPRD 0: the notes move too (half
  * the width); the song store keeps it, the power-on values have none */

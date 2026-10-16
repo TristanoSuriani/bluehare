@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* User presets (editor protocol v2, cmds 16-21; the SAVE > USER page): 32
  * slots in two storage.c objects (OBJ_UPRESET0/1, A/B sectors at
  * 0xDC000..0xDFFFF), 16 records each, mirrored in RAM so browsing never
@@ -17,7 +17,7 @@
  * That holds as long as common parameters are only ever added just before
  * P_E0 (else bump UP_VER and translate). Version 1 (before 1.0) has the
  * same layout. (Felucca's PHYS and DRUM records are of retired engines now:
- * Fel-Tracker removed those, and such a record is refused like any retired id.)
+ * Blue Hare removed those, and such a record is refused like any retired id.)
  * Version 3 (UP_VER_GRID, the DRUM grid of 1.0.5 .. 1.4) is the same record with a drum grid as its pattern: note[i] is
  * step i's lane hits (bit l = lane l), flags[i] their accents. Older firmware shows a version 3 record as empty and
  * keeps its bytes. A note pattern's flags: 1 accent, 2 slide, 4 tie, 8 | 16 the step's RATCH (UP_PF_KEEP).
@@ -239,12 +239,12 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* mapped and clamped for
 
 static void up_boot(void)                      /* persist_boot: the banks from flash */
 {
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     uint32_t b;
     for (b = 0; b < UP_SLOTS / UP_PER_BANK; b++)
         up_bank_check(b, flash_ok ? st_load(OBJ_UPRESET0 + b, &up_bank[b], sizeof up_bank[b]) : -1);
 #endif
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     for (uint32_t k = 0; k < UP_SLOTS; k++)
         if (!up_used(k)) favorite_set(EID_COUNT, k, 0);
 #endif
@@ -255,7 +255,7 @@ static void up_boot(void)                      /* persist_boot: the banks from f
 static int up_put(uint32_t k, const up_rec_t *r)
 {
     up_bank_t *bk;
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     up_rec_t old;
     uint32_t magic;
     uint16_t rsize, nslot;
@@ -267,7 +267,7 @@ static int up_put(uint32_t k, const up_rec_t *r)
         return 2;
     }
     bk = &up_bank[k / UP_PER_BANK];
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     old = *up_rec(k);
     magic = bk->magic;
     rsize = bk->rsize;
@@ -280,7 +280,7 @@ static int up_put(uint32_t k, const up_rec_t *r)
         *up_rec(k) = *r;
     else
         memset(up_rec(k), 0, sizeof(up_rec_t));
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     if (flash_ok && st_save(OBJ_UPRESET0 + k / UP_PER_BANK, bk, sizeof *bk)) {
         *up_rec(k) = old;
         bk->magic = magic;
@@ -290,7 +290,7 @@ static int up_put(uint32_t k, const up_rec_t *r)
     }
 #endif
     if (!r) {
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
         if (favorite_set(EID_COUNT, k, 0)) settings_save();
 #endif
         uint32_t i;
@@ -299,7 +299,7 @@ static int up_put(uint32_t k, const up_rec_t *r)
                 trk[i].user = 0;
     }
     up_gen++;
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     if (flash_ok)
         return 0;
 #endif

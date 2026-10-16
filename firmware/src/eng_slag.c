@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* SLAG (1.5, FOUNDRY): molten walls and drones (Fel-Tracker's own). OSCS oscillators (2 .. 4, WAVE SAW or PULSE) each
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* SLAG (1.5, FOUNDRY): molten walls and drones (Blue Hare's own). OSCS oscillators (2 .. 4, WAVE SAW or PULSE) each
  * wander in tune on its own (DRIFT: a slow random walk, a hot circuit's), into a saturation HEAT hard (from warm to a
  * wall of distortion), a resonant low-pass (CUT, RES) that MELT lets sink over each held note (the metal cooling) and
  * a crackle of NOISE (sparks off the pour).

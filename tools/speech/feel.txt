@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank FEEL: feelings, the bright and the dark ones (the format: num.txt); 32 words
 SATISFAC S AE2 T IH0 S F AE1 K SH AH0 N   # SATISFACTION
 EUPHORIA Y UW0 F AO1 R IY0 AH0

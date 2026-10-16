@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* What differs between the targets, in one place (Fel-Tracker; the architecture's item 4). The FM-1 build gets the empty
- * versions below, inlined to nothing (the device's code and its renders as before); the host targets (FELUCCA_NATIVE:
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* What differs between the targets, in one place (Blue Hare; the architecture's item 4). The FM-1 build gets the empty
+ * versions below, inlined to nothing (the device's code and its renders as before); the host targets (BLUEHARE_NATIVE:
  * the native image and the plugin's cores) define theirs in target_host.c:
  *   TGT_NOW()                the audio load meter's clock (audio.c): the device's timer, or the computer's
  *   TGT_INFO_VERSION         MENU > INFO's first row: FIRMWARE, or VERSION (an application)
@@ -15,7 +15,7 @@
  * Left where they are: what a host target has more of (DEV_NAT sizes, the native engines and reverbs). */
 #ifndef TARGET_H
 #define TARGET_H
-#ifdef FELUCCA_NATIVE
+#ifdef BLUEHARE_NATIVE
 #define TGT_NOW() native_ticks()
 #define TGT_INFO_VERSION "VERSION"
 static uint32_t tgt_beat_samples(void);

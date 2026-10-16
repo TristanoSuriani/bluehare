@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* BLISS (1.5; FMKEYS until FOUNDRY took it in): FM keyboards (Fel-Tracker's own, in the manner of the 80s FM electric
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* BLISS (1.5; FMKEYS until FOUNDRY took it in): FM keyboards (Blue Hare's own, in the manner of the 80s FM electric
  * pianos and bells), four operators as two pairs. The body: a sine at the note whose phase a modulator at RATIO times the note moves by INDEX (FDBK feeds
  * the modulator back into itself: brassier, reedier); the index falls over DECAY to a quarter, so a note starts
  * bright and mellows, and harder notes start brighter (VEL: how much the velocity counts). The tine: a sine at the

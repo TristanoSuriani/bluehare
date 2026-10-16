@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* LFO 2 (1.2, #154), on the real sound sources (with the stubs of tests/ui_test.c): SYNC one cycle per note value of the
  * tempo (several values and tempi, the external clock's measured tempo), RATE ignored meanwhile; OFF: RATE's table
  * exactly as before. TRIG: NOTE restarts at PHS on a fresh phrase (as before), FREE never (with SYNC: from PHS when

@@ -1,14 +1,14 @@
 # Authors and ownership
 
-**Fel-Tracker** is a fork of **Felucca**, the multi-engine synthesizer firmware for the M-VAVE FM-1 by
-Leo Kuroshita (Hügelton Instruments). Fel-Tracker is developed by **Tristano Suriani**
+**Blue Hare** is a fork of **Felucca**, the multi-engine synthesizer firmware for the M-VAVE FM-1 by
+Leo Kuroshita (Hügelton Instruments). Blue Hare is developed by **Tristano Suriani**
 (<https://github.com/TristanoSuriani/fel-tracker>). It is an independent fork, not an official Felucca release.
 
 Both are free software under the GNU General Public License, version 3 only (`LICENSE`). This file says whose work
 is whose. The third-party parts that both build on (fonts, ported DSP, the JieLi SDK files) are listed in
 [LICENSING.md](LICENSING.md).
 
-The fork point is Felucca 1.4.1 (commit `f21d6d6`). Everything from commit `7aa4347` on is Fel-Tracker's, and
+The fork point is Felucca 1.4.1 (commit `f21d6d6`). Everything from commit `7aa4347` on is Blue Hare's, and
 `git log` shows exactly which lines changed and who changed them.
 
 ## Felucca: Leo Kuroshita (Hügelton Instruments)
@@ -19,21 +19,21 @@ This includes:
 - **The firmware:** the HAL, the update loader, the voice and effects engine, the UI, the menus, storage, MIDI, USB
   and the editor protocol.
 - **The engines ANALOG, FM6 (with its msfa port), PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM**, with their
-  factory presets (Fel-Tracker removed them; what other engines use of PHYS and DRUM is kept in
+  factory presets (Blue Hare removed them; what other engines use of PHYS and DRUM is kept in
   `firmware/src/shared/`: `phys_dsp.c`, the resonators, and `drum_map.c`, the lanes and the General MIDI map).
 - **The tools, the web pages and the tests:** the web editor, the installer and the browser emulator.
 - **The name "Felucca"**, its documentation and its artwork.
 
-A file Leo Kuroshita wrote carries his copyright line. Where Fel-Tracker changed it, a second line follows:
-`Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md`. The file stays his, with Tristano Suriani's
+A file Leo Kuroshita wrote carries his copyright line. Where Blue Hare changed it, a second line follows:
+`Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md`. The file stays his, with Tristano Suriani's
 changes in it. A few upstream files never had a header (for example `firmware/src/settings_persist.c` and some
 tests); git history shows the changes to those.
 
-## Fel-Tracker: Tristano Suriani
+## Blue Hare: Tristano Suriani
 
 ### New files
 
-These carry `Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`.
+These carry `Copyright (C) 2026 Tristano Suriani (Blue Hare)`.
 
 | What | Where |
 | --- | --- |
@@ -103,13 +103,13 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
 ### Files moved from Felucca
 
 These are Felucca's code, moved out of the files they used to live in. They keep Leo Kuroshita's copyright, with
-Fel-Tracker's modification line:
+Blue Hare's modification line:
 
 - `tests/factory_patterns.h`, from `firmware/src/engines.c`
 - `tests/lfo2_test.c`, from `tests/fun10_test.c`
 
 ## AI assistance
 
-Tristano Suriani develops Fel-Tracker with the help of AI coding agents (for coding, testing and documentation). He
+Tristano Suriani develops Blue Hare with the help of AI coding agents (for coding, testing and documentation). He
 decides the design, the features, the sound design and the direction. Felucca's own AI disclaimer is in its README
 section.

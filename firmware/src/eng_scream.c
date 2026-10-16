@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* SCREAM (1.5, FOUNDRY): a voice breaking under terror (Fel-Tracker's own). Not a whistle: what makes a scream frighten
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* SCREAM (1.5, FOUNDRY): a voice breaking under terror (Blue Hare's own). Not a whistle: what makes a scream frighten
  * is a voice failing, so a buzzing glottal pulse at the key (a band-limited saw, a narrow pulse in it) is made unstable
  * period by period. ROUGH: its loudness torn at 30 .. 150 Hz (the "roughness" band screams and alarms live in and
  * speech avoids; its rate wanders); CHAOS: each period's length and level jittered, from a strained voice to a chaotic

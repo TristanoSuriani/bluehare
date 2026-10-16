@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Host-side render of the FELUCCA DSP (engines, voices, FX, sequencer) to a WAV,
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Host-side render of the Blue Hare DSP (engines, voices, FX, sequencer) to a WAV,
  * for debugging sound without hardware. Same sources as the firmware.
  *   tests/run_tests.sh builds it into build/host/;
  *   build/host/hostsim ENGINE PRESET MONO OUT.wav [CHORUS]
@@ -20,10 +20,10 @@
 #include <stdlib.h>
 #include <string.h>
 #define __attribute__(x)
-#define memset felucca_memset
-#define memcpy felucca_memcpy
-#define memcmp felucca_memcmp
-#include "felucca_tables.h"
+#define memset bluehare_memset
+#define memcpy bluehare_memcpy
+#define memcmp bluehare_memcmp
+#include "bluehare_tables.h"
 #include "../firmware/src/libc.c"
 #undef memset
 #undef memcpy
@@ -132,7 +132,7 @@ static void host_seq(uint32_t n)                  /* (seq.c events_block, every 
         hs_play_row();
     }
 }
-static void host_tracks_init(void)                /* as felucca_init: defaults, no song */
+static void host_tracks_init(void)                /* as bluehare_init: defaults, no song */
 {
     uint32_t i, k;
     for (i = 0; i < G_COUNT; i++)
@@ -147,7 +147,7 @@ static void host_tracks_init(void)                /* as felucca_init: defaults, 
     memset(&hs, 0, sizeof hs);
     host_rows = 0;
     seq_hook = host_seq;
-    song.cpu_q8 = 255;                            /* (Fel-Tracker: the host as a loaded device: the voice budget its base,
+    song.cpu_q8 = 255;                            /* (Blue Hare: the host as a loaded device: the voice budget its base,
                                                    * 8, every render as before; 12 voices: regress.c's own check) */
     song.master_q12 = 4096;
 }
@@ -197,7 +197,7 @@ static void host_preset(track_t *t, uint32_t e, uint32_t pi)
 }
 
 /* the drums of the render tests: DRUM's kit (the power-on track 4; until 1.0.2 these used SAMPLE PERC) */
-static void host_drums(track_t *t) { host_preset(t, FELUCCA_ENG_KIT ? (uint32_t)ENGI_KIT : 0u, 0); }   /* (no KIT: the first engine) */
+static void host_drums(track_t *t) { host_preset(t, BLUEHARE_ENG_KIT ? (uint32_t)ENGI_KIT : 0u, 0); }   /* (no KIT: the first engine) */
 
 /* a step of the renders' songs, written as they were for the step sequencer of 1.4 (the goldens keep their songs): into
  * row i of host_song, which plays them: its first note, a REST an OFF, a TIE nothing (the note rings); the song as long
@@ -271,8 +271,8 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     host_tracks_init();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, FELUCCA_ENG_VOSIM ? (uint32_t)ENGI_VOSIM : 0u, FELUCCA_ENG_VOSIM ? 13u : 0u);   /* (VOSIM's FORMANT
-                                                    * PAD: the power-on pad until Fel-Tracker's rhythm section came first) */
+    host_preset(t2, BLUEHARE_ENG_VOSIM ? (uint32_t)ENGI_VOSIM : 0u, BLUEHARE_ENG_VOSIM ? 13u : 0u);   /* (VOSIM's FORMANT
+                                                    * PAD: the power-on pad until Blue Hare's rhythm section came first) */
     host_preset(t3, ENGI_WASP, 0);
     host_drums(td);
     for (i = 0; i < 16u; i++) {
@@ -723,7 +723,7 @@ int main(int argc, char **argv)
         if (p->lwave) inst.p[P_LWAVE] = (int16_t)(p->lwave - 1u);
     }
     inst.p[P_VOICE] = (int16_t)mono;
-    inst.p[P_CHOR] = argc > 5 ? atoi(argv[5]) : 24;      /* as felucca_init */
+    inst.p[P_CHOR] = argc > 5 ? atoi(argv[5]) : 24;      /* as bluehare_init */
     inst.p[P_DLY] = argc > 5 ? atoi(argv[5]) : 28;
     inst.p[P_REV] = argc > 5 ? atoi(argv[5]) : 36;
     if (getenv("PRESET"))                               /* PRESET=1: sends, voice mode too (then SENDS, PSET) */

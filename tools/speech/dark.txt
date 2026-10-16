@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # SPEECH bank DARK: darkness, intense events, overwhelm and mystery (the format: num.txt); 32 words
 DARKNESS D AA1 R K N AH0 S
 SHADOW   SH AE1 D OW0

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* WASP (1.5): two oscillators into a gritty multimode filter, after the little black-and-yellow synth of 1978
- * (Fel-Tracker's own design: no circuit modelled). WAVE pairs the two oscillators (band-limited SAW, SQR and a 25 %
+ * (Blue Hare's own design: no circuit modelled). WAVE pairs the two oscillators (band-limited SAW, SQR and a 25 %
  * PUL, and NOIS), OSC2 sits -24 .. +24 semitones from the first and DTN detunes them (each voice drifts a little
  * too, as analog oscillators do); MIX balances them. Their sum, driven by GRIT, goes into a 12 dB state-variable
  * filter (MODE LP, BP, HP, NOTCH at CUT, the key half tracked) whose band-pass integrator saturates, as inverters

@@ -52,7 +52,7 @@ int main(void)
         assert(settings.magic == SETTINGS_MAGIC && settings.palette == 6u);
         p = original; assert(settings_import(&p, sizeof p) == 1); settings_init();
     }
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     assert(favorite_has(9, 0) && favorite_has(EID_COUNT, 31) && favorites.filter);
     {   /* 1.5: the retired ids' rows (1, 4, 8, 13) cleared once, then ids 18 .. 21 star there */
         persist_t q = original;
@@ -142,7 +142,7 @@ int main(void)
         settings_leds = LEDS_INV;
         assert(settings_import(&p, 8 + sizeof(panel_t)) == 2 && settings_leds == LEDS_DIM);
     }
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     {   /* 1.1 CLICK / CLICK LEVEL / COUNT-IN (ui.c ui_rec_prefs, favorites.factory[15][28]): 0 in every older record
          * (the defaults: OFF / MID / OFF); each field 0..2 kept, 3 (no value) back to 0, bits 6-7 kept; twice the same */
         persist_t q;

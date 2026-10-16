@@ -49,7 +49,7 @@ PALETTES = [
     ("NIGHT",  (0, 0, 0),       (0, 24, 10),     (150, 230, 170), (56, 220, 100),  (255, 255, 255)),
     # 1.0.2: black and white (the derived tokens are set, not blended: bw()); the old MONO is GREY (id 0)
     ("MONO",   (0, 0, 0),       (0, 0, 0),       (255, 255, 255), (255, 255, 255), (255, 255, 255)),
-    # (Fel-Tracker) a distribution's own (distributions/*.txt PALETTE: what a device starts with). IDM: electric cyan
+    # (Blue Hare) a distribution's own (distributions/*.txt PALETTE: what a device starts with). IDM: electric cyan
     # values, a hot magenta for the one active thing, on deep indigo; SIGNAL (the default distribution): signal
     # orange, cyan the active thing, on warm near-black
     ("IDM",    (8, 6, 26),      (26, 20, 64),    (232, 236, 255), (0, 229, 255),   (255, 46, 190)),

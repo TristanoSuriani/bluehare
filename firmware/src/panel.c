@@ -3,8 +3,8 @@
 /* Physical panel: which matrix button / encoder carries which printed label.
  * The matrix ids are known, the printed labels are not, so
  * the mapping is a table with a best guess, overridable by HARDWARE CALIBRATION
- * (hold OCT- and OCT+ while powering on): FELUCCA asks for each label in turn.
- * The learned table lives in .noinit and, with FELUCCA_FLASH, in flash with
+ * (hold OCT- and OCT+ while powering on): Blue Hare asks for each label in turn.
+ * The learned table lives in .noinit and, with BLUEHARE_FLASH, in flash with
  * the settings (project.c); read it back with `fm1t memr` to bake it in. */
 enum { B_FX, B_SCL, B_ENV, B_LFO, B_EDIT, B_GLO, B_HOME, B_SAVE, B_ARP, B_SEQ, B_PLAY, B_REC,
        B_OCTDN, B_OCTUP, NB };
@@ -71,7 +71,7 @@ static int32_t panel_enc(uint32_t role)
 #define SETTINGS_MAGIC_OLD 0x53455433u          /* "SET3" */
 struct { uint32_t magic, palette, lowcut, zoom; } settings __attribute__((section(".noinit")));
 
-static void settings_save(void);              /* project.c: flash copy (FELUCCA_FLASH) */
+static void settings_save(void);              /* project.c: flash copy (BLUEHARE_FLASH) */
 
 /* HOLD (menu): how long a button is held before its layer opens (ui_input.c). Saved in the settings record's
  * retired bold field as HOLD_TAG | index; any other value there (0 or 1 from older firmware) is the default */
@@ -113,8 +113,8 @@ static uint32_t leds_step(uint32_t m, int32_t s)
     return LEDS_MENU[i];
 }
 
-#ifndef FELUCCA_DIST_PALETTE                  /* (a build without a distribution's header: the tests') */
-#define FELUCCA_DIST_PALETTE UI_GREY_INDEX
+#ifndef BLUEHARE_DIST_PALETTE                  /* (a build without a distribution's header: the tests') */
+#define BLUEHARE_DIST_PALETTE UI_GREY_INDEX
 #endif
 static void settings_init(void)
 {
@@ -124,7 +124,7 @@ static void settings_init(void)
     }
     if (settings.magic != SETTINGS_MAGIC || settings.palette >= NPALETTES) {
         settings.magic = SETTINGS_MAGIC;
-        settings.palette = FELUCCA_DIST_PALETTE;   /* (Fel-Tracker) the distribution's own (its distributions/ file
+        settings.palette = BLUEHARE_DIST_PALETTE;   /* (Blue Hare) the distribution's own (its distributions/ file
                                                 * PALETTE; none: GREY, the default before) */
         settings.lowcut = 0;
         settings.zoom = 0;                     /* (retired: the LEDS setting, settings_persist.c) */

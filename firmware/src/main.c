@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* FELUCCA boot and main loop. Boot order: WDT first, boot-loop guard, fatal vectors,
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare boot and main loop. Boot order: WDT first, boot-loop guard, fatal vectors,
  * guards; then LCD, input (TIMER5 IRQ, 10 kHz), audio (ALNK0 IRQ). */
 extern uint32_t _data_start[], _data_end[], _data_load[], _bss_start[], _bss_end[];
 extern uint32_t _pool_start[], _pool_end[], _rt_start[], _rt_end[], _rt_load[];
@@ -21,7 +21,7 @@ void fm1_timer5_irq(void)
     static uint32_t sub, owed;
     uint32_t t0 = fm1_ticks(), usb_due = sub % 5u == 0u;
     fm1_timer5_ack();
-    felucca_dbg.timer_irqs++;
+    bluehare_dbg.timer_irqs++;
     fm1_input_tick();
     {   /* milliseconds from the 24 MHz TIMER4 (robust to a late tick) */
         static uint32_t last, acc;
@@ -34,15 +34,15 @@ void fm1_timer5_irq(void)
     }
     if (usb_due)
         owed |= 1u;                             /* 2 kHz: all USB SIE traffic lives here */
-#if FELUCCA_UART
+#if BLUEHARE_UART
     if (sub % 5u == 2u)
         owed |= 2u;                             /* 2 kHz: <= ~7 bytes per call at 31250 baud */
 #endif
     if (++sub == 10u)
         sub = 0;
-    if (felucca_dbg.in_audio) {
-        felucca_dbg.nested++;
-#if FELUCCA_UAC
+    if (bluehare_dbg.in_audio) {
+        bluehare_dbg.nested++;
+#if BLUEHARE_UAC
         if (usb_due)
             uac_service();
 #endif
@@ -51,7 +51,7 @@ void fm1_timer5_irq(void)
     }
     if (owed & 1u)
         usb_poll();
-#if FELUCCA_UART
+#if BLUEHARE_UART
     if (owed & 2u)
         uart_midi_poll();
 #endif
@@ -79,7 +79,7 @@ static void fm1_fault(const fm1_crash_t *c)
     fm1_audio_stop();
     scr_wake_now();                                   /* (MENU > SCREEN OFF: the panel on first) */
     lcd_fill(0, 0, 240, 240, UI_CRASH_BG);            /* fixed, outside the palettes */
-    draw_text_line(0, 8, 240, &AF_M, "FELUCCA CRASH", UI_CRASH_INK, UI_CRASH_BG, 1);
+    draw_text_line(0, 8, 240, &AF_M, "BLUE HARE CRASH", UI_CRASH_INK, UI_CRASH_BG, 1);
     hexs(b, c->vec);
     draw_text_line(10, 40, 220, &AF_M, b, UI_CRASH_INK, UI_CRASH_BG, 0);
     hexs(b, c->pc);
@@ -97,7 +97,7 @@ static void fm1_fault(const fm1_crash_t *c)
 }
 
 /* power-on: the parts with their default sounds (TRK_DEF) and their places in the mix */
-static void felucca_init(void)
+static void bluehare_init(void)
 {
     uint32_t i;
     trk_mix_defaults();
@@ -109,7 +109,7 @@ static void felucca_init(void)
         track_defaults(t);
         set_engine_of(t, TRK_DEF[i][0]);
         apply_preset_to(t, TRK_DEF[i][1]);    /* with its sends */
-        t->p[P_PAN] = TRK_PAN[i];             /* (Fel-Tracker: the wide parts left and right in turn) */
+        t->p[P_PAN] = TRK_PAN[i];             /* (Blue Hare: the wide parts left and right in turn) */
         t->engine = t->eng_req;
     }
     undo_depth--;
@@ -143,7 +143,7 @@ static void fm1_main(void)
 {
     uint32_t ms;
     persist_boot();
-#if FELUCCA_OTA
+#if BLUEHARE_OTA
     if (flash_ok)
         ota_boot_cleanup();                             /* staging area left by an update */
 #endif
@@ -151,28 +151,28 @@ static void fm1_main(void)
     usb_serial_apply();                                 /* (#67: the saved USB SERIAL before usb_start) */
     lcd_init();
     draw_splash();                                      /* ui_draw.c (1.1.5) */
-    if (felucca_dbg.magic != DBG_MAGIC) {
-        memset(&felucca_dbg, 0, sizeof felucca_dbg);
-        felucca_dbg.magic = DBG_MAGIC;
+    if (bluehare_dbg.magic != DBG_MAGIC) {
+        memset(&bluehare_dbg, 0, sizeof bluehare_dbg);
+        bluehare_dbg.magic = DBG_MAGIC;
     }
-    felucca_dbg.boots++;
-    felucca_dbg.max_us = 0;
-    felucca_dbg.in_audio = 0;                       /* .noinit: a reset inside the audio ISR left it set, and
+    bluehare_dbg.boots++;
+    bluehare_dbg.max_us = 0;
+    bluehare_dbg.in_audio = 0;                       /* .noinit: a reset inside the audio ISR left it set, and
                                                        TIMER5 would treat every tick as nested (no USB poll) */
-    felucca_dbg.prev_stage = felucca_dbg.stage;     /* a WDT reset leaves the last breadcrumb here */
-    felucca_dbg.prev_page = felucca_dbg.page;
-    felucca_dbg.prev_home = felucca_dbg.home;
-    felucca_dbg.prev_frames = felucca_dbg.ui_frames;
-    felucca_dbg.prev_rst = fm1_boot.p3_rst;
+    bluehare_dbg.prev_stage = bluehare_dbg.stage;     /* a WDT reset leaves the last breadcrumb here */
+    bluehare_dbg.prev_page = bluehare_dbg.page;
+    bluehare_dbg.prev_home = bluehare_dbg.home;
+    bluehare_dbg.prev_frames = bluehare_dbg.ui_frames;
+    bluehare_dbg.prev_rst = fm1_boot.p3_rst;
     fm1_input_init();
     fm1_adc_init();
     panel_init();
-    felucca_init();
+    bluehare_init();
     master_boot();
     kb_boot_hold = 1;                         /* #137: no notes from the keys before the UI (seq.c keyboard_block) */
     audio_init();
     usb_start();
-#if FELUCCA_UART
+#if BLUEHARE_UART
     uart_midi_init();
 #endif
     boot_leds();
@@ -236,7 +236,7 @@ static void fm1_main(void)
                 fm1_enter_uboot();
             }
         }
-#if FELUCCA_OTA
+#if BLUEHARE_OTA
         ed_service();                                   /* web editor SysEx */
         ota_service();                                  /* M-UPGRADE handshake */
         if (usb.ota_req) {                              /* M-UPGRADE upgrade command */
@@ -260,23 +260,23 @@ static void fm1_main(void)
             bootguard.pending = 0;
             fm1_enter_uboot();
         }
-#if FELUCCA_CDC
+#if BLUEHARE_CDC
         cdc_task();
 #endif
-        felucca_dbg.ui_frames++;
-        felucca_dbg.page = ui.page;
-        felucca_dbg.home = ui.home;
-        felucca_dbg.stage = 1;
+        bluehare_dbg.ui_frames++;
+        bluehare_dbg.page = ui.page;
+        bluehare_dbg.home = ui.home;
+        bluehare_dbg.stage = 1;
         ui_input();
         settings_poll();                              /* queued settings save: only while stopped */
         autosave_poll();                              /* (1.2) the music, stopped and idle: project.c */
-        felucca_dbg.stage = 2;
+        bluehare_dbg.stage = 2;
         ui_leds();
         ui_draw();
-        felucca_dbg.stage = 9;
+        bluehare_dbg.stage = 9;
         while (fm1_ms - m < 15u) {                               /* ~60 UI frames/s at most */
             ui_input();
-#if FELUCCA_OTA
+#if BLUEHARE_OTA
             ed_service();                       /* editor replies without waiting for the next frame */
 #endif
         }

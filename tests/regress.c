@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Regression suite of the FELUCCA DSP on the Mac (same sources as the firmware, through hostsim.c).
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Regression suite of the Blue Hare DSP on the Mac (same sources as the firmware, through hostsim.c).
  *   build/host/regress [GOLDEN_FILE CPU_FILE]      (run_tests.sh builds and runs it)
  *
  * 1. golden renders: every engine x factory preset, the GM map on DRUM (SAMPLE PERC until 1.0.2; and on each model kit,
@@ -19,7 +19,7 @@
  *    per sample counted by the kernel (proc_pid_rusage ri_instructions: the same on every run within
  *    ~1 %, unlike wall time), compared with CPU_FILE (tests/cpu_baseline.txt) at +-25 %; ns per
  *    sample printed for information. A count over the budget fails, one far under it only warns.
- * 4. voices: the shared budget of 8 across 4 parts (Fel-Tracker: 8 under load, as the host runs; 12 while the load
+ * 4. voices: the shared budget of 8 across 4 parts (Blue Hare: 8 under load, as the host runs; 12 while the load
  *    allows: chk_load_budget), stolen voices fade (no step), MONO / LEGATO /
  *    UNISON keep their note under pressure, the VOICE engine's 4-voice cap, release frees voices, and
  *    no hanging note after the note-offs on any routing (USB channels 1..4, others while the
@@ -262,8 +262,8 @@ static void job_song(const job_t *j)
     host_tracks_init();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, FELUCCA_ENG_VOSIM ? (uint32_t)ENGI_VOSIM : 0u, FELUCCA_ENG_VOSIM ? 13u : 0u);   /* (VOSIM's FORMANT
-                                                    * PAD: the power-on pad until Fel-Tracker's rhythm section came first) */
+    host_preset(t2, BLUEHARE_ENG_VOSIM ? (uint32_t)ENGI_VOSIM : 0u, BLUEHARE_ENG_VOSIM ? 13u : 0u);   /* (VOSIM's FORMANT
+                                                    * PAD: the power-on pad until Blue Hare's rhythm section came first) */
     host_preset(t3, ENGI_WASP, 0);
     host_drums(td);
     for (i = 0; i < 16u; i++) {
@@ -507,7 +507,7 @@ static int chk_budget(char *msg, uint32_t n)
 }
 
 /* MIDI packets in one audio block can reuse a voice before its stolen tail fades. */
-/* (Fel-Tracker) the budget follows the load: 12 while the audio's measured load is light (song.cpu_q8 under
+/* (Blue Hare) the budget follows the load: 12 while the audio's measured load is light (song.cpu_q8 under
  * VOICE_LOAD_Q8), 8 when heavy: past it a new note steals (12 sounding stay 12), fresh notes keep to 8 */
 static int chk_load_budget(char *msg, uint32_t n)
 {
@@ -1018,9 +1018,9 @@ int main(int argc, char **argv)
     const char *cpath = argc > 2 ? argv[2] : "tests/cpu_baseline.txt";
     int gupd = getenv("GOLDEN_UPDATE") != 0, cupd = getenv("BUDGET_UPDATE") != 0, verbose = getenv("VERBOSE") != 0;
     int cinfo = getenv("CPU_INFO") != 0;          /* (an 8-track test build: the 4-track baselines for information only) */
-    /* a distribution other than the default (FELUCCA_DIST): its presets' renders and costs only, against the same
+    /* a distribution other than the default (BLUEHARE_DIST): its presets' renders and costs only, against the same
      * files (the mixes and the checks are written for the default's engines); nothing there is "gone" */
-    const int dist = !FELUCCA_DIST_REFERENCE || NPART != 4;   /* (the full set: the host tests' reference build, distributions/ref.txt, with the 4 parts its shared checks are for) */
+    const int dist = !BLUEHARE_DIST_REFERENCE || NPART != 4;   /* (the full set: the host tests' reference build, distributions/ref.txt, with the 4 parts its shared checks are for) */
     uint32_t jobs_at_once = getenv("JOBS") ? (uint32_t)atoi(getenv("JOBS")) : 8u;
     static const char *const MN[4] = {"POLY", "MONO", "LEGATO", "UNISON"};
     static const char *const SN[6] = {"dry", "chorus", "delay", "reverb", "all", "dist"};
@@ -1217,7 +1217,7 @@ mixes_done:
             perror(gpath);
             return 2;
         }
-        fprintf(f, "# FELUCCA golden renders (tests/regress.c): name, FNV-1a 64 of the output samples.\n"
+        fprintf(f, "# Blue Hare golden renders (tests/regress.c): name, FNV-1a 64 of the output samples.\n"
                    "# Rewritten by GOLDEN_UPDATE=1 tests/run_tests.sh -- only for an intended change of the sound.\n");
         for (i = 0; i < ng; i++) {                  /* the file in its order: the new hashes in place, the other */
             uint32_t k;                             /* distributions' renders kept, the gone ones left out */
@@ -1283,14 +1283,14 @@ mixes_done:
     }
     if (!J[c0].r.ipc)
         printf("regress: CPU: no instruction counter on this host (proc_pid_rusage); the budget is not checked\n");
-    else if (cupd && dist) {                       /* (Fel-Tracker) its own engines' lines updated, the rest kept */
+    else if (cupd && dist) {                       /* (Blue Hare) its own engines' lines updated, the rest kept */
         FILE *f = fopen(cpath, "w");
         uint32_t nw = 0;
         if (!f) {
             perror(cpath);
             return 2;
         }
-        fprintf(f, "# FELUCCA host CPU baseline (tests/regress.c): instructions per 44.1 kHz sample, cc -O2 on\n"
+        fprintf(f, "# Blue Hare host CPU baseline (tests/regress.c): instructions per 44.1 kHz sample, cc -O2 on\n"
                    "# the Mac (kernel-counted, ~1 %% run to run). The check allows +%.0f %%. Rewritten by BUDGET_UPDATE=1.\n",
                 CPU_TOL * 100);
         for (i = 0; i < nc; i++) {
@@ -1312,7 +1312,7 @@ mixes_done:
             perror(cpath);
             return 2;
         }
-        fprintf(f, "# FELUCCA host CPU baseline (tests/regress.c): instructions per 44.1 kHz sample, cc -O2 on\n"
+        fprintf(f, "# Blue Hare host CPU baseline (tests/regress.c): instructions per 44.1 kHz sample, cc -O2 on\n"
                    "# the Mac (kernel-counted, ~1 %% run to run). The check allows +%.0f %%. Rewritten by BUDGET_UPDATE=1.\n",
                 CPU_TOL * 100);
         for (i = c0; i < c1; i++)

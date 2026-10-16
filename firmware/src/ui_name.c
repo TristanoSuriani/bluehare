@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Felucca UI: NAME, naming a user preset or a project on the device (included by ui_input.c).
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare UI: NAME, naming a user preset or a project on the device (included by ui_input.c).
  *
  * Where: SAVE > USER, SAVE (KNOB 4, OCT+) and SAVE > PROJECT, SAVE: after the OVERWRITE? dialog when the slot is
  * used, the NAME screen opens before anything is written; OCT+ writes, OCT- cancels (back to the page, nothing

@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Felucca doesn't work as it should (one bug per issue)
+description: Something in Blue Hare doesn't work as it should (one bug per issue)
 labels: [bug]
 body:
   - type: markdown

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Felucca UI drawing: the header, the four knob cards, the footer (steps + engine / preset / page)
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare UI drawing: the header, the four knob cards, the footer (steps + engine / preset / page)
  * and the frame; the panel between the cards and the footer is ui_graph.c. The layout:
  * flat SURF cards and panels on BG,
  * rounded corners, no rules (MENU > STYLE LINE: no SURF, 1 px rules between the areas instead: draw_gaps), colours from the theme tokens only (gfx.c T_*).
@@ -432,7 +432,7 @@ static void draw_column_tall(uint32_t c, const char *label, const char *val, con
         cv_blit((uint32_t)CARD_X(c), Y_LABEL);
         return;
     }
-    if (FELUCCA_ICONS && ic != ICON_NONE && label[0] && (ic - ICON_TRK < NTRK || icon_cell(&isz, ic) >= 0)) {
+    if (BLUEHARE_ICONS && ic != ICON_NONE && label[0] && (ic - ICON_TRK < NTRK || icon_cell(&isz, ic) >= 0)) {
         GFX_HOOK_ALIGN(0, LG_MY, 0, LG_MY + LG_MH, AL_V, "large card icon on its pill's line");
         cv_icon_in(COL_W - 5 - 16, LG_MY, 16, LG_MH, 16, ic, lc, T_SURF);
     }
@@ -568,7 +568,7 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
             const aafont_t *lf = kind == LK_LABEL && 5 + text_w(&AF_M, label) <= COL_W - 2 ? &AF_M : &AF_S;
             int32_t lw = text_w(lf, label), ix = 5, ly = lf == &AF_M ? 1 : 3;
             int32_t cy = ly + (lf == &AF_M ? AF_M_CAP_Y : AF_S_CAP_Y), chh = lf == &AF_M ? AF_M_CAP_H : AF_S_CAP_H;
-            if (FELUCCA_ICONS && icon != ICON_NONE && ix + ICON_CELL + ICON_GAP + lw <= COL_W - 2) {
+            if (BLUEHARE_ICONS && icon != ICON_NONE && ix + ICON_CELL + ICON_GAP + lw <= COL_W - 2) {
                 GFX_HOOK_ALIGN(ix, cy, ix, cy + chh, AL_V, "card icon on its label's line");
                 lx = ix + cv_icon_in(ix, cy, 0, chh, ICON_CELL, icon, lc, T_SURF) + ICON_GAP;   /* its ink on the label's line */
             }
@@ -689,11 +689,11 @@ static void draw_foot(void)
         }
     }
     {   /* row 2: engine icon + name, sound, page title at the right with its icon before it (MIXER); icons: their ink on the names' capitals */
-        uint32_t pi = ui.home ? ICON_NONE : page_icon(pg), ei = FELUCCA_ICONS ? engine_icon(ename) : ICON_NONE;
+        uint32_t pi = ui.home ? ICON_NONE : page_icon(pg), ei = BLUEHARE_ICONS ? engine_icon(ename) : ICON_NONE;
         int32_t r = 232, tx;
         tx = r - text_w(&AF_S, ti) - (pi != ICON_NONE ? 16 : 0);
         x = 8;
-        if (FELUCCA_ICONS) {
+        if (BLUEHARE_ICONS) {
             if (ei != ICON_NONE)
                 GFX_HOOK_ALIGN(0, 19 + AF_S_CAP_Y, 0, 19 + AF_S_CAP_Y + AF_S_CAP_H, AL_V,
                                "footer icons on the names' line");
@@ -812,7 +812,7 @@ static void draw_columns(void)
 }
 
 
-/* The power-on splash (main.c fm1_main, web/emu felucca_web.c; 1.1.5): a RAISE square centred on the screen, square
+/* The power-on splash (main.c fm1_main, web/emu bluehare_web.c; 1.1.5): a RAISE square centred on the screen, square
  * corners (in every style; LINE too: RAISE from the palette's SURF), in it in AF_M, the ink SPL_PAD in from the left:
  * at the top the name and the version, the first line's capitals' top SPL_PAD down; at the bottom the maker and
  * "with community", the last line's capitals' bottom (its baseline) SPL_PAD up from the square's bottom. Both
@@ -824,8 +824,8 @@ static void draw_columns(void)
 #define SPL_X0 ((240u - SPL_SQ) / 2u)               /* its top-left on the screen (x and y) */
 #define SPL_PAD 16                                  /* the text's inset: left (its ink), top and bottom (the capitals) */
 #define SPL_PITCH 20                                /* line to line */
-/* (Fel-Tracker) the name, the version; its developer, and what it grew from (the full credits: MENU > ABOUT) */
-static const char *const SPLASH_LINES[] = {"Fel-Tracker", FELUCCA_VERSION_DIST, "Tristano Suriani", "after Felucca"};
+/* (Blue Hare) the name, the version; its developer, and what it grew from (the full credits: MENU > ABOUT) */
+static const char *const SPLASH_LINES[] = {"Blue Hare", BLUEHARE_VERSION_DIST, "Tristano Suriani", "after Felucca"};
 /* a band of two lines, h tall, at y on the screen: the first line's top at ly; the two lines' capitals declared
  * against al0..al1 (mode: AL_V the band centred there, AL_B the last baseline on al1) */
 static void splash_band(uint32_t y, uint32_t h, int32_t ly, const char *const *l, uint32_t mode, int32_t al0,
@@ -1026,18 +1026,18 @@ static void ui_draw_page(void)
         page_entered();
     }
     if (cur_page()->graph == GR_TODO) {                 /* SEQ's placeholder: no cards, no panel */
-        felucca_dbg.stage = 3;
+        bluehare_dbg.stage = 3;
         draw_head();
-        felucca_dbg.stage = 5;
+        bluehare_dbg.stage = 5;
         draw_todo();
     } else {
         if (ui.force)
             draw_frame();
-        felucca_dbg.stage = 3;
+        bluehare_dbg.stage = 3;
         draw_head();
-        felucca_dbg.stage = 4;
+        bluehare_dbg.stage = 4;
         draw_columns();
-        felucca_dbg.stage = 5;
+        bluehare_dbg.stage = 5;
         draw_graph();
     }
     if (ui.msg_t && !--ui.msg_t && ui.msg2[0]) {     /* the second message (ui_notices) */
@@ -1049,7 +1049,7 @@ static void ui_draw_page(void)
         ui.bpm_t--;
     if (ui.hot_t)
         ui.hot_t--;
-    felucca_dbg.stage = 6;
+    bluehare_dbg.stage = 6;
     draw_foot();
     ui.force = 0;
 }

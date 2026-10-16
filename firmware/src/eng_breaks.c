@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* BREAKS (1.5): a breakbeat player, synthesized (no samples): a key starts a one-bar pattern of kick, snare (accents
  * and ghost notes) and hats (closed, open) at the song's tempo, looping while held; let go, it stops (the ADSR's
  * release). The key picks the pattern (12 an octave: the tracker changes the break row by row; a new note restarts
@@ -173,7 +173,7 @@ static const preset_t BREAKS_PRESETS[] = {
     {"SAMPLER", {0, 1, 20, 0, 0, 58, 64, 70}, {0, 0, 127, 5}, 0, 1, FX(20, 0, 0, 15)},
     {"CRUSHED", {0, 1, 0, 20, 20, 64, 64, 110}, {0, 0, 127, 5}, 0, 1, FX(30, 0, 10, 10)},
     {"DUB BREAK", {0, 0, 30, 10, 0, 56, 80, 30}, {0, 0, 127, 10}, 0, 1, FX(10, 0, 60, 30)},
-    /* (Fel-Tracker, the IDM review) */
+    /* (Blue Hare, the IDM review) */
     {"CHOPPED", {4, 1, 0, 10, 30, 64, 64, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 0, 15)},
     {"LOFI DUST", {0, 1, 30, 0, 0, 54, 70, 50}, {0, 0, 127, 5}, 0, 1, FX(10, 20, 0, 25)},
     {"GLITCH ROLLS", {0, 1, 0, 100, 60, 64, 56, 30}, {0, 0, 127, 5}, 0, 1, FX(10, 0, 20, 15)},

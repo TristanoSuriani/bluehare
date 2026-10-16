@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* FLOOR (1.5, WAREHOUSE): four-on-the-floor beats, as BREAKS is the breaks (Fel-Tracker's own, synthesized: no samples).
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* FLOOR (1.5, WAREHOUSE): four-on-the-floor beats, as BREAKS is the breaks (Blue Hare's own, synthesized: no samples).
  * A key starts a one-bar groove of kick, clap, hats (closed, open) and percussion at the song's tempo, looping while
  * held; let go, it stops. The key picks the groove (12 an octave: the tracker changes it row by row), each with its
  * own kick (its pitch, its fall, its length, its grit: a gabber kick is no disco kick): TECHNO, HOUSE, DEEP HOUSE, TECH

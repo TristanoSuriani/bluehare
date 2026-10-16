@@ -1,29 +1,29 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* FELUCCA core types: tracks, voices, engines, parameters.
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare core types: tracks, voices, engines, parameters.
  * Four tracks, each a synth part: its own engine, preset, parameters, voices and 64-step
  * pattern. The parts share one budget of NVOICE sounding voices (voice.c). Drums are the DRUM
  * engine (General MIDI map) on any part.
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
 
-#ifndef FELUCCA_DIST             /* (not given: a host test's build, distributions/ref.txt with 4 tracks, the
-                                  * engines the shared tests were written for: their 8-track builds set FELUCCA_NTRK;
+#ifndef BLUEHARE_DIST             /* (not given: a host test's build, distributions/ref.txt with 4 tracks, the
+                                  * engines the shared tests were written for: their 8-track builds set BLUEHARE_NTRK;
                                   * every image and the emulator name their distribution) */
-#define FELUCCA_DIST ref
-#ifndef FELUCCA_NTRK
-#define FELUCCA_NTRK 4
+#define BLUEHARE_DIST ref
+#ifndef BLUEHARE_NTRK
+#define BLUEHARE_NTRK 4
 #endif
 #endif
 #define DIST_H2(f) #f
 #define DIST_H1(n) DIST_H2(dist_##n.h)
 #define DIST_H(n) DIST_H1(n)
-#include DIST_H(FELUCCA_DIST)    /* build/gen/dist_<name>.h (tools/gen_dist.py): FELUCCA_ENG_<NAME>, FELUCCA_DIST_ENGINES,
-                                  * FELUCCA_TRACKS */
+#include DIST_H(BLUEHARE_DIST)    /* build/gen/dist_<name>.h (tools/gen_dist.py): BLUEHARE_ENG_<NAME>, BLUEHARE_DIST_ENGINES,
+                                  * BLUEHARE_TRACKS */
 
 /* ------------------------------------------------------------ sizes --- */
-#ifdef FELUCCA_NATIVE            /* (Fel-Tracker) the native image (native/felucca_native.c): the computer's CPU and memory,
+#ifdef BLUEHARE_NATIVE            /* (Blue Hare) the native image (native/bluehare_native.c): the computer's CPU and memory,
                                   * not the device's. Every part has its own voices (no shared budget); the device's
                                   * engines stay as they are, the native image adds its own (engine_ids.h: native), its
                                   * reverbs (fx_native.c) and a longer delay line (DEV_NAT). Its songs and sounds are
@@ -33,24 +33,24 @@
 #define VOICE_BASE VOICE_MAX
 #define DEV_NAT(dev, nat) (nat)  /* a buffer the device keeps small, larger in the native image (fx.c DLY_LEN) */
 #else
-#define NVOICE 12                /* voices per part, and the most of the budget shared by all parts (Fel-Tracker: 12) */
-#define VOICE_MAX NVOICE         /* (Fel-Tracker) the budget while the audio's load allows (voice.c voice_limit) */
-#define VOICE_BASE FELUCCA_VOICE_BASE   /* (Fel-Tracker) the budget always there: 8, or 12 where the distribution says so
+#define NVOICE 12                /* voices per part, and the most of the budget shared by all parts (Blue Hare: 12) */
+#define VOICE_MAX NVOICE         /* (Blue Hare) the budget while the audio's load allows (voice.c voice_limit) */
+#define VOICE_BASE BLUEHARE_VOICE_BASE   /* (Blue Hare) the budget always there: 8, or 12 where the distribution says so
                                   * (VOICES 12: FOUNDRY, WAREHOUSE, CHIP since 4 tracks freed their CPU) */
 #define DEV_NAT(dev, nat) (dev)
 #endif
-#include "target.h"              /* (Fel-Tracker) what differs between the device and the host targets */
-#define VOICE_LOAD_Q8 192        /* (Fel-Tracker) the load under which voices 9 .. 12 may start: 75 % (song.cpu_q8) */
+#include "target.h"              /* (Blue Hare) what differs between the device and the host targets */
+#define VOICE_LOAD_Q8 192        /* (Blue Hare) the load under which voices 9 .. 12 may start: 75 % (song.cpu_q8) */
 #define UNISON_MAX 8             /* UNISON's voices (its level and spread made for 8) */
-#ifndef FELUCCA_NTRK             /* (a test build may set it: tests/run_tests.sh's 8-track one) */
-#define FELUCCA_NTRK FELUCCA_TRACKS
+#ifndef BLUEHARE_NTRK             /* (a test build may set it: tests/run_tests.sh's 8-track one) */
+#define BLUEHARE_NTRK BLUEHARE_TRACKS
 #endif
-#define NPART FELUCCA_NTRK       /* synth parts: tracks 1..4, or 1..8 (Fel-Tracker: a distribution's TRACKS) */
+#define NPART BLUEHARE_NTRK       /* synth parts: tracks 1..4, or 1..8 (Blue Hare: a distribution's TRACKS) */
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
 typedef char ntrk_ok[NTRK == 4 || NTRK == 8 ? 1 : -1];
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
 /* ---- the engines. The tree holds every engine (engine_ids.h); a distribution (distributions/<name>.txt, at most 16) is
- * the set one build holds, FELUCCA_DIST=<name> (build.py; default: "default"). Two numbers name an engine:
+ * the set one build holds, BLUEHARE_DIST=<name> (build.py; default: "default"). Two numbers name an engine:
  * its id (EID_*): fixed for good, what everything stored and the editor protocol use (projects, user presets, the
  *   song's instruments, favourites; the protocol's engine byte, G_ENGSEL). Append-only (engine_ids.h).
  * its index (ENGI_*): its place in this build's engines.c ENGINES[] (0 .. NENGINES - 1), the distribution's order,
@@ -65,19 +65,19 @@ enum {                           /* the ids */
 };
 #define EID_COUNT 61u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 /* retired: 1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE (Felucca 1.5), 27 ACID; 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO,
- * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Fel-Tracker removed them): ids 0 .. 13 but 14,
+ * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Blue Hare removed them): ids 0 .. 13 but 14,
  * and 27 */
 #define EID_RETIRED(e) ((e) <= 13u || (e) == 27u)
 #define ENG_ABSENT 0x100u        /* the ENGI_ of an engine the build leaves out: no uint8_t equals it */
-#define FELUCCA_VERSION_DIST FELUCCA_VERSION FELUCCA_DIST_TAG   /* "v1.5", "v1.5 IDM": the version as shown */
+#define BLUEHARE_VERSION_DIST BLUEHARE_VERSION BLUEHARE_DIST_TAG   /* "v1.5", "v1.5 IDM": the version as shown */
 enum {                           /* the indices: the distribution's engines in its order (engines.c ENGINES[]) */
 #define X(N) ENGI_##N,
-    FELUCCA_DIST_ENGINES(X)
+    BLUEHARE_DIST_ENGINES(X)
 #undef X
     NENGINES                     /* engines in this build (1 .. 16) */
 };                               /* (the ones left out: ENGI_<NAME> ENG_ABSENT, in the generated header) */
 typedef char eng_count_ok[NENGINES > 0 && NENGINES <= 16 ? 1 : -1];
-#if (FELUCCA_DIST_NATIVE || FELUCCA_ENG_NEBULA || FELUCCA_ENG_CANYON) && !defined(FELUCCA_NATIVE)
+#if (BLUEHARE_DIST_NATIVE || BLUEHARE_ENG_NEBULA || BLUEHARE_ENG_CANYON) && !defined(BLUEHARE_NATIVE)
 #error "a NATIVE distribution, or a native engine: the native image's alone (native/build.sh)"
 #endif
 #define NENG_SHOWN NENGINES      /* (the engines one can pick: all of the build's, in their order) */
@@ -104,7 +104,7 @@ typedef struct {
 enum {                          /* per-track parameters */
     P_LEVEL,
     P_ATK, P_DEC, P_SUS, P_REL,
-    P_ED_FLT, P_ED_PIT, P_ED_SHP, P_OCT,       /* P_OCT (Fel-Tracker): the sound's octave, -4 .. 4 (VOICE 3; a preset sets it,
+    P_ED_FLT, P_ED_PIT, P_ED_SHP, P_OCT,       /* P_OCT (Blue Hare): the sound's octave, -4 .. 4 (VOICE 3; a preset sets it,
                                                 * voice.c adds it to the pitch). Was P_ED_FX, never read: a stored value
                                                 * outside -4 .. 4 (ENV DEST FX in the web editor) loads as 0 (param_oct) */
     P_LRATE, P_LWAVE, P_LPHASE, P_LFADE,
@@ -147,7 +147,7 @@ enum {                          /* global parameters */
     G_RTYPE,                    /* REVERB TYPE: 0 ROOM, 1 SPRING, 2 HALL (1.2, the power-on default) (fx.c). Was
                                  * G_DRCH, the GM drum part's MIDI channel (inert since 1.0, never read); projects
                                  * of formats before FUN7 load it as ROOM (project.c proj_rtype_room) */
-    G_DTYPE,                    /* DELAY TYPE (Fel-Tracker 1.5): 0 CLEAN, 1 TAPE, 2 WORN (fx.c). Was G_DRLVL, the GM
+    G_DTYPE,                    /* DELAY TYPE (Blue Hare 1.5): 0 CLEAN, 1 TAPE, 2 WORN (fx.c). Was G_DRLVL, the GM
                                  * drum part's level (inert since 1.0: range 0..0, so every song stored 0, CLEAN) */
     G_DRREV,                    /* inert (label "-", on no page): the GM drum part it set is gone; kept because the
                                  * ids and G_COUNT are fixed by the formats and the protocol */
@@ -203,10 +203,10 @@ typedef struct {
     uint8_t mono;                /* 1 = MONO (bass / lead), 0 = POLY */
     /* the rest of the patch; each value is stored + 1, 0 = the default */
     uint8_t fx[4];               /* DIST, CHORUS, DELAY, REVERB sends */
-    int8_t oct;                  /* (Fel-Tracker) OCT, the sound's octave (P_OCT; 0, the default, for most) */
-    int8_t eshp, lshp;           /* (Fel-Tracker) ENV -> SHAPE and LFO -> SHAPE (P_ED_SHP, P_LD_SHP; -64 .. 63, 0 none):
+    int8_t oct;                  /* (Blue Hare) OCT, the sound's octave (P_OCT; 0, the default, for most) */
+    int8_t eshp, lshp;           /* (Blue Hare) ENV -> SHAPE and LFO -> SHAPE (P_ED_SHP, P_LD_SHP; -64 .. 63, 0 none):
                                   * a preset that moves its shape (WAVE: a scan through the table) */
-    uint8_t lrate, lwave;        /* (Fel-Tracker) the LFO's RATE and WAVE, + 1 (0: the default) */
+    uint8_t lrate, lwave;        /* (Blue Hare) the LFO's RATE and WAVE, + 1 (0: the default) */
 } preset_t;
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}
 
@@ -237,7 +237,7 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
     const param_desc_t *(*desc)(const struct track *t, uint32_t k);
     /* optional: once per block and part, before its voices (also with no voice sounding) */
     void (*block)(struct track *t);
-    /* (Fel-Tracker) optional: once per block and part, after its voices, on their sum (STRINGS: the ensemble); not
+    /* (Blue Hare) optional: once per block and part, after its voices, on their sum (STRINGS: the ensemble); not
      * while SPREAD splits the voices (voice.c track_render) */
     void (*post)(struct track *t, int32_t *out, uint32_t n);
     /* optional: the note of key k (0 = the lowest) when the engine maps the keys itself, else -1
@@ -248,7 +248,7 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
      * done() says so (once per control tick, before the render), not at the end of the ADSR's release */
     uint8_t ownenv;
     int (*done)(struct track *t, voice_t *v);
-    /* (Fel-Tracker) 1 = on the last track alone (DUBSIREN: its echo is that track's): a sound of it loaded on another
+    /* (Blue Hare) 1 = on the last track alone (DUBSIREN: its echo is that track's): a sound of it loaded on another
      * track becomes its substitute (engines.c eng_for_track) */
     uint8_t last_track;
 } engine_t;
@@ -307,7 +307,7 @@ static song_t song;
 #define TSEL (&trk[song.sel])    /* the selected track */
 
 
-/* (Fel-Tracker) each track's place in the mix, the song's (SETTINGS' WIDTH and LOW CUT; project.c, version 5):
+/* (Blue Hare) each track's place in the mix, the song's (SETTINGS' WIDTH and LOW CUT; project.c, version 5):
  *   trk_width   0 off, 1..TW_MAX ms: the Haas effect, on the last TW_N tracks only (5..8, or 3..4 on 4 tracks: the
  *               rhythm section stays in the middle): the track's highs (over ~250 Hz) late on one side, the side
  *               changing track by track (the first late on the right, so it sits left: as its PAN), its lows as they
@@ -323,13 +323,13 @@ static song_t song;
 static const uint16_t TL_HZ[TL_N] = {0, 40, 60, 80, 120, 160, 240, 320};
 static uint8_t trk_width[NTRK], trk_lowcut[NTRK];
 static inline int tw_has(uint32_t k) { return k >= TW_FIRST && k < NTRK; }
-/* (Fel-Tracker) ducking (SETTINGS' DUCK; project.c version 6): trk_duck[k] 0 OFF, 1..TD_MAX how deep the track is ducked
+/* (Blue Hare) ducking (SETTINGS' DUCK; project.c version 6): trk_duck[k] 0 OFF, 1..TD_MAX how deep the track is ducked
  * by the key (TD_MAX: ~24 dB under it at its loudest), TD_KEY the key itself (the kick: the first track so set; its
  * level ducks the others, an instant attack and a ~90 ms release: fx.c mix_block). None set: nothing done */
 #define TD_MAX 15u
 #define TD_KEY 16u
 static uint8_t trk_duck[NTRK];
-/* (Fel-Tracker, 2026-10) PAN MODE (SETTINGS' PAN MODE; project.c version 7): trk_pmode[k] TP_ALT the voices left, right,
+/* (Blue Hare, 2026-10) PAN MODE (SETTINGS' PAN MODE; project.c version 7): trk_pmode[k] TP_ALT the voices left, right,
  * left .. of PAN by SPRD (SPREAD as it was: POLY and UNISON), TP_RND each new voice on a side picked at random, in every
  * voice mode, by SPRD (half the width at SPRD 0): hats, plucks, arps that move. A sounding voice keeps its side */
 #define TP_ALT 0u

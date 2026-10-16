@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* Shared DSP building blocks for the Felucca engines (all fixed point).
+/* Shared DSP building blocks for the Blue Hare engines (all fixed point).
  * Voice output convention: add sample * amp to out[], where a full-scale
  * oscillator at amp = 1.0 (Q15 32767) contributes VOICE_FS. */
 #define VOICE_FS 24000           /* per-voice level: one voice peaks near -6 dBFS before the master */
@@ -68,7 +68,7 @@ static inline int32_t softclip(int32_t x)
     return x < 0 ? -y : y;
 }
 
-/* (Fel-Tracker, 2026-10) 2x oversampling around a shaper (a drive, a fold): what a curve adds above the band then folds
+/* (Blue Hare, 2026-10) 2x oversampling around a shaper (a drive, a fold): what a curve adds above the band then folds
  * back over 22 kHz instead of into it. A polyphase IIR halfband (two paths, a first-order allpass each, 2 coefficients:
  * hiir's design for a 0.16 transition), each way: flat to 18 kHz (-0.04 dB), what would fold under 15 kHz 46 dB down;
  * two multiplies up, two down, a sample or two late (its phase not linear: no matter around a distortion; for shapers

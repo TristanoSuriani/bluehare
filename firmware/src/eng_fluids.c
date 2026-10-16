@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* FLUIDS (1.5, FOUNDRY): liquid, viscous sound (Fel-Tracker's own). WAVE morphs the oscillator from a sine (0) through
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* FLUIDS (1.5, FOUNDRY): liquid, viscous sound (Blue Hare's own). WAVE morphs the oscillator from a sine (0) through
  * a saw (64) to a square (127); then STAGES (2 .. 8) first-order all-passes in a chain, all at DISP: the wave's
  * harmonics smeared in time, half of it mixed back with what went in (its notches: the liquid sheen), MOTION an LFO
  * (~0.05 .. ~8 Hz) moving DISP by DEPTH (the flow); a resonant low-pass (CUT, RES, the key half tracked, ENV ->

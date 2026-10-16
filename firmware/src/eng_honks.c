@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* HONKS (1.5, FOUNDRY): brass barks and sax stabs (Fel-Tracker's own). A reed: a saw pressed into clipping (BRIGHT:
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* HONKS (1.5, FOUNDRY): brass barks and sax stabs (Blue Hare's own). A reed: a saw pressed into clipping (BRIGHT:
  * from mellow to a blare), with BRTH (breath noise) in it, through two resonances at formants F1 (~200 Hz .. 1.4 kHz)
  * and F2 (~700 Hz .. 4 kHz), RES how narrow (from a horn to a nasal honk). Each note scoops up into its pitch from
  * SCOOP semitones under it (~60 ms: the player's bend into the note); GROWL flutters it at ~35 Hz (a growled sax).

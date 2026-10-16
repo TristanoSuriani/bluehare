@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The SPEECH engine (src/eng_speech.c, tools/gen_speech.py), built with a distribution that has it (run_tests.sh:
- * FELUCCA_DIST=idm): every word of every bank speaks (not silent, no clipping) and ends; a vowel sounds at its key's
+ * BLUEHARE_DIST=idm): every word of every bank speaks (not silent, no clipping) and ends; a vowel sounds at its key's
  * pitch (an octave up: twice the frequency); RATE changes the length, FORM the formants (the spectrum's centroid),
  * HOLD sustains while held, LOOP repeats; WORDS mode maps the keys to the words. Demos in DIR: each bank's words one
  * after another (<bank>.wav), the presets (presets.wav).

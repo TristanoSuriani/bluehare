@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* FELUCCA user interface.
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare user interface.
  * Flat: SURF cards and panels on the palette's background, no rules, one type family (Inter Tight, three sizes), tracks
  * named by their numbers 1..4 on a cushion (icons.c trk_icon). Four columns <-> KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
@@ -461,7 +461,7 @@ static struct {
     uint32_t t_ms;               /* time of the last load (the editor's SETs after it belong to it) */
 } undo;
 static uint8_t undo_depth;       /* loads nest (an engine jump loads its first preset): the outer one counts;
-                                  * felucca_init / project_load raise it to take no copy at all */
+                                  * bluehare_init / project_load raise it to take no copy at all */
 
 static uint32_t fnv(uint32_t h, const void *p, uint32_t n)
 {
@@ -891,7 +891,7 @@ static void track_select(uint32_t i)
     ui.force = 1;
 }
 
-/* (Fel-Tracker, 8 tracks) the 4 tracks the 4-wide places show (MIXER, GLO's cards and keys, the FX layer's mutes): the selected track's four, 1 .. 4 or 5 .. 8 (selecting a track there brings its four in) */
+/* (Blue Hare, 8 tracks) the 4 tracks the 4-wide places show (MIXER, GLO's cards and keys, the FX layer's mutes): the selected track's four, 1 .. 4 or 5 .. 8 (selecting a track there brings its four in) */
 #define VIEW_N 4u
 static uint32_t trk_view(void) { return NTRK > VIEW_N ? song.sel / VIEW_N * VIEW_N : 0u; }
 

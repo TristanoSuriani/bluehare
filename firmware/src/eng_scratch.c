@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* SCRATCH (1.5, FOUNDRY): a turntablist's hands (Fel-Tracker's own). The record is a sound worked out from where the
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* SCRATCH (1.5, FOUNDRY): a turntablist's hands (Blue Hare's own). The record is a sound worked out from where the
  * needle is, not a recording: SRC a STAB (a saw and its fifth at the key, decaying along the groove), VOX (an "aah",
  * three sines in a vowel's place), KICK (a falling sine) or NOISE (a burst, its grain fixed to the groove: it scrubs as
  * a sample would). MOTION moves the needle at the song's tempo (RATE: a beat .. 1/16): BABY (forward, back), FLARE

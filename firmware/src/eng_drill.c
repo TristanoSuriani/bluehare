@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* DRILL (1.5, FOUNDRY): power tools (Fel-Tracker's own). A sine carrier at the key, its pitch ramped at audio rate
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* DRILL (1.5, FOUNDRY): power tools (Blue Hare's own). A sine carrier at the key, its pitch ramped at audio rate
  * (RATE ~1 .. ~390 Hz: pitch_inc(0) is ~8.2 Hz a sample, / 8 ~1 Hz; DEPTH up to +-2 octaves, SHAPE UP, DOWN or TRI: a drill's whine, a grinder's buzz), phase-
  * modulated by a sine RATIO times it (FM the index); ROLL cuts it into hits at the song's tempo while held (1/32 ..
  * 1/128: hyper-speed rolls), DRIVE, TONE a low-pass. The ADSR shapes it.

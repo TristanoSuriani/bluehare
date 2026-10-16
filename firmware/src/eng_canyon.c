@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* CANYON (native: engine_ids.h; the native image's alone): ECHOES' repeats, all of them. The same controls, meaning the
  * same (SRC, TIME, SHAPE, COUNT, DECAY, PITCH, TONE, SCAT: eng_echoes.c, whose sources, gaps and spawning it plays
  * with), so a CANYON sound loads on the FM-1 as ECHOES (its substitute; COUNT past 16 as 16). What the device's CPU

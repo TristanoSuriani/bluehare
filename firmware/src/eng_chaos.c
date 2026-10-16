@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* CHAOS (1.5): chaotic systems as oscillators (Fel-Tracker's own). MODEL: two flows, integrated a step a sample at the
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* CHAOS (1.5): chaotic systems as oscillators (Blue Hare's own). MODEL: two flows, integrated a step a sample at the
  * note's speed (LRNZ the Lorenz attractor, ROSS Rossler's): never quite periodic, a tone that wanders; and two maps,
  * one new value each period of the note (LOGI the logistic map, HENO Henon's): pitched buzz whose waveform changes
  * every cycle. CHAOS is the system's parameter (Lorenz rho 24 .. 56, Rossler c 2 .. 18, logistic r 3.5 .. 4, Henon
@@ -10,7 +10,7 @@
  * flows a low-pass); FOLD folds it (a sine folder); SINE mixes in a sine at the note (a pitch to hold on to); SEED
  * NOTE starts every note from the same place (the same attack each time), FREE from somewhere new; TONE a low-pass.
  * Fixed point: Q16 states, 64-bit products; clamped (a state flung out starts again).
- * (Fel-Tracker) A map's new value is a step (SMTH short of 127): band-limited, a polyBLEP over the samples either side
+ * (Blue Hare) A map's new value is a step (SMTH short of 127): band-limited, a polyBLEP over the samples either side
  * of the period's start, where between samples it fell (the maps' signal runs a sample late, so both are corrected
  * when the period starts); unsmoothed the steps aliased, a grain between the harmonics.
  * Voice state: ph[0] the period (the maps, the sine), ph[1] the DC blocker's last input, ph[2] the maps' sample not

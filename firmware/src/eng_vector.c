@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* VECTOR (1.5): vector synthesis, in the manner of the late-80s vector synths (Fel-Tracker's own). Four sources sit at
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* VECTOR (1.5): vector synthesis, in the manner of the late-80s vector synths (Blue Hare's own). Four sources sit at
  * the corners of a square, A B above, C D below; a point moves over it and the sources are heard by how near it is
  * (bilinear), so the sound travels from one to another. The sources are WAVE's frames (eng_wave.c: its tables, its
  * band-limited copies, wt_read), SET picks four of them. A and C play at the note a little up, B and D a little down

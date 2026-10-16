@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* DUBSIREN8 (1.5; SIREN8 on the device: 8 characters at most): DUBSIREN's 8-bit cousin, for every track (DUBSIREN's 16-bit echo is the last track's alone). The
  * same siren and the same 8 controls (a sound moves between the two unchanged: engines.c eng_for_track), made of
  * fewer bits: the siren is held a sample in two (22 kHz) and cut to 8 bits after its envelope (a fading siren
@@ -87,7 +87,7 @@ static const preset_t DUBSIREN8_PRESETS[] = {
     {"CHIP TRILL", {3, 120, 2, 0, 0, 70, 70, 50}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 0, 20)},
     {"BIT UFO", {3, 85, 14, 3, 10, 100, 95, 70}, {20, 0, 127, 60}, 0, 1, FX(0, 30, 0, 40)},
     {"BIT HORN", {2, 0, 0, 0, 0, 85, 80, 55}, {0, 0, 127, 20}, 0, 1, FX(20, 0, 0, 20)},
-    /* (Fel-Tracker) its own: the 8 bits as the point */
+    /* (Blue Hare) its own: the 8 bits as the point */
     {"ARCADE ZAP", {2, 127, 36, 2, -64, 30, 60, 50}, {0, 0, 127, 10}, 0, 1, FX(0, 0, 0, 10)},
     {"DIRTY DUB", {0, 45, 7, 3, 0, 95, 112, 95}, {0, 0, 127, 40}, 0, 1, FX(30, 0, 0, 25)},
     {"POCKET HORN", {0, 0, 0, 0, 0, 70, 75, 60}, {0, 0, 127, 15}, 0, 1, FX(0, 0, 0, 15)},

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
-/* Felucca UI input: LEDs, knobs and buttons, panel setup. */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* Blue Hare UI input: LEDs, knobs and buttons, panel setup. */
 #include "ui_name.c"                                    /* NAME: naming user presets and projects */
 /* ----------------------------------------------------------- LEDs --- */
 /* The LED picture is built off-line and copied one byte per column: clearing

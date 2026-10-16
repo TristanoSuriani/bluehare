@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Optional device preferences, advertised in INFO. No preset format changes. The font weight
  * (ED_UI_FONT) is gone: one weight; UI_SET of it answers rc 2 (not supported), UI_STATE 127. */
 enum { ED_UI_PALETTE = 1, ED_UI_FONT = 2, ED_UI_MONITOR = 4, ED_UI_FAVORITES = 8 };
 static uint32_t ed_ui_caps(void)
 {
     uint32_t caps = ED_UI_PALETTE;
-#ifdef FELUCCA_MONITOR
+#ifdef BLUEHARE_MONITOR
     caps |= ED_UI_MONITOR;
 #endif
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     caps |= ED_UI_FAVORITES;
 #endif
     return caps;
@@ -25,12 +25,12 @@ static void ed_ui_state(void)
     ed_b(ed_ui_caps());
     ed_b(settings.palette);
     ed_b(127);                                         /* font: not supported */
-#ifdef FELUCCA_MONITOR
+#ifdef BLUEHARE_MONITOR
     ed_b(settings.monitor);
 #else
     ed_b(127);
 #endif
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     ed_b(favorites.filter);
     sig = 2166136261u;
     for (uint32_t i = 0; i < sizeof favorites; i++)
@@ -48,14 +48,14 @@ static void ed_ui_state(void)
 static uint32_t ed_ui_save(void)
 {
     settings_save();
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     if (!flash_ok || persist_pending == 2u) return 3;
     if (persist_pending == 1u) return 4;
     if (palette_from_stored(persist_saved.palette) != settings.palette) return 3;
-#ifdef FELUCCA_MONITOR
+#ifdef BLUEHARE_MONITOR
     if (persist_saved.monitor != settings.monitor) return 3;
 #endif
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     if (memcmp(&persist_saved.favorites, &favorites, sizeof favorites)) return 3;
 #endif
     return 0;
@@ -71,14 +71,14 @@ static uint32_t ed_ui_set(const uint8_t *a, uint32_t n)
     switch (a[0]) {
     case 0:
         settings.palette = a[1]; palette_set(a[1]); break;
-#ifdef FELUCCA_MONITOR
+#ifdef BLUEHARE_MONITOR
     case 2:
         fm1_irq_off();
         settings.monitor = a[1]; monitor_mode = a[1]; monitor_event.valid = 0;
         fm1_irq_on();
         break;
 #endif
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
     case 3:
         favorites.filter = a[1]; break;
 #endif
@@ -100,7 +100,7 @@ static int ed_ui_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         for (uint32_t i = 0; i < NPALETTES; i++) ed_str(UI_PALETTES[i].name, 12);
         return 1;
     case ED_FAV_GET:
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
         if (n == 4u && a[0] <= EID_COUNT) {               /* engine id; EID_COUNT: the user presets */
             int32_t start = ed_rv(a + 1);
             uint32_t limit = a[0] == EID_COUNT ? UP_SLOTS : eng_by_id(a[0])->npresets;
@@ -116,7 +116,7 @@ static int ed_ui_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
 #endif
         return 1;
     case ED_FAV_SET:
-#ifdef FELUCCA_FAVORITES
+#ifdef BLUEHARE_FAVORITES
         if (n == 4u && a[0] <= EID_COUNT && a[3] <= 1u) {
             int32_t preset = ed_rv(a + 1);
             uint32_t limit = a[0] == EID_COUNT ? UP_SLOTS : eng_by_id(a[0])->npresets;

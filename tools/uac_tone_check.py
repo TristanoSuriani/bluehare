@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-"""Check a recording of the USB audio input of a FELUCCA_UAC_TONE=1 build (src/usb.c): 16-bit stereo WAV,
+"""Check a recording of the USB audio input of a BLUEHARE_UAC_TONE=1 build (src/usb.c): 16-bit stereo WAV,
 recorded at the rate the FM-1 was set to (44.1 or 48 kHz; the triangles are made at that rate, so they
 must arrive exactly). Frame n of the stream is phase ph = n % 100 of
     L = q * 1000 - 25000,  R = q2 * 1000 - 25000,  q = ph < 50 ? ph : 100 - ph,  q2 = |50 - ph|

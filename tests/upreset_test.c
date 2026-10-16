@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Host test of the user preset record (firmware/src/upreset.c, -DUP_HOST part):
  * UP_PUT parsing, a bank round trip through storage.c on a simulated NOR,
  * bank / record version checks, map-by-count, pattern <-> steps,

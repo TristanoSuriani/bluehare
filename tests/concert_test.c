@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* CONCERT on the device (REVERB TYPE 4, fx.c rev_concert): the reverb bus alone, a 30 ms burst into its send. Its level
  * near HALL's (SIZE 90, DAMP 60); a longer SIZE rings longer; stable at the corners (SIZE 127, DAMP 0); the tail ends
  * in exact silence; stereo (its side); a model change and back without trouble; in every build's list */

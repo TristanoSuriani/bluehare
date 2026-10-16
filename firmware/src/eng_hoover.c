@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* HOOVER (1.5): the rave lead of the early 90s, after the Alpha Juno's "what the" patch (Fel-Tracker's own design: no
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* HOOVER (1.5): the rave lead of the early 90s, after the Alpha Juno's "what the" patch (Blue Hare's own design: no
  * circuit modelled). Two detuned oscillators, each a pulse-width-modulated saw, a square an octave down, a bend into
  * the note, a low-pass; the chorus (a preset's CHO send) does the rest.
  *
@@ -77,7 +77,7 @@ static const preset_t HOOVER_PRESETS[] = {
     {"HOOV BASS", {20, 30, 30, 10, 100, -12, 15, 70}, {0, 70, 80, 25}, 10, 1, FX(10, 60, 10, 5)},
     {"HOOV PAD", {50, 60, 20, 20, 20, 0, 0, 90}, {60, 90, 110, 90}, 0, 0, FX(0, 110, 30, 70)},
     {"SIREN", {64, 100, 90, 50, 0, 12, 90, 120}, {0, 90, 120, 70}, 0, 1, FX(0, 80, 50, 40)},
-    /* (Fel-Tracker, the IDM review) warm pads, strings: slow PWM, a little detune, the chorus */
+    /* (Blue Hare, the IDM review) warm pads, strings: slow PWM, a little detune, the chorus */
     {"WARM SAWS", {50, 40, 20, 15, 30, 0, 0, 70}, {90, 90, 115, 100}, 0, 0, FX(0, 100, 25, 80)},
     {"STRINGS", {64, 50, 30, 25, 0, 0, 0, 85}, {70, 80, 120, 90}, 0, 0, FX(0, 120, 20, 70)},
     /* more of the rave: the detuned bass, brass, a wilder lead, the dive, a soft one */

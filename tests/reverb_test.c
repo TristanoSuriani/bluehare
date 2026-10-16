@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* The reverb bus's models (src/fx.c: REVERB TYPE, G_RTYPE: ROOM, SPRING, 1.2's HALL) on the Mac, through
  * hostsim.c as regress.c.
  *   build/host/reverb_test [DEMODIR [DEMODIR2]]          (run_tests.sh: build/fx_demo build/reverb_demo)
@@ -28,7 +28,7 @@
  *    of the averaged spectrum: the metallic tone) and flutter (echoes at a fixed period) against ROOM, SPRING
  *    and COMB8 (8 combs + 4 allpasses, of which ROOM is the first half: a host-only reference, over twice ROOM's
  *    memory); model changes ROOM / SPRING / HALL both ways.
- * DELAY TYPE (Fel-Tracker 1.5, fx.c dly_tape): CLEAN is the delay as before (1. above, its buses compared with the
+ * DELAY TYPE (Blue Hare 1.5, fx.c dly_tape): CLEAN is the delay as before (1. above, its buses compared with the
  *    delay settings moving); TAPE and WORN: the echo of a steady 1 kHz sine wobbles in pitch (TAPE 0.05 .. 0.6 %,
  *    WORN more, under 1.5 %; CLEAN under 0.02 %); FDBK 120 on full-scale noise stays bounded and keeps howling
  *    after the input stops (the tape's runaway), FDBK turned back to 60 it dies into silence; TIME changed under a
@@ -40,7 +40,7 @@
  * 90, 127. */
 #define main hostsim_main
 #include "hostsim.c"
-static int32_t room_sd[1u << 16];                   /* (Fel-Tracker: ROOM's side, not looked at here) */
+static int32_t room_sd[1u << 16];                   /* (Blue Hare: ROOM's side, not looked at here) */
 #undef main
 #ifdef __APPLE__
 #include <libproc.h>
@@ -79,7 +79,7 @@ static struct {
     uint16_t comb_i[4], ap_i[2];
     int32_t comb_lp[4];
 } rf;
-/* (Fel-Tracker: the stereo buses) wet the left side, wr the right: the chorus's left read as the mono one always was, its
+/* (Blue Hare: the stereo buses) wet the left side, wr the right: the chorus's left read as the mono one always was, its
  * right one half a sweep away; ROOM's combs signed in turn its side, + left, - right */
 static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet, int32_t *wr,
                       uint32_t n)
@@ -176,7 +176,7 @@ static void test_room_identical(void)
           "(30 s of noise sends, settings changing)", !diff && !fx.rtype);
 }
 
-/* (Fel-Tracker) DELAY TYPE PING: a click echoes left at the time, right at twice it, left at three times it, each
+/* (Blue Hare) DELAY TYPE PING: a click echoes left at the time, right at twice it, left at three times it, each
  * FDBK's share of the one before (COLR open: the loop's low-pass barely there), the other side silent then */
 static void test_ping(void)
 {

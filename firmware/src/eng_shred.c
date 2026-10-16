@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* SHRED (1.5, FOUNDRY): a sound torn apart as it plays (Fel-Tracker's own). One voice a track plays SRC (a SAW, SQR,
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* SHRED (1.5, FOUNDRY): a sound torn apart as it plays (Blue Hare's own). One voice a track plays SRC (a SAW, SQR,
  * an FM tone at the key, or NOISE) into a short ring of its own (35 ms), and two windowed grains read it back (GRAIN
  * long, 1 .. 35 ms, overlapping): STRETCH how fast they walk along it (0: frozen, 64: in time, 127: twice), PITCH
  * their speed (+-12 semitones: the tears up or down), STUTTER how often a grain repeats instead of moving on, TEAR

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
-# Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
+# Copyright (C) 2026 Tristano Suriani (Blue Hare)
+# Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 """The web editor's mock device's engine tables (web/editor.html: ENG, by id, and G_ENGSEL's names) from the firmware's
 own (tests/descdump.c's JSON: build/host/desc.json, the host tests' build: the primary distribution), between the
 markers /*MOCK-ENG-BEGIN*/ .. /*MOCK-ENG-END*/, /*MOCK-ENGSEL-*/ (G_ENGSEL's names) and /*MOCK-TRKDEF-*/ (the power-on

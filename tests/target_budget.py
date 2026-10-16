@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-# Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
+# Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md
 """Target-side cost estimate of the hot DSP code, from the pi32v2 objdump listing tools/build.py writes
-(build/felucca.dis). For each engine's render function and the audio ISR: the instructions
+(build/bluehare.dis). For each engine's render function and the audio ISR: the instructions
 inside loops (every address range closed by a backward branch: the per-sample loops and what they
 contain), and the hardware divides and calls in them. cost = the loop instructions, each weighted 4 per
 level of nesting (an inner loop runs several times per sample) and 1 + 8 for a divide (many cycles). A static count, not a cycle count: it changes only when the compiled code changes,
@@ -28,27 +28,27 @@ FUNCS = ["slicer_track",
          "kit_render", "breaks_render", "risers_render",    # KIT, BREAKS, RISERS (1.5; IDM's)
          "fmp_run",                                         # FMPERC's voice (eng_fmperc.c), KIT's and BREAKS' too
          "fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER5: the key / LED scan (hal/fm1_input.h)
-         # (Fel-Tracker: the IDM build has 8 tracks since step 3d: the ISR's loops over the parts twice as long, 37502 -> 67431)
-         # (Fel-Tracker, the stereo buses: the chorus's second read, the sends' low cut, ROOM's side: 68734 -> 77039)
+         # (Blue Hare: the IDM build has 8 tracks since step 3d: the ISR's loops over the parts twice as long, 37502 -> 67431)
+         # (Blue Hare, the stereo buses: the chorus's second read, the sends' low cut, ROOM's side: 68734 -> 77039)
          "uac_tap48",                                       # the USB audio input at 48 kHz: the 44.1 -> 48 resampler (usb.c)
          "click_render",                                    # the metronome's click (click.c), while it sounds
          "mod_begin", "mod_voice", "mod_end",                 # the modulation matrix (mod.c), called when active
          "perf_begin", "perf_mute", "perf_pre", "perf_block", "perf_master",   # the FX layer (perform.c), when busy
          "rev_room", "rev_spring", "rev_hall", "rev_side_mix",
-         "mix_track",                                       # (Fel-Tracker 2026-10) a track's mix, out of the ISR since CONCERT (fx.c)
-         "rev_concert",                                     # (Fel-Tracker 2026-10) REVERB TYPE CONCERT, the device's (fx.c)
-         "mono_lows",                                       # (Fel-Tracker 2026-10) the master's lows in mono (fx.c)
+         "mix_track",                                       # (Blue Hare 2026-10) a track's mix, out of the ISR since CONCERT (fx.c)
+         "rev_concert",                                     # (Blue Hare 2026-10) REVERB TYPE CONCERT, the device's (fx.c)
+         "mono_lows",                                       # (Blue Hare 2026-10) the master's lows in mono (fx.c)
          "dly_tape",
          "dubsiren8_render",
-         "dubchord_render",                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)
+         "dubchord_render",                                 # DUBCHORD (Blue Hare 1.5: eng_dubchord.c; IDM's)
          "wasp_render",
-         "modal_render",                                    # MODAL (Fel-Tracker 1.5: eng_modal.c; IDM's)
-         "vector_render",                                   # VECTOR (Fel-Tracker 1.5: eng_vector.c; IDM's)
-         "echoes_render", "glitch_render"]                  # ECHOES, GLITCH (Fel-Tracker 1.5; IDM's)                                 # DUBCHORD (Fel-Tracker 1.5: eng_dubchord.c; IDM's)                                # DUBSIREN8 (Fel-Tracker 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Fel-Tracker 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
+         "modal_render",                                    # MODAL (Blue Hare 1.5: eng_modal.c; IDM's)
+         "vector_render",                                   # VECTOR (Blue Hare 1.5: eng_vector.c; IDM's)
+         "echoes_render", "glitch_render"]                  # ECHOES, GLITCH (Blue Hare 1.5; IDM's)                                 # DUBCHORD (Blue Hare 1.5: eng_dubchord.c; IDM's)                                # DUBSIREN8 (Blue Hare 1.5: eng_dubsiren8.c; IDM's)                                        # DELAY TYPE TAPE / WORN (Blue Hare 1.5, fx.c), when chosen   # the reverb bus (fx.c): REVERB TYPE ROOM / SPRING / HALL (and its stereo)
 # absent from some builds: skipped then; present, checked against these
-OPTIONAL = {"uac_tap48": 504}           # (absent from a FELUCCA_UAC_48K=0 or FELUCCA_UAC=0 build)
+OPTIONAL = {"uac_tap48": 504}           # (absent from a BLUEHARE_UAC_48K=0 or BLUEHARE_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
-# the one build/felucca.dis is: tools/build.py), skipped then
+# the one build/bluehare.dis is: tools/build.py), skipped then
 ENGINE_OF = {"wave_render": "WAVE",
              "byte_render": "BYTE", "west_render": "WEST", "hoover_render": "HOOVER", "speech_render": "SPEECH",
              "fmperc_render": "FMPERC", "karplus_render": "KARPLUS",
@@ -65,7 +65,7 @@ DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...
 MAXD = 4
 
-dis = sys.argv[1] if len(sys.argv) > 1 else "build/felucca.dis"
+dis = sys.argv[1] if len(sys.argv) > 1 else "build/bluehare.dis"
 budget = sys.argv[2] if len(sys.argv) > 2 else "tests/target_budget.txt"
 LABEL = re.compile(r"^([A-Za-z_][A-Za-z_0-9.]*):$")
 INSN = re.compile(r"^\s*([0-9a-f]+):\s+((?:[0-9a-f]{2} )+)\s*(.*)$")
@@ -117,7 +117,7 @@ def cost(insns):
 
 
 def built_engines():
-    """the engines of the distribution build/felucca.dis holds (build/dist.txt; none written: the default)"""
+    """the engines of the distribution build/bluehare.dis holds (build/dist.txt; none written: the default)"""
     here = os.path.dirname(os.path.abspath(__file__))
     d = os.path.join(os.path.dirname(dis) or ".", "dist.txt")
     name = open(d).read().strip() if os.path.exists(d) else "default"
@@ -143,8 +143,8 @@ def main():
                 base[p[0]] = int(p[1])
     if os.environ.get("BUDGET_UPDATE"):
         with open(budget, "w") as f:
-            f.write("# FELUCCA target cost budget (tests/target_budget.py): instructions in the loops of each\n"
-                    f"# function in build/felucca.dis, x{NEST} per nesting level, divides x{1 + DIV_W}. The check allows "
+            f.write("# Blue Hare target cost budget (tests/target_budget.py): instructions in the loops of each\n"
+                    f"# function in build/bluehare.dis, x{NEST} per nesting level, divides x{1 + DIV_W}. The check allows "
                     f"+{TOL * 100:.0f} %.\n# Rewritten by BUDGET_UPDATE=1.\n")
             for n in FUNCS:                         # (the other distributions' engines: kept as they were)
                 if n in res and n not in OPTIONAL:

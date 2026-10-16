@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Complete musical archive: no raw addresses are accepted. Small objects are staged
  * in main-loop RAM and fully validated before the existing A/B commit path writes.
  * Ids 32..34 (the user sample slots until 1.5) are listed empty; an archive's sample objects are not restored.
@@ -8,11 +8,11 @@
  * patches into the user presets restored before it (ids 6, 7), as the first boot after the update does (up_fm6.c).
  * Id 9 is the user presets' FM6 patches (up_fm6.c), appended in 1.0.3.
  * 1.5 (the tracker): id 0, the music in RAM, is listed empty (a song is up to four storage objects: project.c); ids
- * 2..5 (and with 8 tracks 10..21: the song's chunks 4..15, Fel-Tracker) are the stored song's chunks as they are on the flash (project.c proj_good: the complete save's copies; a chunk
+ * 2..5 (and with 8 tracks 10..21: the song's chunks 4..15, Blue Hare) are the stored song's chunks as they are on the flash (project.c proj_good: the complete save's copies; a chunk
  * past its count, none stored: empty). A PUT of them writes each with a new generation, the same for the chunks of one
  * restore (ed_bk_rgen), so the restored song is the newest complete one; a project of 1.4 is refused.
  */
-#if NTRK == 8                                   /* (Fel-Tracker, TRACKS 8) ids 10 .. 21: the song's chunks 4 .. 15 */
+#if NTRK == 8                                   /* (Blue Hare, TRACKS 8) ids 10 .. 21: the song's chunks 4 .. 15 */
 static const uint8_t ED_BK_IDS[25] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 32, 33, 34};
 #else
 static const uint8_t ED_BK_IDS[13] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34};
@@ -54,7 +54,7 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
     if (id == 0u) return ED_BK_RAW;                 /* (the music in RAM: not one object any more) */
     if (id == 1u) { *len = sizeof ed_bk_settings; return (const uint8_t *)&ed_bk_settings; }
     if (ed_bk_song(id) >= 0) {
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
         uint32_t i = (uint32_t)ed_bk_song(id);
         st_hdr_t h;
         if (ed_bk_chunk != i || ed_bk_gen != proj_wire_gen) {   /* the chunk into the staging RAM */
@@ -86,7 +86,7 @@ static uint32_t ed_bk_capture(void)
     if (ed_flash_stop()) return 3;
     ed_bk_gen = ++proj_wire_gen;
     ed_bk_chunk = 0xFFu;
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     ed_bk_settings = persist_saved;                 /* fields absent from this build survive */
 #else
     memset(&ed_bk_settings, 0, sizeof ed_bk_settings);
@@ -127,7 +127,7 @@ static uint32_t ed_bk_commit(void)
         memcpy(&h, raw, sizeof h);
         if (ed_bk_len < PROJ_HDR || h.magic != PROJ_MAGIC || h.index != ci || !h.count ||
             h.count > PROJ_CHUNKS || h.len != ed_bk_len - PROJ_HDR) return 2;
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
         if (!flash_ok) return 4;
         if (!ci || !ed_bk_rgen) {                   /* the first chunk of a restore: past every stored save */
             proj_find();
@@ -162,7 +162,7 @@ static uint32_t ed_bk_commit(void)
     } else if (ed_bk_id == 8u || ed_bk_id == 9u) {  /* Felucca's FM6 patch banks: FM6 is gone, nothing to restore */
         return 0;
     } else return 1;
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     if (!flash_ok || st_save(obj, raw, ed_bk_len)) return 4;
 #else
     (void)obj;
@@ -171,7 +171,7 @@ static uint32_t ed_bk_commit(void)
         memcpy(&ed_bk_settings, raw, sizeof ed_bk_settings);
         settings_import(&ed_bk_settings, sizeof ed_bk_settings);
         panel_init(); settings_init(); palette_set(settings.palette);
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
         persist_saved = ed_bk_settings; persist_pending = 0;
 #endif
     } else {

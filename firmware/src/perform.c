@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* PERFORM: the effects of the FX hold layer, on the master. A key pressed while FX is held belongs to the
  * layer (seq.c keyboard_block): it plays no note, sends no MIDI, records nothing, and holds its effect until
  * it is let go (ui_input.c opens the layer and shows the map). The 16 white keys (F3 .. G5) hold the effect the map
@@ -18,7 +18,7 @@
  * them). Out: 0.56 the live mix + 0.7 the shifted one (its 0.55, 0.7). While it plays, DEPTH (KNOB 4) is its
  * SHIMMER instead of the level: the shifted sound fed back into its own delay (0 .. 0.82, through the soft
  * clip): with OCT UP each pass climbs another octave.
- * (Fel-Tracker: Felucca 1.2's FLANGER and PHASER are gone; a key the settings give either holds its default.)
+ * (Blue Hare: Felucca 1.2's FLANGER and PHASER are gone; a key the settings give either holds its default.)
  * The buffer: the SLICER's recordings (sl_buf, 32 KB) borrowed as one stereo loop of 8192 frames at 22.05 kHz
  * (371 ms). While borrowed, STUT tracks play live; their recordings are dropped afterwards. A REPEAT 1/8 or
  * REVERSE longer than the loop at the tempo (below 81 BPM) does nothing (the map shows it dimmed).

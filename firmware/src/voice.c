@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Voice allocation, envelopes, LFO and per-track rendering.
  * Runs in the audio ISR.
  *
  * Each synth part has its own NVOICE voices (so MONO / LEGATO / UNISON keep using
- * v[0..]), but only voice_limit() of all the parts' voices sound at once (Fel-Tracker: VOICE_BASE, 8, always;
+ * v[0..]), but only voice_limit() of all the parts' voices sound at once (Blue Hare: VOICE_BASE, 8, always;
  * NVOICE, 12, while the audio interrupt's measured load stays under VOICE_LOAD_Q8, 75 %: a heavy song keeps to 8
  * on its own, a light one gets 12; over it, a note steals as at 8, the voices sounding go on): a part that starts
  * a voice while the budget is full takes one from any part (voice_victim): the oldest
@@ -93,7 +93,7 @@ static uint32_t trk_vmode(const track_t *t)
 }
 
 /* ------------------------------------------------- the shared voice budget --- */
-static uint32_t voice_limit(void)                       /* (Fel-Tracker) 12 while the load allows, else 8 (native:
+static uint32_t voice_limit(void)                       /* (Blue Hare) 12 while the load allows, else 8 (native:
                                                          * every part's, always) */
 {
     return song.cpu_q8 < VOICE_LOAD_Q8 ? VOICE_MAX : VOICE_BASE;
@@ -286,7 +286,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
         v->env = 0;
         v->env_out = 0;
         uint32_t k = (uint32_t)(t - trk);
-        if (k < NTRK && trk_pmode[k] == TP_RND) {       /* (Fel-Tracker: PAN MODE RND) a side at random */
+        if (k < NTRK && trk_pmode[k] == TP_RND) {       /* (Blue Hare: PAN MODE RND) a side at random */
             static uint32_t pm_rng = 0x9E3779B9u;
             pm_rng ^= pm_rng << 13;
             pm_rng ^= pm_rng >> 17;
@@ -323,7 +323,7 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
 {
     uint32_t mode = (uint32_t)t->p[P_VOICE], nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
     if (nv > UNISON_MAX)
-        nv = UNISON_MAX;                                /* (Fel-Tracker: UNISON stays 8, as made) */
+        nv = UNISON_MAX;                                /* (Blue Hare: UNISON stays 8, as made) */
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
         int32_t k = 2 * (int32_t)i - (int32_t)(nv - 1u);   /* -7 .. 7 */
@@ -667,7 +667,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     if (spread_on)
         spread_sum(out);                                /* out: every voice; spread_buf: the left ones */
     else if (e->post && nr)
-        e->post(t, out, n);                             /* (Fel-Tracker: the part's sum, STRINGS' ensemble) */
+        e->post(t, out, n);                             /* (Blue Hare: the part's sum, STRINGS' ensemble) */
     if (fade) {
         for (i = 0; i < 8u; i++)
             t->p[P_E0 + i] = pe_new[i];

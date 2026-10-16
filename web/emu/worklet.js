@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-// Felucca in an AudioWorklet: felucca.wasm is the whole FM-1 firmware against a simulated FM-1
-// (web/emu/felucca_web.c). Each render quantum asks it for 128 frames, which runs the device's clock forward;
+// Blue Hare in an AudioWorklet: bluehare.wasm is the whole FM-1 firmware against a simulated FM-1
+// (web/emu/bluehare_web.c). Each render quantum asks it for 128 frames, which runs the device's clock forward;
 // between quanta the page's input goes in and, about 30 times a second (4 when the page is hidden), the screen,
 // the lights and any changed flash go out. After X0X's web/emu/worklet.js (charlesvestal/fm1-x0x, GPL-3.0).
 
@@ -30,7 +30,7 @@ export const HOLD_MS = 24;
 
 if (typeof registerProcessor === "function") {
   const clock = globalThis.performance ? () => globalThis.performance.now() : () => Date.now();
-  class Felucca extends AudioWorkletProcessor {
+  class BlueHare extends AudioWorkletProcessor {
     constructor() {
       super();
       this.ex = null;
@@ -136,5 +136,5 @@ if (typeof registerProcessor === "function") {
       return true;
     }
   }
-  registerProcessor("felucca", Felucca);
+  registerProcessor("bluehare", BlueHare);
 }

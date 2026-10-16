@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Parameter descriptors, formatting and the page table. */
 static const char *const N_LWAVE[] = {"SIN", "TRI", "SAW", "SQR", "S&H"};
 /* LFO 2 (1.2, #154). SYNC: OFF (RATE), or one cycle per note value of the tempo, longest first (LSYNC_DIV: its N_DIV);
@@ -25,21 +25,21 @@ static const char *const N_ALLOC[] = {"ROT", "REUSE"};
 static const char *const N_CLOCK[] = {"INT", "USB", "TRS"};
 static const char *const N_MIDI_INPUT[] = {"USB", "TRS"};
 /* MIDI IN (seq.c midi_base): 1..4 -> parts, 5..16 ignored / all -> selected / (1.2, append-only) 5..8, 9..12, 13..16 -> parts */
-#if NTRK == 8                                   /* (Fel-Tracker, TRACKS 8) blocks of 8: tracks 1 .. 8 on channels 1 .. 8 or 9 .. 16 */
+#if NTRK == 8                                   /* (Blue Hare, TRACKS 8) blocks of 8: tracks 1 .. 8 on channels 1 .. 8 or 9 .. 16 */
 static const char *const N_ROUTE[] = {"CH1-8", "SEL", "CH9-16"};
 #else
 static const char *const N_ROUTE[] = {"CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"};
 #endif
 static const char *const N_NOTE[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const N_DASH[] = {"--"};
-#ifdef FELUCCA_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
+#ifdef BLUEHARE_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
 static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "CAVERN", "SHIMMER"};
 #else
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT"};   /* (Fel-Tracker: GATED, every
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT"};   /* (Blue Hare: GATED, every
                                                                    * build's; CONCERT the device's since 2026-10) */
 #endif
 static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL"};   /* G_DTYPE: the delay bus's (fx.c
-                                                                   * dly_tape; PING, DUAL: Fel-Tracker's, stereo) */
+                                                                   * dly_tape; PING, DUAL: Blue Hare's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
 static const char *const N_SLCR[] = {"OFF", "GATE", "STUT"};             /* SL_OFF .. SL_STUT (slicer.c) */
 static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"};   /* SL_DEN */
@@ -51,7 +51,7 @@ static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN",
 static const char *const N_ENGNAME[EID_COUNT] = {   /* by id (G_ENGSEL); "-": a retired id or an engine left out */
     [0] = "-", [1] = "-", [2] = "-", [3] = "-", [4] = "-", [5] = "-", [6] = "-", [7] = "-", [8] = "-", [9] = "-",
     [10] = "-", [11] = "-", [12] = "-", [13] = "-", [27] = "-",   /* (retired: core.h EID_RETIRED) */
-#define ENGINE(N, id, sub) [EID_##N] = FELUCCA_ENG_##N ? #N : "-",
+#define ENGINE(N, id, sub) [EID_##N] = BLUEHARE_ENG_##N ? #N : "-",
 #include "engine_ids.h"
 #undef ENGINE
 };   /* (engines.c ENGINES[]; "-": not built) */
@@ -68,7 +68,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_ED_FLT] = PD("FLT", F_BIPCT, -64, 63, 0),
     [P_ED_PIT] = PD("PIT", F_BIPCT, -64, 63, 0),
     [P_ED_SHP] = PD("SHP", F_BIPCT, -64, 63, 0),
-    [P_OCT] = PD("OCT", F_INT, -4, 4, 0),     /* (Fel-Tracker: was ENV DEST FX, read by nothing) */
+    [P_OCT] = PD("OCT", F_INT, -4, 4, 0),     /* (Blue Hare: was ENV DEST FX, read by nothing) */
     [P_LRATE] = PD("RATE", F_LFOHZ, 0, 127, 60),
     [P_LWAVE] = PE("WAVE", N_LWAVE, 0),
     [P_LPHASE] = PD("PHS", F_INT, 0, 127, 0),
@@ -362,7 +362,7 @@ static const page_t PAGES[] = {
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},
     {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
-    {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN (Fel-Tracker) */
+    {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN (Blue Hare) */
     {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL / GATED */
     {"CHORUS", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
     {"SCL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_TRANS}},
@@ -373,14 +373,14 @@ static const page_t PAGES[] = {
     {"LANES 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_LN4, P_LN5, P_LN6, P_LN7}},
     {"VOICE", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_GLIDE, P_GLMODE, P_PRIO}},
     {"VOICE 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_ALLOC, P_DETUNE, P_PAN, P_MUTE}},
-    {"VOICE 3", FAM_EDIT, SC_TRACK, GR_NONE, {P_SPRD, P_OCT, 0xFF, 0xFF}},   /* #148: SPREAD; OCT (Fel-Tracker) */
+    {"VOICE 3", FAM_EDIT, SC_TRACK, GR_NONE, {P_SPRD, P_OCT, 0xFF, 0xFF}},   /* #148: SPREAD; OCT (Blue Hare) */
     /* 1.2 (Discussion #153): a family's pages go round in this order, a tap of its button each (ui.c open_family) */
     {"PRESETS", FAM_SAVE, SC_GLOBAL, GR_BROWSE, {0xFF, 0xFF, 0xFF, 0xFF}},   /* browser: PRESETS knob / KNOB 1 */
     {"USER", FAM_SAVE, SC_GLOBAL, GR_USER, {0xFF, 0xFF, 0xFF, 0xFF}},       /* user presets: SLOT LOAD ERASE SAVE */
     {"PROJECT", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {0xFF, 0xFF, G_LOAD, G_SAVE}},   /* the song store (1.5: one song) */
     {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},
     {"ARP", FAM_ARP, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},   /* (the arpeggiator gone, 2026-10: a placeholder) */
-    /* (Fel-Tracker) the sequencer's placeholder: SEQ (and GLO, which opened the song) shows TODO */
+    /* (Blue Hare) the sequencer's placeholder: SEQ (and GLO, which opened the song) shows TODO */
     {"SEQ", FAM_SEQ, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5
      * GLO > GLOBAL; its TUNE is MENU > AUDIO's now), again HOME (ui.c home_tap) */

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* WAVE (1.5): wavetables. Fel-Tracker's own design and tables (tools/gen_wavetables.py: 8 banks of 8 single-cycle
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* WAVE (1.5): wavetables. Blue Hare's own design and tables (tools/gen_wavetables.py: 8 banks of 8 single-cycle
  * frames, in flash).
  *
  * TBL picks the bank, POS the place between its frames (the two neighbours crossfaded): the SHP routings move it
@@ -17,11 +17,11 @@
  * the low-pass (CUT RES, the key half tracked) and CRSH: the output held for 1 .. 16 samples and cut to fewer bits.
  * Voice state: ph[0] / ph[1] the oscillators' cycles, ph[2] / s[2] their synced reading phases, s[0] s[1] the
  * filter, s[3] the held sample, s[4] the hold count. */
-#include "felucca_wavetables.h"
+#include "bluehare_wavetables.h"
 static const char *const N_WT_BANK[] = {WT_BANK_NAMES_INIT, 0};
 static const uint16_t WT_LVL_OFF[7] = {0, 512, 768, 896, 960, 992, 1008};   /* each mip level's start in a frame */
 #define WT_LIM 36521831u        /* phase increment of 413 Hz: 64 harmonics reach 24 kHz (0.5442 x 2^32 / 64), past
-                                 * Nyquist but folding back above 20 kHz (Fel-Tracker: was 20 kHz, a copy switched to
+                                 * Nyquist but folding back above 20 kHz (Blue Hare: was 20 kHz, a copy switched to
                                  * half its harmonics ~20 % lower) */
 #define WT_LIM_SYNC 30434000u   /* SYNC's: 344 Hz, 64 harmonics reach 20 kHz (its window spreads each harmonic: the
                                  * ones past Nyquist would fold below 20 kHz) */
@@ -146,7 +146,7 @@ static const preset_t WAVE_PRESETS[] = {
     {"TABLE BELL", {5, 90, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45)},
     {"DIGI KEYS", {6, 50, 0, 4, 96, 15, 0, 18}, {0, 80, 40, 55}, 20, 0, FX(0, 20, 30, 35)},
     {"BIT LEAD", {7, 80, 0, 0, 110, 10, 20, 40}, {0, 70, 100, 30}, 0, 1, FX(0, 0, 40, 20)},
-    /* (Fel-Tracker, the IDM review) warm pads: slow, detuned, dark, plenty of chorus and reverb */
+    /* (Blue Hare, the IDM review) warm pads: slow, detuned, dark, plenty of chorus and reverb */
     {"WARM PAD", {0, 20, 0, 24, 60, 10, 0, 0}, {90, 90, 115, 100}, 10, 0, FX(0, 70, 20, 75)},
     {"STRING PAD", {1, 50, 0, 30, 72, 5, 0, 0}, {100, 90, 120, 105}, 8, 0, FX(0, 90, 20, 80)},
     {"GLASS PAD", {5, 30, 0, 16, 100, 10, 0, 0}, {80, 100, 110, 110}, 0, 0, FX(0, 60, 35, 85)},
@@ -155,7 +155,7 @@ static const preset_t WAVE_PRESETS[] = {
     {"SUB BASS", {0, 0, 0, 0, 50, 10, 20, 0}, {0, 50, 100, 20}, 10, 1, FX(10, 0, 0, 5)},
     {"SYNC BASS", {2, 50, 60, 0, 70, 30, 40, 0}, {0, 60, 70, 20}, 30, 1, FX(15, 0, 10, 5)},
     {"BIT ARP", {7, 40, 0, 0, 110, 0, 0, 60}, {0, 40, 0, 30}, 0, 0, FX(0, 0, 50, 20)},
-    /* (Fel-Tracker) the table moving: an LFO scanning it (the frames morphing), or each note's envelope (lrate: the
+    /* (Blue Hare) the table moving: an LFO scanning it (the frames morphing), or each note's envelope (lrate: the
      * LFO's RATE + 1, ~0.2 Hz at 26; lwave: its WAVE + 1, 1 SIN 2 TRI 5 S&H) */
     {"MORPH PAD", {1, 50, 0, 16, 85, 10, 0, 0}, {80, 90, 115, 95}, 0, 0, FX(0, 60, 25, 75), .lshp = 50, .lrate = 26},
     {"VOX MORPH", {4, 64, 0, 12, 90, 10, 0, 0}, {70, 90, 120, 95}, 0, 0, FX(0, 60, 25, 70), .lshp = 63, .lrate = 31,

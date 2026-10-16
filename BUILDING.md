@@ -1,7 +1,7 @@
-# Building Fel-Tracker (and Felucca)
+# Building Blue Hare (and Felucca)
 
-Fel-Tracker (Tristano Suriani's fork of Felucca by Leo Kuroshita) builds the same way Felucca does, and still under
-Felucca's file names (`felucca.bin`, `felucca.fwsc`). The distributions (below) are Fel-Tracker's. Whose work is
+Blue Hare (Tristano Suriani's fork of Felucca by Leo Kuroshita) builds the same way Felucca does, and still under
+Felucca's file names (`bluehare.bin`, `bluehare.fwsc`). The distributions (below) are Blue Hare's. Whose work is
 whose: [AUTHORS.md](AUTHORS.md).
 
 **One command per target:** `make help` lists them. `make firmware DIST=foundry`, `make emu DIST=chip`,
@@ -13,9 +13,9 @@ The build makes three files in `build/`:
 
 | File | What |
 | --- | --- |
-| `felucca.bin` | the firmware app |
+| `bluehare.bin` | the firmware app |
 | `loader/ota.bin` | the update loader |
-| `felucca.fwsc` | the installable package (app + loader) |
+| `bluehare.fwsc` | the installable package (app + loader) |
 
 ## Prerequisites (macOS)
 
@@ -53,25 +53,25 @@ On Linux x86-64 the toolchain runs natively and Docker is not needed.
 (`~/.jieli/toolchain`, `~/fw-AC79_AIoT_SDK`).
 
 `./build.sh --release 1.0` makes a release build: the package identity becomes `FM-1_910`
-and the version string `v1.0`; the package is `build/felucca-1.0.fwsc`, and
+and the version string `v1.0`; the package is `build/bluehare-1.0.fwsc`, and
 `build/release-1.0/` holds what a release ships: the package, the app
-(`felucca-1.0-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
+(`bluehare-1.0-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
 `LICENSES/` (the package contains Apache-2.0 SDK files, so the licence texts travel with it).
 
-Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `core.h` and `icons.c`):
+Build options (environment, `0` or `1`; defaults in `firmware/src/bluehare.c`, `core.h` and `icons.c`):
 
 | Flag | Default | |
 | --- | --- | --- |
-| `FELUCCA_FLASH` | 1 | settings, presets and projects in flash |
-| `FELUCCA_OTA` | 1 | update entry (needs `FELUCCA_FLASH`) |
-| `FELUCCA_CDC` | 1 | USB serial console |
-| `FELUCCA_CDC_DEFAULT` | 1 | `0`: the console is built in but left out of USB from boot (as MENU > USB SERIAL OFF) |
-| `FELUCCA_UAC` | 1 | USB audio input (the master output, stereo, 44.1 or 48 kHz) |
-| `FELUCCA_UAC_48K` | 1 | `0`: the USB audio input at 44.1 kHz only, as up to 1.0.5.2 (`firmware/src/usb.c`) |
-| `FELUCCA_UART` | 1 | TRS MIDI IN |
-| `FELUCCA_ICONS` | 1 | parameter icons on the knob cards |
+| `BLUEHARE_FLASH` | 1 | settings, presets and projects in flash |
+| `BLUEHARE_OTA` | 1 | update entry (needs `BLUEHARE_FLASH`) |
+| `BLUEHARE_CDC` | 1 | USB serial console |
+| `BLUEHARE_CDC_DEFAULT` | 1 | `0`: the console is built in but left out of USB from boot (as MENU > USB SERIAL OFF) |
+| `BLUEHARE_UAC` | 1 | USB audio input (the master output, stereo, 44.1 or 48 kHz) |
+| `BLUEHARE_UAC_48K` | 1 | `0`: the USB audio input at 44.1 kHz only, as up to 1.0.5.2 (`firmware/src/usb.c`) |
+| `BLUEHARE_UART` | 1 | TRS MIDI IN |
+| `BLUEHARE_ICONS` | 1 | parameter icons on the knob cards |
 
-`FELUCCA_USB_LAYOUT` (`0` to `3`, default `0`) picks other USB descriptor layouts for testing; see
+`BLUEHARE_USB_LAYOUT` (`0` to `3`, default `0`) picks other USB descriptor layouts for testing; see
 `firmware/src/usb.c`.
 
 ## Distributions
@@ -82,8 +82,8 @@ in the order the device lists them: `distributions/<name>.txt`, one engine a lin
 (tools/gen_ui_palettes.py: IDM's IDM, FOUNDRY's FOUNDRY; GREY without the line).
 
 ```
-./build.sh                         # the distribution distributions/BUILD names: IDM (build/felucca.fwsc, "v0.10.0 IDM")
-FELUCCA_DIST=foundry ./build.sh    # another one (build/felucca-foundry.fwsc)
+./build.sh                         # the distribution distributions/BUILD names: IDM (build/bluehare.fwsc, "v0.10.0 IDM")
+BLUEHARE_DIST=foundry ./build.sh    # another one (build/bluehare-foundry.fwsc)
 ```
 
 | Distribution | Tracks | Engines |
@@ -97,13 +97,13 @@ FELUCCA_DIST=foundry ./build.sh    # another one (build/felucca-foundry.fwsc)
 
 Since the 2026-10 plan every build has 4 tracks and the shipped ones at most 8 engines, two for each track's role (kit,
 bass, mid, high). `VOICES 12` keeps the voice budget at 12 always (FOUNDRY, WAREHOUSE, CHIP: 4 tracks freed
-their CPU); without it 8, and 12 while the audio's load stays under 75 % (IDM, until it is tried on an FM-1). The code still builds with 8 tracks (`TRACKS 8`, or the tests' `-DFELUCCA_NTRK=8`): with 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
+their CPU); without it 8, and 12 while the audio's load stays under 75 % (IDM, until it is tried on an FM-1). The code still builds with 8 tracks (`TRACKS 8`, or the tests' `-DBLUEHARE_NTRK=8`): with 8 tracks the places four wide (the tracker's columns, the MIXER, HOME's rows, the GLO and FX layers' cards) show the
 selected track's four, 1 .. 4 or 5 .. 8; songs are stream version 3 (a 4-track build writes version 2 and refuses an
 8-track song; an 8-track build loads both); the song store and the autosave hold 16 chunks; the SLICER's STUT records
 on tracks 1 .. 4 only; DUBSIREN's echo is the last track's, 8 (elsewhere it plays dry); MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).
 
 Felucca's own engines (ANALOG FM6 PHASE LOFI VOICE TRIO WHEEL PHYS NOISE DRUM) and its default distribution are gone
-from Fel-Tracker: their ids are retired (`core.h` `EID_RETIRED`), what other engines used of them lives in
+from Blue Hare: their ids are retired (`core.h` `EID_RETIRED`), what other engines used of them lives in
 `firmware/src/shared/` (PHYS's resonators for MODAL and ANVIL, DRUM's lanes and GM map for KIT, WAR and GLITCH). The
 host tests build the primary distribution (`distributions/BUILD`: IDM) with 4 tracks unless they name one.
 
@@ -136,7 +136,7 @@ python3 -m http.server -d build/emu 8790     # open http://localhost:8790/
 (A desktop application of the same: "Native image" below.)
 
 `web/emu/build.sh` builds the distribution `distributions/BUILD` names (IDM) into `build/emu/`;
-`FELUCCA_DIST=foundry web/emu/build.sh` another one into `build/emu-foundry/` (serve that folder instead). The page
+`BLUEHARE_DIST=foundry web/emu/build.sh` another one into `build/emu-foundry/` (serve that folder instead). The page
 shows the distribution after the version.
 
 The computer's keyboard: the bottom rows play the keys, the number row the buttons, [ ] OCT, ↑ ↓ KNOB 1 (with Shift
@@ -150,8 +150,8 @@ page on localhost or https). Once switched on, the line under the key hints name
 they send. MIDI channel 1 plays track 1, 2 track 2 .. (MENU > MIDI > MIDI IN: CH1-8); SEL plays the selected track
 from any channel, CH9-16 takes channels 9 .. 16 (a controller's pads, often on 10, then play track 2).
 
-`web/emu/felucca_web.c` builds the firmware's sources as the host tests do, against a simulated FM-1, and
-Emscripten compiles it to WebAssembly (`build/emu/felucca.wasm`, with `index.html`, `worklet.js` and the font in `fonts/`). The page
+`web/emu/bluehare_web.c` builds the firmware's sources as the host tests do, against a simulated FM-1, and
+Emscripten compiles it to WebAssembly (`build/emu/bluehare.wasm`, with `index.html`, `worklet.js` and the font in `fonts/`). The page
 keeps the flash's storage sectors (projects, user presets, settings) in the browser. Not emulated: USB (audio,
 MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 <https://hugelton.github.io/Felucca/webapp/try/>.
@@ -161,20 +161,20 @@ MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 ```
 ./build.sh
 native/build.sh                # or native/build.sh foundry, warehouse, chip
-open "build/native/Fel-Tracker IDM.app"      # or run build/native/fel-tracker-idm
+open "build/native/Blue Hare IDM.app"      # or run build/native/blue-hare-idm
 ```
 
-Fel-Tracker as a desktop application (`native/felucca_native.c`): the same simulated FM-1 the browser emulator runs
-(`web/emu/felucca_web.c`), compiled natively, in a window of its own (SDL2; on macOS linked into the program, so the
+Blue Hare as a desktop application (`native/bluehare_native.c`): the same simulated FM-1 the browser emulator runs
+(`web/emu/bluehare_web.c`), compiled natively, in a window of its own (SDL2; on macOS linked into the program, so the
 `.app` needs nothing installed), the computer's sound out at 44.1 kHz, MIDI in from every source (CoreMIDI on macOS),
-its saves in a file (`~/Library/Application Support/Fel-Tracker/<distribution>/flash.bin` on macOS). The window: the
+its saves in a file (`~/Library/Application Support/Blue Hare/<distribution>/flash.bin` on macOS). The window: the
 screen at three times its size, the knobs (MASTER the level), the buttons and the
 keys (click and hold), lit as the device lights them; a knob turns when dragged up or down, or with the wheel or the
 trackpad over it; the computer keyboard as on the emulator page (Esc quits). Needs
 SDL2: `brew install sdl2` (Linux: libsdl2-dev). It is the base for what the device cannot hold: heavier engines and
 effects run on the computer's CPU and memory, not the FM-1's; a VST built on it is planned.
 
-It is built with `FELUCCA_NATIVE` (`firmware/src/core.h`), which lifts the limits that were the device's. The
+It is built with `BLUEHARE_NATIVE` (`firmware/src/core.h`), which lifts the limits that were the device's. The
 device's engines stay exactly as they are (a sound plays as on the FM-1: 0 of their golden renders differ); what the
 native image adds is its own:
 
@@ -210,7 +210,7 @@ substitute, so a sound made with them loads on the FM-1 as that engine:
 
 ```
 native/build.sh idm_native
-open "build/native/Fel-Tracker IDM NATIVE.app"
+open "build/native/Blue Hare IDM NATIVE.app"
 ```
 
 Songs, sounds and presets are stored as on the device: a song made here plays on the FM-1 with the device's voices,
@@ -253,7 +253,7 @@ Use the web installer in Chrome or Edge:
 From the command line (needs `pip3 install mido python-rtmidi`):
 
 ```
-python3 tools/fm1_install.py build/felucca.fwsc
+python3 tools/fm1_install.py build/bluehare.fwsc
 python3 tools/fm1_install.py --info          # identity of the connected FM-1
 ```
 
@@ -261,8 +261,8 @@ Or, to install your own build from the web installer, make a local copy of the s
 (Web MIDI needs a secure context):
 
 ```
-python3 web/make_site.py build/felucca.fwsc dev /tmp/felucca-site
-cd /tmp/felucca-site && python3 -m http.server 8000
+python3 web/make_site.py build/bluehare.fwsc dev /tmp/bluehare-site
+cd /tmp/bluehare-site && python3 -m http.server 8000
 # open http://localhost:8000/webapp/installer/
 ```
 

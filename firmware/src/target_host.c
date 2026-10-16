@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The host targets' side of target.h (FELUCCA_NATIVE: the native image, the plugin's cores, through the browser
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* The host targets' side of target.h (BLUEHARE_NATIVE: the native image, the plugin's cores, through the browser
  * emulator's layer): the host's transport and tempo, the tracks' own outputs. Included at the end of seq.c, so it sees
  * the transport's and the mix's own state; the device builds have target.h's empty versions instead. */
 
@@ -11,7 +11,7 @@ static uint32_t host_beat_samples;                    /* the plugin's host's tem
 static uint32_t tgt_beat_samples(void) { return host_beat_samples; }
 
 /* ---- the tracks' own outputs (fx.c mix_track, mix_block) */
-/* (Fel-Tracker) the plugin's track outputs (plugin/core/fel_core.h outputs): a track whose bit is set in trk_own plays
+/* (Blue Hare) the plugin's track outputs (plugin/core/fel_core.h outputs): a track whose bit is set in trk_own plays
  * into a stereo pair of its own, out of the main mix, at the level it has there (MASTER on it; before the bus
  * compressor and the limiter, which are the main's). Its sends still feed the FX buses, which stay on the main.
  * trk_out holds the pairs by the frame, the main's frames' order (TRK_OUT_N: a few halves) */
@@ -52,7 +52,7 @@ static int tgt_track_out(uint32_t k, uint32_t n, int32_t mg)
 static void tgt_mix_end(uint32_t n) { trk_out_w += n; }
 
 /* ---- the host's transport (seq.c events_block) */
-/* (Fel-Tracker) the plugin's host (plugin/core/fel_core.h transport): its tempo, its transport and its place, always,
+/* (Blue Hare) the plugin's host (plugin/core/fel_core.h transport): its tempo, its transport and its place, always,
  * over BPM, CLOCK and PLAY. The host says which beat it is at a frame of the device's (frames since power-on, as
  * events_block counts them) and its tempo; each block the sequencer is moved on to where that puts it at the block's
  * end (sample exact, whatever the device's whole-sample beat), and put there anew when the host starts or jumps (a

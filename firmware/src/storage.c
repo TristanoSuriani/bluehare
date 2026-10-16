@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Persistent storage on the SPI NOR.
  *
  * Every object has an A/B sector pair. A save goes to the copy that is not
@@ -22,7 +22,7 @@
  * 0x97000..0x9EFFF, free 0xA0000..0xDBFFF (the user sample slots until 1.5), user preset banks 0xDC000..0xDFFFF (upreset.c),
  * the user presets' FM6 patches (up_fm6.c, since 1.0.3): copy A 0x9F000, copy B 0xFE000; the autosave (project.c,
  * 1.2): A 0xE5000, B 0xE6000, above the OTA staging (0xE0000..0xE4FFF), in the margin the stock firmware's own update
- * stages into (only ever while the stock firmware runs: a later Felucca finds no valid copy and starts as without one).
+ * stages into (only ever while the stock firmware runs: a later Blue Hare finds no valid copy and starts as without one).
  * Those two sectors held the FM6 patch bank of 1.0..1.0.2 (OBJ_FM6BANK, retired): both objects use the same pair,
  * told apart by the commit record's type. The bank is only read, once, to move its patches into the user presets
  * (up_fm6.c upf_boot); the first write of the new object goes to the sector that does not hold the bank's newest
@@ -31,7 +31,7 @@
  * kind (type OBJ_FM6VB, not an st_load object); a new bank is first staged in the autosave's older copy (fm6_vbank.c). */
 enum { OBJ_SETTINGS, OBJ_PROJECT0, OBJ_UPRESET0 = OBJ_PROJECT0 + 4, OBJ_FM6BANK = OBJ_UPRESET0 + 2, OBJ_UPFM6,
        OBJ_AUTOSAVE, OBJ_PROJECT4, OBJ_AUTO1 = OBJ_PROJECT4 + 12, OBJ_COUNT = OBJ_AUTO1 + 15 };
-/* (Fel-Tracker, 8 tracks) OBJ_PROJECT4 .. +11: the song's chunks 4 .. 15 (project.c proj_obj), A/B pairs from 0xA0000
+/* (Blue Hare, 8 tracks) OBJ_PROJECT4 .. +11: the song's chunks 4 .. 15 (project.c proj_obj), A/B pairs from 0xA0000
  * (0xA0000 .. 0xB7FFF of the free space above): after every object of before, which keep their ids and sectors.
  * OBJ_AUTO1 .. +14: the autosave's chunks 1 .. 15 (its chunk 0 is OBJ_AUTOSAVE, written last), 0xB8000 .. 0xD5FFF */
 #define OBJ_FM6VB 32u                          /* the voice bank's commit records (fm6_vbank.c; >= OBJ_COUNT: st_load

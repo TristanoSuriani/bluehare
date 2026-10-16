@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The IDM distribution (cc -DFELUCCA_DIST=idm), since the 2026-10 plan: its 8 engines in their order, two a track's role
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* The IDM distribution (cc -DBLUEHARE_DIST=idm), since the 2026-10 plan: its 8 engines in their order, two a track's role
  * (kit, bass, mid, high), 4 tracks, every engine rendering its presets; its power-on sounds; where a sound of an engine it
  * does not have loads (by its substitutes: KIT GLITCH, SID WASP, DUBCHORD WAVE, ANVIL MODAL; with none of them: a kit
  * BREAKS, any other sound WAVE, the mid track's) */

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Host test of the roadmap's sound items (Discussions #132, #104, #148), same sources as the firmware (hostsim.c):
  *   build/host/sound14_test [DEMO_DIR]      (run_tests.sh builds and runs it; demos in build/sound14_demo/)
  * 1. the matrix (mod.c): the lists only grew (every stored SRC / DST keeps its name), S&H holds one value a cycle of the
@@ -8,7 +8,7 @@
  *    glides from the cycle before's value to this one's, stays inside S&H's range; DEPTH scales the LFO (its LFO DEST
  *    routings and the matrix's LFO source) as AMP does a voice, several slots multiply, none = untouched (bit for bit);
  *    RATE (the LFO's rate) with them: the modulator modulated; values past the lists do nothing.
- * 2. (ANALOG WAVE SYNC / SUB: gone with ANALOG, Fel-Tracker) WAVE 0..4 untouched (the golden renders: regress.c), the labels (SYNC, SUB),
+ * 2. (ANALOG WAVE SYNC / SUB: gone with ANALOG, Blue Hare) WAVE 0..4 untouched (the golden renders: regress.c), the labels (SYNC, SUB),
  *    no DC, bounded, not silent; SUB an octave below (period twice the note's), SYNC periodic at the note whatever DTN,
  *    its sweep (DTN, SHP) brightens it, no restart click (largest sample step against the plain saw's).
  * 3. SPREAD (fx.c mix_spread): SPRD 0 / MONO / LEGATO bit for bit the plain mix, a POLY note hard left / the next hard
@@ -24,7 +24,7 @@
 #endif
 
 static int bad;
-static uint32_t EA;                               /* track 1's engine: WASP (ANALOG's until Fel-Tracker removed it) */
+static uint32_t EA;                               /* track 1's engine: WASP (ANALOG's until Blue Hare removed it) */
 static void check(const char *what, int ok)
 {
     printf("sound14: %-74s %s\n", what, ok ? "ok" : "FAIL");
@@ -411,7 +411,7 @@ static lr_t spread_run(int32_t sp, int32_t pan, uint32_t mode, const uint8_t *no
     uint32_t k, i;
     fresh(EA, preset_by_name(EA, "WASP PAD"));
     dry(t);
-    memset(cho_buf, 0, sizeof cho_buf);                   /* (Fel-Tracker: no tail of a render before: the buses are */
+    memset(cho_buf, 0, sizeof cho_buf);                   /* (Blue Hare: no tail of a render before: the buses are */
     memset(dly_buf, 0, sizeof dly_buf);                   /* stereo now, and a tail L != R) */
     memset(wside, 0, sizeof wside);
     memset(slc, 0, sizeof slc);

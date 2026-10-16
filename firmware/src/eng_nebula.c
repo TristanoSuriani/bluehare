@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* NEBULA (native: engine_ids.h; the native image's alone): PARTICLE's cloud whole. The same controls, meaning the same
  * (DENS, SIZE, SCAT, QNT, CHIRP, SHAPE, WAVE, TONE: eng_particle.c, whose helpers it plays with), so a NEBULA sound
  * loads on the FM-1 as PARTICLE (its substitute). What the device's CPU cut, here whole:

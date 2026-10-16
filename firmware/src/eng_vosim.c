@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* VOSIM (1.5): VOice SIMulation (Kaegi and Tempelaars, 1978), with two formants. Each period of the note starts a train
  * of PULS sin^2 pulses whose width sets the formant (F1, F2: ~130 Hz .. 4.2 kHz), each pulse DECAY times the one before;
  * after the train, silence until the next period. The formant stays where it is whatever the note (a voice, a reed,
  * a horn), unless KTRK makes it follow the note; SWEEP moves both formants at each note and lets them glide back
  * (~200 ms: a wah, a brass swell, a "yow"); BAL mixes F1 and F2; BRTH adds breath (noise shaped by the pulses).
  * The pulses are one-signed: a DC blocker takes the offset out. Formants are held below ~7 kHz.
- * (Fel-Tracker) A train still sounding when the next period starts is cut there: a step in the wave, which would alias
+ * (Blue Hare) A train still sounding when the next period starts is cut there: a step in the wave, which would alias
  * (the period is no whole number of samples: the aliases fall between the harmonics, a grainy noise floor). The step
  * is band-limited (a polyBLEP over the samples either side of it, its height the train's value at the cut: the output
  * runs a sample late, so both are corrected when the period starts), and each train starts where between samples its

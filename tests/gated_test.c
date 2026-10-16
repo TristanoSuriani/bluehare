@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* GATED (REVERB TYPE 3, fx.c rev_gated): the reverb bus alone, a 30 ms burst into its send. While the gate holds, the
  * tail is HALL's (the same level); after the hold (SIZE's: SIZE 40 ~200 ms) it is cut: silent within ~20 ms while HALL
  * rings on; a longer SIZE holds longer; a second hit opens it again; it is in every build's list */

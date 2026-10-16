@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Host test of SWING (issue #31), same sources as the firmware (through hostsim.c):
  *   build/host/swing_test
  * 1. the swing: CLOCK's SWG, 0..100 (core.h track_swing; 1.5: a track's own SWG, the step sequencer's, unread).

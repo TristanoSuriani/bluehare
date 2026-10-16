@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     assert(NPALETTES == 15u && !strcmp(UI_PALETTES[0].name, "GREY") && !strcmp(UI_PALETTES[7].name, "HI-CON") &&
            !strcmp(UI_PALETTES[8].name, "NIGHT") && !strcmp(UI_PALETTES[9].name, "MONO") && UI_BW_INDEX == 9u &&
            !strcmp(UI_PALETTES[10].name, "IDM") && !strcmp(UI_PALETTES[11].name, "SIGNAL") &&
-           !strcmp(UI_PALETTES[12].name, "FOUNDRY") && !strcmp(UI_PALETTES[13].name, "RAVE") && !strcmp(UI_PALETTES[14].name, "CHIP"));   /* (Fel-Tracker: the
+           !strcmp(UI_PALETTES[12].name, "FOUNDRY") && !strcmp(UI_PALETTES[13].name, "RAVE") && !strcmp(UI_PALETTES[14].name, "CHIP"));   /* (Blue Hare: the
                                                                                                 * distributions') */
     /* (#50, 1.0.2: appended, the ids stay; GREY is the MONO of 1.0.1, id 0) */
     for (unsigned st = ST_FLAT; st <= ST_LINE; st++) {   /* MONO: every token black or white, in FLAT and LINE */

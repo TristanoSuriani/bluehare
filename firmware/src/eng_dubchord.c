@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* DUBCHORD (1.5): the dub-techno chord stab, a whole chord in one voice (Fel-Tracker's own): a key plays CHORD on its
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* DUBCHORD (1.5): the dub-techno chord stab, a whole chord in one voice (Blue Hare's own): a key plays CHORD on its
  * note, four notes through one filter, so a chord costs one voice of the budget, not four. The chord's quality stays
  * what CHORD says wherever the root goes (the genre's parallel chords): MIN7, MIN9 (0 3 10 14: the fifth left out),
  * MIN11 (0 3 10 17), MAJ7, SUS2, SUS4, 5THS (stacked fifths), MIN (with the octave). VOIC: CLOSE as listed, OPEN (the

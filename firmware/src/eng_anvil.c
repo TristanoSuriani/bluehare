@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* ANVIL (1.5, FOUNDRY): heavy metal struck (Fel-Tracker's own voice; MODAL's resonator, eng_modal.c md_render, its
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* ANVIL (1.5, FOUNDRY): heavy metal struck (Blue Hare's own voice; MODAL's resonator, eng_modal.c md_render, its
  * pool and its controls). The materials are heavy: MATRL ANVIL (a block: dense, inharmonic), PIPE (a hollow beam),
  * GONG, CHAIN (links, scattered), BEAM (an I-beam), TANK (a big cylinder, its modes crowded low), SLAB (a thick
  * plate), CAST (a cast bell, the hum an octave down); EXCIT HAMMER, SCRAPE (noise), BOW, CLICK. STRUCT, POS, DECAY,

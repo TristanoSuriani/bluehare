@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md
  * The design (the device clock driven by the audio the worklet asks for, the exports below, the saved
  * flash handed back before boot) follows X0X's browser build, web/emu/x0x_web.c of charlesvestal/fm1-x0x
  * (GPL-3.0), a Felucca fork. */
-/* Felucca in the browser: the firmware's sources, as the host tests build them (tests/hostsim.c: libc,
- * engines, voices, FX, sequencer; then the UI, main.c, storage and projects, in src/felucca.c's order),
+/* Blue Hare in the browser: the firmware's sources, as the host tests build them (tests/hostsim.c: libc,
+ * engines, voices, FX, sequencer; then the UI, main.c, storage and projects, in src/bluehare.c's order),
  * compiled to WebAssembly and run in an AudioWorklet against a simulated FM-1:
  *   - the device clock: TIMER4 ticks (24 MHz) and fm1_ms advance with the audio the worklet asks for; the
  *     audio ISR (audio.c fm1_alnk0_irq, the real one) renders each I2S half (HALF_FRAMES) as the DMA would
@@ -18,19 +18,19 @@
  *     storage sectors and gives them back at boot.
  * Not here: USB (MIDI, audio, the editor, updates), TRS MIDI, the serial console, the battery (full), the
  * crash / UBOOT paths. Nothing of the firmware changes for this file.
- *   web/emu/build.sh  ->  build/emu/{felucca.wasm, worklet.js, index.html} */
+ *   web/emu/build.sh  ->  build/emu/{bluehare.wasm, worklet.js, index.html} */
 #include <stdint.h>
 
-#define FELUCCA_WEB 1
-#ifndef FELUCCA_CDC
-#define FELUCCA_CDC 1                    /* as src/felucca.c: MENU > USB SERIAL is there (nothing behind it) */
+#define BLUEHARE_WEB 1
+#ifndef BLUEHARE_CDC
+#define BLUEHARE_CDC 1                    /* as src/bluehare.c: MENU > USB SERIAL is there (nothing behind it) */
 #endif
-#define FELUCCA_FLASH 1
-#define FELUCCA_OTA 0
-#define FELUCCA_UAC 0
-#define FELUCCA_UART 0
-#ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "WEB"
+#define BLUEHARE_FLASH 1
+#define BLUEHARE_OTA 0
+#define BLUEHARE_UAC 0
+#define BLUEHARE_UART 0
+#ifndef BLUEHARE_VERSION
+#define BLUEHARE_VERSION "WEB"
 #endif
 
 static uint8_t nor[0x100000];            /* the SPI NOR (erased: 0xFF) */
@@ -231,7 +231,7 @@ static void fm1_wdt_arm(uint32_t v) { (void)v; }
 static void fm1_mailbox_clear(void) {}
 static void fm1_guard_enable(uint32_t m) { (void)m; }
 enum { FM1_GUARD_STACK = 1, FM1_GUARD_WRITE = 2, FM1_GUARD_BUS = 4, FM1_GUARD_PC = 8 };
-#if FELUCCA_CDC
+#if BLUEHARE_CDC
 static void cdc_task(void) {}
 #endif
 /* main.c's calls into the USB driver (registers): nothing here (usb.c's own functions stay as they are) */
@@ -257,12 +257,12 @@ static void web_power_on(void)
     usb_serial_apply();
     lcd_init();
     draw_splash();                        /* main.c: the splash (ui_draw.c) */
-    memset(&felucca_dbg, 0, sizeof felucca_dbg);
-    felucca_dbg.magic = DBG_MAGIC;
+    memset(&bluehare_dbg, 0, sizeof bluehare_dbg);
+    bluehare_dbg.magic = DBG_MAGIC;
     fm1_input_init();
     fm1_adc_init();
     panel_init();
-    felucca_init();
+    bluehare_init();
     master_boot();                        /* main.c (#137): the pot's level from the first block */
     kb_boot_hold = 1;                     /* main.c (#137): the keys silent under the splash */
     audio_init();
@@ -279,7 +279,7 @@ static void web_frame(void)
     if (b > 0)
         song.batt_raw = song.batt_raw ? song.batt_raw + (b - song.batt_raw) / 32 : b;
     master_poll();
-    felucca_dbg.ui_frames++;
+    bluehare_dbg.ui_frames++;
     ui_input();
     settings_poll();
     autosave_poll();
@@ -291,8 +291,8 @@ static void web_frame(void)
 #define RING 4096u
 static float ring[RING * 2];
 static uint32_t ring_w, ring_r, web_samples_due;
-#ifdef FELUCCA_NATIVE
-static float tring[NTRK][2][RING];      /* (Fel-Tracker) the tracks' own outputs (fx.c trk_out), frame by frame with ring */
+#ifdef BLUEHARE_NATIVE
+static float tring[NTRK][2][RING];      /* (Blue Hare) the tracks' own outputs (fx.c trk_out), frame by frame with ring */
 #endif
 
 /* one millisecond of the device: the clock, the audio halves due by now, the main loop */
@@ -306,7 +306,7 @@ static void web_ms(void)
         const int32_t *o = &abuf[web_half * HALF_WORDS];
         web_samples_due -= 1000u * HALF_FRAMES;
         fm1_alnk0_irq();
-#ifdef FELUCCA_NATIVE
+#ifdef BLUEHARE_NATIVE
         if (trk_own) {                                    /* (the half's frames: trk_out's last HALF_FRAMES) */
             uint32_t t, c;
             for (t = 0; t < NTRK; t++)
@@ -461,7 +461,7 @@ EXPORT uint8_t *web_anim_levels(void)
  * press */
 EXPORT void web_test_heavy(void)
 {
-#define WEB_PICK(X, p) {FELUCCA_ENG_##X ? (uint8_t)ENGI_##X : 0u, FELUCCA_ENG_##X ? (uint8_t)(p) : 0u}
+#define WEB_PICK(X, p) {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : 0u, BLUEHARE_ENG_##X ? (uint8_t)(p) : 0u}
     static const uint8_t ENG[3][2] = {WEB_PICK(VOSIM, 13), WEB_PICK(KARPLUS, 2), WEB_PICK(WAVE, 1)};
 #undef WEB_PICK
     static const uint8_t CH[4][4] = {{48, 55, 60, 64}, {45, 52, 57, 60}, {41, 48, 53, 57}, {43, 50, 55, 59}};

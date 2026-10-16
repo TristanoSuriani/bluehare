@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* The editor's full backup (editor_backup.c: LIST / GET / PUT) against simulated NOR flash:
  * CRC before any write, stale runtime copies, USB resets and timeouts, malformed objects, the song's chunks (1.5)
  * backed up and restored whole, settings values and user preset banks kept byte for byte. */
@@ -16,7 +16,7 @@ static void lcd_power(uint32_t s) { (void)s; }   /* (MENU > SCREEN OFF: lcd.c) *
 static void lcd_wake_now(void) {}
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 { (void)x; (void)y; (void)w; (void)h; (void)p; }
-#define FELUCCA_FLASH 1
+#define BLUEHARE_FLASH 1
 #include "../firmware/src/gfx.c"
 #include "../firmware/src/panel.c"
 #include "../firmware/src/ui.c"

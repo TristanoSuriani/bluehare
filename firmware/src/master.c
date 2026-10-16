@@ -25,5 +25,5 @@ static void master_boot(void)
             song.master_q12 = master_of_pot((uint32_t)a);
             return;
         }
-    }                                                   /* (no reading: felucca_init's level, the loop glides on) */
+    }                                                   /* (no reading: bluehare_init's level, the loop glides on) */
 }

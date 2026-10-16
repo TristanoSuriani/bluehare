@@ -8,7 +8,7 @@ material in it:
              entries, the SDK SPL (uboot.boot, Apache-2.0), an isd_config blob
              of our own that decodes to the chip key; the head is never written
              by Felucca's loader, it only has to look like a package head
-             app area 0x4000..: app_area_head, Felucca app.bin, the SDK
+             app area 0x4000..: app_area_head, Blue Hare app.bin, the SDK
              cfg_tool.bin and eq_cfg_hw.bin, the region descriptors, SFC-encrypted
              with the chip key
   ota.bin    Felucca's own update loader (firmware/loader)
@@ -108,7 +108,7 @@ def flash_image(app, key):
     spl = sdk_file("uboot.boot")                         # SDK SPL, BANKCB-encoded as in the SDK
     cfg_tool = sdk_file("cfg_tool.bin")
     eq = sdk_file("cfg/eq_cfg_hw.bin")
-    isd = key_blob(key) + b"[FELUCCA]\r\n"
+    isd = key_blob(key) + b"[Blue Hare]\r\n"
     f = bytearray(b"\xFF" * FLASH_SIZE)
     # ---- head
     spl_off = 0xA0

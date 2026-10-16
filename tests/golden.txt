@@ -1,4 +1,4 @@
-# FELUCCA golden renders (tests/regress.c): name, FNV-1a 64 of the output samples.
+# Blue Hare golden renders (tests/regress.c): name, FNV-1a 64 of the output samples.
 # Rewritten by GOLDEN_UPDATE=1 tests/run_tests.sh -- only for an intended change of the sound.
 preset/WAVE/00_DUB_CHORD 5cb1ff5690b5c742
 preset/WAVE/01_SCAN_PAD 3c790b060359725d
@@ -1005,9 +1005,9 @@ preset/SANDSTRM/20_DRY_LEAD 5aff1414f208087c
 preset/SANDSTRM/21_WIDE_LEAD 62d4331b863d4b50
 preset/SANDSTRM/22_SCREAMER 22dc7814fe3650b0
 preset/SANDSTRM/23_ENDLESS f5db1fd4dd871cc8
-preset/DARK/32_EBM_OCTAVES c78d78cab3de290d
-preset/DARK/33_EBM_ROOT df84fd22bdaa63db
-preset/DARK/34_EBM_GALLOP 1df0d93dcaba0a6e
-preset/RAZOR/24_EBM_OCTAVES 958e09cbb2375737
-preset/RAZOR/25_EBM_ROOT 33b052ea48394732
-preset/RAZOR/26_EBM_GALLOP 9a7086974d68aa76
+preset/DARK/32_EBM_OCTAVES d7ad4f65218d074c
+preset/DARK/33_EBM_ROOT faa60418c56c52dc
+preset/DARK/34_EBM_GALLOP 7eeeaab5715d45a2
+preset/RAZOR/24_EBM_OCTAVES 4e8e04c7f153dd40
+preset/RAZOR/25_EBM_ROOT 3f1872c582c40ea3
+preset/RAZOR/26_EBM_GALLOP 49f5b1d6ba25cb6d

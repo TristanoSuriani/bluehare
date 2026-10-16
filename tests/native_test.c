@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The native image (cc -DFELUCCA_NATIVE -DFELUCCA_DIST=<dist>; core.h FELUCCA_NATIVE):
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* The native image (cc -DBLUEHARE_NATIVE -DBLUEHARE_DIST=<dist>; core.h BLUEHARE_NATIVE):
  *   every track its own 16 voices, whatever the load (no shared budget, nothing taken from another track), and how
  *   fast the computer renders every track full (printed: the times real time);
  *   the device's engines as the device has them (their voice caps), the native ones (NEBULA, CANYON: in a NATIVE

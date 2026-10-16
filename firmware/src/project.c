@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* The project: what it holds: every track's sound (engine, preset, parameters), the globals, the selected track, the
  * name, and each track's place in the mix. The sequencer is a placeholder for now (SEQ shows TODO): no song is kept.
- * Projects of earlier versions (Felucca's, and Fel-Tracker's with the tracker's song, 2 .. 7) are not read.
+ * Projects of earlier versions (Felucca's, and Blue Hare's with the tracker's song, 2 .. 7) are not read.
  *
  * The project is one byte stream (proj_write / proj_read below), at most PROJ_CHUNKS x PROJ_DATA bytes, cut into
  * chunks of PROJ_DATA, each one storage object (OBJ_PROJECT0 + i, storage.c: A/B copies, CRC, the commit record last)
@@ -30,9 +30,9 @@
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
 #endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER 8u                            /* (Fel-Tracker) 8: no song (the sequencer is a placeholder) */
+#define PROJ_VER 8u                            /* (Blue Hare) 8: no song (the sequencer is a placeholder) */
 #define PROJ_HDR 16u
-#if !FELUCCA_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
+#if !BLUEHARE_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
 #define ST_PAYLOAD_MAX 3840u
 static uint8_t st_buf[ST_PAYLOAD_MAX] __attribute__((aligned(4)));
 #endif
@@ -225,7 +225,7 @@ static void proj_track_default(uint32_t k)
         t->p[i] = param_desc_of(e, i)->def;
     for (i = 0; ENGINES[e]->npresets && i < 8u; i++)
         t->p[P_E0 + i] = ENGINES[e]->presets[t->preset].e[i];
-    t->p[P_PAN] = TRK_PAN[k];                     /* (Fel-Tracker: as at power-on) */
+    t->p[P_PAN] = TRK_PAN[k];                     /* (Blue Hare: as at power-on) */
 }
 
 /* 0 = good, 1 = bad, 2 = a song of more tracks than this build has (8 on a 4-track one) */
@@ -240,7 +240,7 @@ static int proj_read(pr_t *r, int apply)
     for (i = 0; i < ng; i++) {
         int32_t v = pr_i16(r);
         if (i == G_RTYPE && v > GP[i].max)
-            v = 2;                                  /* (Fel-Tracker: the native image's reverbs, on the device: HALL) */
+            v = 2;                                  /* (Blue Hare: the native image's reverbs, on the device: HALL) */
         if (apply && i < G_COUNT && i != G_SLOT && i != G_LOAD && i != G_SAVE)
             song.g[i] = (int16_t)clamp(v, GP[i].min, GP[i].max);
     }
@@ -322,7 +322,7 @@ static int proj_read(pr_t *r, int apply)
 
 /* ------------------------------------------------------- the song store --- */
 /* chunk i's copy c (A 0, B 1) into st_buf: its length, -1 none. Without flash one copy each, in RAM */
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
 /* chunk i's storage object: 0 .. 3 OBJ_PROJECT0 + i, 4 .. 15 (8 tracks) OBJ_PROJECT4 + i - 4 (storage.c) */
 static uint32_t proj_obj(uint32_t i) { return i < 4u ? OBJ_PROJECT0 + i : OBJ_PROJECT4 + i - 4u; }
 static int proj_store_get(uint32_t i, uint32_t c)
@@ -384,7 +384,7 @@ static int proj_find(void)
     uint32_t c, i, best = 2;
     int ok[2];
     memset(&proj_good, 0, sizeof proj_good);
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     if (!flash_ok)
         return 0;
 #endif
@@ -444,7 +444,7 @@ static int proj_find(void)
 /* no song stored any more (a backup restored without one, editor_backup.c): chunk 0 of both copies gone; 0 done */
 static int proj_store_clear(void)
 {
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     uint32_t c;
     if (!flash_ok)
         return 1;
@@ -471,7 +471,7 @@ static int project_save_as(uint32_t slot, const char *name)
     }
     if (!name)
         name = proj_name;
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     if (!flash_ok) {
         ui_message("SAVE ERROR");
         return 2;
@@ -501,7 +501,7 @@ static int project_save_as(uint32_t slot, const char *name)
     }
     str_cpy(proj_name, proj_good.name, sizeof proj_name);
     proj_cur = 0;
-    ui_message(FELUCCA_FLASH ? "SAVED" : "SAVED (RAM)");
+    ui_message(BLUEHARE_FLASH ? "SAVED" : "SAVED (RAM)");
     return 0;
 }
 static int project_save(uint32_t slot) { return project_save_as(slot, 0); }
@@ -615,14 +615,14 @@ static int project_rename(uint32_t slot, const char *name)
     }
     if (proj_cur == 0u)
         str_cpy(proj_name, proj_good.name, sizeof proj_name);
-    ui_message(FELUCCA_FLASH ? "RENAMED" : "RENAMED (RAM)");
+    ui_message(BLUEHARE_FLASH ? "RENAMED" : "RENAMED (RAM)");
     return 0;
 }
 
 /* settings + learned panel table: one flash object. The flash copy wins at
  * boot (the .noinit copies are garbage after a power-off). */
 #include "settings_persist.c"
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
 static persist_t persist_saved;
 static uint8_t persist_pending;                 /* 1 requested, 2 waiting after a flash error */
 static uint32_t persist_retry_ms;
@@ -630,7 +630,7 @@ static uint32_t persist_retry_ms;
 
 static void persist_boot(void)                    /* before settings_init / panel_init */
 {
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     persist_t p;
     uint32_t f = irq_save();
     flash_ok = FL_FAR(fl_jedec_ram)() == 0x856014u;       /* the expected 1 MiB part, else stay RAM-only */
@@ -651,7 +651,7 @@ static void persist_boot(void)                    /* before settings_init / pane
 
 static void settings_poll(void)
 {
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     persist_t p;
     if (!persist_pending || !flash_ok || transport_busy() ||
         (persist_pending == 2u && (uint32_t)(fm1_ms - persist_retry_ms) < 1000u))
@@ -674,7 +674,7 @@ static void settings_poll(void)
 
 static void settings_save(void)
 {
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     persist_pending = 1;
 #endif
     settings_poll();
@@ -683,7 +683,7 @@ static void settings_save(void)
 /* The autosave (1.2, Discussion #130): the music as it is (what the project holds) kept in its own storage object
  * (OBJ_AUTOSAVE, A/B at 0xE5000 / 0xE6000, never the song store), and put back at power-on (autosave_boot) with
  * MENU > SYSTEM > RESTORE LAST ON (the default). It holds the project's stream in as many chunks as the song store
- * (Fel-Tracker; 1.2 .. 1.5 one chunk): chunk 0 in OBJ_AUTOSAVE, 1 .. 15 in OBJ_AUTO1 .. (storage.c), every chunk of one
+ * (Blue Hare; 1.2 .. 1.5 one chunk): chunk 0 in OBJ_AUTOSAVE, 1 .. 15 in OBJ_AUTO1 .. (storage.c), every chunk of one
  * write carrying its generation. Chunks 1 .. go first, each into the copy that does not hold the complete autosave's;
  * chunk 0 last, through st_save (its copies take turns as before: fm6_vbank.c stages a bank in the one st_save writes
  * next): a write cut short leaves the complete one as it was. A song past the store's size cannot be (the song store
@@ -738,7 +738,7 @@ static int autosave_quiet(void)
 
 static void autosave_hold(void) { as.t = fm1_ms; }   /* the editor's transfers: their staging RAM is proj_wire_u */
 
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
 static uint8_t as_copy[PROJ_CHUNKS];             /* chunk i's copy in the complete autosave (as_find) */
 static uint8_t as_pass;                          /* as_put: 1 chunks 1 .., 0 chunk 0 (the commit) */
 static uint32_t as_obj(uint32_t i) { return i ? OBJ_AUTO1 + i - 1u : OBJ_AUTOSAVE; }
@@ -790,11 +790,11 @@ static int as_get(uint32_t chunk)                /* chunk of the complete autosa
 #endif
 
 /* main loop, every pass (after settings_poll) */
-/* (Fel-Tracker) the autosave written now, the music's signature sig (autosave_poll when the device is quiet; the plugin's
+/* (Blue Hare) the autosave written now, the music's signature sig (autosave_poll when the device is quiet; the plugin's
  * host, plugin/core: a state taken) */
 static void autosave_write(uint32_t sig)
 {
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     pw_t w;
     as.last = fm1_ms;
     as.wrote = 1;
@@ -836,7 +836,7 @@ static void autosave_write(uint32_t sig)
 
 static void autosave_poll(void)
 {
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     uint32_t sig;
     if (!flash_ok || fm1_ms - as.poll < AS_POLL_MS)
         return;
@@ -861,7 +861,7 @@ static void autosave_poll(void)
 static int autosave_boot(int allowed)
 {
     int rc = 0;
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
     if (flash_ok && allowed && !(ui_prefs & PREF_RESTORE_OFF) && !as_get(0)) {
         proj_hdr_t h;
         memcpy(&h, st_buf, sizeof h);
@@ -884,6 +884,6 @@ static int autosave_boot(int allowed)
     return rc;
 }
 
-#if FELUCCA_FLASH
+#if BLUEHARE_FLASH
 _Static_assert(sizeof(persist_t) <= ST_PAYLOAD_MAX, "settings do not fit one flash sector");
 #endif

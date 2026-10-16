@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* Every engine in the tree: ENGINE(NAME, id, substitute). Included where a table over all of them is built (core.h,
  * engines.c, params.c) and read by tools/gen_dist.py (a distribution names engines from here).
  *   NAME        its name (ENG_<NAME> in its eng_*.c file; the device and the editor show it)
  *   id          fixed for good: what the stores and the editor protocol use. Append-only; 1 DIGITAL, 4 SAMPLE, 8 GRAIN,
- *               13 SLICE are retired (removed in 1.5), 27 ACID too (Fel-Tracker: WASP took its place), and Felucca's
- *               own 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO, 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Fel-Tracker
+ *               13 SLICE are retired (removed in 1.5), 27 ACID too (Blue Hare: WASP took its place), and Felucca's
+ *               own 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO, 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Blue Hare
  *               removed them: core.h EID_RETIRED), never given again. A new engine takes the next free id and raises
  *               core.h EID_COUNT
  *   substitute  the engine a sound of this one loads as in a distribution without it (and down that one's own, if it
  *               is missing too; at the end the distribution's first engine): engines.c eng_load_id
- * (Fel-Tracker) An engine marked native (the comment after it) is the native image's alone (FELUCCA_NATIVE: more than
+ * (Blue Hare) An engine marked native (the comment after it) is the native image's alone (BLUEHARE_NATIVE: more than
  * the FM-1's CPU or memory holds): only a NATIVE distribution may list it (tools/gen_dist.py), and on the device its
  * sounds load as its substitute, which shares its controls */
 ENGINE(WAVE, 14, VECTOR)

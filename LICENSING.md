@@ -1,8 +1,8 @@
-# Licensing: Fel-Tracker and Felucca
+# Licensing: Blue Hare and Felucca
 
-Fel-Tracker is a fork of Felucca by Leo Kuroshita (Hügelton Instruments), developed by Tristano Suriani. Both are
+Blue Hare is a fork of Felucca by Leo Kuroshita (Hügelton Instruments), developed by Tristano Suriani. Both are
 under the same licence, below. [AUTHORS.md](AUTHORS.md) says whose work is whose; this file covers the licences.
-Most of this file is Felucca's own licensing text. Fel-Tracker's part is the section "Fel-Tracker: Tristano
+Most of this file is Felucca's own licensing text. Blue Hare's part is the section "Blue Hare: Tristano
 Suriani's work".
 
 Felucca is free software, licensed under the GNU General Public License, version 3 only
@@ -11,13 +11,13 @@ bundled or ported parts keep their own licences; they are listed below, and thei
 texts are in `LICENSES/`.
 
 Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments (Felucca)
-Copyright (C) 2026 Tristano Suriani (Fel-Tracker's additions and changes)
+Copyright (C) 2026 Tristano Suriani (Blue Hare's additions and changes)
 
-## Fel-Tracker: Tristano Suriani's work
+## Blue Hare: Tristano Suriani's work
 
-Fel-Tracker's additions are GPL-3.0-only, as Felucca is. The new files carry
-`Copyright (C) 2026 Tristano Suriani (Fel-Tracker)`. Felucca files that Fel-Tracker changed keep Leo Kuroshita's
-copyright line, followed by `Modified by Tristano Suriani for Fel-Tracker (2026)`. That line is the notice of
+Blue Hare's additions are GPL-3.0-only, as Felucca is. The new files carry
+`Copyright (C) 2026 Tristano Suriani (Blue Hare)`. Felucca files that Blue Hare changed keep Leo Kuroshita's
+copyright line, followed by `Modified by Tristano Suriani for Blue Hare (2026)`. That line is the notice of
 modification GPL-3.0 section 5(a) asks for, and git history records the changes themselves.
 
 | What | Licence | Where |
@@ -26,7 +26,7 @@ modification GPL-3.0 section 5(a) asks for, and git history records the changes 
 | The engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, DARK, HONKS, RAZOR, GUTS, SLAG, VENOM, WAR, CHOKE, RUST, DRILL, ANVIL, SCREAM, FLUIDS, SCRATCH, ABYSS, SHRED, KIT, BREAKS, RISERS, LINNKIT, STRINGS, FLOOR, NEBULA, CANYON, CHIPKIT, SANDSTORM; the native image's reverbs | GPL-3.0-only | `firmware/src/eng_*.c` (the list in AUTHORS.md), `firmware/src/fx_native.c`, `tools/gen_wavetables.py`, `tools/gen_speech.py`, `tools/speech/` |
 | Changes to Felucca's files | GPL-3.0-only (the files stay Leo Kuroshita's) | the files marked "Modified by Tristano Suriani" |
 
-Fel-Tracker's engines contain no third-party code. They are original implementations of published techniques; the
+Blue Hare's engines contain no third-party code. They are original implementations of published techniques; the
 references are in AUTHORS.md.
 
 ## What is GPL-3.0-only
@@ -39,7 +39,7 @@ Every file in this tree that carries an `SPDX-License-Identifier: GPL-3.0-only` 
 - the host tests: `tests/`
 
 One source file is a port and keeps the licence of its original: `firmware/src/shared/phys_dsp.c` (DaisySP, MIT).
-The firmware built with it is GPL-3.0-only as a whole. (Fel-Tracker removed the engines PHYS and FM6, and with them
+The firmware built with it is GPL-3.0-only as a whole. (Blue Hare removed the engines PHYS and FM6, and with them
 the ports of Rings and msfa.)
 
 You may use, study, change and share Felucca under the GPL. If you distribute Felucca, or
@@ -53,7 +53,7 @@ All by Hügelton Instruments (Leo Kuroshita), in this tree:
 | What | Licence | Where |
 | --- | --- | --- |
 | Felucca: firmware, tools, web pages, tests | GPL-3.0-only | `LICENSE` |
-| The DRUM engine's lanes and General MIDI map (the engine itself removed by Fel-Tracker) | GPL-3.0-only | `firmware/src/shared/drum_map.c` |
+| The DRUM engine's lanes and General MIDI map (the engine itself removed by Blue Hare) | GPL-3.0-only | `firmware/src/shared/drum_map.c` |
 | The controls picture | GPL-3.0-only | `docs/controls.jpg` |
 | The Fukiai icon font (<https://github.com/hugelton/Fukiai>): the firmware's icons (rasterised at build time by `tools/gen_aa_icons.py`) and the web editor's | MIT | `web/fukiai.ttf`, `LICENSES/MIT-Fukiai.txt`, `web/FUKIAI-LICENSE.txt` |
 

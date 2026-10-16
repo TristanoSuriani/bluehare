@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # FOUNDRY: industrial and EBM: war drums and struck metal, sub bass and saw stacks, molten walls and corroded noise,
 # screams and power tools.
 # The engines in display order, one a line (names: firmware/src/engine_ids.h; at most 8 since the 2026-10 plan: two a

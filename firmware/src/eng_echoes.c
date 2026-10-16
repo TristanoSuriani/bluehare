@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* ECHOES (1.5): a note and its echoes as one instrument (Fel-Tracker's own). Not a delay line: every repeat is played
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* ECHOES (1.5): a note and its echoes as one instrument (Blue Hare's own). Not a delay line: every repeat is played
  * anew, so each can be other than the last. A key plays SRC (BLIP a sine dropping a little, PLUCK a saw through a
  * closing low-pass, STAB a pulse and a saw an octave up, NOISE a burst tuned to the note, FM a two-operator bell),
  * then COUNT repeats at the song's tempo: TIME a note value (1/4 .. 1/64, dotted, triplets), SHAPE how the gaps go

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The FOUNDRY distribution (cc -DFELUCCA_DIST=foundry), since the 2026-10 plan: its 8 engines in their order, two a
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* The FOUNDRY distribution (cc -DBLUEHARE_DIST=foundry), since the 2026-10 plan: its 8 engines in their order, two a
  * track's role (kit, bass, mid, high), 4 tracks, at least 24 presets each and a category for each, the EBM basslines,
  * DARK's and ANVIL's clean blocks, its power-on sounds, and where a sound of an engine it does not have loads (GUTS and
  * VENOM RAZOR, CHOKE RUST by their substitutes; any other kit WAR, any other sound SLAG, the mid track's) */
@@ -38,7 +38,7 @@ int main(void)
     for (e = 0, ok = 1; e < NENGINES; e++)
         ok &= ENGINES[e]->npresets >= 24u && ENGINES[e]->cats && strlen(ENGINES[e]->cats) == ENGINES[e]->npresets;
     ck("every engine 24 presets or more, a category for each", ok);
-    {   /* (Fel-Tracker) the EBM basses: RAZOR's and DARK's */
+    {   /* (Blue Hare) the EBM basses: RAZOR's and DARK's */
         static const char *const EBM[3] = {"EBM OCTAVES", "EBM ROOT", "EBM GALLOP"};
         uint32_t k, x, ok2 = 1;
         for (k = 0; k < 2u; k++) {

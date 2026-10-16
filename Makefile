@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
-# Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
+# Copyright (C) 2026 Tristano Suriani (Blue Hare)
+# Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 # One command per target: the scripts underneath, with the environment each needs (the venv's Python with Pillow,
 # .local-bin's docker for the firmware, Emscripten for the emulator) set here once.
 #   make firmware [DIST=foundry]   the FM-1 image (./build.sh; DIST: distributions/<DIST>.txt, default distributions/BUILD)
@@ -26,16 +26,16 @@ help:
 	@sed -n '/^#   make/s/^#   //p' $(MAKEFILE_LIST)
 
 firmware:
-	$(ENV) && $(if $(DIST),FELUCCA_DIST=$(DIST) ,)./build.sh
+	$(ENV) && $(if $(DIST),BLUEHARE_DIST=$(DIST) ,)./build.sh
 
 firmwares:
-	$(ENV) && for d in $(filter-out idm,$(DISTS)) idm; do FELUCCA_DIST=$$d ./build.sh || exit 1; done
+	$(ENV) && for d in $(filter-out idm,$(DISTS)) idm; do BLUEHARE_DIST=$$d ./build.sh || exit 1; done
 
 emu:
-	$(ENV) && $(EMENV) && $(if $(DIST),FELUCCA_DIST=$(DIST) ,)sh web/emu/build.sh
+	$(ENV) && $(EMENV) && $(if $(DIST),BLUEHARE_DIST=$(DIST) ,)sh web/emu/build.sh
 
 emus:
-	$(ENV) && $(EMENV) && for d in $(DISTS); do FELUCCA_DIST=$$d sh web/emu/build.sh || exit 1; done
+	$(ENV) && $(EMENV) && for d in $(DISTS); do BLUEHARE_DIST=$$d sh web/emu/build.sh || exit 1; done
 
 native:
 	$(ENV) && sh native/build.sh $(DIST)

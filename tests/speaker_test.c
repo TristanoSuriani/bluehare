@@ -73,7 +73,7 @@ static uint32_t kick_pattern(void)
         int32_t y[CTL], pk = 1;
         double ph = 0;
         for (i = 0; i < 2u * FS; i += CTL) {        /* a kick: a sine falling in pitch, decaying (Felucca's DRUM voices
-                                                     * until Fel-Tracker removed that engine) */
+                                                     * until Blue Hare removed that engine) */
             for (k = 0; k < CTL; k++) {
                 double t = (double)((i + k) % (FS / 2u)) / FS, f0 = type ? 45.0 + 45.0 * exp(-t / 0.05) :
                                                                         50.0 + 100.0 * exp(-t / 0.02);

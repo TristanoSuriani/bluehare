@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Sound categories (1.2, Discussion #90): every sound in the PRESETS list belongs to one, so KNOB 4 (LIST) can show
  * only the basses, the pads, .. (ui.c list_mode). Factory presets: a static table here (a letter per preset, in the
  * engine's preset order); user presets: a byte of their record (upreset.c up_cat, set on the NAME screen when saving
  * or renaming, ui_name.c). Included by ui.c and upreset.c (the host build of the user presets needs the numbers only).
  * The numbers are stored (a user preset's record, the editor's UP_LIST / UP_GET / UP_PUT): append-only. CAT_NONE is a
  * record of before (or the editor's without one): its category follows from its engine (cat_of_engine) */
-#ifndef FELUCCA_CATEGORY
-#define FELUCCA_CATEGORY 1
+#ifndef BLUEHARE_CATEGORY
+#define BLUEHARE_CATEGORY 1
 enum { CAT_NONE, CAT_BASS, CAT_LEAD, CAT_PAD, CAT_PLUCK, CAT_KEYS, CAT_DRUM, CAT_FX, CAT_OTHER, CAT_N };
 static const char *const CAT_NAME[CAT_N] = {"-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "DRUM", "FX", "OTHER"};
 /* the category a sound of engine id e without one is listed under: a kit (DRUM) DRUM, any other OTHER */

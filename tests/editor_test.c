@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* The firmware editor handler, USB framing and UART recovery against RAM flash.
  * Build with the generated tables and the same flags as hostsim.c. */
 static unsigned char host_flash[3][0x14000];   /* (flash 0xA0000..: what the editor's writes reach) */
-#define FELUCCA_OTA 1
-#define FELUCCA_FLASH 0
-#define FELUCCA_VERSION "TEST"
-#define FELUCCA_CDC 1                                    /* (as the firmware: MENU > USB SERIAL switches the console) */
+#define BLUEHARE_OTA 1
+#define BLUEHARE_FLASH 0
+#define BLUEHARE_VERSION "TEST"
+#define BLUEHARE_CDC 1                                    /* (as the firmware: MENU > USB SERIAL switches the console) */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main

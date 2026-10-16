@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* WAR (1.5, FOUNDRY): an industrial kit (Fel-Tracker's own). Every key from C2 another drum, made anew at each hit
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* WAR (1.5, FOUNDRY): an industrial kit (Blue Hare's own). Every key from C2 another drum, made anew at each hit
  * (DRUM's map; the octave above the same twelve again): KICK, HARD (a harder kick), SNARE, CLAP, HAT, OPEN
  * (an open hat), TOM L, TOM H, METAL, ANVIL, CRASH, PEDAL. Each is a pair of operators (a carrier, a modulator RATIO
  * times it: FM, METAL its index), a pitch falling fast (~25 ms, whatever DECAY) from PUNCH semitones above, and noise

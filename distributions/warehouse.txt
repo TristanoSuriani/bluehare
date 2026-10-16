@@ -1,4 +1,4 @@
-# Fel-Tracker: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # WAREHOUSE: the warehouse raves: four on the floor and breakbeats, acid, chord stabs and strings, hoovers and the
 # trance lead, build-ups.
 # The engines in display order, one a line (names: firmware/src/engine_ids.h; at most 8 since the 2026-10 plan: two a

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* SLICER: a per-track insert, a tempo-synced 16-step gate / stutter. It works on the track's dry
  * mono signal after DIST and before LEVEL / PAN / the sends (fx.c mix_part), so the sends follow
  * the chopped sound.
@@ -46,7 +46,7 @@ static const uint16_t SL_PAT[SL_NPAT] = {
 };
 static const uint8_t SL_DEN[6] = {2, 4, 8, 3, 6, 12};   /* P_SLRATE (N_SLDIV): a step = 1 / DEN beats */
 
-#define SL_BUFS 4u                      /* (Fel-Tracker) recordings: tracks 1..4 STUT; on 5..8 (TRACKS 8) STUT plays live,
+#define SL_BUFS 4u                      /* (Blue Hare) recordings: tracks 1..4 STUT; on 5..8 (TRACKS 8) STUT plays live,
                                          * GATE works on every track; perform.c's loop is these 4 (371 ms) */
 static int16_t sl_buf[SL_BUFS][SL_LEN] __attribute__((section(".pool")));
 typedef struct {

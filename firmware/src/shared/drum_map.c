@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
- * Modified by Tristano Suriani for Fel-Tracker (2026): see AUTHORS.md */
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* The drum map the kit engines share (KIT, WAR, GLITCH): the 8 lanes, the General MIDI drum map onto them, the
  * lanes' names and their mutes, the keys from C2. Felucca's DRUM engine's (eng_drum.c, drum_voice.c) until
- * Fel-Tracker removed that engine; what its kits played lives on here.
+ * Blue Hare removed that engine; what its kits played lives on here.
  *
  * Keys and notes: the keys play the General MIDI drum map with the kick on the first C (C KICK, C# RIM, D SNARE,
  * D# CLAP, F# HAT CL, A# HAT OP, F G A B C D TOMS, C# CYM, G# BELL; OCT -/+ move it), and a note plays its GM drum
