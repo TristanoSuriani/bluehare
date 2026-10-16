@@ -34,7 +34,7 @@ keys / MIDI (USB, TRS)
   -> note input: scale map (QNT SNAP / WHITE), TRN, octave; chord keys (CHRD, VOIC)       seq.c, chord.c
   -> voice allocation (POLY / MONO / LEGATO / UNISON, glide, the shared budget, stealing)  voice.c
   -> per voice: ADSR, LFO, modulation matrix -> the engine's render                         voice.c, mod.c, eng_*.c
-  -> per track: DIST -> LOW CUT -> level, pan, SPREAD / PAN MODE, WIDTH                     fx.c
+  -> per track: DIST -> LOW CUT -> level, pan, SPREAD / PAN MODE                            fx.c
        sends -> chorus | delay (sends low-cut) | reverb (sends low-cut)                    fx.c
   -> mix -> FX layer (filters, FREEZE, OCT UP / DN, macros, mutes)                        perform.c
   -> master: MONO LOWS -> bus compressor -> peak limiter -> soft clip -> DC blocker
@@ -53,7 +53,6 @@ keys / MIDI (USB, TRS)
 | **LOW CUT** | Two one-pole high-passes (12 dB/oct) at 40 to 320 Hz, after DIST, so the sends lose the lows too. | `fx.c` `track_lowcut` |
 | **SPREAD** | POLY and UNISON voices alternate left and right of PAN by SPRD; the track carries a sum and a side signal (L - R), the side bypassing DIST so a distorted chord keeps its clean stereo. | `fx.c` `mix_spread`, `voice.c` |
 | **PAN MODE** | ALT spreads voices in turn (as SPREAD); RND puts each new voice on a random side. | `voice.c` `voice_start` |
-| **WIDTH** | Haas widening, on any track (on at power-on on the upper half, 12 ms; the studio sets it on all): the signal splits at ~250 Hz; one side plays it whole, the other plays the lows plus the highs delayed 1 to 20 ms. The mono sum keeps its lows. | `fx.c` `mix_haas` |
 
 Archived 2026-10-16 (`archive/fx/README.md`): the **SLICER** (a tempo-synced 16-step GATE / STUT insert) and **DUCK**
 (a kick track ducking the others).
@@ -137,7 +136,7 @@ Shared by the engines and the effects (`dsp.c`, `shared/`); who uses each in HAR
 
 ## 6. The engines
 
-HARE FM1 has seven engines, in the order the device lists them (`distributions/hare_fm1.txt`); the native image plays
+HARE FM1 has eight engines, in the order the device lists them (`distributions/hare_fm1.txt`); the native image plays
 CANYON in ECHOES' place. Each has a stable id and a substitute that loads in its place in a build without it
 (`engine_ids.h`).
 
@@ -145,6 +144,7 @@ CANYON in ECHOES' place. Each has a stable id and a substitute that loads in its
 |---|---|---|---|
 | **SID** | 24 | The C64 chip's way of sounding: a phase accumulator whose top 12 bits make the waves (triangle, saw, pulse with PWM, and a 23-bit noise shift register clocked by the oscillator), their combinations, ring modulation and hard sync, then a resonant filter. Basses, sync leads, PWM pads, chip drums. | WAVE |
 | **SH101** | 61 | After the 1982 monosynth: one oscillator's waves at once, mixed by level: a band-limited SAW and PULSE (PW 50 % to ~5 %, the SHAPE routings its PWM), a SUB locked to the oscillator's own cycles (a square one or two octaves down, or a 25 % pulse two down) and NOISE; into a 24 dB ladder low-pass (four trapezoidal one-poles, the feedback solved for the sample, zero-delay), its input saturating through the tanh table (a louder mix drives it), the passband half restored as RES rises, self-oscillating past ~110 (pinged at note-on past 100: the resonant kick); CUT half follows the keys; a ~3 cent analog drift. Basses, acid lines, PWM leads, brass, a kick. | SID |
+| **VOSIM** | 21 | VOice SIMulation (Kaegi and Tempelaars, 1978) with two formants: each period of the note starts a train of sin^2 pulses, each DECAY times the last; the pulses' width sets the formant (130 Hz to 4.2 kHz), which stays put whatever the note unless KTRK makes it follow; SWEEP glides both at each note (wah, brass, "yow"); BRTH adds breath. The cut where a train meets the next period is band-limited (a polyBLEP), a DC blocker takes out the one-signed pulses' offset. Back from the archive 2026-10-16. | WAVE |
 | **WAVE** | 14 | Wavetables: 8 banks of 8 single-cycle frames in flash (`tools/gen_wavetables.py`), band-limited per octave; POS crossfades neighbouring frames (the shape routings move it), windowed SYNC up to 8x, a detuned second oscillator, drive, a resonant low-pass (Simper SVF), CRSH (rate and bit reduction). | BLISS |
 | **BLISS** | 26 | Four-operator FM as two pairs, after the 80s FM pianos and bells: the body (a sine phase-modulated by a sine at RATIO, its index falling over DECAY, FDBK on the modulator) and the tine (a high, fast-decaying strike); the index is held under ~14 kHz (Carson's rule against the note) so high notes do not alias; VEL brightens, KSCL softens the top. | WAVE |
 | **WEST** | 16 | West coast: a complex oscillator (a modulator at a whole, half or inharmonic RATIO, FM depth and feedback), a sine wavefolder (FOLD, SYM), and a low-pass gate whose cutoff follows the envelope through a vactrol-like lag. FM and FOLD ease off on high notes. | MODAL |
@@ -152,13 +152,13 @@ CANYON in ECHOES' place. Each has a stable id and a substitute that loads in its
 | **ECHOES** | 36 | A note and its echoes as one instrument: every repeat is a new sound (BLIP, PLUCK, STAB, NOISE, FM), COUNT of them at the tempo along SHAPE (even, bouncing, slowing, swung, random), each changed by DECAY, PITCH, TONE and SCAT. They ring on after the key. Capped at 4 voices. | WAVE |
 | **CANYON** (native) | 58 | ECHOES' repeats uncut: up to 64, all ringing, 8 voices; its sounds load on the FM-1 as ECHOES. | ECHOES |
 
-The other engines (41 of them, ids 15 .. 60) are archived in `archive/engines/` (its README describes each); their ids
+The other engines (40 of them, ids 15 .. 60) are archived in `archive/engines/` (its README describes each); their ids
 are retired, and a sound of one is refused.
 
 ## 7. The backbone
 
-The seven engines cover the synthesizer's ground with little overlap: classic subtractive (SH101), a chip voice (SID), wavetables
-(WAVE), FM keys and bells (BLISS), west coast FM and folding (WEST), physical modelling (MODAL) and a rhythmic,
+The eight engines cover the synthesizer's ground with little overlap: classic subtractive (SH101), a chip voice (SID), wavetables
+(WAVE), formant voices (VOSIM), FM keys and bells (BLISS), west coast FM and folding (WEST), physical modelling (MODAL) and a rhythmic,
 generative echo instrument (ECHOES). What the rest of the system leans on:
 
 - **WAVE**: the wavetable data (`bluehare_wavetables.h`, 130 KB of flash) and the end of most substitute chains (SID,

@@ -171,7 +171,7 @@ described, set and shown as the device shows them; the user preset slots; GEN), 
 (`web/emu/worklet.js`, its "call" messages). One screen (a laptop's, 1280 x 800 and up; narrower, a page that
 scrolls): the engines and the presets or saved sounds on the left; the sound in four tabs in the middle (SOUND: the
 engine, the envelope, the drive, spread and sends, the voice; MOVEMENT: the LFO and the mod matrix; EFFECTS: every
-effect of `docs/SoundAndDSP.md` section 3, all shared by the four tracks: LOW CUT, HAAS (WIDTH) and PAN MODE on every
+effect of `docs/SoundAndDSP.md` section 3, all shared by the four tracks: LOW CUT and PAN MODE on every
 track, the delay, reverb and chorus, the performance layer's hold effects and macros, the master's SPEAKER EQ and
 MASTER with its stages and the compressor's and limiter's gain reduction; GENERATIVE: GEN's play and stop, preset,
 scale, root, motion, tempo, its chord and its roles, and the track's keys); output, saving and the FM-1 on the right

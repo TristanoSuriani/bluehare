@@ -17,8 +17,8 @@
  *   selected track and 12 bytes the name (neither in the hash below: a rename changes the name in place; the track
  *   selected is no change of the music the autosave has to keep); u8 the track count (4 or 8)
  *   per track: u8 engine id (core.h EID_*), u8 preset, u8 n, n x (u8 id, i16 value), u8 0 (Felucca's FM6 patch flag)
- *   tracks x u8 WIDTH, tracks x u8 LOW CUT, tracks x u8 PAN MODE (core.h trk_width, trk_lowcut, trk_pmode:
- *   0 ALT, 1 RND)
+ *   tracks x u8 0 (WIDTH's, the Haas effect, removed 2026-10-16), tracks x u8 LOW CUT, tracks x u8 PAN MODE (core.h
+ *   trk_lowcut, trk_pmode: 0 ALT, 1 RND)
  *   u32 FNV-1a of everything before it but the name
  * A project of more tracks than the build has is refused (SONG HAS 8 TRACKS), one of fewer fills its first tracks (the
  * rest as at power-on). */
@@ -154,7 +154,10 @@ static void proj_write(pw_t *w, const char *name)
             }
         pw_u8(w, 0);                                    /* (Felucca's FM6 patch flag: no patch, FM6 is gone) */
     }
-    pw_bytes(w, trk_width, NTRK);                      /* WIDTH, LOW CUT, PAN MODE */
+    {
+        static const uint8_t zero[NTRK];
+        pw_bytes(w, zero, NTRK);                       /* (WIDTH's: removed, 0), LOW CUT, PAN MODE */
+    }
     pw_bytes(w, trk_lowcut, NTRK);
     pw_bytes(w, trk_pmode, NTRK);
     {
@@ -285,7 +288,7 @@ static int proj_read(pr_t *r, int apply)
         if (pr_u8(r))                               /* a Felucca FM6 patch: an engine this firmware has none of */
             return 1;
     }
-    {                                               /* WIDTH, LOW CUT, PAN MODE */
+    {                                               /* (WIDTH's: read, not used), LOW CUT, PAN MODE */
         uint8_t wd[8], lc[8], pm[8];
         pr_bytes(r, wd, ntr);
         pr_bytes(r, lc, ntr);
@@ -296,7 +299,6 @@ static int proj_read(pr_t *r, int apply)
         if (apply)
             trk_mix_defaults();                     /* (a track the project does not hold: as at power-on) */
         for (k = 0; apply && k < ntr; k++) {        /* (the others out of range: OFF) */
-            trk_width[k] = (uint8_t)(tw_has(k) && wd[k] <= TW_MAX ? wd[k] : 0u);   /* (WIDTH: any track, 2026-10) */
             trk_lowcut[k] = (uint8_t)(lc[k] < TL_N ? lc[k] : 0u);
             trk_pmode[k] = pm[k];
         }

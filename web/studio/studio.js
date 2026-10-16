@@ -113,8 +113,8 @@ const GROUPS = {
   M: { title: "Mod matrix", wide: true },
   X: { title: "Sound processing", names: ["Processing"], fx: true, wide: true, show: true,
        note: "BLUE HARE: its chorus, delay and reverb buses, mono lows, compressor and limiter. AMB-1 (Charles Vestal's): a 5.6 s tape echo with two wandering heads and a 160 ms Echoplex, fed into a full-rate Dattorro plate, mixed wet, one soft clip at the end; no chorus, no compressor. The same knobs drive it: TIME, FEEDBACK, COLOR, MIX the echo; SIZE, DAMPING the plate; GEN's MOTION the heads." },
-  I: { title: "Inserts", names: ["Low cut", "Haas", "Pan mode"], fx: true,
-       note: "LOW CUT: a 12 dB/oct high-pass after the drive. HAAS (the FM-1's WIDTH): the Haas effect, the highs over ~250 Hz late on one side. PAN MODE: ALT voices left and right of PAN by SPREAD, RND each voice on a random side." },
+  I: { title: "Inserts", names: ["Low cut", "Pan mode"], fx: true,
+       note: "LOW CUT: a 12 dB/oct high-pass after the drive. PAN MODE: ALT voices left and right of PAN by SPREAD, RND each voice on a random side." },
   Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true,
        note: "CLEAN: low-passed repeats · TAPE, WORN: wow, flutter, a saturated loop · PING: ping-pong · DUAL: two lines" },
   R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true,
@@ -131,6 +131,7 @@ const ENGINE_WORDS = {
   SID: "The C64's chip voice: pulse, saw, noise, ring, sync",
   SH101: "The little monosynth: saw, pulse, sub, 24 dB filter",
   WAVE: "Wavetables, scanned and warped",
+  VOSIM: "Two formants of pulse trains: voices, reeds, brass",
   BLISS: "FM keys: electric pianos, bells, mallets",
   WEST: "West coast: complex osc, folder, gate",
   MODAL: "Struck, plucked and bowed resonators",
@@ -595,7 +596,7 @@ async function poll(force = false) {
     for (let i = 0; i < fw.X; i++) if (force || x[i] !== S.x[i]) if (!inflight.has("2." + i)) { S.x[i] = x[i]; changed.push({ scope: 2, id: i }); }
     const selMoved = sel !== S.sel;
     Object.assign(S, { engine, preset, user, sel });
-    if (selMoved && ctl[0].size) await buildGroups();   // (the track's inserts: WIDTH is the upper tracks' alone)
+    if (selMoved && ctl[0].size) await buildGroups();   // (the groups name the track: "track 2")
     if (engineMoved || force) {
       renderEngines();
       renderPresets();

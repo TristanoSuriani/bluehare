@@ -1,16 +1,16 @@
 # Blue Hare target cost budget (tests/target_budget.py): instructions in the loops of each
 # function in build/bluehare.dis, x4 per nesting level, divides x9. The check allows +10 %.
 # Rewritten by BUDGET_UPDATE=1.
-fm1_alnk0_irq 74526
-fm1_timer5_irq 34854
+fm1_alnk0_irq 61003
+fm1_timer5_irq 35312
 click_render 30
-mod_begin 162
+mod_begin 165
 mod_voice 30
 mod_end 7
 perf_begin 28
-perf_mute 21
+perf_mute 19
 perf_pre 26
-perf_block 540
+perf_block 543
 perf_master 41
 rev_room 247
 rev_spring 126
@@ -18,7 +18,7 @@ rev_hall 1994
 rev_side_mix 9
 rev_concert 1356
 mono_lows 39
-dly_tape 125
+dly_tape 127
 sid_render 794
 wave_render 290
 bliss_render 108
@@ -26,3 +26,4 @@ west_render 140
 modal_render 419
 echoes_render 4602
 sh101_render 369
+vosim_render 180

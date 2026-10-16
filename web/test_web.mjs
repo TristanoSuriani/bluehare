@@ -50,7 +50,7 @@ async function editorMock() {
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   {   /* the primary distribution's engines by id (HARE FM1), "-" for the rest: retired (0 .. 13, 27), archived, left out */
-    const HARE = { 14: "WAVE", 16: "WEST", 24: "SID", 26: "BLISS", 34: "MODAL", 36: "ECHOES", 61: "SH101" };
+    const HARE = { 14: "WAVE", 16: "WEST", 21: "VOSIM", 24: "SID", 26: "BLISS", 34: "MODAL", 36: "ECHOES", 61: "SH101" };
     ok(info.nengines === 62 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
@@ -140,8 +140,8 @@ async function editorMock() {
   ok(!prefs.favorites[info.nengines][31] && !E.devicePresetRows(info, names, prefs).some((r) => r.user), "editor: erased slot disappears and loses star");
   {   /* the lists in the device's order (engines.c ENGINE_ORDER): SID first, WAVE second, ECHOES last, "-" never; the ids stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]), o = E.engineOrder(info.engines);
-    ok(shown.join() === "SID,SH101,WAVE,BLISS,WEST,MODAL,ECHOES" &&
-       o[0] === 24 && o[1] === 61 && o[2] === 14 && o[3] === 26 && o[4] === 16 && o[6] === 36,
+    ok(shown.join() === "SID,SH101,WAVE,VOSIM,BLISS,WEST,MODAL,ECHOES" &&
+       o[0] === 24 && o[1] === 61 && o[2] === 14 && o[3] === 21 && o[4] === 26 && o[5] === 16 && o[7] === 36,
        "editor: engines listed SID first, ECHOES last (ids kept)");
     ok(E.engineOrder(["SID", "X", "-", "MODAL", "WAVE"]).join() === "0,4,3,1", "editor: an unknown engine follows the known ones");
     m.state.favorites[34][0] = m.state.favorites[14][0] = true;

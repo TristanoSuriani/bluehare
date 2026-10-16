@@ -27,6 +27,7 @@ ENGINE(MODAL, 34, WEST)
 ENGINE(ECHOES, 36, WAVE)
 ENGINE(CANYON, 58, ECHOES)     /* native: ECHOES' repeats, 64 of them, all ringing */
 ENGINE(SH101, 61, SID)        /* (2026-10, Milestone 1) the little monosynth: VCO, sub, noise, 24 dB ladder */
+ENGINE(VOSIM, 21, WAVE)       /* (back 2026-10-16) two formants of pulse trains: voices, reeds, brass; WAVE has vowels */
 
 /* (Blue Hare, 2026-10-16: Milestone 1) archived: the sources in archive/engines/, out of every build and test.
  * Their ids stay theirs (core.h EID_RETIRED: a stored sound of one is refused): one comes back by moving its
@@ -36,7 +37,6 @@ ARCHIVED(HOOVER, 17)
 ARCHIVED(SPEECH, 18)
 ARCHIVED(FMPERC, 19)
 ARCHIVED(KARPLUS, 20)
-ARCHIVED(VOSIM, 21)
 ARCHIVED(PARTICLE, 22)
 ARCHIVED(CHAOS, 23)
 ARCHIVED(DUBSIREN, 25)

@@ -110,18 +110,17 @@ check("a global (the FX chain's) is set", d.one("stu_get", 1, 9) === 30);
 
 // the effects of scope 2 (docs/SoundAndDSP.md section 3): the track's inserts, the speaker EQ, the macros, MASTER
 const SX = Object.fromEntries([...Array(X).keys()].map((i) => [d.str("stu_desc_label", 2, i), i]));
-check(`scope 2: ${Object.keys(SX).join(" ")}`, ["LOWCUT", "WIDTH", "PANMODE", "SPK EQ", "FILTER", "CRUSH", "THROW", "DEPTH", "MASTER"]
+check(`scope 2: ${Object.keys(SX).join(" ")}`, ["LOWCUT", "PANMODE", "SPK EQ", "FILTER", "CRUSH", "THROW", "DEPTH", "MASTER"]
   .every((n) => n in SX));
 d.one("stu_set", 2, SX.LOWCUT, 3, 0);
 d.one("stu_set", 2, SX.PANMODE, 1, 0);
-d.one("stu_set", 2, SX.WIDTH, 9, 0);
 let shared = true;
 for (const t of [0, 1, 2, 3]) {
   d.one("stu_select", t);
-  shared &&= d.one("stu_get", 2, SX.LOWCUT) === 3 && d.one("stu_get", 2, SX.PANMODE) === 1 && d.one("stu_get", 2, SX.WIDTH) === 9;
+  shared &&= d.one("stu_get", 2, SX.LOWCUT) === 3 && d.one("stu_get", 2, SX.PANMODE) === 1;
 }
 d.one("stu_select", 0);
-check(`LOW CUT ("${d.str("stu_format", 2, SX.LOWCUT, 3)}"), WIDTH (the Haas effect, 9 ms) and PAN MODE: shared, every track's`, shared);
+check(`LOW CUT ("${d.str("stu_format", 2, SX.LOWCUT, 3)}"), and PAN MODE: shared, every track's`, shared);
 d.one("stu_set", 2, SX.SPKEQ, 2, 0);
 check("SPEAKER EQ BASS+, back to FLAT", d.one("stu_get", 2, SX.SPKEQ) === 2 && d.one("stu_set", 2, SX.SPKEQ, 0, 0) === 0);
 d.one("stu_set", 2, SX.DEPTH, 60, 0);

@@ -17,6 +17,7 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_sh101.c"          /* SH101: VCO, sub, noise, a 24 dB ladder (2026-10, Milestone 1) */
+#include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
 #include "eng_bliss.c"         /* BLISS: FM electric pianos, bells, mallets (1.5) */
 #include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
 #include "eng_echoes.c"         /* ECHOES: a note and its repeats, each played anew (1.5) */

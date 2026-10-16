@@ -10,11 +10,12 @@ What Blue Hare adds, all by Tristano Suriani:
 
 - **The sequencer:** a placeholder for now (SEQ shows TODO). Felucca's step sequencer is gone, and so is the tracker
   that took its place until 2026-10.
-- **One distribution, HARE FM1** *(2026-10-16)*: the base synthesizer engines SID, SH101, WAVE, BLISS, WEST, MODAL and
+- **One distribution, HARE FM1** *(2026-10-16)*: the base synthesizer engines SID, SH101, WAVE, VOSIM, BLISS, WEST, MODAL and
   ECHOES on **4 tracks** (at power-on WAVE's WARM PAD and SH101's 101 BASS, centred; BLISS's E.PIANO on the left and MODAL's
   KALIMBA on the right). The build still takes any number of distributions of up to 16 engines, with stable engine
   ids and a palette each (HARE FM1: ICE); the earlier ones are archived (BUILDING.md "Distributions").
-- **Blue Hare's engines:** of the twenty-four Blue Hare wrote, SID, SH101, WAVE, BLISS, WEST, MODAL and ECHOES (and
+- **Blue Hare's engines:** of the twenty-four Blue Hare wrote, SID, SH101, WAVE, VOSIM (back from the archive 2026-10-16), BLISS, WEST, MODAL
+  and ECHOES (and
   CANYON in the native image) are in the build; the others are in `archive/engines/`. **SH101** *(2026-10)*: saw, pulse
   with PWM, a locked sub-oscillator and noise into a self-oscillating 24 dB ladder.
 - **A synthesizer, not a groovebox** *(2026-10-16)*: the SLICER, DUCK and the FX layer's REPEAT, REVERSE and TAPE STOP
@@ -218,7 +219,8 @@ history keeps it). PLAY still runs the transport: the click and the synced LFOs 
 TRS clock. REC does nothing for now.
 
 A project (SAVE > PROJECT, the autosave) holds the tracks' sounds, the globals and each track's
-place in the mix (WIDTH, any track's since 2026-10, LOW CUT, PAN MODE: no page of the FM-1 sets them yet, the studio does; version 9: DUCK is
+place in the mix (LOW CUT, PAN MODE: no page of the FM-1 sets them yet, the studio does; WIDTH, the Haas effect, was
+removed 2026-10-16, its byte kept as 0; version 9: DUCK is
 archived). Projects of
 earlier versions, the tracker's songs among them, do not open.
 
@@ -312,6 +314,10 @@ In the order the device lists them:
   routings move POS (ENV DEST / LFO DEST SHP, the matrix's SHP), so an envelope or the LFO scans the table. SYNC reads
   the frame up to 8x faster (windowed sync), DTN adds a detuned second oscillator, then DRV, a resonant low-pass and
   CRSH (sample-rate and bit reduction). The tables are band-limited per octave: high notes do not alias
+- **VOSIM** *(Blue Hare; back 2026-10-16)*: VOice SIMulation, two formants. Each period starts a train of PULS sin^2
+  pulses, each DECAY times the last; their width sets the formants F1 and F2, which stay put whatever the note (KTRK
+  makes them follow it). SWEEP moves them at each note and lets them glide back (wah, brass, "yow"); BAL mixes them;
+  BRTH adds breath. Vowels, a talk lead, basses, brass, choirs, reed, whistle, growl, formant pads
 - **BLISS** *(Blue Hare; FMKEYS until 2026-10)*: FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
   index falls over DECAY, harder notes brighter by VEL) and the tine (the metallic strike of the attack, TINE; DTUNE
   its beating against the body); KSCL softens the top of the keyboard. Electric pianos, bells, tubular bells, marimba,

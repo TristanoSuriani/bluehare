@@ -297,7 +297,7 @@ if [ -f build/gen/bluehare_tables.h ]; then
         "$OUT/robust_test"
     for n in 4 8; do
         compile $CC -w -DBLUEHARE_NTRK=$n -Ibuild/gen -Ifirmware/src -o "$OUT/width_test$n" tests/width_test.c -lm
-        run "WIDTH and LOW CUT ($n tracks): the Haas effect on the last tracks, the lows whole, the cut, the store" "$OUT/width_test$n"
+        run "LOW CUT ($n tracks): the power-on values, the cut, silence after it, the store (WIDTH removed)" "$OUT/width_test$n"
     done
     compile $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/panmode_test" tests/panmode_test.c -lm
     run "PAN MODE: ALT at power-on (SPREAD in turn), RND a side at random (POLY, and MONO at half width), the store" "$OUT/panmode_test"

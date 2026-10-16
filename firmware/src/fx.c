@@ -992,7 +992,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
  * sends lose the lows too). The states are Q8 and step by the difference / 256 * k / 128, at least one
  * unit while they differ (tl_pole), so they reach their input exactly: silence in, silence out */
 static const int16_t TL_K[TL_N] = {0, 186, 279, 371, 555, 739, 1101, 1458};   /* Q15: 1 - e^(-2 pi f / 44100) */
-static struct { int32_t s1, s2, h1, h2; } tmix[NTRK];   /* LOW CUT's poles; WIDTH's split (all Q8) */
+static struct { int32_t s1, s2; } tmix[NTRK];   /* LOW CUT's poles (Q8) */
 static inline int32_t tl_pole(int32_t *s, int32_t x, int32_t k)   /* the one-pole low-pass of x (k Q15), its state Q8 */
 {
     int32_t d = (x << 8) - *s, st = (d >> 8) * k >> 7;
@@ -1011,48 +1011,7 @@ static __attribute__((noinline)) void track_lowcut(uint32_t k, int32_t *b, uint3
     tmix[k].s2 = s2;
 }
 
-/* (Blue Hare) WIDTH (core.h trk_width): the Haas effect on a track (any, 2026-10). The track's sample x (its level
- * applied) splits at ~250 Hz (high: two one-pole high-passes, 12 dB/oct, so 60 Hz is ~-25 dB in it; low = x - high);
- * one side plays x, the other low + the high of WIDTH ms before (tw_buf, the highs halved into 16 bits). The first of these tracks is late on the right (it sits
- * left, as its PAN), the next on the left, and so on. The sends take x, as always; the mono sum keeps the lows whole */
-#define TW_LEN 1024u                     /* (20 ms: 882 samples) */
-static int16_t tw_buf[NTRK][TW_LEN] __attribute__((section(".pool")));
-static uint16_t tw_w[NTRK];
-static __attribute__((noinline)) void mix_haas(track_t *t, uint32_t k, const int32_t *b, uint32_t n, int32_t lvl, int32_t gl,
-                                               int32_t gr, int32_t c, int32_t d, int32_t r, int32_t xmax)
-{
-    uint32_t j = k % NTRK, i, w = tw_w[j], dl = ((uint32_t)trk_width[k] * 441u + 5u) / 10u, right = !(j & 1u);   /* (even
-                                                    * tracks late on the right: track 3 as before) */
-    int16_t *q = tw_buf[j];
-    int32_t h1 = tmix[k].h1, h2 = tmix[k].h2, pk = t->peak;
-    for (i = 0; i < n; i++) {
-        int32_t x = ((b[i] >> 2) * lvl) >> 10, a = x < 0 ? -x : x, xs = clamp(x, -xmax, xmax), hi, xd;
-        if (a > pk)
-            pk = a;
-        if (c)
-            send_c[i] += mulq15(xs, c);
-        if (d)
-            send_d[i] += mulq15(xs, d);
-        if (r)
-            send_r[i] += mulq15(xs, r);
-        hi = x - tl_pole(&h1, x, 1147);                 /* (Q15 1147: 250 Hz) */
-        hi -= tl_pole(&h2, hi, 1147);
-        q[w & (TW_LEN - 1u)] = (int16_t)clamp(hi >> 1, -32768, 32767);
-        xd = x - hi + (q[(w - dl) & (TW_LEN - 1u)] << 1);
-        w++;
-        if (right) {
-            mix_l[i] += (x * gl) >> 12;
-            mix_r[i] += (xd * gr) >> 12;
-        } else {
-            mix_l[i] += (xd * gl) >> 12;
-            mix_r[i] += (x * gr) >> 12;
-        }
-    }
-    tw_w[j] = (uint16_t)w;
-    tmix[k].h1 = h1;
-    tmix[k].h2 = h2;
-    t->peak = pk;
-}
+/* ((Blue Hare) WIDTH, the Haas effect, removed 2026-10-16: inaudible) */
 
 /* one synth part into the dry mix and the sends; a part with no voice sounding costs
  * the LFO tick and a cleared buffer only (after the DIST tail has run out) */
@@ -1084,12 +1043,6 @@ static void mix_part(track_t *t, uint32_t n)
             track_lowcut(k, b, n);                      /* (Blue Hare) LOW CUT */
         if ((pf.mute >> (t - trk)) & 1u)
             perf_mute((uint32_t)(t - trk), b, n);       /* perform.c: a black key in the FX layer */
-        if (tw_has(k) && trk_width[k]) {                /* (Blue Hare) WIDTH */
-            mix_haas(t, k, b, n, lvl, gl, gr, c, d, r, xmax);
-            if (mod.on)
-                mod_end(t);
-            return;
-        }
         for (i = 0; i < n; i++) {
             int32_t x = ((b[i] >> 2) * lvl) >> 10, a = x < 0 ? -x : x;   /* pre-shift: 8 loud voices */
             int32_t xs = clamp(x, -xmax, xmax);         /* sends: mulq15 would overflow */

@@ -318,23 +318,17 @@ static song_t song;
 #define TSEL (&trk[song.sel])    /* the selected track */
 
 
-/* (Blue Hare) each track's place in the mix, the song's (SETTINGS' WIDTH and LOW CUT; project.c, version 5):
- *   trk_width   0 off, 1..TW_MAX ms: the Haas effect (fx.c mix_haas), on any track (2026-10; before, the last half
- *               alone); on by default on the last TW_N (5..8, or 3..4 on 4 tracks: the rhythm section stays in the
- *               middle): the track's highs (over ~250 Hz) late on one side, the side changing track by track (track 3
- *               late on the right, so it sits left: as its PAN; track 4 on the left ..), its lows as they are on both
- *   trk_lowcut  0 off, 1..TL_N - 1: a 12 dB/oct high-pass at TL_HZ[] on the track, after DIST and the SLICER (fx.c
- *               track_lowcut) */
+/* (Blue Hare) each track's place in the mix, the song's (SETTINGS' LOW CUT; project.c, version 5):
+ *   trk_lowcut  0 off, 1..TL_N - 1: a 12 dB/oct high-pass at TL_HZ[] on the track, after DIST (fx.c track_lowcut); on
+ *               at power-on on the last TW_N tracks (3..4, or 5..8), OFF on the first
+ * (2026-10-16: WIDTH, the Haas effect, removed: inaudible. Its byte a track stays in the project format, written 0) */
 #define TW_N (NTRK / 2u)
 #define TW_FIRST (NTRK - TW_N)
-#define TW_MAX 20u
-#define TW_DEF 12u
 #define TL_N 8u
 #define TL_DEF 4u                         /* (120 Hz: the wide tracks' default; the rhythm section's OFF) */
 static const uint16_t TL_HZ[TL_N] = {0, 40, 60, 80, 120, 160, 240, 320};
-static uint8_t trk_width[NTRK], trk_lowcut[NTRK];
-static inline int tw_has(uint32_t k) { return k < NTRK; }            /* (WIDTH: every track's, 2026-10) */
-static inline int tw_wide(uint32_t k) { return k >= TW_FIRST && k < NTRK; }   /* .. on at power-on: the last half */
+static uint8_t trk_lowcut[NTRK];
+static inline int tw_wide(uint32_t k) { return k >= TW_FIRST && k < NTRK; }   /* (LOW CUT on at power-on: the last half) */
 /* ((Blue Hare) DUCK, a kick track ducking the others, was archived 2026-10-16: archive/fx/README.md) */
 /* (Blue Hare, 2026-10) PAN MODE (SETTINGS' PAN MODE; project.c version 7): trk_pmode[k] TP_ALT the voices left, right,
  * left .. of PAN by SPRD (SPREAD as it was: POLY and UNISON), TP_RND each new voice on a side picked at random, in every
@@ -346,7 +340,6 @@ static void trk_mix_defaults(void)
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++) {
-        trk_width[k] = (uint8_t)(tw_wide(k) ? TW_DEF : 0u);
         trk_lowcut[k] = (uint8_t)(tw_wide(k) ? TL_DEF : 0u);
         trk_pmode[k] = TP_ALT;
     }

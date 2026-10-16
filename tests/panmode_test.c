@@ -21,7 +21,6 @@ static uint32_t notes(uint32_t mode, uint32_t vmode, uint32_t sprd, uint8_t *sid
     trk[2].p[P_SPRD] = (int16_t)sprd;
     trk[2].p[P_VOICE] = (int16_t)vmode;
     trk[2].p[P_REL] = 0;
-    trk_width[2] = 0;
     trk_pmode[2] = (uint8_t)mode;
     for (i = 0; i < n; i++) {
         double el = 0, er = 0;

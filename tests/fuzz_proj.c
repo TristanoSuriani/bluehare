@@ -37,7 +37,6 @@ int main(int argc, char **argv)
             trk[rnd() % NTRK].p[rnd() % P_COUNT] = (int16_t)rnd();
         for (j = 0; j < NTRK; j++)
             if (rnd() % 4u == 0) {
-                trk_width[j] = (uint8_t)(rnd() % (TW_MAX + 2u));
                 trk_lowcut[j] = (uint8_t)(rnd() % (TL_N + 1u));
                 trk_pmode[j] = (uint8_t)(rnd() % 3u);
             }

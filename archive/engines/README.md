@@ -30,7 +30,7 @@ What they were (from the README of before; the distributions as they were then):
   PLUK filtered by BRIGHT, SAW, CLIK), POS plucks nearer the bridge or the middle, DAMP lets the highs die first, DECAY
   rings 0.1 .. 10 s, STIFF sharpens the overtones towards a bell, MUTE damps it on release, DRIVE saturates. Presets:
   nylon, steel, harp, koto, pizzicato, muted bass, dub and acid plucks, a bell string, a dulcimer
-- **VOSIM** *(Blue Hare; the IDM distribution)*: VOice SIMulation, two formants. Each period starts a train of PULS sin^2 pulses,
+- **VOSIM** *(Blue Hare; the IDM distribution; back in HARE FM1 since 2026-10-16: firmware/src/eng_vosim.c)*: VOice SIMulation, two formants. Each period starts a train of PULS sin^2 pulses,
   each DECAY times the last; their width sets the formants F1 and F2, which stay put whatever the note (KTRK makes them
   follow it). SWEEP moves them at each note and lets them glide back (wah, brass, "yow"); BAL mixes them; BRTH adds
   breath. Presets: four vowels, talk lead, basses, brass, yow, choir, reed, whistle, growl, formant pad
