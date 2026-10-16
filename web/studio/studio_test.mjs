@@ -25,7 +25,7 @@ for (const f of ["studio.js", "sysex.js"]) {
   const html = fs.readFileSync(new URL("./index.html", import.meta.url), "utf8");
   const ids = [...fs.readFileSync(new URL("./studio.js", import.meta.url), "utf8").matchAll(/\$\("([\w-]+)"\)/g)].map((m) => m[1]);
   const js = fs.readFileSync(new URL("./studio.js", import.meta.url), "utf8");
-  const missing = [...new Set(ids)].filter((id) => !html.includes(`id="${id}"`) && !js.includes(`.id = "${id}"`));
+  const missing = [...new Set(ids)].filter((id) => !html.includes(`id="${id}"`) && !js.includes(`.id = "${id}"`) && !js.includes(`"${id}")`));
   check("every element studio.js looks up is in index.html", !missing.length);
   if (missing.length) console.log("  missing:", missing.join(" "));
 }
@@ -71,7 +71,7 @@ async function device(sectors) {
 }
 
 const d = await device({});
-const P = d.one("stu_pcount"), G = d.one("stu_gcount"), PE0 = d.one("stu_pe0"), NE = d.one("stu_nengines");
+const P = d.one("stu_pcount"), G = d.one("stu_gcount"), X = d.one("stu_xcount"), PE0 = d.one("stu_pe0"), NE = d.one("stu_nengines");
 const names = [...Array(NE).keys()].map((e) => d.str("stu_engine_name", e));
 check(`the engines: ${names.join(" ")}`, ["SID", "WAVE", "BLISS", "WEST", "MODAL", "ECHOES"].every((n) => names.includes(n)));
 check("every engine has presets, each named", names.every((_, e) => {
@@ -87,10 +87,10 @@ for (let i = 0; i < lay.length && lay[i];) {
   groups.push(g);
 }
 check(`the layout: ${groups.map((g) => g.key).join("")} (${groups.reduce((n, g) => n + g.items.length, 0)} parameters)`,
-  groups.map((g) => g.key).join("") === "EANLDMVSYRCK");
+  groups.map((g) => g.key).join("") === "EANLDMVISYRCPQK");
 const descOk = groups.every((g) => g.items.every(([s, id]) => {
   const [fmt, min, max, def] = d.call([{ fn: "stu_desc", args: [s, id], ret: ["i32", 5] }])[0];
-  return id < (s ? G : P) && min <= def && def <= max && d.str("stu_desc_label", s, id) !== "" && fmt >= 0;
+  return id < [P, G, X][s] && min <= def && def <= max && d.str("stu_desc_label", s, id) !== "" && fmt >= 0;
 }));
 check("every parameter of the layout is described (label, range, default inside it)", descOk);
 
@@ -107,6 +107,49 @@ check("the dump holds the track's values, then the engine, preset, slot, selecti
   dump[ATK] === 0 && dump[P + G] === WAVE && dump[P + G + 1] === 3 && dump[P + G + 3] === 0);
 d.one("stu_set", 1, 9, 30, 0);     // (G_RSIZE)
 check("a global (the FX chain's) is set", d.one("stu_get", 1, 9) === 30);
+
+// the effects of scope 2 (docs/SoundAndDSP.md section 3): the track's inserts, the speaker EQ, the macros, MASTER
+const SX = Object.fromEntries([...Array(X).keys()].map((i) => [d.str("stu_desc_label", 2, i), i]));
+check(`scope 2: ${Object.keys(SX).join(" ")}`, ["LOWCUT", "WIDTH", "PANMODE", "SPK EQ", "FILTER", "CRUSH", "THROW", "DEPTH", "MASTER"]
+  .every((n) => n in SX));
+d.one("stu_set", 2, SX.LOWCUT, 3, 0);
+d.one("stu_set", 2, SX.PANMODE, 1, 0);
+check(`track 1's LOW CUT and PAN MODE set ("${d.str("stu_format", 2, SX.LOWCUT, 3)}"); WIDTH fixed off on track 1`,
+  d.one("stu_get", 2, SX.LOWCUT) === 3 && d.one("stu_get", 2, SX.PANMODE) === 1 &&
+  d.call([{ fn: "stu_desc", args: [2, SX.WIDTH], ret: ["i32", 5] }])[0][2] === 0);
+d.one("stu_select", 3);
+check("track 4: its own LOW CUT (120 Hz by default), WIDTH there (12 ms, up to 20)",
+  d.one("stu_get", 2, SX.LOWCUT) === 4 && d.one("stu_get", 2, SX.WIDTH) === 12 &&
+  d.call([{ fn: "stu_desc", args: [2, SX.WIDTH], ret: ["i32", 5] }])[0][2] === 20);
+d.one("stu_select", 0);
+d.one("stu_set", 2, SX.SPKEQ, 2, 0);
+check("SPEAKER EQ BASS+, back to FLAT", d.one("stu_get", 2, SX.SPKEQ) === 2 && d.one("stu_set", 2, SX.SPKEQ, 0, 0) === 0);
+d.one("stu_set", 2, SX.DEPTH, 60, 0);
+check("DEPTH 60 (perform.c's cut 40), CRUSH 50", d.one("stu_get", 2, SX.DEPTH) === 60 && d.one("stu_set", 2, SX.CRUSH, 50, 0) === 50);
+d.one("stu_perf_off");
+// the performance layer: a hold effect changes the sound while held, and only then
+const hold = (e, latch, ms = 500) => {
+  d.one("stu_note", 48, 100);
+  d.render(200);
+  const ref = d.render(300);
+  d.one("stu_perf", e, 1, latch);
+  const on = d.one("stu_perf_on");
+  d.render(ms);
+  const wet = d.render(300);
+  if (!latch) d.one("stu_perf", e, 0, 0); else d.one("stu_perf", e, 1, 1);
+  const off = d.one("stu_perf_on");
+  d.one("stu_note", 48, 0);
+  d.render(2500);
+  return { on, off, ref, wet };
+};
+const lpf = hold(4, 0, 2000);   // (the LPF closes over a bar: 2 s at 120 BPM)
+check(`LPF held: on while held, off when let go (peak ${lpf.ref.toFixed(3)} -> ${lpf.wet.toFixed(3)})`,
+  lpf.on === 1 << 4 && lpf.off === 0 && lpf.wet < lpf.ref * 0.8);
+const oup = hold(8, 1);
+check(`OCT UP latched: on after a press, off after the next (peak ${oup.ref.toFixed(3)} -> ${oup.wet.toFixed(3)})`,
+  oup.on === 1 << 8 && oup.off === 0 && Math.abs(oup.wet - oup.ref) > 0.001);
+const mt = d.call([{ fn: "stu_meters", ret: ["i32", 2] }])[0];
+check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)`, mt[0] > 0 && mt[0] <= 32768 && mt[1] > 0 && mt[1] <= 32768);
 
 // a note
 d.one("stu_note", 60, 100);

@@ -36,16 +36,16 @@ const one = async (fn, ...args) => (await call([{ fn, args }]))[0];
 const str = async (fn, ...args) => (await call([{ fn, args, ret: "str" }]))[0];
 
 // what the firmware told: constants, the engines, the layout, the descriptions; then the values (polled)
-const fw = { P: 0, G: 0, PE0: 0, ntrk: 4, engines: [], cats: [], slots: 32, ENG_NO: 255, layout: [] };
-const S = { p: [], g: [], engine: 0, preset: 0, user: 0, sel: 0, tracks: [] };
-const desc = { 0: [], 1: [] };           // desc[scope][id] = {fmt, min, max, def, names: [..] | null, label}
-const ctl = { 0: new Map(), 1: new Map() };   // controls by id: {set(v), refresh()}
+const fw = { P: 0, G: 0, X: 0, PE0: 0, ntrk: 4, engines: [], cats: [], slots: 32, ENG_NO: 255, layout: [] };
+const S = { p: [], g: [], x: [], engine: 0, preset: 0, user: 0, sel: 0, tracks: [] };
+const desc = { 0: [], 1: [], 2: [] };    // desc[scope][id] (scope 0 the track, 1 the song, 2 the other effects) = {fmt, min, max, def, names: [..] | null, label}
+const ctl = { 0: new Map(), 1: new Map(), 2: new Map() };   // controls by id: {set(v), refresh()}
 
 async function loadConstants() {
-  const [P, G, PE0, ntrk, ne, nc, slots, ENG_NO, lsz] = await call(
+  const [P, G, PE0, ntrk, ne, nc, slots, ENG_NO, lsz, X] = await call(
     ["stu_pcount", "stu_gcount", "stu_pe0", "stu_ntracks", "stu_nengines", "stu_ncat", "stu_up_slots", "stu_engine_none",
-     "stu_layout_size"].map((fn) => ({ fn })));
-  Object.assign(fw, { P, G, PE0, ntrk, slots, ENG_NO });
+     "stu_layout_size", "stu_xcount"].map((fn) => ({ fn })));
+  Object.assign(fw, { P, G, X, PE0, ntrk, slots, ENG_NO });
   const q = [];
   for (let e = 0; e < ne; e++)
     q.push({ fn: "stu_engine_name", args: [e], ret: "str" }, { fn: "stu_engine_id", args: [e] }, { fn: "stu_npresets", args: [e] },
@@ -103,18 +103,26 @@ const GROUPS = {
   E: { title: "Engine", wide: true },
   A: { title: "Amp envelope", names: ["Attack", "Decay", "Sustain", "Release", "Level", "Octave"] },
   N: { title: "Envelope moves", names: ["Filter", "Pitch", "Shape"] },
-  S: { title: "Sends", names: ["Drive", "Chorus", "Delay", "Reverb"] },
+  I: { title: "Track inserts", names: ["Drive", "Low cut", "Spread", "Pan mode", "Width (T3-4)"], fx: true, track: true },
+  S: { title: "Sends", names: ["Chorus", "Delay", "Reverb"], fx: true, track: true,
+       note: "The delay and reverb sends lose everything under ~220 Hz, so the bass stays dry." },
   L: { title: "LFO", names: ["Rate", "Wave", "Phase", "Fade in", "Sync", "Trigger", "Polarity"], fold: true },
   D: { title: "LFO moves", names: ["Pitch", "Filter", "Shape", "Amp"], fold: true },
   M: { title: "Mod matrix", wide: true, fold: true },
-  V: { title: "Voice", names: ["Mode", "Glide", "Glide by", "Priority", "Allocation", "Detune", "Spread", "Pan"], fold: true },
-  Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true },
-  R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true },
-  C: { title: "Chorus", names: ["Rate", "Depth"], fx: true },
+  V: { title: "Voice", names: ["Mode", "Glide", "Glide by", "Priority", "Allocation", "Detune", "Pan"], fold: true },
+  Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true, shared: true,
+       note: "CLEAN: low-passed repeats · TAPE, WORN: wow, flutter, a saturated loop · PING: ping-pong · DUAL: two lines" },
+  R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true, shared: true,
+       note: "ROOM: combs · SPRING: a dispersive spring · HALL: an 8-line FDN · GATED: HALL cut off · CONCERT: 16 lines. The native app adds CAVERN and SHIMMER." },
+  C: { title: "Chorus", names: ["Rate", "Depth"], fx: true, shared: true },
+  P: { title: "Performance", names: ["Filter", "Crush", "Throw", "Depth"], fx: true, wide: true,
+       note: "Hold a button (or latch it) as you would a white key with FX held on the FM-1. FILTER sweeps LPF (left) or HPF (right); CRUSH reduces bits; THROW sends the dry mix into the delay and reverb; DEPTH is the hold effects' level (OCT UP / DN: the shimmer)." },
+  Q: { title: "Master", names: ["Speaker EQ", "Master"], fx: true, wide: true },
   K: { title: "Key & tempo", names: ["Tempo", "Root", "Scale", "Keys snap", "Transpose", "Chord", "Voicing"], fold: true },
 };
 const ENGINE_WORDS = {
   SID: "The C64's chip voice: pulse, saw, noise, ring, sync",
+  SH101: "The little monosynth: saw, pulse, sub, 24 dB filter",
   WAVE: "Wavetables, scanned and warped",
   BLISS: "FM keys: electric pianos, bells, mallets",
   WEST: "West coast: complex osc, folder, gate",
@@ -125,7 +133,7 @@ const ENGINE_WORDS = {
 
 // ------------------------------------------------------------------ history (every change can be taken back)
 const hist = { undo: [], redo: [], gesture: 0, lastT: 0 };
-const snapshot = () => ({ sel: S.sel, engine: S.engine, p: S.p.slice(), g: S.g.slice(), name: sound.name, sub: sound.sub });
+const snapshot = () => ({ sel: S.sel, engine: S.engine, p: S.p.slice(), g: S.g.slice(), x: S.x.slice(), name: sound.name, sub: sound.sub });
 function remember(gestureKey) {    // before a change: the state as it is (a gesture's further changes share it)
   const now = performance.now();
   if (gestureKey && gestureKey === hist.gesture && now - hist.lastT < 1500) { hist.lastT = now; return; }
@@ -149,6 +157,7 @@ async function restore(s) {
   q.push({ fn: "stu_stage_load", args: [s.engine] });
   for (let i = 0; i < fw.P; i++) if (kept.has(i)) q.push({ fn: "stu_set", args: [0, i, s.p[i], 0xBEEF] });
   for (let i = 0; i < fw.G; i++) if (s.g[i] !== S.g[i] && desc[1][i]) q.push({ fn: "stu_set", args: [1, i, s.g[i], 0] });
+  for (let i = 0; i < fw.X; i++) if (s.x[i] !== S.x[i] && s.sel === S.sel) q.push({ fn: "stu_set", args: [2, i, s.x[i], 0] });
   await call(q);
   setSound(s.name, s.sub, false);
   await poll(true);
@@ -276,14 +285,15 @@ function control(scope, id, name) {
   return el;
 }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const cur = (scope, id) => (scope ? S.g : S.p)[id] ?? 0;
+const vals = (scope) => (scope === 2 ? S.x : scope ? S.g : S.p);
+const cur = (scope, id) => vals(scope)[id] ?? 0;
 
 // a value changed on the page: into the firmware (the latest only, one call in flight per parameter), then its text
 const inflight = new Map();
 function change(scope, id, v, gestureKey) {
   if (cur(scope, id) === v) return;
   remember(gestureKey || Symbol());
-  (scope ? S.g : S.p)[id] = v;
+  vals(scope)[id] = v;
   const c = ctl[scope].get(id);
   if (c) c.show(v);
   if (!scope) markEdited();
@@ -293,7 +303,7 @@ function change(scope, id, v, gestureKey) {
     inflight.set(k, { next: null });
     try {
       const [got, text] = await call([{ fn: "stu_set", args: [scope, id, x, hashKey(gestureKey)] }, { fn: "stu_format", args: [scope, id, x], ret: "str" }]);
-      (scope ? S.g : S.p)[id] = got;
+      vals(scope)[id] = got;
       if (c) c.text(text);
       if (!scope && id >= fw.PE0) refreshEngineLabels();
       if (!scope && id >= 1 && id <= 4) drawEnv();          // (P_ATK .. P_REL)
@@ -332,21 +342,87 @@ function drawEnv() {
   x.fill();
 }
 
+// the performance layer's hold effects (perform.c PF_DEF's order): held while pressed, or latched (a press on, a press
+// off), as on the FM-1 with MENU > FX LATCH
+const PERF = [["LPF", 4], ["HPF", 5], ["FREEZE", 7], ["OCT UP", 8], ["OCT DN", 9]];
+let perfLatch = pref("bluehare-studio-latch") === "1";
+const perfEls = [];
+function perfButtons() {
+  perfEls.length = 0;
+  const row = h("div", { class: "perf" });
+  for (const [name, e] of PERF) {
+    const b = h("button", { type: "button", class: "btn perfb", "aria-pressed": "false", "data-e": e }, name);
+    b.addEventListener("pointerdown", (ev) => { ev.preventDefault(); try { b.setPointerCapture(ev.pointerId); } catch {} perfPress(e, 1); });
+    const up = () => { if (!perfLatch) perfPress(e, 0); };
+    b.addEventListener("pointerup", up);
+    b.addEventListener("pointercancel", up);
+    b.addEventListener("keydown", (ev) => { if ((ev.key === " " || ev.key === "Enter") && !ev.repeat) { ev.preventDefault(); perfPress(e, 1); } });
+    b.addEventListener("keyup", (ev) => { if (ev.key === " " || ev.key === "Enter") { ev.preventDefault(); up(); } });
+    perfEls.push(b);
+    row.append(b);
+  }
+  const latch = h("button", { type: "button", class: "btn small" + (perfLatch ? " on" : ""), "aria-pressed": String(perfLatch),
+    title: "Latch: a press turns an effect on, the next turns it off" }, "Latch");
+  latch.addEventListener("click", async () => {
+    perfLatch = !perfLatch;
+    pref("bluehare-studio-latch", perfLatch ? "1" : "0");
+    latch.classList.toggle("on", perfLatch);
+    latch.setAttribute("aria-pressed", String(perfLatch));
+    await one("stu_perf_off");
+    await poll(true);
+  });
+  const off = h("button", { type: "button", class: "btn small", title: "Every effect off, the macros back to 0" }, "All off");
+  off.addEventListener("click", async () => { await one("stu_perf_off"); await poll(true); });
+  row.append(latch, off);
+  return row;
+}
+async function perfPress(e, down) {
+  await call([{ fn: "stu_perf", args: [e, down, perfLatch ? 1 : 0] }]);
+  await perfShow();
+}
+async function perfShow() {
+  const on = await one("stu_perf_on");
+  for (const b of perfEls) b.setAttribute("aria-pressed", String(!!((on >>> +b.dataset.e) & 1)));
+}
+// the master's stages: SPEAKER EQ and MASTER are controls (above), the rest always on; the compressor's and the limiter's
+// gain reduction live
+function masterStages() {
+  const box = h("div", { class: "stages" });
+  box.append(h("div", { class: "chain" }, ["Mono lows", "Bus compressor 3:1", "Peak limiter", "Soft clip", "DC blocker"]
+    .map((n) => h("span", { class: "stage" }, n))));
+  const gr = (label, id) => h("div", { class: "meter gr" }, h("span", { class: "lbl" }, label), h("span", { class: "bar" }, h("i", { id })),
+    h("span", { class: "mono", id: id + "-v" }, "0.0 dB"));
+  box.append(gr("Compressor", "gr-comp"), gr("Limiter", "gr-lim"));
+  return box;
+}
+async function meterPoll() {
+  if (!node || document.hidden || !$("gr-comp")) return;
+  const [[c, l], on] = await call([{ fn: "stu_meters", ret: ["i32", 2] }, { fn: "stu_perf_on" }]);
+  for (const [id, g] of [["gr-comp", c], ["gr-lim", l]]) {
+    const db = 20 * Math.log10(Math.max(1, g) / 32768);
+    $(id).style.width = clamp(-db / 12 * 100, 0, 100) + "%";
+    $(id + "-v").textContent = (db > -0.05 ? "0.0" : db.toFixed(1)) + " dB";
+  }
+  for (const b of perfEls) b.setAttribute("aria-pressed", String(!!((on >>> +b.dataset.e) & 1)));
+}
+
 async function buildGroups() {
   const root = $("groups");
   root.textContent = "";
   ctl[0].clear();
   ctl[1].clear();
+  ctl[2].clear();
   const items = fw.layout.flatMap((g) => g.items);
   await loadDescs(items);
   let fxTitle = false;
-  const order = "EANSLDMVYRCK";            // big picture first: the engine, its envelope, the sends; then the details
+  const order = "EANLDMVISYRCPQK";         // the sound (big picture first, details folded), its effects, then the key
   const rank = (g) => (order.indexOf(g.key) + 1 || 99);
   for (const g of [...fw.layout].sort((a, b) => rank(a) - rank(b))) {
     const G = GROUPS[g.key] || { title: g.key };
-    if (G.fx && !fxTitle) { root.append(h("div", { class: "sect-title" }, "FX CHAIN · shared by all tracks")); fxTitle = true; }
+    if (G.fx && !fxTitle) { root.append(h("div", { class: "sect-title" }, "EFFECTS")); fxTitle = true; }
     const box = h("section", { class: "group" + (G.wide ? " wide" : ""), "data-group": g.key });
-    const head = h("h3", {}, G.title);
+    const head = h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `track ${S.sel + 1}`) : null,
+      G.shared ? h("span", { class: "sub" }, "shared by all tracks") : null);
     box.append(head);
     const ctrls = h("div", { class: "ctrls" });
     if (g.key === "E") {
@@ -356,6 +432,9 @@ async function buildGroups() {
       ctrls.append(matrix(g.items));
     } else {
       g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, G.names?.[i])));
+      if (g.key === "P") ctrls.prepend(perfButtons());
+      if (g.key === "Q") ctrls.append(masterStages());
+      if (G.note) ctrls.append(h("p", { class: "note gnote" }, G.note));
       if (g.key === "A") {
         envCanvas = h("canvas", { width: 300, height: 70, style: "width:100%;height:70px;display:block;margin:2px 0 6px" });
         ctrls.prepend(envCanvas);
@@ -447,15 +526,18 @@ async function poll(force = false) {
   if (!node || polling) return;
   polling = true;
   try {
-    const [d] = await call([{ fn: "stu_dump", ret: ["i16", fw.P + fw.G + 4] }]);
+    const [d] = await call([{ fn: "stu_dump", ret: ["i16", fw.P + fw.G + 4 + fw.X] }]);
+    const x = d.slice(fw.P + fw.G + 4);
     const p = d.slice(0, fw.P), g = d.slice(fw.P, fw.P + fw.G);
-    const [engine, preset, user, sel] = d.slice(fw.P + fw.G);
+    const [engine, preset, user, sel] = d.slice(fw.P + fw.G, fw.P + fw.G + 4);
     const engineMoved = engine !== S.engine || sel !== S.sel;
     const changed = [];
     for (let i = 0; i < fw.P; i++) if (force || p[i] !== S.p[i]) if (!inflight.has("0." + i)) { S.p[i] = p[i]; changed.push({ scope: 0, id: i }); }
     for (let i = 0; i < fw.G; i++) if (force || g[i] !== S.g[i]) if (!inflight.has("1." + i)) { S.g[i] = g[i]; changed.push({ scope: 1, id: i }); }
+    for (let i = 0; i < fw.X; i++) if (force || x[i] !== S.x[i]) if (!inflight.has("2." + i)) { S.x[i] = x[i]; changed.push({ scope: 2, id: i }); }
     const selMoved = sel !== S.sel;
     Object.assign(S, { engine, preset, user, sel });
+    if (selMoved && ctl[0].size) await buildGroups();   // (the track's inserts: WIDTH is the upper tracks' alone)
     if (engineMoved || force) {
       renderEngines();
       renderPresets();
@@ -625,16 +707,29 @@ async function loadSoundFile(j) {
   const c = fw.cats.indexOf(j.category);
   if (c > 0) $("cat").value = String(c);
 }
+// the effects' file: the shared buses (song ids) and the other effects (scope 2: the selected track's inserts, the
+// performance macros, the speaker EQ; not MASTER, the level), keyed "song.<id>" / "fx.<id>" with the device's labels
+const fxItems = () => fw.layout.filter((g) => GROUPS[g.key]?.fx).flatMap((g) => g.items)
+  .filter((it) => it.scope && !(it.scope === 2 && desc[2][it.id]?.label === "MASTER"));
 function fxFile() {
   const params = {}, labels = {};
-  for (const g of fw.layout) if (GROUPS[g.key]?.fx) for (const it of g.items) { params[it.id] = S.g[it.id]; labels[it.id] = desc[1][it.id]?.label; }
-  return { format: "blue-hare-fx", version: 1, params, labels };
+  for (const it of fxItems()) {
+    const k = (it.scope === 1 ? "song." : "fx.") + it.id;
+    params[k] = cur(it.scope, it.id);
+    labels[k] = desc[it.scope][it.id]?.label;
+  }
+  return { format: "blue-hare-fx", version: 2, params, labels };
 }
 async function loadFxFile(j) {
   if (j.format !== "blue-hare-fx") throw new Error("not a Blue Hare FX file");
   remember(0);
-  const fxIds = new Set(fw.layout.filter((g) => GROUPS[g.key]?.fx).flatMap((g) => g.items.map((it) => it.id)));
-  await call(Object.entries(j.params || {}).filter(([k]) => fxIds.has(+k)).map(([k, v]) => ({ fn: "stu_set", args: [1, +k, v | 0, 0] })));
+  const known = new Map(fxItems().map((it) => [(it.scope === 1 ? "song." : "fx.") + it.id, it]));
+  const q = [];
+  for (const [k, v] of Object.entries(j.params || {})) {
+    const it = known.get(/^\d+$/.test(k) ? "song." + k : k);   // (version 1: song ids alone)
+    if (it) q.push({ fn: "stu_set", args: [it.scope, it.id, v | 0, 0] });
+  }
+  await call(q);
   await poll(true);
 }
 function pickFile(input, then) {
@@ -989,6 +1084,7 @@ async function switchOn() {
     $("start").hidden = true;
     midiOn();
     setInterval(() => poll(), 300);
+    setInterval(() => meterPoll(), 120);
     node.port.postMessage({ type: "visible", on: !document.hidden });
     if (ac.sampleRate !== 44100) console.warn(`the browser plays at ${ac.sampleRate} Hz: the pitch is off`);
   } catch (err) {

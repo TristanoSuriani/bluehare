@@ -58,10 +58,64 @@ STU_EXPORT void stu_load_preset(uint32_t k)        /* factory preset k of the tr
 STU_EXPORT void stu_undo(void) { undo_swap(); }    /* SAVE held: the sound before the last load, and back */
 
 /* ------------------------------------------------------------- parameters --- */
+/* scope 2: the effects that are no track or song parameter (docs/SoundAndDSP.md section 3): the selected track's
+ * inserts LOW CUT, WIDTH and PAN MODE (core.h trk_lowcut, trk_width, trk_pmode: the SETTINGS' on the device), the
+ * performance layer's macros FILTER CRUSH THROW DEPTH (perform.c perf_k, as KNOB 1..4 with FX turn them), MENU > SPEAKER
+ * EQ (settings.lowcut, fx.c fx_lowcut) and MASTER (the pot). Described as the others, values through stu_x */
+enum { SX_LOWCUT, SX_WIDTH, SX_PMODE, SX_SPKEQ, SX_FILTER, SX_CRUSH, SX_THROW, SX_DEPTH, SX_MASTER, SX_COUNT };
+static const char *const N_SX_LOWCUT[TL_N] = {"OFF", "40Hz", "60Hz", "80Hz", "120Hz", "160Hz", "240Hz", "320Hz"};
+static const char *const N_SX_PMODE[] = {"ALT", "RND"};
+static const char *const N_SX_SPKEQ[] = {"FLAT", "LOWCUT", "BASS+"};
+static const param_desc_t SX[SX_COUNT] = {
+    [SX_LOWCUT] = {"LOWCUT", F_ENUM, 0, TL_N - 1, 0, N_SX_LOWCUT, 0},
+    [SX_WIDTH] = {"WIDTH", F_INT, 0, TW_MAX, TW_DEF, 0, "ms"},
+    [SX_PMODE] = {"PANMODE", F_ENUM, 0, 1, 0, N_SX_PMODE, 0},
+    [SX_SPKEQ] = {"SPK EQ", F_ENUM, 0, 2, 0, N_SX_SPKEQ, 0},
+    [SX_FILTER] = {"FILTER", F_INT, -100, 100, 0, 0, 0},
+    [SX_CRUSH] = {"CRUSH", F_INT, 0, 100, 0, 0, 0},
+    [SX_THROW] = {"THROW", F_INT, 0, 100, 0, 0, 0},
+    [SX_DEPTH] = {"DEPTH", F_INT, 0, 100, 0, 0, 0},
+    [SX_MASTER] = {"MASTER", F_PCT, 0, 127, 87, 0, 0},
+};
+static const param_desc_t SX_FIXED = {"WIDTH", F_INT, 0, 0, 0, 0, "ms"};   /* (WIDTH on a track without it) */
+static int16_t stu_xv;                            /* (the value read, as the others' pointers give theirs) */
+static int32_t stu_x(uint32_t id)
+{
+    uint32_t k = song.sel;
+    switch (id) {
+    case SX_LOWCUT: return trk_lowcut[k];
+    case SX_WIDTH: return tw_has(k) ? trk_width[k] : 0;
+    case SX_PMODE: return trk_pmode[k];
+    case SX_SPKEQ: return settings.lowcut % 3u;
+    case SX_FILTER: case SX_CRUSH: case SX_THROW: return perf_k[id - SX_FILTER];
+    case SX_DEPTH: return 100 - perf_k[3];        /* (perf_k[3] is the cut: 0 the full level) */
+    default: return (int32_t)(web_master_adc * 127u + 511u) / 1023;
+    }
+}
+static void stu_x_put(uint32_t id, int32_t v)
+{
+    uint32_t k = song.sel;
+    switch (id) {
+    case SX_LOWCUT: trk_lowcut[k] = (uint8_t)v; break;
+    case SX_WIDTH: if (tw_has(k)) trk_width[k] = (uint8_t)v; break;
+    case SX_PMODE: trk_pmode[k] = (uint8_t)v; break;
+    case SX_SPKEQ: settings.lowcut = (uint8_t)v; fx_lowcut = (uint8_t)v; break;
+    case SX_FILTER: case SX_CRUSH: case SX_THROW: perf_k[id - SX_FILTER] = (int8_t)v; break;
+    case SX_DEPTH: perf_k[3] = (int8_t)(100 - v); break;
+    default: web_master((uint32_t)v * 1023u / 127u); break;
+    }
+}
+STU_EXPORT uint32_t stu_xcount(void) { return SX_COUNT; }
+
 /* scope 0: the selected track's p[id] (P_E0..P_E7 described by its engine, mode-dependent labels included: ui.c
- * track_desc); scope 1: song.g[id], the FX chain's and the clock's (params.c GP) */
+ * track_desc); scope 1: song.g[id], the FX chain's and the clock's (params.c GP); scope 2: the effects above (SX) */
 static const param_desc_t *stu_d(uint32_t scope, uint32_t id, int16_t **vp)
 {
+    if (scope == 2u && id < SX_COUNT) {
+        stu_xv = (int16_t)stu_x(id);
+        *vp = &stu_xv;
+        return id == SX_WIDTH && !tw_has(song.sel) ? &SX_FIXED : &SX[id];
+    }
     if (scope == 0u && id < P_COUNT) {
         *vp = &TSEL->p[id];
         return track_desc(TSEL, id);
@@ -117,6 +171,8 @@ STU_EXPORT int32_t stu_set(uint32_t scope, uint32_t id, int32_t v, uint32_t tag)
         *vp = (int16_t)clamp(v, d->min, d->max);
         if (scope == 0u)
             edit_undo_done(TSEL);
+        if (scope == 2u)
+            stu_x_put(id, *vp);
     }
     ui.force = 1;
     return *vp;
@@ -148,8 +204,9 @@ STU_EXPORT char *stu_format(uint32_t scope, uint32_t id, int32_t v)
     }
     return stu_text;
 }
-/* every value at once: the selected track's P_COUNT, then G_COUNT, then engine, preset, user, sel (the page's poll) */
-static int16_t stu_all[P_COUNT + G_COUNT + 4];
+/* every value at once: the selected track's P_COUNT, then G_COUNT, then engine, preset, user, sel, then scope 2's
+ * SX_COUNT (the page's poll) */
+static int16_t stu_all[P_COUNT + G_COUNT + 4 + SX_COUNT];
 STU_EXPORT int16_t *stu_dump(void)
 {
     memcpy(stu_all, TSEL->p, sizeof TSEL->p);
@@ -158,6 +215,8 @@ STU_EXPORT int16_t *stu_dump(void)
     stu_all[P_COUNT + G_COUNT + 1] = TSEL->preset;
     stu_all[P_COUNT + G_COUNT + 2] = TSEL->user;
     stu_all[P_COUNT + G_COUNT + 3] = song.sel;
+    for (uint32_t i = 0; i < SX_COUNT; i++)                    /* then the effects of scope 2 */
+        stu_all[P_COUNT + G_COUNT + 4 + i] = (int16_t)stu_x(i);
     return stu_all;
 }
 STU_EXPORT uint32_t stu_pcount(void) { return P_COUNT; }
@@ -169,6 +228,7 @@ STU_EXPORT uint32_t stu_kept(uint32_t id) { return id < P_COUNT && param_kept(id
 /* the studio's layout: groups of parameters, by scope and id (the names the page shows are its own; the labels,
  * ranges and values are the firmware's). A group: its title, then {scope, id} pairs, ended by 0xFF */
 #define G1(x) 1, x
+#define X2(x) 2, x
 static const uint8_t STU_LAYOUT[] = {
     'E', 0, P_E0, 0, P_E1, 0, P_E2, 0, P_E3, 0, P_E4, 0, P_E5, 0, P_E6, 0, P_E7, 0xFF,
     'A', 0, P_ATK, 0, P_DEC, 0, P_SUS, 0, P_REL, 0, P_LEVEL, 0, P_OCT, 0xFF,
@@ -177,17 +237,53 @@ static const uint8_t STU_LAYOUT[] = {
     'D', 0, P_LD_PIT, 0, P_LD_FLT, 0, P_LD_SHP, 0, P_LD_AMP, 0xFF,
     'M', 0, P_M1SRC, 0, P_M1DST, 0, P_M1AMT, 0, P_M2SRC, 0, P_M2DST, 0, P_M2AMT,
          0, P_M3SRC, 0, P_M3DST, 0, P_M3AMT, 0, P_M4SRC, 0, P_M4DST, 0, P_M4AMT, 0xFF,
-    'V', 0, P_VOICE, 0, P_GLIDE, 0, P_GLMODE, 0, P_PRIO, 0, P_ALLOC, 0, P_DETUNE, 0, P_SPRD, 0, P_PAN, 0xFF,
-    'S', 0, P_DIST, 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,
+    'V', 0, P_VOICE, 0, P_GLIDE, 0, P_GLMODE, 0, P_PRIO, 0, P_ALLOC, 0, P_DETUNE, 0, P_PAN, 0xFF,
+    /* the effects, as docs/SoundAndDSP.md section 3 lists them: the track's inserts, its sends, the shared buses, the
+     * performance layer, the master */
+    'I', 0, P_DIST, X2(SX_LOWCUT), 0, P_SPRD, X2(SX_PMODE), X2(SX_WIDTH), 0xFF,
+    'S', 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,
     'Y', G1(G_DTYPE), G1(G_DTIME), G1(G_DFDBK), G1(G_DCOLOR), G1(G_DMIX), 0xFF,
     'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RDAMP), 0xFF,
     'C', G1(G_CRATE), G1(G_CDEPTH), 0xFF,
+    'P', X2(SX_FILTER), X2(SX_CRUSH), X2(SX_THROW), X2(SX_DEPTH), 0xFF,
+    'Q', X2(SX_SPKEQ), X2(SX_MASTER), 0xFF,
     'K', G1(G_BPM), 0, P_ROOT, 0, P_SCALE, 0, P_QUANT, 0, P_TRANS, 0, P_CHRD, 0, P_VOIC, 0xFF,
     0,
 };
 #undef G1
+#undef X2
 STU_EXPORT const uint8_t *stu_layout(void) { return STU_LAYOUT; }
 STU_EXPORT uint32_t stu_layout_size(void) { return sizeof STU_LAYOUT; }
+
+/* -------------------------------------------------- the performance layer --- */
+/* an effect of the FX hold layer held (down 1) or let go (perform.c perf_press, as a white key with FX): e PF_LPF,
+ * PF_HPF, PF_FRZ, PF_OUP, PF_ODN (the archived ones hold nothing). latch 1: each down turns it on or off instead
+ * (MENU > FX LATCH) */
+STU_EXPORT void stu_perf(uint32_t e, uint32_t down, uint32_t latch)
+{
+    perf_latch_on = (uint8_t)(latch != 0u);
+    perf_kill = 0;
+    perf_press(e, (int)down);
+}
+STU_EXPORT uint32_t stu_perf_on(void) { return (perf_held | perf_latched) & perf_avail() & ((1u << PF_M1) - 1u); }
+STU_EXPORT void stu_perf_off(void)               /* every effect off, the macros back to 0 (FX + OCT-) */
+{
+    perf_held = perf_latched = 0;
+    perf_k[0] = perf_k[1] = perf_k[2] = perf_k[3] = 0;
+}
+/* the ids of the effects a key can hold, in the layer's order (PF_DEF), then PF_N: LPF HPF FREEZE OCT UP OCT DN */
+STU_EXPORT const uint8_t *stu_perf_ids(void) { return PF_DEF; }
+
+/* ------------------------------------------------------------ the master --- */
+/* the master's always-on stages, now: the bus compressor's gain (Q15), the limiter's level over its threshold (Q15:
+ * 32768 = none) */
+static int32_t stu_mtr[2];
+STU_EXPORT int32_t *stu_meters(void)
+{
+    stu_mtr[0] = bc_g;
+    stu_mtr[1] = lim_env > LIM_T ? (int32_t)(((int64_t)LIM_T << 15) / lim_env) : 32768;
+    return stu_mtr;
+}
 
 /* ------------------------------------------------------------ user presets --- */
 STU_EXPORT uint32_t stu_up_slots(void) { return UP_SLOTS; }

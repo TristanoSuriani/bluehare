@@ -169,8 +169,10 @@ emulator's build (`web/emu/bluehare_web.c`) with the studio's exports (`web/stud
 presets, every parameter of the selected track and of the FX chain, described, set and shown as the device shows
 them, the user preset slots), in the emulator's worklet (`web/emu/worklet.js`, its "call" messages). The page
 (`index.html`, `studio.js`) has the engines, their presets by category and the sounds saved here; the parameters
-in groups (the engine, its envelope and sends first; LFO, mod matrix, voice and key folded), the delay, reverb and
-chorus; 4 tracks; the keys (mouse, computer keys A W S E .., Z X octave, Esc all off, Hold), Web MIDI in to the
+in groups (the engine, its envelope first; LFO, mod matrix, voice and key folded); every effect of
+`docs/SoundAndDSP.md` section 3 (the track's inserts DIST, LOW CUT, SPREAD, PAN MODE, WIDTH; its sends; the shared
+delay, reverb and chorus; the performance layer's hold effects, latched or held, and its macros; the master's SPEAKER
+EQ and MASTER, its always-on stages with the compressor's and the limiter's gain reduction); 4 tracks; the keys (mouse, computer keys A W S E .., Z X octave, Esc all off, Hold), Web MIDI in to the
 selected track; undo and redo of every change (Ctrl/⌘ Z, Ctrl/⌘ ⇧ Z); a scope and a peak meter; a WAV recording
 of what plays; the FM-1's screen. A sound goes to a slot here (kept in the browser, as the emulator keeps its
 flash), to a file (`.bluehare-sound.json`: the engine by name and id, every parameter by its id, as user presets
