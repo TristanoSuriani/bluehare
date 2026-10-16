@@ -115,6 +115,7 @@ Shared by the engines and the effects (`dsp.c`, `shared/`); who uses each in HAR
 | **Band-limited saw and pulse** | polyBLEP: a quadratic residual around each wrap (`blep`, `osc_saw`, `osc_pulse`). SID, ECHOES (and CANYON). |
 | **Triangle** | Naive (its harmonics fall fast enough). |
 | **Noise** | xorshift32 generators, one per voice or engine; the shared `rng` for the LFO's S&H on tracks 1 to 3. |
+| **Ladder filter** | Four trapezoidal one-pole low-passes (`G = g / (1 + g)`, Q15, `LADDER_G`), the feedback around them solved for the sample (zero-delay: `u = (x - k S) / (1 + k G^4)`), the input through the tanh table. SH101. |
 | **State-variable filter** | Andrew Simper's trapezoidal SVF, unconditionally stable, low-pass output; coefficients per block in Q13 (`tsvf_coef`, `tsvf_lp`). WAVE, WEST (13 engines before the archive). |
 | **Soft clip and soft knee** | The tanh table (`softclip`: WAVE, DIST, the master, the harmonizer's shimmer) and a linear-then-soft knee for peaks only (`soft_knee`). |
 | **2x oversampling** | A polyphase IIR half-band (two first-order allpass paths, after hiir's design for a 0.16 transition) up and down around a shaper; what would fold under 15 kHz is 46 dB down. Its users (RAZOR, VENOM, GUTS, SANDSTORM) are archived; it stays for the next drive (the SH-101 engine's). |
@@ -136,13 +137,14 @@ Shared by the engines and the effects (`dsp.c`, `shared/`); who uses each in HAR
 
 ## 6. The engines
 
-HARE FM1 has six engines, in the order the device lists them (`distributions/hare_fm1.txt`); the native image plays
+HARE FM1 has seven engines, in the order the device lists them (`distributions/hare_fm1.txt`); the native image plays
 CANYON in ECHOES' place. Each has a stable id and a substitute that loads in its place in a build without it
 (`engine_ids.h`).
 
 | Engine | Id | Algorithm | Substitute |
 |---|---|---|---|
 | **SID** | 24 | The C64 chip's way of sounding: a phase accumulator whose top 12 bits make the waves (triangle, saw, pulse with PWM, and a 23-bit noise shift register clocked by the oscillator), their combinations, ring modulation and hard sync, then a resonant filter. Basses, sync leads, PWM pads, chip drums. | WAVE |
+| **SH101** | 61 | After the 1982 monosynth: one oscillator's waves at once, mixed by level: a band-limited SAW and PULSE (PW 50 % to ~5 %, the SHAPE routings its PWM), a SUB locked to the oscillator's own cycles (a square one or two octaves down, or a 25 % pulse two down) and NOISE; into a 24 dB ladder low-pass (four trapezoidal one-poles, the feedback solved for the sample, zero-delay), its input saturating through the tanh table (a louder mix drives it), the passband half restored as RES rises, self-oscillating past ~110 (pinged at note-on past 100: the resonant kick); CUT half follows the keys; a ~3 cent analog drift. Basses, acid lines, PWM leads, brass, a kick. | SID |
 | **WAVE** | 14 | Wavetables: 8 banks of 8 single-cycle frames in flash (`tools/gen_wavetables.py`), band-limited per octave; POS crossfades neighbouring frames (the shape routings move it), windowed SYNC up to 8x, a detuned second oscillator, drive, a resonant low-pass (Simper SVF), CRSH (rate and bit reduction). | BLISS |
 | **BLISS** | 26 | Four-operator FM as two pairs, after the 80s FM pianos and bells: the body (a sine phase-modulated by a sine at RATIO, its index falling over DECAY, FDBK on the modulator) and the tine (a high, fast-decaying strike); the index is held under ~14 kHz (Carson's rule against the note) so high notes do not alias; VEL brightens, KSCL softens the top. | WAVE |
 | **WEST** | 16 | West coast: a complex oscillator (a modulator at a whole, half or inharmonic RATIO, FM depth and feedback), a sine wavefolder (FOLD, SYM), and a low-pass gate whose cutoff follows the envelope through a vactrol-like lag. FM and FOLD ease off on high notes. | MODAL |
@@ -155,7 +157,7 @@ are retired, and a sound of one is refused.
 
 ## 7. The backbone
 
-The six engines cover the synthesizer's ground with little overlap: a subtractive and chip voice (SID), wavetables
+The seven engines cover the synthesizer's ground with little overlap: classic subtractive (SH101), a chip voice (SID), wavetables
 (WAVE), FM keys and bells (BLISS), west coast FM and folding (WEST), physical modelling (MODAL) and a rhythmic,
 generative echo instrument (ECHOES). What the rest of the system leans on:
 
@@ -163,16 +165,17 @@ generative echo instrument (ECHOES). What the rest of the system leans on:
   BLISS and ECHOES fall back to it); the power-on pad (WARM PAD).
 - **MODAL**: the only user of DaisySP's physical models (`shared/phys_dsp.c`); the power-on bells (KALIMBA) and the
   host tests' drums (WOOD DRUM); the voice-capped engine the voice-budget tests use.
-- **SID**: the power-on bass; the first engine (the fallback of last resort, and engine 0 in the tests).
+- **SH101**: the power-on bass (101 BASS); the one user of the ladder filter (`LADDER_G`).
+- **SID**: SH101's substitute; the first engine (the fallback of last resort, and engine 0 in the tests).
 - **ECHOES**: its repeat engine (`ec_*`) is CANYON's, the native image's.
 - **BLISS** and **WEST**: self-contained.
 
 The power-on tracks (`engines.c` `TRK_DEF`) are the roles Milestone 1's generative engine will play: a pad (WAVE), a
-bass (SID), keys (BLISS) and bells (MODAL).
+bass (SH101), keys (BLISS) and bells (MODAL).
 
 ## Next
 
-Milestone 1 adds an SH-101-style engine (`docs/Milestones.md`): oscillator (saw, pulse with PWM, sub-oscillator,
-noise) into a resonant 24 dB low-pass, a natural user of the 2x oversampling around its drive. Then FX presets (the FX
-screen chooses between presets of the chain in section 3), the sound design studio (the engines and the FX chain in
-the browser, WebAssembly) and the generative ambient engine on the ARP button.
+Milestone 1 has SH101 (above) and the sound design studio (`web/studio/`: every engine and every effect of section 3
+in the browser, the firmware itself in WebAssembly). Next: the generative ambient engine on the ARP button, then FX
+presets (the FX screen chooses between presets of the chain in section 3). The 2x oversampling stays unused: SH101's
+saturation sits inside its filter's feedback loop, where the half-band's delay would detune the resonance.

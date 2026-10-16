@@ -50,8 +50,8 @@ async function editorMock() {
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   {   /* the primary distribution's engines by id (HARE FM1), "-" for the rest: retired (0 .. 13, 27), archived, left out */
-    const HARE = { 14: "WAVE", 16: "WEST", 24: "SID", 26: "BLISS", 34: "MODAL", 36: "ECHOES" };
-    ok(info.nengines === 61 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
+    const HARE = { 14: "WAVE", 16: "WEST", 24: "SID", 26: "BLISS", 34: "MODAL", 36: "ECHOES", 61: "SH101" };
+    ok(info.nengines === 62 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
   let descs = 0;
@@ -140,15 +140,15 @@ async function editorMock() {
   ok(!prefs.favorites[info.nengines][31] && !E.devicePresetRows(info, names, prefs).some((r) => r.user), "editor: erased slot disappears and loses star");
   {   /* the lists in the device's order (engines.c ENGINE_ORDER): SID first, WAVE second, ECHOES last, "-" never; the ids stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]), o = E.engineOrder(info.engines);
-    ok(shown.join() === "SID,WAVE,BLISS,WEST,MODAL,ECHOES" &&
-       o[0] === 24 && o[1] === 14 && o[2] === 26 && o[3] === 16 && o[5] === 36,
+    ok(shown.join() === "SID,SH101,WAVE,BLISS,WEST,MODAL,ECHOES" &&
+       o[0] === 24 && o[1] === 61 && o[2] === 14 && o[3] === 26 && o[4] === 16 && o[6] === 36,
        "editor: engines listed SID first, ECHOES last (ids kept)");
     ok(E.engineOrder(["SID", "X", "-", "MODAL", "WAVE"]).join() === "0,4,3,1", "editor: an unknown engine follows the known ones");
     m.state.favorites[34][0] = m.state.favorites[14][0] = true;
     await rq(E.req.uiSet(3, 0));
     prefs = await E.readDevicePreferences(rq, info, names, prefs);
     const rows = E.devicePresetRows(info, names, prefs).filter((r) => !r.user), eng = [...new Set(rows.map((r) => r.engine))];
-    ok(eng[0] === 24 && eng[1] === 14 && eng[eng.length - 1] === 36, "editor: device presets in the device's engine order");
+    ok(eng[0] === 24 && eng[1] === 61 && eng[eng.length - 1] === 36, "editor: device presets in the device's engine order");
   }
   const none = await E.readDevicePreferences(() => { throw new Error("unexpected request"); }, { uiCaps: 0 }, []);
   ok(none === null, "editor: old firmware receives no unsupported preference requests");
@@ -418,7 +418,7 @@ async function editorLibrarian() {
   const { m, rq, done } = attachMock({});
   const C = E.CMD;
   const info = E.parse[C.INFO](await rq(E.req.info()));
-  await rq(E.req.track(1));                        /* (Blue Hare: SID BASS with ACID is track 2 since the rhythm section came first) */
+  await rq(E.req.track(1));                        /* (Blue Hare: track 2 is the bass, SH101's 101 BASS since 2026-10) */
   const pdesc = [];
   for (let i = 0; i < info.pcount; i++) pdesc.push(E.parse[C.DESC](await rq(E.req.desc(0, i))));
   const keys = E.paramKeys(pdesc, info.pe0, info.pcount);
@@ -429,11 +429,11 @@ async function editorLibrarian() {
     && b.slots[31].slot === 31, "librarian: UP_LIST, 32 slots in 2 frames");
 
   const cap = (await E.capturePatch(rq, info, "acid test")).patch;
-  ok(cap.engine === 24 && cap.p.length === info.pcount && cap.pattern && cap.pattern[0][0] === 45 && cap.pattern[0][1] === 1,
+  ok(cap.engine === 61 && cap.p.length === info.pcount && cap.pattern && cap.pattern[0][0] === 45 && cap.pattern[0][1] === 1,
     "librarian: capture = DUMP + first 16 steps");
   let rc = await E.bank.put(rq, 10, cap);
   const g = await E.bank.get(rq, info, 10);
-  ok(rc === 0 && g.used && g.name === "acid test" && g.engine === 24 && eq(g.p, cap.p) && js(g.pattern) === js(cap.pattern),
+  ok(rc === 0 && g.used && g.name === "acid test" && g.engine === 61 && eq(g.p, cap.p) && js(g.pattern) === js(cap.pattern),
     "librarian: UP_PUT -> UP_GET round trip");
   const bad = E.parse[C.UP_PUT](await rq(E.req.upPut(60, cap), { timeout: 2500, retries: 0 }));
   ok(bad.rc === 1, "librarian: UP_PUT to a slot past the bank -> rc 1");
@@ -453,7 +453,7 @@ async function editorLibrarian() {
   const d2 = E.parse[C.DUMP](await rq(E.req.dump()), info);
   const st = [];
   for (let i = 0; i < 16; i++) st.push(E.parse[C.STEP_GET](await rq(E.req.stepGet(i))));
-  ok(rc === 0 && d2.engine === 24 && eq(d2.p.filter((_, i) => i !== 25), cap.p.filter((_, i) => i !== 25)) && d2.p[25] === 3
+  ok(rc === 0 && d2.engine === 61 && eq(d2.p.filter((_, i) => i !== 25), cap.p.filter((_, i) => i !== 25)) && d2.p[25] === 3
     && st.every((x) => !x.n) && cap.pattern, "librarian: UP_LOAD applies the sound only (steps and the track's ROOT stay)");
   await rq(E.req.set(0, 25, 0));
   for (let i = 0; i < 16; i++) await rq(E.req.stepSet(i, E.stepsFromPattern(cap.pattern)[i]));   /* (for the captures below) */
@@ -507,7 +507,7 @@ async function editorLibrarian() {
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
   ok(file.format === "bluehare-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
     file.paramLabels[83] === "-#13" && file.paramLabels[90] === "-#20" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
-    file.engines.length === 61,
+    file.engines.length === 62,
     "library file: versioned, with P_COUNT, labels and engines");
   const back = E.readLibraryFile(file, ctx);
   ok(back.patches.length === 2 && !back.skipped && eq(back.patches[0].p, cap.p) && eq(back.patches[1].p, bass.p)
@@ -515,11 +515,11 @@ async function editorLibrarian() {
     "library file: write -> read round trip");
   /* a future firmware: one more parameter at id 5, engines in another order and one of them gone */
   const keys2 = [...keys.slice(0, 5), "NEW", ...keys.slice(5)];
-  const eng2 = ["WEST", "SID", "WAVE"];
+  const eng2 = ["WEST", "SID", "WAVE", "SH101"];
   const fut = E.readLibraryFile(file, { keys: keys2, engines: eng2 });
   const p0 = fut.patches[0].p;
   ok(fut.patches.length === 2 && p0.length === 105 && p0[5] === null && p0[6] === cap.p[5] && p0[104] === cap.p[103]
-    && fut.patches[0].engine === 1 && fut.patches[1].engine === 0, "library file: other ids / engine order mapped by label and name");
+    && fut.patches[0].engine === 3 && fut.patches[1].engine === 0, "library file: other ids / engine order mapped by label and name");
   const lost = E.readLibraryFile({ ...file, patches: [{ ...file.patches[0], engineName: "WAVETABLE" }] }, ctx);
   ok(lost.patches.length === 0 && lost.skipped === 1, "library file: a patch for an unknown engine is skipped");
   const bankFile = E.libraryFile("bank", [{ ...g, engineName: "SID", slot: 10 }], ctx);
@@ -725,7 +725,7 @@ async function editorTracks() {
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const tr = E.parse[C.TRACK](await rq(E.req.track()));
   ok(info.ntrk === 4 && tr.sel === 0 && tr.ntrk === 4 && tr.tracks[0].engine === 14 && tr.tracks[0].preset === 8
-    && tr.tracks[1].engine === 24 && tr.tracks[2].engine === 26, "tracks: INFO NTRK, TRACK lists 4 parts (track 1: WAVE WARM PAD)");
+    && tr.tracks[1].engine === 61 && tr.tracks[2].engine === 26, "tracks: INFO NTRK, TRACK lists 4 parts (track 1: WAVE WARM PAD)");
   /* the v1 commands follow the selected track */
   const d0 = E.parse[C.DUMP](await rq(E.req.dump()), info);
   const t1 = E.parse[C.TRACK](await rq(E.req.track(2)));

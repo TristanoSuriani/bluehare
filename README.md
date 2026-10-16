@@ -10,16 +10,18 @@ What Blue Hare adds, all by Tristano Suriani:
 
 - **The sequencer:** a placeholder for now (SEQ shows TODO). Felucca's step sequencer is gone, and so is the tracker
   that took its place until 2026-10.
-- **One distribution, HARE FM1** *(2026-10-16)*: the base synthesizer engines SID, WAVE, BLISS, WEST, MODAL and
-  ECHOES on **4 tracks** (at power-on WAVE's WARM PAD and SID BASS, centred; BLISS's E.PIANO on the left and MODAL's
+- **One distribution, HARE FM1** *(2026-10-16)*: the base synthesizer engines SID, SH101, WAVE, BLISS, WEST, MODAL and
+  ECHOES on **4 tracks** (at power-on WAVE's WARM PAD and SH101's 101 BASS, centred; BLISS's E.PIANO on the left and MODAL's
   KALIMBA on the right). The build still takes any number of distributions of up to 16 engines, with stable engine
   ids and a palette each (HARE FM1: ICE); the earlier ones are archived (BUILDING.md "Distributions").
-- **Blue Hare's engines:** of the twenty-three Blue Hare wrote, SID, WAVE, BLISS, WEST, MODAL and ECHOES (and CANYON in
-  the native image) are in the build; the others are in `archive/engines/`.
+- **Blue Hare's engines:** of the twenty-four Blue Hare wrote, SID, SH101, WAVE, BLISS, WEST, MODAL and ECHOES (and
+  CANYON in the native image) are in the build; the others are in `archive/engines/`. **SH101** *(2026-10)*: saw, pulse
+  with PWM, a locked sub-oscillator and noise into a self-oscillating 24 dB ladder.
 - **A synthesizer, not a groovebox** *(2026-10-16)*: the SLICER, DUCK and the FX layer's REPEAT, REVERSE and TAPE STOP
   are archived; the design and the plan are in [docs/](docs/) (DesignPrinciples.md, Milestones.md, SoundAndDSP.md).
 - **The sound design studio** *(2026-10-16)*: the firmware's engines and FX chain in the browser, to design sounds,
-  try them on 4 tracks and save them to a file, to the studio's slots or straight to the FM-1's user slots
+  try them on 4 tracks with every effect (track inserts, the shared buses, the performance layer, the master) and
+  save them to a file, to the studio's slots or straight to the FM-1's user slots
   (`web/studio/`, `make studio`, BUILDING.md "Sound design studio").
 
 Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
@@ -290,6 +292,11 @@ In the order the device lists them:
   pitched shift-register noise) or the chip's combined waves (TS PT PS PTS); PW, PWM; MOD RING / SYNC / both against a
   master at the note, the oscillator MDTN semitones above it (the sync lead, ring bells); FILT the 12 dB multimode
   filter (LP BP HP) at CUT with RES, a little gritty. The SHP routings move PW and MDTN
+- **SH101** *(Blue Hare, 2026-10)*: after the 1982 monosynth. One oscillator's waves at once, by level: SAW, PULS (PW
+  50 % down to ~5 %; ENV DEST or LFO DEST SHP is its PWM), SUB locked to the oscillator (SUBT -1 SQ, -2 SQ, -2 PU) and
+  NOIS; into a 24 dB ladder low-pass at CUT (half following the keys) with RES, its input saturating as the mix gets
+  louder, singing by itself past ~110. Basses, acid lines, PWM and saw leads, a singing lead, plucks, a pad, brass, a
+  kick, a hat, a zap, wind
 - **WAVE** *(Blue Hare)*: wavetables. TBL picks one of 8 tables of 8 frames each (BASIC: sine to narrow pulses;
   ADDTV: one partial to many; SYNC: a hard-sync sweep; RESO: a resonant peak climbing; VOX: vowels; FM: two-operator
   FM; DIGI: sparse, metallic spectra; BITS: stepped and 1-bit shapes), POS the place between its frames; the SHP

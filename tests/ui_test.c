@@ -3061,10 +3061,10 @@ static int test_retired_engines(void)
 {
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
-        {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_BLISS, EID_BLISS, "BLISS"},
+        {ENGI_SID, EID_SID, "SID"}, {ENGI_SH101, EID_SH101, "SH101"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_BLISS, EID_BLISS, "BLISS"},
         {ENGI_WEST, EID_WEST, "WEST"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_ECHOES, EID_ECHOES, "ECHOES"}};
     static const uint8_t ARCH[4] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM};   /* (archived, 2026-10-16) */
-    static const char *const ORDER[] = {"SID", "WAVE", "BLISS", "WEST", "MODAL", "ECHOES"};
+    static const char *const ORDER[] = {"SID", "SH101", "WAVE", "BLISS", "WEST", "MODAL", "ECHOES"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3117,8 +3117,8 @@ static int test_retired_engines(void)
         seen |= 1u << TSEL->eng_req;
     }
     bad += check("PRESETS KNOB 2: the engines in order, back to the first",
-                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_WAVE && eng_step(ENGI_WAVE, 1) == ENGI_BLISS &&
-                 eng_step(ENGI_WAVE, -1) == 0u && eng_step(0, -1) == ENGI_ECHOES);
+                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_SH101 && eng_step(ENGI_WAVE, 1) == ENGI_BLISS &&
+                 eng_step(ENGI_SH101, -1) == 0u && eng_step(0, -1) == ENGI_ECHOES);
     /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
     ok = NENG_SHOWN == NELEM(ORDER);
     for (i = 0; ok && i < NENG_SHOWN; i++)
@@ -3132,7 +3132,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID WASP WAVE BREAKS ... SPEECH GLITCH (ENGINES[]); PRESETS lists them so",
+    bad += check("engines shown SID SH101 WAVE BLISS WEST MODAL ECHOES (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;
