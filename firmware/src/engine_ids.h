@@ -24,15 +24,16 @@ ENGINE(WEST, 16, MODAL)
 ENGINE(SID, 24, WAVE)
 ENGINE(BLISS, 26, WAVE)
 ENGINE(MODAL, 34, WEST)
-ENGINE(ECHOES, 36, WAVE)
-ENGINE(CANYON, 58, ECHOES)     /* native: ECHOES' repeats, 64 of them, all ringing */
 ENGINE(SH101, 61, SID)        /* (2026-10, Milestone 1) the little monosynth: VCO, sub, noise, 24 dB ladder */
 ENGINE(VOSIM, 21, WAVE)       /* (back 2026-10-16) two formants of pulse trains: voices, reeds, brass; WAVE has vowels */
+ENGINE(STRINGS, 55, WAVE)     /* (back 2026-10-17, in ECHOES' place) a string ensemble, its ensemble chorus */
 
 /* (Blue Hare, 2026-10-16: Milestone 1) archived: the sources in archive/engines/, out of every build and test.
  * Their ids stay theirs (core.h EID_RETIRED: a stored sound of one is refused): one comes back by moving its
  * eng_*.c back and turning its ARCHIVED line into an ENGINE line again */
 ARCHIVED(BYTE, 15)
+ARCHIVED(ECHOES, 36)          /* (2026-10-17: STRINGS took its place) */
+ARCHIVED(CANYON, 58)          /* (2026-10-17, with ECHOES: its repeats are ECHOES') */
 ARCHIVED(HOOVER, 17)
 ARCHIVED(SPEECH, 18)
 ARCHIVED(FMPERC, 19)
@@ -65,7 +66,6 @@ ARCHIVED(SCRATCH, 51)
 ARCHIVED(ABYSS, 52)
 ARCHIVED(SHRED, 53)
 ARCHIVED(LINNKIT, 54)
-ARCHIVED(STRINGS, 55)
 ARCHIVED(FLOOR, 56)
 ARCHIVED(NEBULA, 57)
 ARCHIVED(CHIPKIT, 59)

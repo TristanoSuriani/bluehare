@@ -72,8 +72,8 @@ These carry `Copyright (C) 2026 Tristano Suriani (Blue Hare)`.
 | The native image's reverbs CONCERT, CAVERN, SHIMMER | `firmware/src/fx_native.c` |
 | Tests for distributions and SPEECH | `tests/engines_test.c`, `archive/tests/speech_test.c` |
 
-*(2026-10-16)* The engines not in Blue Hare's one distribution, HARE FM1 (SID, WAVE, BLISS, WEST, MODAL, ECHOES; CANYON
-in the native image), are archived: their files are in `archive/engines/` (the paths above say `firmware/src/` for
+*(2026-10-16)* The engines not in Blue Hare's one distribution, HARE FM1 (SID, SH101, WAVE, VOSIM, BLISS, WEST, MODAL, STRINGS since 2026-10-17;
+ECHOES and CANYON archived then), are archived: their files are in `archive/engines/` (the paths above say `firmware/src/` for
 where they lived), their tests in `archive/tests/`, SPEECH's generator and vocabularies in `archive/tools/`. The
 SLICER is in `archive/fx/`.
 

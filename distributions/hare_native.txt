@@ -1,6 +1,5 @@
 # Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
-# HARE NATIVE: HARE FM1 for the native image (native/build.sh hare_native), its engines in the same order, ECHOES as
-# its native engine CANYON (a CANYON sound loads on the FM-1 as ECHOES)
+# HARE NATIVE: HARE FM1 for the native image (native/build.sh hare_native), its engines in the same order
 NATIVE
 TRACKS 4
 PALETTE ICE
@@ -11,4 +10,4 @@ VOSIM
 BLISS
 WEST
 MODAL
-CANYON
+STRINGS

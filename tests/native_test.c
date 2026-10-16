@@ -4,7 +4,7 @@
 /* The native image (cc -DBLUEHARE_NATIVE -DBLUEHARE_DIST=<dist>; core.h BLUEHARE_NATIVE):
  *   every track its own 16 voices, whatever the load (no shared budget, nothing taken from another track), and how
  *   fast the computer renders every track full (printed: the times real time);
- *   the device's engines as the device has them (their voice caps), the native one (CANYON: in a NATIVE
+ *   the device's engines as the device has them (their voice caps), no native engine (CANYON retired; was: in a NATIVE
  *   distribution) sounding with all their voices, grains and repeats, or loading as their substitutes where missing;
  *   the reverbs only it has (fx_native.c: CONCERT, CAVERN, SHIMMER): HALL's level, stereo, a tail as long as SIZE asks,
  *   exact silence after it;
@@ -120,7 +120,7 @@ static void rev_run(uint32_t rt, double *e2, double *side, double *end)
 int main(void)
 {
     static const struct { const char *name; uint32_t cap; } DEV[] = {
-        {"MODAL", 4}, {"ECHOES", 4},
+        {"MODAL", 4},
     };
     static const char *const RT[] = {"CONCERT", "CAVERN", "SHIMMER"};
     static const double RT_TAIL[] = {4.0, 12.0, 7.0};   /* RT60 at SIZE 90 (fx_native.c) */
@@ -165,30 +165,9 @@ int main(void)
     snprintf(msg, sizeof msg, "the device's engines as on the device: %u of this build's with their voice caps", n);
     ck(msg, ok);
 
-    /* the native engines: in a NATIVE distribution, all their voices, grains, repeats; else their substitutes */
-    if ((e = eng_named("CANYON")) != ENG_NO) {
-        uint32_t k, gmax = 0, j, s, pi;
-        for (pi = 0; pi < ENGINES[e]->npresets && strcmp(ENGINES[e]->presets[pi].name, "BELL CASCADE"); pi++)
-            ;
-        kills = voice_kills;
-        play(e, pi, 8);
-        run(2, 0);
-        s = sounding(&trk[0]);
-        trk_all_off(&trk[0]);                         /* (the repeats go on after the key) */
-        for (k = 0; k < 4u * FS / CTL; k++) {
-            uint32_t c = 0;
-            run(1, 0);
-            for (j = 0; j < CY_NG; j++)
-                c += cy_g[0][0][j].len != 0;
-            gmax = c > gmax ? c : gmax;
-        }
-        snprintf(msg, sizeof msg, "CANYON: 8 voices sound, BELL CASCADE rings up to %u repeats at once (ECHOES: 6), "
-                 "they go on after the key, none taken", gmax);
-        ck(msg, s == CY_POLY && gmax > 6u && voice_kills == kills && ENGINES[e]->edit[3].max == 64);
-        all_off();
-    } else
-        ck("CANYON not here: its sounds load as ECHOES (its substitute: the same controls)",
-           eng_load_id(EID_CANYON, 0) == eng_load_id(EID_ECHOES, 0));
+    /* (2026-10-17) no native engine any more: CANYON retired with ECHOES (STRINGS took their place) */
+    ck("CANYON and ECHOES retired: their sounds load nothing", eng_load_id(EID_CANYON, 0) == ENG_NO &&
+       eng_load_id(EID_ECHOES, 0) == ENG_NO && eng_named("CANYON") == ENG_NO);
 
     /* the reverbs only the native image has */
     host_tracks_init();

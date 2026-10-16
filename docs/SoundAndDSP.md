@@ -3,7 +3,7 @@
 This document lists every effect and every DSP algorithm in Blue Hare's audio path, and names the sound engines the
 rest of the system depends on. It describes the tree as of 2026-10-16, after the sequencer, the arpeggiator and the
 plugin were removed and Milestone 1's first step ([Milestones.md](Milestones.md)) archived the groovebox's parts: every
-engine but SID, WAVE, BLISS, WEST, MODAL and ECHOES (`archive/engines/`), the SLICER, DUCK and the FX layer's REPEAT,
+engine but SID, SH101, WAVE, VOSIM, BLISS, WEST, MODAL and STRINGS (`archive/engines/`), the SLICER, DUCK and the FX layer's REPEAT,
 REVERSE and TAPE STOP (`archive/fx/`). One distribution is built, HARE FM1.
 
 Sources are named relative to `firmware/src/` unless a path says otherwise.
@@ -111,7 +111,7 @@ Shared by the engines and the effects (`dsp.c`, `shared/`); who uses each in HAR
 |---|---|
 | **Phase accumulators** | 32-bit phases; pitch from a 1/16-semitone table plus cents as a factor (`cents_inc`). |
 | **Sine** | A 1024-point table, linearly interpolated (THD about -55 dB). |
-| **Band-limited saw and pulse** | polyBLEP: a quadratic residual around each wrap (`blep`, `osc_saw`, `osc_pulse`). SID, ECHOES (and CANYON). |
+| **Band-limited saw and pulse** | polyBLEP: a quadratic residual around each wrap (`blep`, `osc_saw`, `osc_pulse`). SID, SH101. |
 | **Triangle** | Naive (its harmonics fall fast enough). |
 | **Noise** | xorshift32 generators, one per voice or engine; the shared `rng` for the LFO's S&H on tracks 1 to 3. |
 | **Ladder filter** | Four trapezoidal one-pole low-passes (`G = g / (1 + g)`, Q15, `LADDER_G`), the feedback around them solved for the sample (zero-delay: `u = (x - k S) / (1 + k G^4)`), the input through the tanh table. SH101. |
@@ -136,8 +136,8 @@ Shared by the engines and the effects (`dsp.c`, `shared/`); who uses each in HAR
 
 ## 6. The engines
 
-HARE FM1 has eight engines, in the order the device lists them (`distributions/hare_fm1.txt`); the native image plays
-CANYON in ECHOES' place. Each has a stable id and a substitute that loads in its place in a build without it
+HARE FM1 has eight engines, in the order the device lists them (`distributions/hare_fm1.txt`); the native image the
+same. Each has a stable id and a substitute that loads in its place in a build without it
 (`engine_ids.h`).
 
 | Engine | Id | Algorithm | Substitute |
@@ -149,8 +149,7 @@ CANYON in ECHOES' place. Each has a stable id and a substitute that loads in its
 | **BLISS** | 26 | Four-operator FM as two pairs, after the 80s FM pianos and bells: the body (a sine phase-modulated by a sine at RATIO, its index falling over DECAY, FDBK on the modulator) and the tine (a high, fast-decaying strike); the index is held under ~14 kHz (Carson's rule against the note) so high notes do not alias; VEL brightens, KSCL softens the top. | WAVE |
 | **WEST** | 16 | West coast: a complex oscillator (a modulator at a whole, half or inharmonic RATIO, FM depth and feedback), a sine wavefolder (FOLD, SYM), and a low-pass gate whose cutoff follows the envelope through a vactrol-like lag. FM and FOLD ease off on high notes. | MODAL |
 | **MODAL** | 34 | DaisySP's modal resonator in fixed point (`shared/phys_dsp.c`, MIT): an exciter (mallet, pluck, bow, click) strikes 12 tuned band-pass SVF modes of a material (bar, marimba, bell, glass, plate, drum, tube, string); STRUCT stretches them, POS sets the strike place, DECAY / DAMP / BRIGHT the ring. Capped at 4 voices. | WEST |
-| **ECHOES** | 36 | A note and its echoes as one instrument: every repeat is a new sound (BLIP, PLUCK, STAB, NOISE, FM), COUNT of them at the tempo along SHAPE (even, bouncing, slowing, swung, random), each changed by DECAY, PITCH, TONE and SCAT. They ring on after the key. Capped at 4 voices. | WAVE |
-| **CANYON** (native) | 58 | ECHOES' repeats uncut: up to 64, all ringing, 8 voices; its sounds load on the FM-1 as ECHOES. | ECHOES |
+| **STRINGS** | 55 | A string ensemble (after the Waldorf Streichfett): three saws at 16', 8' and 4' and a square per voice, blended by REG through five registrations (contrabass, cello, viola, violin, organ), BODY the 16' on top, DTN detuning the 16' and 4' against the 8'; a gentle low-pass at BRITE that ANIM sweeps, TREM a ~6 Hz tremolo. Then the layer's ensemble (`engine_t.post`): three reads of a 23 ms line moved by a slow and a fast LFO a third of a cycle apart (SPEED), ENSEM the wet share. Back 2026-10-17 in ECHOES' place (ECHOES and CANYON archived). | WAVE |
 
 The other engines (40 of them, ids 15 .. 60) are archived in `archive/engines/` (its README describes each); their ids
 are retired, and a sound of one is refused.
@@ -159,15 +158,15 @@ are retired, and a sound of one is refused.
 
 The eight engines cover the synthesizer's ground with little overlap: classic subtractive (SH101), a chip voice (SID), wavetables
 (WAVE), formant voices (VOSIM), FM keys and bells (BLISS), west coast FM and folding (WEST), physical modelling (MODAL) and a rhythmic,
-generative echo instrument (ECHOES). What the rest of the system leans on:
+string ensemble (STRINGS). What the rest of the system leans on:
 
 - **WAVE**: the wavetable data (`bluehare_wavetables.h`, 130 KB of flash) and the end of most substitute chains (SID,
-  BLISS and ECHOES fall back to it); the power-on pad (WARM PAD).
+  BLISS and STRINGS fall back to it); the power-on pad (WARM PAD).
 - **MODAL**: the only user of DaisySP's physical models (`shared/phys_dsp.c`); the power-on bells (KALIMBA) and the
   host tests' drums (WOOD DRUM); the voice-capped engine the voice-budget tests use.
 - **SH101**: the power-on bass (101 BASS); the one user of the ladder filter (`LADDER_G`).
 - **SID**: SH101's substitute; the first engine (the fallback of last resort, and engine 0 in the tests).
-- **ECHOES**: its repeat engine (`ec_*`) is CANYON's, the native image's.
+- **STRINGS**: the one user of the track's engine block for an effect after the voices (its ensemble line, `eng_slab`).
 - **BLISS** and **WEST**: self-contained.
 
 The power-on tracks (`engines.c` `TRK_DEF`) are the roles Milestone 1's generative engine will play: a pad (WAVE), a

@@ -29,7 +29,7 @@ FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER
          "mono_lows",                                       # (Blue Hare 2026-10) the master's lows in mono (fx.c)
          "dly_tape",                                        # DELAY TYPE TAPE / WORN (Blue Hare 1.5, fx.c), when chosen
          "sid_render", "wave_render", "bliss_render",       # (Blue Hare 2026-10-16: HARE FM1's engines; the others archived)
-         "west_render", "modal_render", "echoes_render",
+         "west_render", "modal_render", "strings_render",   # (STRINGS back 2026-10-17, in ECHOES' place)
          "sh101_render",                                    # (2026-10, Milestone 1)
          "vosim_render"]                                    # (back from the archive 2026-10-16)
 # absent from some builds: skipped then; present, checked against these
@@ -37,7 +37,7 @@ OPTIONAL = {"uac_tap48": 504}           # (absent from a BLUEHARE_UAC_48K=0 or B
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
 # the one build/bluehare.dis is: tools/build.py), skipped then
 ENGINE_OF = {"sid_render": "SID", "wave_render": "WAVE", "bliss_render": "BLISS", "west_render": "WEST",
-             "modal_render": "MODAL", "echoes_render": "ECHOES", "sh101_render": "SH101", "vosim_render": "VOSIM"}
+             "modal_render": "MODAL", "strings_render": "STRINGS", "sh101_render": "SH101", "vosim_render": "VOSIM"}
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...

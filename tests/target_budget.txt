@@ -24,6 +24,6 @@ wave_render 290
 bliss_render 108
 west_render 140
 modal_render 419
-echoes_render 4602
 sh101_render 369
 vosim_render 180
+strings_render 323

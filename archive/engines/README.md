@@ -11,6 +11,9 @@ back: move its `eng_*.c` back to `firmware/src/`, turn its `ARCHIVED` line into 
 add its `#include` to `engines.c` (and its block to `ENG_SLAB_BYTES` if it borrows the track's block), list it in a
 distribution, and restore its tests and golden renders from the git history before 2026-10-16.
 
+*(2026-10-17)* ECHOES and CANYON (its native version) came here when STRINGS went back in their place; VOSIM went back
+on 2026-10-16. Their golden renders are in the git history before 2026-10-17.
+
 What they were (from the README of before; the distributions as they were then):
 
 - **HOOVER** *(Blue Hare)*: the early-90s rave lead, after the Alpha Juno's patch. Two oscillators, each a saw plus the

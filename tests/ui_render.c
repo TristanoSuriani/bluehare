@@ -558,7 +558,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
        "mod", "fx", "dly", "scl", "chord", "chord_wide", "chord_off", "arp", "voice", "clock",
-       "menu_midi", "edit_sid", "edit_bliss", "edit_echoes", "edit_wave_2", "edit_bliss_2", "edit_modal",
+       "menu_midi", "edit_sid", "edit_bliss", "edit_strings", "edit_wave_2", "edit_bliss_2", "edit_modal",
        "confirm_init", "confirm_project", "confirm_user", "confirm_erase", "menu", "menu_speaker",
        "about", "about_credits", "about_end", "uboot", "calibration", "splash", "batt_0", "batt_1",
        "batt_2", "batt_3", "batt_usb", "perform_peek", "perform_held", "perform_wait", "perform_harm",
@@ -571,7 +571,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
        "lfo2", "menu_audio", "head_play",
        "head_bpm_turn", "head_bpm_lock", "head_bpm_locked", "head_glo_turn", "head_downbeat",
        "head_beat_2", "menu_tune", "menu_info", "menu_home", "seq_todo",
-       "edit_wave", "edit_echoes_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2"};
+       "edit_wave", "edit_strings_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2"};
 
 
 
@@ -657,11 +657,11 @@ static void setup(int s)
         break;
     case S_EDIT_ANALOG: go_title("EDIT 1"); break;
     case S_EDIT_FM6: eng(ENGI_BLISS); go_title("EDIT 1"); break;
-    case S_EDIT_WHEEL: eng(ENGI_ECHOES); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
+    case S_EDIT_WHEEL: eng(ENGI_STRINGS); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_WAVE_2: eng(ENGI_WAVE); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;
     case S_EDIT_BYTE_2: eng(ENGI_BLISS); go_title("EDIT 2"); break;
     case S_EDIT_WAVE: eng(ENGI_WAVE); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
-    case S_EDIT_BYTE: eng(ENGI_ECHOES); TSEL->p[P_E6] = 9; go_title("EDIT 2"); break;
+    case S_EDIT_BYTE: eng(ENGI_STRINGS); TSEL->p[P_E6] = 9; go_title("EDIT 2"); break;
     case S_EDIT_WEST: eng(ENGI_WEST); TSEL->p[P_E0] = 13; TSEL->p[P_E3] = -20; go_title("EDIT 1"); break;
     case S_EDIT_WEST_2: eng(ENGI_WEST); go_title("EDIT 2"); break;
     case S_EDIT_HOOVER: eng(ENGI_MODAL); go_title("EDIT 2"); break;

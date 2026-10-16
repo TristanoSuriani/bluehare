@@ -11,7 +11,7 @@
  * asks for it with its key (eng_slab, after the engines): the first ask of a key the block was not lent to clears it
  * (as at power-on), so a sound starts on silence. 0: the
  * track is no part, or the engine needs more than the block (a build without it): it plays nothing */
-enum { SLAB_NONE, SLAB_MODAL, SLAB_ECHOES };
+enum { SLAB_NONE, SLAB_MODAL, SLAB_STRINGS };
 static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
@@ -20,16 +20,13 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
 #include "eng_bliss.c"         /* BLISS: FM electric pianos, bells, mallets (1.5) */
 #include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
-#include "eng_echoes.c"         /* ECHOES: a note and its repeats, each played anew (1.5) */
-#ifdef BLUEHARE_NATIVE           /* (the native image's alone: engine_ids.h, core.h BLUEHARE_NATIVE) */
-#include "eng_canyon.c"         /* CANYON: ECHOES' repeats, all of them (native) */
-#endif
+#include "eng_strings.c"        /* STRINGS: a string ensemble (1.5, WAREHOUSE; back 2026-10-17 in ECHOES' place) */
 
 /* the block's size: the largest this build's engines ask for (core.h BLUEHARE_ENG_*) */
 #define SLAB_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define SLAB_IF(on, sz) ((on) ? (uint32_t)(sz) : 0u)
 #define ENG_SLAB_BYTES                                                                                                  \
-    SLAB_MAX(SLAB_IF(BLUEHARE_ENG_MODAL, sizeof(md_voice_t) * MD_POLY), SLAB_IF(BLUEHARE_ENG_ECHOES, sizeof(ec_g_t) * EC_POLY * EC_NG))
+    SLAB_MAX(SLAB_IF(BLUEHARE_ENG_MODAL, sizeof(md_voice_t) * MD_POLY), SLAB_IF(BLUEHARE_ENG_STRINGS, sizeof(st_ens_t)))
 #define ENG_SLAB_WORDS ((ENG_SLAB_BYTES + 3u) / 4u + 1u)
 static uint32_t eng_slab_mem[NPART][ENG_SLAB_WORDS] __attribute__((section(".pool")));
 static uint8_t eng_slab_key[NPART];
@@ -142,7 +139,7 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 
 /* the parts at power-on (engine index, preset). (Blue Hare, 2026-10-16: Milestone 1) a role a track: the pad (WAVE's
  * WARM PAD) and the bass (SH101's 101 BASS; SID BASS in a build without it), centred, the keys (BLISS's E.PIANO, left) and the bells (MODAL's KALIMBA, right);
- * with 8, a drone (WEST), a halo of echoes (ECHOES), a bell (MODAL) and a lead (SID SYNC LEAD) after them. An engine the
+ * with 8, a drone (WEST), strings (STRINGS' CINEMA), a bell (MODAL) and a lead (SID SYNC LEAD) after them. An engine the
  * build leaves out: the second pick, else its first engine, preset 0 */
 #define TRK_PICK(X, p) {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : 0u, BLUEHARE_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
@@ -151,7 +148,7 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 #if NPART == 8
 static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 8), TRK_PICK2(SH101, 0, SID, 0), TRK_PICK2(BLISS, 0, WAVE, 0),
                                           TRK_PICK2(MODAL, 10, WEST, 0), TRK_PICK2(WEST, 6, WAVE, 0),
-                                          TRK_PICK2(ECHOES, 23, CANYON, 23), TRK_PICK2(MODAL, 2, WEST, 0), TRK_PICK(SID, 2)};
+                                          TRK_PICK2(STRINGS, 18, WAVE, 9), TRK_PICK2(MODAL, 2, WEST, 0), TRK_PICK(SID, 2)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24, -16, 16, -8, 8};
 #else
 static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 8), TRK_PICK2(SH101, 0, SID, 0), TRK_PICK2(BLISS, 0, WAVE, 0),

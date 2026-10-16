@@ -95,7 +95,7 @@
 #                   built with cc (web/emu/native_check.c); the cost of 1 s of a heavy song against real time.
 #                   The sound design studio (web/studio: the same build with its exports, studio_test.mjs through the
 #                   worklet the page runs): engines, presets, parameters, notes, user slots, files, the FM-1's UP_PUT.
-# ENGINES (tests/engines_test.c): a build without some engines (BLUEHARE_DIST=test_subset: HARE FM1 without BLISS, ECHOES): its engines
+# ENGINES (tests/engines_test.c): a build without some engines (BLUEHARE_DIST=test_subset: HARE FM1 without BLISS, STRINGS): its engines
 #                   numbered from 0 in its order, the ids both ways, a left-out engine's sound loading as its substitute
 #                   (projects, G_ENGSEL / PRESET, the song's instruments), its user presets kept but not listed, every
 #                   engine left rendering.
@@ -336,10 +336,10 @@ if [ -f build/gen/bluehare_tables.h ]; then
     slow run "regression, HARE FM1 (the primary) built with 4 tracks: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
     for d in hare_fm1 hare_native; do
         slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=$d -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/native_test_$d" tests/native_test.c -lm
-        slow run "native image ($d): 16 voices a track, the device's engines as they are, CANYON, CONCERT CAVERN SHIMMER, the long delay" "$OUT/native_test_$d"
+        slow run "native image ($d): 16 voices a track, the device's engines as they are, CONCERT CAVERN SHIMMER, the long delay" "$OUT/native_test_$d"
     done
     slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=hare_native -Ibuild/gen -Ifirmware/src -o "$OUT/regress_hare_native" tests/regress.c -lm
-    slow run "regression, HARE NATIVE (the native image's): its presets' golden renders (CANYON; the rest as the device's)" "$OUT/regress_hare_native" tests/golden.txt tests/cpu_baseline.txt
+    slow run "regression, HARE NATIVE (the native image's): its presets' golden renders (as the device's)" "$OUT/regress_hare_native" tests/golden.txt tests/cpu_baseline.txt
     if ${CC%% *} -fsyntax-only -w -DBLUEHARE_DIST=hare_native -Ibuild/gen -Ifirmware/src tests/hostsim.c 2>/dev/null; then
         echo "== FAILED: a NATIVE distribution builds without BLUEHARE_NATIVE"; fail=1
     else

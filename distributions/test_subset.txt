@@ -1,6 +1,6 @@
 # Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # TEST SUBSET: the host tests' build without some engines (tests/engines_test.c), never an image: HARE FM1 without
-# BLISS and ECHOES, so the substitutes, the protocol's left-out ids and the stores' fallbacks are tested
+# BLISS and STRINGS, so the substitutes, the protocol's left-out ids and the stores' fallbacks are tested
 TRACKS 4
 PALETTE ICE
 SID

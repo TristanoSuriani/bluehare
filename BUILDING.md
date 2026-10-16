@@ -88,8 +88,8 @@ BLUEHARE_DIST=<name> ./build.sh      # another one (build/bluehare-<name>.fwsc)
 
 | Distribution | Tracks | Engines |
 | --- | --- | --- |
-| `hare_fm1` | 4 | SID WAVE BLISS WEST MODAL ECHOES: Blue Hare's one distribution (2026-10-16, Milestone 1), palette ICE |
-| `hare_native` | 4 | HARE FM1 with ECHOES as its native engine CANYON (`NATIVE`: the native image's alone, "Native image" below) |
+| `hare_fm1` | 4 | SID SH101 WAVE VOSIM BLISS WEST MODAL STRINGS: Blue Hare's one distribution (2026-10-16, Milestone 1), palette ICE |
+| `hare_native` | 4 | HARE FM1's engines for the native image (`NATIVE`: the native image's alone, "Native image" below) |
 | `test_subset` | 4 | the host tests' build without some engines, never an image: SID WAVE WEST MODAL (`tests/engines_test.c`) |
 
 *(2026-10-16)* Blue Hare builds one distribution; the infrastructure for several stays (a new `distributions/*.txt` is
@@ -213,7 +213,7 @@ native image adds is its own:
 | voices | 12 shared by all the tracks (8 when the CPU is busy); a new note takes one from another track | 16 on every track, its own: nothing taken from another track |
 | reverb (FX > REVERB TYPE) | ROOM, SPRING, HALL (8 lines at half the rate), GATED | and CONCERT, CAVERN, SHIMMER (`firmware/src/fx_native.c`, below) |
 | delay line | 1.49 s (1/1, 2BAR, 4BAR cut short at most tempos) | 23.8 s: 4BAR down to 41 BPM; PING's right side 11.9 s |
-| engines | the distribution's | and the native engine, in a `NATIVE` distribution (`hare_native`): CANYON |
+| engines | the distribution's | the same (CANYON, its native engine, archived with ECHOES 2026-10-17) |
 | MENU > INFO CPU | the device's audio interrupt | the computer's audio thread (the FIRMWARE line reads VERSION) |
 
 The reverbs, in floating point at the full rate (some 0.7 MB):
@@ -227,13 +227,9 @@ The reverbs, in floating point at the full rate (some 0.7 MB):
 
 All three send out what HALL does (a burst of noise, the first 2 s, within 0.1 dB at SIZE 90) and end in exact silence.
 
-The native engines (`engine_ids.h` marks them `/* native: */`; `tools/gen_dist.py` lets only a `NATIVE` distribution
-list them, and `core.h` refuses a device build of one) share the controls of the engine they grew from, their
-substitute, so a sound made with them loads on the FM-1 as that engine:
-
-- **CANYON** (id 58, ECHOES'): up to 64 repeats (COUNT; ECHOES 16, a CANYON sound with more plays 16 there), all of
-  them ringing (ECHOES cuts all but 6), 8 voices. ECHOES' 24 presets and 8 of its own: CANYON, BELL CASCADE, PLUCK
-  STORM, ENDLESS DUB, LONG BOUNCE, FM RAIN, WHOLE TONE, AVALANCHE.
+A native engine (`engine_ids.h` marks it `/* native: */`; `tools/gen_dist.py` lets only a `NATIVE` distribution list
+it, and `core.h` refuses a device build of one) shares the controls of the engine it grew from, so its sounds load on
+the FM-1 as that engine. None is in the build now (CANYON was archived with ECHOES, 2026-10-17).
 
 ```
 native/build.sh hare_native
@@ -241,7 +237,7 @@ open "build/native/Blue Hare HARE NATIVE.app"
 ```
 
 Songs, sounds and presets are stored as on the device: a song made here plays on the FM-1 with the device's voices,
-CONCERT, CAVERN and SHIMMER as HALL, CANYON as ECHOES, and a delay longer than 1.49 s cut short.
+CONCERT, CAVERN and SHIMMER as HALL, and a delay longer than 1.49 s cut short.
 `tests/native_test.c` checks all of it in each distribution and prints how fast the computer renders every track full
 (about 30 times real time on an M1 Pro).
 

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* A distribution without some engines (distributions/*.txt): run_tests.sh builds this as BLUEHARE_DIST=test_subset (HARE
- * FM1 without BLISS and ECHOES; the archived engines, HOOVER .. SANDSTORM, are retired ids in every build). The engines
+ * FM1 without BLISS and STRINGS; the archived engines, HOOVER .. SANDSTORM, are retired ids in every build). The engines
  * left are numbered 0.. in the distribution's order; the ids stay what the stores and the protocol use, and a stored
  * sound of an engine left out loads as its substitute (engines.c eng_load_id):
  *   the table      the indices in order, the ids both ways, the left-out ids map to none, the substitutes
@@ -40,35 +40,35 @@ int main(void)
     char dbg2[200];
 
     /* the table */
-    ok = NENGINES == NELEM(ORDER) && !BLUEHARE_ENG_BLISS && !BLUEHARE_ENG_ECHOES && !BLUEHARE_ENG_CANYON &&
+    ok = NENGINES == NELEM(ORDER) && !BLUEHARE_ENG_BLISS && !BLUEHARE_ENG_STRINGS &&
          BLUEHARE_ENG_SID && BLUEHARE_ENG_WAVE && BLUEHARE_ENG_WEST && BLUEHARE_ENG_MODAL;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
-    ok &= eng_of_id(EID_BLISS) == ENG_NO && eng_of_id(EID_ECHOES) == ENG_NO && ENGI_BLISS == ENG_ABSENT &&
-          str_eq(N_ENGNAME[EID_BLISS], "-") && eng_by_id(EID_ECHOES) == &ENG_NONE;
+    ok &= eng_of_id(EID_BLISS) == ENG_NO && eng_of_id(EID_STRINGS) == ENG_NO && ENGI_BLISS == ENG_ABSENT &&
+          str_eq(N_ENGNAME[EID_BLISS], "-") && eng_by_id(EID_STRINGS) == &ENG_NONE;
     for (i = 0; i <= 13u; i++)                          /* (retired: Felucca's own and 1.5's) */
         ok &= EID_RETIRED(i) && eng_of_id(i) == ENG_NO && str_eq(N_ENGNAME[i], "-");
     ok &= EID_RETIRED(EID_HOOVER) && EID_RETIRED(EID_KIT) && eng_of_id(EID_HOOVER) == ENG_NO;   /* (archived) */
-    bad += check("engines: TEST SUBSET, 4 in its order from 0, the ids both ways; BLISS ECHOES none; 0 .. 13 and the "
+    bad += check("engines: TEST SUBSET, 4 in its order from 0, the ids both ways; BLISS STRINGS none; 0 .. 13 and the "
                  "archived retired", ok);
-    ok = eng_load_id(EID_BLISS, &sub) == ENGI_WAVE && sub && eng_load_id(EID_ECHOES, &sub) == ENGI_WAVE && sub &&
-         eng_load_id(EID_CANYON, &sub) == ENGI_WAVE && sub && eng_load_id(EID_MODAL, &sub) == ENGI_MODAL && !sub &&
+    ok = eng_load_id(EID_BLISS, &sub) == ENGI_WAVE && sub && eng_load_id(EID_STRINGS, &sub) == ENGI_WAVE && sub &&
+         eng_load_id(EID_CANYON, &sub) == ENG_NO && eng_load_id(EID_ECHOES, &sub) == ENG_NO && eng_load_id(EID_MODAL, &sub) == ENGI_MODAL && !sub &&
          eng_load_id(EID_WEST, &sub) == ENGI_WEST && !sub && eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub &&
          eng_load_id(EID_HOOVER, &sub) == ENG_NO && eng_load_id(EID_KIT, &sub) == ENG_NO &&
          eng_load_id(0, &sub) == ENG_NO && eng_load_id(12, &sub) == ENG_NO && eng_load_id(13, &sub) == ENG_NO &&
          eng_load_id(27, &sub) == ENG_NO;
-    bad += check("  substitutes: BLISS, ECHOES -> WAVE; CANYON -> ECHOES -> WAVE; retired (0 .. 13, 27) and archived: none",
+    bad += check("  substitutes: BLISS, STRINGS -> WAVE; retired (0 .. 13, 27) and archived (ECHOES, CANYON): none",
                  ok);
 
     /* power-on: the engines.c picks, the second where the first is left out */
     reset();
 #if NPART == 8
-    bad += check("power-on: WARM PAD, SID BASS (centred), WAVE for BLISS, KALIMBA, DRONE, SID for ECHOES, BELL, SYNC LEAD",
+    bad += check("power-on: WARM PAD, SID BASS (centred), WAVE for BLISS, KALIMBA, DRONE, STRING PAD for STRINGS, BELL, SYNC LEAD",
                  TRK_DEF[0][0] == ENGI_WAVE && str_eq(ENGINES[ENGI_WAVE]->presets[TRK_DEF[0][1]].name, "WARM PAD") &&
                  TRK_DEF[1][0] == ENGI_SID && TRK_DEF[1][1] == 0u && TRK_DEF[2][0] == ENGI_WAVE && TRK_DEF[2][1] == 0u &&
                  TRK_DEF[3][0] == ENGI_MODAL && str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[3][1]].name, "KALIMBA") &&
                  TRK_DEF[4][0] == ENGI_WEST && str_eq(ENGINES[ENGI_WEST]->presets[TRK_DEF[4][1]].name, "DRONE") &&
-                 TRK_DEF[5][0] == 0u && TRK_DEF[5][1] == 0u && TRK_DEF[6][0] == ENGI_MODAL && TRK_DEF[7][0] == ENGI_SID &&
+                 TRK_DEF[5][0] == ENGI_WAVE && str_eq(ENGINES[ENGI_WAVE]->presets[TRK_DEF[5][1]].name, "STRING PAD") && TRK_DEF[6][0] == ENGI_MODAL && TRK_DEF[7][0] == ENGI_SID &&
                  TRK_DEF[7][1] == 2u && !TRK_PAN[0] && !TRK_PAN[1] && TRK_PAN[2] < 0 && TRK_PAN[3] > 0 && TRK_PAN[4] < 0 &&
                  TRK_PAN[5] > 0 && TRK_PAN[6] < 0 && TRK_PAN[7] > 0);
 #else
@@ -95,13 +95,13 @@ int main(void)
     request(ED_SET, a, 4);
     ok = TSEL->eng_req == ENGI_WAVE && TSEL->preset == 0u;
     set_engine_of(TSEL, ENGI_SID);
-    a[0] = EID_ECHOES; a[1] = 3;
+    a[0] = EID_STRINGS; a[1] = 3;
     request(ED_PRESET, a, 2);
     ok &= TSEL->eng_req == ENGI_WAVE && TSEL->preset == 0u && host_wire[5] == EID_WAVE;
-    a[0] = EID_ECHOES;
+    a[0] = EID_STRINGS;
     request(ED_NAMES, a, 1);
-    ok &= host_wire[5] == EID_ECHOES && host_wire[6] == 0;
-    bad += check("  G_ENGSEL BLISS: WAVE; PRESET ECHOES 3: WAVE's first preset (replies its id); NAMES ECHOES: none", ok);
+    ok &= host_wire[5] == EID_STRINGS && host_wire[6] == 0;
+    bad += check("  G_ENGSEL BLISS: WAVE; PRESET STRINGS 3: WAVE's first preset (replies its id); NAMES STRINGS: none", ok);
 
     /* OCT (Blue Hare): a preset sets it (every factory preset's within -4 .. 4), the next preset puts it back; a song
      * keeps it; a stored value outside -4 .. 4 (ENV DEST FX, which it was) loads as 0 */
@@ -159,7 +159,7 @@ int main(void)
         bad += check(dbg, bf[1] > 0 && bf[0] / bf[1] > 7.8 && bf[0] / bf[1] < 8.2);
     }
 
-    /* projects: track 1 of a stored song re-stamped ECHOES (as a build with it saves it) */
+    /* projects: track 1 of a stored song re-stamped STRINGS (as a build with it saves it) */
     reset();
     set_engine_of(&trk[0], ENGI_WAVE);
     apply_preset_to(&trk[0], 2);
@@ -167,14 +167,14 @@ int main(void)
     project_save(0);
     off = PROJ_HDR + 3u + 2u * G_COUNT + 1u + PROJ_NAME_LEN + 1u;   /* track 1's engine byte (after the track count) */
     ok = proj_ram[0][off] == EID_WAVE;
-    proj_ram[0][off] = EID_ECHOES;
+    proj_ram[0][off] = EID_STRINGS;
     stream_rehash();
     project_load(0);
     e = trk[0].eng_req;
     ok &= e == ENGI_WAVE && trk[0].preset == 0u && trk[0].p[P_ATK] == 33;
     for (i = 0; i < 8u; i++)
         ok &= trk[0].p[P_E0 + i] == ENGINES[ENGI_WAVE]->presets[0].e[i];
-    bad += check("project: a track of ECHOES (left out) loads as WAVE, its first preset's engine values, the rest as saved",
+    bad += check("project: a track of STRINGS (left out) loads as WAVE, its first preset's engine values, the rest as saved",
                  ok);
 
     /* user presets */
@@ -275,11 +275,10 @@ int main(void)
 
     {   /* (Blue Hare) the engines' block of a track (engines.c eng_slab): one a track, as big as this build's
          * largest needs; lent to a key, cleared when another key asks; nothing for a non-part or too big an ask */
-        uint8_t *x = eng_slab(&trk[2], SLAB_ECHOES, 16), *y;
-        ok = x && sizeof eng_slab_mem[0] >= sizeof(md_voice_t) * MD_POLY &&
-             (BLUEHARE_ENG_ECHOES || sizeof eng_slab_mem[0] < sizeof(ec_g_t) * EC_POLY * EC_NG);   /* (no ECHOES: not its) */
+        uint8_t *x = eng_slab(&trk[2], SLAB_STRINGS, 16), *y;
+        ok = x && sizeof eng_slab_mem[0] >= sizeof(md_voice_t) * MD_POLY;
         x[5] = 77;
-        ok &= eng_slab(&trk[2], SLAB_ECHOES, 16) == (void *)x && x[5] == 77;   /* (the same key: kept) */
+        ok &= eng_slab(&trk[2], SLAB_STRINGS, 16) == (void *)x && x[5] == 77;   /* (the same key: kept) */
         y = eng_slab(&trk[2], SLAB_MODAL, 16);
         ok &= y == x && x[5] == 0;                                            /* (another: cleared) */
         x[5] = 9;

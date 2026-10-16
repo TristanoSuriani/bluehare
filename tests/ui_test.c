@@ -154,10 +154,10 @@ static int check(const char *what, int ok)
 
 /* (Blue Hare) the sounds these tests power on with: the layout they were written against (a bass on track 1, the
  * keys on 2, a lead on 3, the drums on 4: MODAL's WOOD DRUM since the kits were archived; 5..8 a chord, a pluck, a bell,
- * echoes), every pan centred. The device's own power-on (engines.c TRK_DEF, TRK_PAN) is engines_test.c's to check */
+ * strings), every pan centred. The device's own power-on (engines.c TRK_DEF, TRK_PAN) is engines_test.c's to check */
 static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(BLISS, 0), TRK_PICK(SID, 2), TRK_PICK(MODAL, 7)
 #if NPART == 8
-                                         , TRK_PICK(WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK(MODAL, 2), TRK_PICK(ECHOES, 0)
+                                         , TRK_PICK(WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK(MODAL, 2), TRK_PICK(STRINGS, 0)
 #endif
 };
 /* main.c bluehare_init, with these tests' sounds (UT_DEF) */
@@ -3063,9 +3063,9 @@ static int test_retired_engines(void)
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
         {ENGI_SID, EID_SID, "SID"}, {ENGI_SH101, EID_SH101, "SH101"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_BLISS, EID_BLISS, "BLISS"},
-        {ENGI_WEST, EID_WEST, "WEST"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_ECHOES, EID_ECHOES, "ECHOES"}};
-    static const uint8_t ARCH[4] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM};   /* (archived, 2026-10-16; VOSIM back since) */
-    static const char *const ORDER[] = {"SID", "SH101", "WAVE", "VOSIM", "BLISS", "WEST", "MODAL", "ECHOES"};
+        {ENGI_WEST, EID_WEST, "WEST"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_STRINGS, EID_STRINGS, "STRINGS"}};
+    static const uint8_t ARCH[6] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM, EID_ECHOES, EID_CANYON};   /* (archived, 2026-10-16 .. 17; VOSIM, STRINGS back since) */
+    static const char *const ORDER[] = {"SID", "SH101", "WAVE", "VOSIM", "BLISS", "WEST", "MODAL", "STRINGS"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3080,11 +3080,11 @@ static int test_retired_engines(void)
               eng_by_id(GONE[i]) == &ENG_NONE && !eng_by_id(GONE[i])->npresets && str_eq(N_ENGNAME[GONE[i]], "-");
     ok &= eng_of_id(EID_COUNT) == ENG_NO && eng_load_id(EID_COUNT, &sub) == ENG_NO && eng_by_id(200) == &ENG_NONE;
     bad += check("retired ids 1 4 8 13 (DIGITAL SAMPLE GRAIN SLICE) and ids past the last: no engine, \"-\", refused", ok);
-    for (i = 0, ok = 1; i < 4u; i++)
+    for (i = 0, ok = 1; i < NELEM(ARCH); i++)
         ok &= EID_RETIRED(ARCH[i]) && eng_of_id(ARCH[i]) == ENG_NO && eng_load_id(ARCH[i], &sub) == ENG_NO &&
               eng_by_id(ARCH[i]) == &ENG_NONE && str_eq(N_ENGNAME[ARCH[i]], "-");
-    ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_ECHOES) && !EID_RETIRED(EID_CANYON);
-    bad += check("archived engines (HOOVER KIT WASP SANDSTORM ..): retired as those, their ids kept; the kept ones not", ok);
+    ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_STRINGS) && !EID_RETIRED(EID_VOSIM);
+    bad += check("archived engines (HOOVER KIT WASP SANDSTORM ECHOES CANYON ..): retired as those, their ids kept; the kept ones not", ok);
     for (i = 0; i < NENGINES; i++)
         all |= (uint32_t)eng_ok(i) << i;
     /* (a project naming one is refused: tests/robust_test.c, which crafts the stored stream) */
@@ -3119,7 +3119,7 @@ static int test_retired_engines(void)
     }
     bad += check("PRESETS KNOB 2: the engines in order, back to the first",
                  seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_SH101 && eng_step(ENGI_WAVE, 1) == ENGI_VOSIM &&
-                 eng_step(ENGI_SH101, -1) == 0u && eng_step(0, -1) == ENGI_ECHOES);
+                 eng_step(ENGI_SH101, -1) == 0u && eng_step(0, -1) == ENGI_STRINGS);
     /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
     ok = NENG_SHOWN == NELEM(ORDER);
     for (i = 0; ok && i < NENG_SHOWN; i++)
@@ -3133,7 +3133,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID SH101 WAVE VOSIM BLISS WEST MODAL ECHOES (ENGINES[]); PRESETS lists them so",
+    bad += check("engines shown SID SH101 WAVE VOSIM BLISS WEST MODAL STRINGS (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;

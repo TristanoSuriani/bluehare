@@ -73,7 +73,7 @@ async function device(sectors) {
 const d = await device({});
 const P = d.one("stu_pcount"), G = d.one("stu_gcount"), X = d.one("stu_xcount"), PE0 = d.one("stu_pe0"), NE = d.one("stu_nengines");
 const names = [...Array(NE).keys()].map((e) => d.str("stu_engine_name", e));
-check(`the engines: ${names.join(" ")}`, ["SID", "WAVE", "BLISS", "WEST", "MODAL", "ECHOES"].every((n) => names.includes(n)));
+check(`the engines: ${names.join(" ")}`, ["SID", "SH101", "WAVE", "VOSIM", "BLISS", "WEST", "MODAL", "STRINGS"].every((n) => names.includes(n)));
 check("every engine has presets, each named", names.every((_, e) => {
   const n = d.one("stu_npresets", e);
   return n > 0 && [...Array(n).keys()].every((k) => d.str("stu_preset_name", e, k).length > 0);

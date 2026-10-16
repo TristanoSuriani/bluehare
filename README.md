@@ -11,12 +11,11 @@ What Blue Hare adds, all by Tristano Suriani:
 - **The sequencer:** a placeholder for now (SEQ shows TODO). Felucca's step sequencer is gone, and so is the tracker
   that took its place until 2026-10.
 - **One distribution, HARE FM1** *(2026-10-16)*: the base synthesizer engines SID, SH101, WAVE, VOSIM, BLISS, WEST, MODAL and
-  ECHOES on **4 tracks** (at power-on WAVE's WARM PAD and SH101's 101 BASS, centred; BLISS's E.PIANO on the left and MODAL's
+  STRINGS on **4 tracks** (at power-on WAVE's WARM PAD and SH101's 101 BASS, centred; BLISS's E.PIANO on the left and MODAL's
   KALIMBA on the right). The build still takes any number of distributions of up to 16 engines, with stable engine
   ids and a palette each (HARE FM1: ICE); the earlier ones are archived (BUILDING.md "Distributions").
 - **Blue Hare's engines:** of the twenty-four Blue Hare wrote, SID, SH101, WAVE, VOSIM (back from the archive 2026-10-16), BLISS, WEST, MODAL
-  and ECHOES (and
-  CANYON in the native image) are in the build; the others are in `archive/engines/`. **SH101** *(2026-10)*: saw, pulse
+  and STRINGS (back 2026-10-17 in ECHOES' place; ECHOES and the native image's CANYON archived) are in the build; the others are in `archive/engines/`. **SH101** *(2026-10)*: saw, pulse
   with PWM, a locked sub-oscillator and noise into a self-oscillating 24 dB ladder.
 - **A synthesizer, not a groovebox** *(2026-10-16)*: the SLICER, DUCK and the FX layer's REPEAT, REVERSE and TAPE STOP
   are archived; the design and the plan are in [docs/](docs/) (DesignPrinciples.md, Milestones.md, SoundAndDSP.md).
@@ -70,7 +69,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   its saves in a file: the base for heavier engines and effects than the FM-1 can hold. Every track has its own 16
   voices there, three more reverbs (CONCERT: HALL at the full rate and twice the lines; CAVERN: a cave's echoes and
   a 30 s tail; SHIMMER: a tail climbing in octaves), a 23.8 s delay line, and a distribution of its own, HARE NATIVE,
-  with the native engine CANYON (BUILDING.md "Native image")
+  (BUILDING.md "Native image")
 
 - **Six engines** in HARE FM1 (below), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
@@ -340,104 +339,10 @@ In the order the device lists them:
   place, DECAY the ring (50 ms .. 8 s), DAMP how much sooner the highs die, BRIGHT the strike's hardness, BEAT detunes
   the modes a little each (a bell's beating). Presets: marimba, vibes, bells, glass, plates, drums, harp, kalimba,
   gamelan, bowed glass and bells, a drone pipe, clanks and glitches
-- **ECHOES** *(Blue Hare)*: a note and its echoes as one instrument; every repeat is played
-  anew, so each can differ. SRC (BLIP, PLUCK, STAB, NOISE, FM), then COUNT repeats at the tempo: TIME (1/4 .. 1/64,
-  dotted, triplets), SHAPE (EVEN, BOUNCE: each shorter, SLOW, SWING, RANDOM), DECAY (what each keeps), PITCH (semitones
-  a repeat), TONE (each darker or thinner), SCAT (chance in time and pitch). The echoes go on after the key is let go
-
-**This fork removed DIGITAL, SAMPLE, GRAIN and SLICE** (1.5): DIGITAL (four-operator FM) had already been replaced by
-FM6, and the other three played recorded material. The firmware has no built-in samples and no user sample slots, which
-frees about 11 KB of RAM and 28 KB of the buffer pool. It is a clean break for what was saved with them: their engine
-numbers (1, 4, 8, 13) are retired, so a project with a track on one of them is refused, a user preset of one shows as
-an empty slot, a song's instrument of one is dropped, and a library file's patch of one is skipped. A complete backup
-restores without its samples.
-
-**Blue Hare removed Felucca's own engines** (ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE, DRUM) and the
-default distribution that held them, with FM6's whole patch editing: the 6-OP FM tab of the web editor, its voice
-bank (the B slots, its flash sector) and the user presets' FM6 patches. Their ids (0, 2, 3, 5 .. 7, 9 .. 12) are
-retired as the four above, with the same clean break: a project with a track on one is refused, a user preset of one
-shows empty, a song's instrument of one is dropped.
-
-*(Blue Hare, 2026-10-16)* **Archived:** the engines above that are not HARE FM1's, the distributions IDM, FOUNDRY,
-WAREHOUSE, CHIP, IDM NATIVE and REF (`archive/distributions/`), the SLICER and DUCK, and the FX layer's REPEAT, REVERSE
-and TAPE STOP (`archive/fx/`): the groovebox's parts, out of a synthesizer's way.
-
-**Reverb** (FX > REVERB, TYPE): **HALL** (since 1.4, the default on a fresh start: eight delay lines feeding each
-other with slowly drifting taps, stereo, SIZE the decay up to about 4.5 s, DAMP how fast the highs die), **ROOM** (the
-default up to 1.1.5), **SPRING** and *(Blue Hare)* **GATED**: HALL cut off sharply, the 80s gated snare. A hit in
-the send opens it; it holds for SIZE (about 60 ms at 0 to 500 ms at 127) after the last one, then shuts in about 10 ms.
-*(Blue Hare, 2026-10)* **CONCERT**: HALL grown into the memory four tracks freed, sixteen longer lines instead of
-eight, a 12 ms pre-delay and four diffusers: a denser, smoother, wider tail at HALL's level (SIZE and DAMP as HALL's;
-the native image plays its own floating-point CONCERT).
-A project plays the TYPE it was saved with (one of the native image's own, on the FM-1: HALL).
-
-## Scale keyboard
-
-On the **SCL** page, set **QNT** to WHITE to play the selected scale using only the
-white keys (SNAP keeps every key and rounds it down to the scale). C4 plays **ROOT**; consecutive white keys play consecutive scale notes
-above and below it. Black keys are silent. **TRN** transposes the resulting notes; the octave buttons shift them
-by full octaves. Set QNT to OFF for the normal chromatic keyboard.
-
-Available scales: chromatic (CHR), major (MAJ), natural minor (MIN), Dorian (DOR),
-Mixolydian (MIX), major pentatonic (PEN), minor pentatonic (MPEN), harmonic minor
-(HARM), Phrygian (PHRY), Lydian (LYD), Locrian (LOC), ascending melodic minor (MEL),
-minor blues (BLUES), whole tone (WHOLE), half-whole diminished (DIMHW), and
-whole-half diminished (DIMWH). Scales with other than seven notes continue across
-the white keys without repeating notes; their roots need not fall on every C key.
-Drum kits and incoming MIDI keep their own note mapping.
-
-Press **SCL** again for the **CHORD** page: CHRD picks the chord keys (OFF, the scale's triads or
-sevenths, or a fixed shape) and VOIC the voicing.
-
-## Layout
-
-| Path | What |
-| --- | --- |
-| `firmware/` | firmware sources: `src/` app, `hal/` hardware layer, `loader/` update loader |
-| `tools/` | build script, generators, package maker and installer |
-| `assets/` | UI font, icon names |
-| `web/` | the web installer, the editor (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`), the sound design studio (`web/studio/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
-| `native/` | *(Blue Hare)* the native image: Blue Hare as a desktop application (SDL2), BUILDING.md "Native image" |
-| `archive/` | *(Blue Hare)* what is kept but neither built nor tested: the plugin (VST3, AU, CLAP by DPF), `archive/plugin/README.md` |
-| `tests/` | tests that run on the build machine |
-| `LICENSES/` | licence texts of the bundled fonts, icons, ported DSP and SDK files |
-
-## If the FM-1 does not start
-
-If an update is interrupted and the FM-1 stays black, check whether a computer sees it as a USB device named
-**WL80UBOOT** (or a USB mass-storage device with ID 4C4A:8057). That is the chip's built-in boot mode, and
-the FM-1 can be brought back:
-
-- First try another USB data cable, and close every other app that uses MIDI, then run the web installer again.
-- If it stays in boot mode, [FM-1 Transporter](https://github.com/kurogedelic/FM-1-transporter) reads and
-  writes the FM-1's flash from a Mac through a Seeed XIAO RP2040 (three wires to the FM-1's USB lines). Back up
-  the flash first, then write the official firmware (M-VAVE's FM-1.fwsc).
-- Questions: [Issues](https://github.com/hugelton/Felucca/issues).
-
-## Support
-
-Blue Hare: issues and ideas go to [TristanoSuriani/fel-tracker](https://github.com/TristanoSuriani/fel-tracker/issues).
-Please don't report Blue Hare problems to Felucca's tracker.
-
-Felucca: if Felucca is useful to you, [sponsoring on GitHub](https://github.com/sponsors/hugelton) or a donation
-on [itch.io](https://hugelton.itch.io/felucca) helps keep its development going.
-
-Issues are for reproducible bugs (one per issue). Ideas and requests go to
-[Discussions](https://github.com/hugelton/Felucca/discussions), and feature requests posted as issues will be
-moved there. Pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## AI disclaimer
-
-Blue Hare is developed by Tristano Suriani with the help of AI coding agents (for coding, testing and
-documentation). He decides its design, features, sound design and direction.
-
-Felucca (Leo Kuroshita's disclaimer): Felucca is developed with the assistance of AI coding agents. These tools are used for coding, testing, documentation, translation, and maintenance.
-The instrument's design, features, sound design, and overall direction are determined by the maintainer or community.
-No generative AI is used to create music, icons, or visual artwork for this project.
-For more details, see [On AI-Assisted Development and Responsibility](https://github.com/hugelton/Felucca/discussions/166).
-
-## Credits
-
+- **STRINGS** *(Blue Hare)*: a string ensemble after the Waldorf Streichfett: three saws (16', 8', 4') and a square
+  per voice, blended by REG from contrabass through cello, viola and violin to an organ registration, BODY the 16'
+  weight, DTN the dividers' loose tuning, BRITE a gentle low-pass that ANIM sweeps slowly, TREM a tremolo; then the
+  layer's ensemble chorus (ENSEM, SPEED): the string machines' shimmer
 - **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Blue Hare, meaning the tracker,
   the distributions and engine ids, the engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE,
   CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, KIT, BREAKS and RISERS,

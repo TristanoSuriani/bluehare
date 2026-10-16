@@ -67,7 +67,7 @@ static const gen_preset_t GEN_PRESETS[] = {
      {EID_WAVE, EID_SH101, EID_BLISS, EID_MODAL}, {"MORPH PAD", "DEEP BASS", "SOFT EP", "WOOD DRUM"},
      {2, 89, 83, 1, 6, 60, 50, 70, 50, 50}},
     {"SHORELINE",  5, 4, 64, {40, 30, 60, 0}, 30, 40, 0, 80, 85, 20, 59, 0, 0,
-     {EID_WAVE, EID_SH101, EID_MODAL, EID_ECHOES}, {"WARM PAD", "SUB BASS", "GLOCKEN", "HALO"},
+     {EID_WAVE, EID_SH101, EID_MODAL, EID_MODAL}, {"WARM PAD", "SUB BASS", "GLOCKEN", "WOOD DRUM"},
      {4, 121, 89, 1, 8, 65, 45, 108, 30, 65}},
     {"GLASS",      6, 3, 76, {35, 30, 80, 20}, 60, 55, 25, 45, 50, 30, 39, 1, 1,
      {EID_WAVE, EID_SH101, EID_MODAL, EID_MODAL}, {"GLASS PAD", "SUB BASS", "GLASS", "WOOD DRUM"},
