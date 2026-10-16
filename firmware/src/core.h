@@ -336,13 +336,37 @@ static inline int tw_wide(uint32_t k) { return k >= TW_FIRST && k < NTRK; }   /*
 #define TP_ALT 0u
 #define TP_RND 1u
 static uint8_t trk_pmode[NTRK];
+/* (Blue Hare, 2026-10-16: Milestone 2's layers) the tracks are the patch's layers. A layer ON is part of the patch: a
+ * note played (the keys, MIDI in) sounds on every ON layer whose key and velocity ranges hold it (LM_STACK: a stack, a
+ * key split, a velocity split, by the ranges), or on one of them in turn (LM_ROBIN: round-robin), each transposed by
+ * its own TRANS; with no layer ON, on the selected one alone (as before layers). Each layer's insert after DIST and
+ * LOW CUT: a 12 dB state-variable filter (lay.ftype OFF LP BP HP, its cutoff and resonance: fx.c track_filter).
+ * Saved with the song (project.c version 10). seq.c layer_on / layer_off route the notes */
+enum { LM_STACK, LM_ROBIN, LM_N };
+enum { LF_OFF, LF_LP, LF_BP, LF_HP, LF_N };
+static struct {
+    uint8_t mode;                         /* LM_* (the patch's) */
+    uint8_t on[NTRK], klo[NTRK], khi[NTRK], vlo[NTRK], vhi[NTRK];
+    int8_t tr[NTRK];                      /* semitones, -24 .. 24 */
+    uint8_t ftype[NTRK], fcut[NTRK], fres[NTRK];   /* LF_*, 0 .. 127 (CUTOFF_HZ), 0 .. 127 */
+} lay;
 static void trk_mix_defaults(void)
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++) {
         trk_lowcut[k] = (uint8_t)(tw_wide(k) ? TL_DEF : 0u);
         trk_pmode[k] = TP_ALT;
+        lay.on[k] = 0;
+        lay.klo[k] = 0;
+        lay.khi[k] = 127;
+        lay.vlo[k] = 1;
+        lay.vhi[k] = 127;
+        lay.tr[k] = 0;
+        lay.ftype[k] = LF_OFF;
+        lay.fcut[k] = 100;
+        lay.fres[k] = 20;
     }
+    lay.mode = LM_STACK;
 }
 
 /* SWING of a track's step clock (#31): CLOCK's SWING, at most 100 (the host tests' song player swings by it; the

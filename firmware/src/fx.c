@@ -941,6 +941,7 @@ static void events_block(uint32_t n);                    /* seq.c */
 static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_r[CTL];
 
 static void track_lowcut(uint32_t k, int32_t *b, uint32_t n);   /* (Blue Hare: LOW CUT, below) */
+static void track_filter(uint32_t k, int32_t *b, uint32_t n);   /* (Blue Hare: the layer's filter, below) */
 
 /* SPREAD (#148): a POLY or UNISON part whose SPRD is above 0. Its voices start left and right of PAN in turn (voice.c
  * voice_start; UNISON's detuned voices alternate), at PAN -/+ SPRD / 2 (SPRD 127: hard left and right), with the pan
@@ -969,6 +970,8 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     track_dist(t, b, n);
     if (trk_lowcut[(t - trk) % NTRK])
         track_lowcut((uint32_t)(t - trk) % NTRK, b, n);   /* (Blue Hare; the side d passes it, as it passes DIST) */
+    if (lay.ftype[(t - trk) % NTRK])
+        track_filter((uint32_t)(t - trk) % NTRK, b, n);   /* (Blue Hare: the layer's filter; the side passes it too) */
     if ((pf.mute >> (t - trk)) & 1u)
         perf_mute_sd((uint32_t)(t - trk), b, d, n);
     for (i = 0; i < n; i++) {
@@ -992,7 +995,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
  * sends lose the lows too). The states are Q8 and step by the difference / 256 * k / 128, at least one
  * unit while they differ (tl_pole), so they reach their input exactly: silence in, silence out */
 static const int16_t TL_K[TL_N] = {0, 186, 279, 371, 555, 739, 1101, 1458};   /* Q15: 1 - e^(-2 pi f / 44100) */
-static struct { int32_t s1, s2; } tmix[NTRK];   /* LOW CUT's poles (Q8) */
+static struct { int32_t s1, s2, f1, f2; } tmix[NTRK];   /* LOW CUT's poles (Q8); the layer filter's integrators */
 static inline int32_t tl_pole(int32_t *s, int32_t x, int32_t k)   /* the one-pole low-pass of x (k Q15), its state Q8 */
 {
     int32_t d = (x << 8) - *s, st = (d >> 8) * k >> 7;
@@ -1012,6 +1015,26 @@ static __attribute__((noinline)) void track_lowcut(uint32_t k, int32_t *b, uint3
 }
 
 /* ((Blue Hare) WIDTH, the Haas effect, removed 2026-10-16: inaudible) */
+
+/* (Blue Hare, 2026-10-16) the layer's filter (core.h lay.ftype): a 12 dB trapezoidal state-variable filter (dsp.c's,
+ * tsvf), low-, band- or high-pass at lay.fcut (CUTOFF_HZ) with lay.fres, on the track's block after DIST and LOW CUT.
+ * The block can be several voices loud: it is filtered at a quarter of its size (the integrators held to +-150000) */
+static __attribute__((noinline)) void track_filter(uint32_t k, int32_t *b, uint32_t n)
+{
+    tsvf_t c;
+    uint32_t i, ty = lay.ftype[k];
+    int32_t kk = 8192 - lay.fres[k] * 7600 / 127, f1 = tmix[k].f1, f2 = tmix[k].f2;
+    tsvf_coef_k(&c, lay.fcut[k] << 8, kk);
+    for (i = 0; i < n; i++) {
+        int32_t x = b[i] >> 2, v3 = x - f2, v1 = (c.a1 * f1 + c.a2 * v3) >> 13, v2 = f2 + ((c.a2 * f1 + c.a3 * v3) >> 13), y;
+        f1 = clamp(2 * v1 - f1, -150000, 150000);
+        f2 = clamp(2 * v2 - f2, -150000, 150000);
+        y = ty == LF_LP ? v2 : ty == LF_BP ? v1 : x - ((v1 * kk) >> 12) - v2;
+        b[i] = y << 2;
+    }
+    tmix[k].f1 = f1;
+    tmix[k].f2 = f2;
+}
 
 /* one synth part into the dry mix and the sends; a part with no voice sounding costs
  * the LFO tick and a cleared buffer only (after the DIST tail has run out) */
@@ -1041,6 +1064,8 @@ static void mix_part(track_t *t, uint32_t n)
         track_dist(t, b, n);
         if (trk_lowcut[k])
             track_lowcut(k, b, n);                      /* (Blue Hare) LOW CUT */
+        if (lay.ftype[k])
+            track_filter(k, b, n);                      /* (Blue Hare) the layer's filter */
         if ((pf.mute >> (t - trk)) & 1u)
             perf_mute((uint32_t)(t - trk), b, n);       /* perform.c: a black key in the FX layer */
         for (i = 0; i < n; i++) {

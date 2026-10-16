@@ -14,6 +14,7 @@
 
 static char stu_text[256];                         /* strings both ways: the page writes a name here, reads labels */
 STU_EXPORT char *stu_buf(void) { return stu_text; }
+static char st_text_tmp[16];
 static char *stu_say(const char *s)
 {
     str_cpy(stu_text, s ? s : "", sizeof stu_text);
@@ -59,16 +60,21 @@ STU_EXPORT void stu_load_preset(uint32_t k)        /* factory preset k of the tr
 STU_EXPORT void stu_undo(void) { undo_swap(); }    /* SAVE held: the sound before the last load, and back */
 
 /* ------------------------------------------------------------- parameters --- */
-/* scope 2: the effects that are no track or song parameter (docs/SoundAndDSP.md section 3): the inserts LOW CUT and
- * PAN MODE (core.h trk_lowcut, trk_pmode: per track on the device, its SETTINGS'; the
- * studio treats every effect as shared: a value set is every track's, the one shown track 1's), the
- * performance layer's macros FILTER CRUSH THROW DEPTH (perform.c perf_k, as KNOB 1..4 with FX turn them), MENU > SPEAKER
- * EQ (settings.lowcut, fx.c fx_lowcut) and MASTER (the pot). Described as the others, values through stu_x */
-enum { SX_LOWCUT, SX_PMODE, SX_SPKEQ, SX_FILTER, SX_CRUSH, SX_THROW, SX_DEPTH, SX_MASTER, SX_PROC, SX_COUNT };
+/* scope 2: what is no track or song parameter. The selected LAYER's settings (core.h lay, trk_lowcut, trk_pmode: the
+ * layer the knobs edit): ON (part of the patch), KEY LO / HI, VEL LO / HI, TRANS, its insert FILTER (OFF LP BP HP), CUT,
+ * RES, LOW CUT, PAN MODE; the patch's play MODE (STACK: every ON layer whose ranges hold the note; ROUND ROBIN: one of
+ * them in turn); the performance layer's macros FILTER CRUSH THROW DEPTH (perform.c perf_k, as KNOB 1..4 with FX turn
+ * them), MENU > SPEAKER EQ (settings.lowcut, fx.c fx_lowcut), MASTER (the pot) and the sound processing (fx.c fx_proc:
+ * Blue Hare's buses and master, or amb-1's). Described as the others, values through stu_x */
+enum { SX_LOWCUT, SX_PMODE, SX_SPKEQ, SX_FILTER, SX_CRUSH, SX_THROW, SX_DEPTH, SX_MASTER, SX_PROC,
+       SX_LON, SX_KLO, SX_KHI, SX_VLO, SX_VHI, SX_LTR, SX_LFT, SX_LFC, SX_LFR, SX_LMODE, SX_COUNT };
 static const char *const N_SX_LOWCUT[TL_N] = {"OFF", "40Hz", "60Hz", "80Hz", "120Hz", "160Hz", "240Hz", "320Hz"};
 static const char *const N_SX_PMODE[] = {"ALT", "RND"};
 static const char *const N_SX_SPKEQ[] = {"FLAT", "LOWCUT", "BASS+"};
-static const char *const N_SX_PROC[] = {"BLUE HARE", "AMB-1"};   /* fx.c fx_proc: the buses and master, or amb-1's */
+static const char *const N_SX_PROC[] = {"BLUE HARE", "AMB-1"};
+static const char *const N_SX_ONOFF[] = {"OFF", "ON"};
+static const char *const N_SX_LFT[LF_N] = {"OFF", "LP", "BP", "HP"};
+static const char *const N_SX_LMODE[LM_N] = {"STACK", "ROUND ROBIN"};
 static const param_desc_t SX[SX_COUNT] = {
     [SX_LOWCUT] = {"LOWCUT", F_ENUM, 0, TL_N - 1, 0, N_SX_LOWCUT, 0},
     [SX_PMODE] = {"PANMODE", F_ENUM, 0, 1, 0, N_SX_PMODE, 0},
@@ -79,18 +85,38 @@ static const param_desc_t SX[SX_COUNT] = {
     [SX_DEPTH] = {"DEPTH", F_INT, 0, 100, 0, 0, 0},
     [SX_MASTER] = {"MASTER", F_PCT, 0, 127, 87, 0, 0},
     [SX_PROC] = {"PROC", F_ENUM, 0, 1, 0, N_SX_PROC, 0},
+    [SX_LON] = {"LAYER", F_ENUM, 0, 1, 0, N_SX_ONOFF, 0},
+    [SX_KLO] = {"KEY LO", F_INT, 0, 127, 0, 0, 0},
+    [SX_KHI] = {"KEY HI", F_INT, 0, 127, 127, 0, 0},
+    [SX_VLO] = {"VEL LO", F_INT, 1, 127, 1, 0, 0},
+    [SX_VHI] = {"VEL HI", F_INT, 1, 127, 127, 0, 0},
+    [SX_LTR] = {"TRANS", F_SEMI, -24, 24, 0, 0, 0},
+    [SX_LFT] = {"LFILT", F_ENUM, 0, LF_N - 1, 0, N_SX_LFT, 0},
+    [SX_LFC] = {"LCUT", F_CUTOFF, 0, 127, 100, 0, 0},
+    [SX_LFR] = {"LRES", F_PCT, 0, 127, 20, 0, 0},
+    [SX_LMODE] = {"MODE", F_ENUM, 0, LM_N - 1, 0, N_SX_LMODE, 0},
 };
 static int16_t stu_xv;                            /* (the value read, as the others' pointers give theirs) */
 static int32_t stu_x(uint32_t id)
 {
     uint32_t k = song.sel;
     switch (id) {
-    case SX_LOWCUT: return trk_lowcut[0];
-    case SX_PMODE: return trk_pmode[0];
+    case SX_LOWCUT: return trk_lowcut[k];
+    case SX_PMODE: return trk_pmode[k];
     case SX_SPKEQ: return settings.lowcut % 3u;
     case SX_FILTER: case SX_CRUSH: case SX_THROW: return perf_k[id - SX_FILTER];
     case SX_DEPTH: return 100 - perf_k[3];        /* (perf_k[3] is the cut: 0 the full level) */
     case SX_PROC: return fx_proc;
+    case SX_LON: return lay.on[k];
+    case SX_KLO: return lay.klo[k];
+    case SX_KHI: return lay.khi[k];
+    case SX_VLO: return lay.vlo[k];
+    case SX_VHI: return lay.vhi[k];
+    case SX_LTR: return lay.tr[k];
+    case SX_LFT: return lay.ftype[k];
+    case SX_LFC: return lay.fcut[k];
+    case SX_LFR: return lay.fres[k];
+    case SX_LMODE: return lay.mode;
     default: return (int32_t)(web_master_adc * 127u + 511u) / 1023;
     }
 }
@@ -98,14 +124,33 @@ static void stu_x_put(uint32_t id, int32_t v)
 {
     uint32_t k = song.sel;
     switch (id) {
-    case SX_LOWCUT: for (k = 0; k < NTRK; k++) trk_lowcut[k] = (uint8_t)v; break;   /* (shared: every track) */
-    case SX_PMODE: for (k = 0; k < NTRK; k++) trk_pmode[k] = (uint8_t)v; break;
+    case SX_LOWCUT: trk_lowcut[k] = (uint8_t)v; break;
+    case SX_PMODE: trk_pmode[k] = (uint8_t)v; break;
     case SX_SPKEQ: settings.lowcut = (uint8_t)v; fx_lowcut = (uint8_t)v; break;
     case SX_FILTER: case SX_CRUSH: case SX_THROW: perf_k[id - SX_FILTER] = (int8_t)v; break;
     case SX_DEPTH: perf_k[3] = (int8_t)(100 - v); break;
     case SX_PROC: fx_proc = (uint8_t)(v != 0); break;
+    case SX_LON: lay.on[k] = (uint8_t)v; break;
+    case SX_KLO: lay.klo[k] = (uint8_t)v; break;
+    case SX_KHI: lay.khi[k] = (uint8_t)v; break;
+    case SX_VLO: lay.vlo[k] = (uint8_t)v; break;
+    case SX_VHI: lay.vhi[k] = (uint8_t)v; break;
+    case SX_LTR: lay.tr[k] = (int8_t)v; break;
+    case SX_LFT: lay.ftype[k] = (uint8_t)v; break;
+    case SX_LFC: lay.fcut[k] = (uint8_t)v; break;
+    case SX_LFR: lay.fres[k] = (uint8_t)v; break;
+    case SX_LMODE: lay.mode = (uint8_t)v; break;
     default: web_master((uint32_t)v * 1023u / 127u); break;
     }
+}
+/* a layer's ON, and how many of its voices sound now (the page's layer row; the tests) */
+STU_EXPORT uint32_t stu_layer_on(uint32_t t) { return lay.on[t % NTRK]; }
+STU_EXPORT uint32_t stu_track_voices(uint32_t t)
+{
+    uint32_t i, n = 0;
+    for (i = 0; i < NVOICE; i++)
+        n += trk[t % NTRK].v[i].active != 0;
+    return n;
 }
 STU_EXPORT uint32_t stu_xcount(void) { return SX_COUNT; }
 
@@ -197,6 +242,13 @@ STU_EXPORT char *stu_format(uint32_t scope, uint32_t id, int32_t v)
     const char *unit = "";
     if (!d)
         return stu_say("");
+    if (scope == 2u && (id == SX_KLO || id == SX_KHI)) {   /* a key as its name and octave (60: C4) */
+        static const char *const NN[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+        int32_t n = clamp(v, 0, 127);
+        str_cpy(st_text_tmp, NN[n % 12], 4);
+        fmt_int(st_text_tmp + str_len(st_text_tmp), n / 12 - 1);
+        return stu_say(st_text_tmp);
+    }
     param_format(d, clamp(v, d->min, d->max), val, &unit);
     str_cpy(stu_text, val, sizeof stu_text);
     if (unit && *unit) {
@@ -242,9 +294,11 @@ static const uint8_t STU_LAYOUT[] = {
     'V', 0, P_VOICE, 0, P_GLIDE, 0, P_GLMODE, 0, P_PRIO, 0, P_ALLOC, 0, P_DETUNE, 0, P_PAN, 0xFF,
     /* the effects, as docs/SoundAndDSP.md section 3 lists them: the track's inserts, its sends, the shared buses, the
      * performance layer, the master */
-    'S', 0, P_DIST, 0, P_SPRD, 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,   /* (the sound's: drive, spread, sends) */
+    'Z', X2(SX_LON), X2(SX_KLO), X2(SX_KHI), X2(SX_VLO), X2(SX_VHI), X2(SX_LTR), 0xFF,   /* the layer: in the patch, ranges */
+    'F', 0, P_DIST, X2(SX_LFT), X2(SX_LFC), X2(SX_LFR), X2(SX_LOWCUT), X2(SX_PMODE), 0xFF,   /* the layer's insert */
+    'S', 0, P_SPRD, 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,             /* (the sound's: spread, sends) */
     'X', X2(SX_PROC), 0xFF,                                           /* Blue Hare's processing or amb-1's */
-    'I', X2(SX_LOWCUT), X2(SX_PMODE), 0xFF,
+    'W', X2(SX_LMODE), 0xFF,                                          /* the patch's play mode */
     'Y', G1(G_DTYPE), G1(G_DTIME), G1(G_DFDBK), G1(G_DCOLOR), G1(G_DMIX), 0xFF,
     'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RDAMP), 0xFF,
     'C', G1(G_CRATE), G1(G_CDEPTH), 0xFF,

@@ -138,19 +138,80 @@ static uint32_t click_beat_len(void) { return 4u * div_samples(2); }   /* DIV 2:
 static int click_wanted(void) { return click_mode == CLICK_ON; }
 
 /* -------------------------------------------------------- note input --- */
+/* (Blue Hare, 2026-10-16) the layers (core.h lay): a note played goes to the ON layers its ranges reach (LM_STACK), or
+ * to the next of them in turn (LM_ROBIN), each at the note plus its TRANS; with no layer ON, to the track it was played
+ * on (the selected one; MIDI IN's channel's) as before. lay_tn[note][k]: the note layer k sounds for it (0xFF none),
+ * so its release ends exactly what it started, whatever changed since */
+static uint8_t lay_tn[128][NTRK];
+static uint8_t lay_rr;                     /* LM_ROBIN: the layer that played last */
+static uint8_t lay_init;
+static int layers_on(void)
+{
+    uint32_t k;
+    for (k = 0; k < NTRK; k++)
+        if (lay.on[k])
+            return 1;
+    return 0;
+}
+static uint32_t layer_targets(uint32_t note, uint32_t vel)   /* the layers a note of vel reaches (a bit each) */
+{
+    uint32_t k, m = 0;
+    for (k = 0; k < NTRK; k++)
+        if (lay.on[k] && note >= lay.klo[k] && note <= lay.khi[k] && vel >= lay.vlo[k] && vel <= lay.vhi[k])
+            m |= 1u << k;
+    if (lay.mode == LM_ROBIN && m) {           /* the next one after the last that played */
+        for (k = 1; k <= NTRK; k++) {
+            uint32_t j = (lay_rr + k) % NTRK;
+            if ((m >> j) & 1u) {
+                lay_rr = (uint8_t)j;
+                return 1u << j;
+            }
+        }
+    }
+    return m;
+}
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
+    uint32_t k, m;
     last_note = (uint8_t)note;
-    trk_note_on(t, note, vel);
+    if (!lay_init) {
+        memset(lay_tn, 0xFF, sizeof lay_tn);
+        lay_init = 1;
+    }
+    if (!layers_on() || note > 127u) {
+        trk_note_on(t, note, vel);
+        return;
+    }
+    m = layer_targets(note, vel);
+    for (k = 0; k < NTRK; k++) {
+        if (lay_tn[note][k] != 0xFFu) {            /* (played again before its release: that one ends first) */
+            trk_note_off(&trk[k], lay_tn[note][k]);
+            lay_tn[note][k] = 0xFF;
+        }
+        if ((m >> k) & 1u) {
+            uint32_t n2 = (uint32_t)clamp((int32_t)note + lay.tr[k], 0, 127);
+            trk_note_on(&trk[k], n2, vel);
+            lay_tn[note][k] = (uint8_t)n2;
+        }
+    }
 }
 
 static int midi_note_held(const track_t *t, uint32_t note);
 static int midi_local_held(const track_t *t, uint32_t note);
 static void input_off(track_t *t, uint32_t note)
 {
+    uint32_t k, any = 0;
     if (midi_note_held(t, note))
         return;
-    trk_note_off(t, note);
+    if (lay_init && note < 128u)
+        for (k = 0; k < NTRK; k++)
+            if (lay_tn[note][k] != 0xFFu) {        /* the layers it sounds on */
+                trk_note_off(&trk[k], lay_tn[note][k]);
+                lay_tn[note][k] = 0xFF;
+                any = 1;
+            }
+    if (!any)
+        trk_note_off(t, note);
 }
 
 /* the effect of key k in the FX layer (PF_N none): the white keys F3 .. G5 the map's (perf_map: the settings,

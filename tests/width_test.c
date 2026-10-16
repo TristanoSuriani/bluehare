@@ -81,6 +81,20 @@ int main(void)
     project_load(0);
     ok &= !trk_lowcut[1];
     bad += check("bounds: LOW CUT past the last -> OFF (when loaded)", ok);
+    /* (Blue Hare, 2026-10-16) the layers (core.h lay) go with the song: saved, loaded, and power-on's after a reset */
+    trk_mix_defaults();
+    lay.mode = LM_ROBIN;
+    lay.on[1] = 1; lay.klo[1] = 24; lay.khi[1] = 59; lay.vlo[1] = 10; lay.vhi[1] = 90; lay.tr[1] = -12;
+    lay.ftype[1] = LF_BP; lay.fcut[1] = 70; lay.fres[1] = 100;
+    ok = !project_save(0);
+    trk_mix_defaults();
+    ok &= !lay.on[1] && lay.mode == LM_STACK && lay.khi[1] == 127;
+    project_load(0);
+    ok &= lay.mode == LM_ROBIN && lay.on[1] == 1 && lay.klo[1] == 24 && lay.khi[1] == 59 && lay.vlo[1] == 10 &&
+          lay.vhi[1] == 90 && lay.tr[1] == -12 && lay.ftype[1] == LF_BP && lay.fcut[1] == 70 && lay.fres[1] == 100 &&
+          !lay.on[0] && lay.khi[0] == 127;
+    bad += check("the layers: play mode, ON, ranges, TRANS and the filter saved with the song and loaded back", ok);
+    trk_mix_defaults();
     printf("%s\n", bad ? "WIDTH TEST FAILED" : "width test passed");
     return bad ? 1 : 0;
 }

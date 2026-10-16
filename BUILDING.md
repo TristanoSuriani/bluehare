@@ -169,7 +169,9 @@ the browser emulator's build (`web/emu/bluehare_web.c`) with the studio's export
 engines and presets, every parameter of the selected track, of the song and of the effects that are neither,
 described, set and shown as the device shows them; the user preset slots; GEN), in the emulator's worklet
 (`web/emu/worklet.js`, its "call" messages). One screen (a laptop's, 1280 x 800 and up; narrower, a page that
-scrolls): the engines and the presets or saved sounds on the left; the sound in four tabs in the middle (SOUND: the
+scrolls): a LAYER tab (the selected layer in the patch or not, its key and velocity ranges, TRANS; its insert:
+drive, filter, low cut, pan mode) and the play mode (STACK / ROUND ROBIN) beside the layers; Export / Import patch
+(every layer embedded) and Export / Load layer; the engines and the presets or saved sounds on the left; the sound in four tabs in the middle (SOUND: the
 engine, the envelope, the drive, spread and sends, the voice; MOVEMENT: the LFO and the mod matrix; EFFECTS: every
 effect of `docs/SoundAndDSP.md` section 3, all shared by the four tracks: LOW CUT and PAN MODE on every
 track, the delay, reverb and chorus, the performance layer's hold effects and macros, the master's SPEAKER EQ and

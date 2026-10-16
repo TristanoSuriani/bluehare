@@ -8,7 +8,8 @@
  *              keys' effects are the user's (1.2): a white key held in the layer (FX held or locked) + PRESETS turned
  *              steps that key through NONE and the effects (it holds the new one at once), EDIT puts the key's default
  *              back; kept with the settings (fx_keys) when the layer closes
- *   GLO  SET   black keys 1..4 (F#3 G#3 A#3 C#4) T1..T4 MUTE (latched; lit = sounding), F3..B3 SOLO T1..T4 while
+ *   GLO  SET   black keys 1..4 (F#3 G#3 A#3 C#4) T1..T4 MUTE (latched; lit = sounding), F3..B3 select layer 1..4 (Blue
+ *              Hare, 2026-10-16: the layer the knobs edit, as ALGORITHM steps them; was SOLO while
  *              held (HOLD cells, a corner triangle), C4 UNMUTE ALL, F4 TAP tempo; KNOB 1..4 T1..T4 LEVEL;
  *              GLO + PLAY: from the top without stopping
  *   SCL  SET   any key: its note name is ROOT; KNOB 1..4 ROOT SCL CHRD VOIC (LY_SCL: the SCL page's first two,
@@ -485,8 +486,8 @@ static void layer_key(uint32_t l, uint32_t k)
         if (key_black(k)) {
             if (p < NTRK)                               /* (8 tracks: 8 black keys, F#3 .. A#4) */
                 trk[p].p[P_MUTE] = (int16_t)!trk[p].p[P_MUTE];
-        } else if (p < VIEW_N) {                        /* F3 .. B3: the view's four */
-            lys.solo |= 1u << k;                        /* (layer_masks: perf_solo while held) */
+        } else if (p < VIEW_N) {                        /* F3 .. B3: the view's four layers, the one to edit */
+            track_select(trk_view() + p);
         } else if (p == 4u) {
             for (i = 0; i < NTRK; i++)
                 trk[i].p[P_MUTE] = 0;
@@ -634,7 +635,7 @@ static uint32_t layer_leds(uint32_t *br)
             can = e < PF_N && ((ok >> e) & 1u);
             on = can && ((held >> e) & 1u);
         } else if (l == LAYER_GLO) {                    /* sounding lit; SOLO held lit, the others, C4, F4 breathe */
-            on = b ? p < NTRK && glo_sounding(p) : p < VIEW_N && ((lys.solo >> k) & 1u);
+            on = b ? p < NTRK && glo_sounding(p) : p < VIEW_N && trk_view() + p == song.sel;   /* (the layer edited) */
             can = !b && (p < VIEW_N || p == 4u || (p == 7u && !song.g[G_CLOCK]));
         } else if (l == LAYER_SCL) {                    /* the root lit, the scale's notes breathe */
             e = (k + 5u + 12u - root) % 12u;
@@ -773,9 +774,9 @@ static void layer_glo(void)
 {
     uint32_t e;
     char n[3] = {0, 0, 0};
-    for (e = 0; e < VIEW_N; e++) {                      /* F3 .. B3: SOLO while held (8 tracks: the view's) */
+    for (e = 0; e < VIEW_N; e++) {                      /* F3 .. B3: the layer to edit (8 tracks: the view's) */
         n[0] = W_NOTE[e];
-        lcell(LC_X(e), 4, LC_H, n, trk_icon(trk_view() + e, 0), 0, "SOLO", (perf_solo >> (trk_view() + e)) & 1u ? LS_HELD : LS_OFF, 1);
+        lcell(LC_X(e), 4, LC_H, n, trk_icon(trk_view() + e, 0), 0, "EDIT", trk_view() + e == song.sel ? LS_SEL : LS_OFF, 1);
     }
     n[0] = 'C';
     lcell(LC_X(0), 50, LC_H, n, ICON_MUTE, 0, "ALL", LS_OFF, 0);   /* (unmute all) */

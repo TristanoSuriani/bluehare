@@ -22,6 +22,10 @@ What Blue Hare adds, all by Tristano Suriani:
   are archived; the design and the plan are in [docs/](docs/) (DesignPrinciples.md, Milestones.md, SoundAndDSP.md).
 - **GEN, the generative engine** *(2026-10)*: ARP plays the four tracks as an ambient ensemble (pad, bass, bells,
   pulse; amb1's composition), 8 pieces, on the FM-1, the native image, the emulator and the studio alike.
+- **Layers** *(2026-10-16, Milestone 2's start)*: the four tracks are a patch's layers. A layer ON plays the notes
+  its key and velocity ranges hold, transposed by its own TRANS (STACK), or one layer a note in turn (ROUND ROBIN);
+  each has an insert (drive, a 12 dB filter, low cut). GLO + F3 .. B3 picks the layer to edit. See
+  [docs/LayerArchitecture.md](docs/LayerArchitecture.md).
 - **The sound design studio** *(2026-10-16)*: the firmware's engines, effects and GEN in the browser, on one screen, to design sounds,
   try them on 4 tracks with every effect (track inserts, the shared buses, the performance layer, the master) and
   save them to a file, to the studio's slots or straight to the FM-1's user slots

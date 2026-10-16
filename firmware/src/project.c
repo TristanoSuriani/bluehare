@@ -19,6 +19,8 @@
  *   per track: u8 engine id (core.h EID_*), u8 preset, u8 n, n x (u8 id, i16 value), u8 0 (Felucca's FM6 patch flag)
  *   tracks x u8 0 (WIDTH's, the Haas effect, removed 2026-10-16), tracks x u8 LOW CUT, tracks x u8 PAN MODE (core.h
  *   trk_lowcut, trk_pmode: 0 ALT, 1 RND)
+ *   (version 10, the layers: core.h lay) u8 the play mode; tracks x u8 each of ON, KEY LO, KEY HI, VEL LO, VEL HI,
+ *   TRANS (+ 64), FILTER, CUT, RES
  *   u32 FNV-1a of everything before it but the name
  * A project of more tracks than the build has is refused (SONG HAS 8 TRACKS), one of fewer fills its first tracks (the
  * rest as at power-on). */
@@ -30,7 +32,8 @@
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
 #endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER 9u                            /* (Blue Hare) 8: no song (the sequencer is a placeholder); 9: no DUCK */
+#define PROJ_VER 10u                           /* (Blue Hare) 8: no song (the sequencer is a placeholder); 9: no DUCK;
+                                                  * 10: the layers (core.h lay) */
 #define PROJ_HDR 16u
 #if !BLUEHARE_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
 #define ST_PAYLOAD_MAX 3840u
@@ -160,6 +163,22 @@ static void proj_write(pw_t *w, const char *name)
     }
     pw_bytes(w, trk_lowcut, NTRK);
     pw_bytes(w, trk_pmode, NTRK);
+    {                                                   /* the layers (version 10) */
+        uint8_t tr[NTRK];
+        uint32_t k;
+        for (k = 0; k < NTRK; k++)
+            tr[k] = (uint8_t)(lay.tr[k] + 64);
+        pw_u8(w, lay.mode);
+        pw_bytes(w, lay.on, NTRK);
+        pw_bytes(w, lay.klo, NTRK);
+        pw_bytes(w, lay.khi, NTRK);
+        pw_bytes(w, lay.vlo, NTRK);
+        pw_bytes(w, lay.vhi, NTRK);
+        pw_bytes(w, tr, NTRK);
+        pw_bytes(w, lay.ftype, NTRK);
+        pw_bytes(w, lay.fcut, NTRK);
+        pw_bytes(w, lay.fres, NTRK);
+    }
     {
         uint32_t h = w->h;
         uint8_t b[4] = {(uint8_t)h, (uint8_t)(h >> 8), (uint8_t)(h >> 16), (uint8_t)(h >> 24)};
@@ -301,6 +320,32 @@ static int proj_read(pr_t *r, int apply)
         for (k = 0; apply && k < ntr; k++) {        /* (the others out of range: OFF) */
             trk_lowcut[k] = (uint8_t)(lc[k] < TL_N ? lc[k] : 0u);
             trk_pmode[k] = pm[k];
+        }
+    }
+    {                                               /* the layers (version 10): a value out of range refuses the song */
+        uint8_t mode = (uint8_t)pr_u8(r), v[9][8];
+        uint32_t j;
+        for (j = 0; j < 9u; j++)
+            pr_bytes(r, v[j], ntr);
+        if (mode >= LM_N)
+            return 1;
+        for (k = 0; k < ntr; k++)
+            if (v[0][k] > 1u || v[1][k] > 127u || v[2][k] > 127u || v[3][k] > 127u || v[4][k] > 127u ||
+                v[5][k] < 40u || v[5][k] > 88u || v[6][k] >= LF_N || v[7][k] > 127u || v[8][k] > 127u)
+                return 1;
+        if (apply) {
+            lay.mode = mode;
+            for (k = 0; k < ntr; k++) {
+                lay.on[k] = v[0][k];
+                lay.klo[k] = v[1][k];
+                lay.khi[k] = v[2][k];
+                lay.vlo[k] = v[3][k];
+                lay.vhi[k] = v[4][k];
+                lay.tr[k] = (int8_t)(v[5][k] - 64);
+                lay.ftype[k] = v[6][k];
+                lay.fcut[k] = v[7][k];
+                lay.fres[k] = v[8][k];
+            }
         }
     }
     {

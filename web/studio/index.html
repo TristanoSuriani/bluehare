@@ -42,7 +42,9 @@ header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; borde
 .brand h1 { margin: 0; font: 400 21px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; }
 .brand h1 b { font-weight: 400; color: var(--accent); }
 .brand span { font: 11px/1 ui-monospace, Menlo, monospace; color: var(--dim); letter-spacing: .1em; }
-#tracks { display: flex; gap: 6px; margin: 0 auto; }
+#tracks { display: flex; gap: 6px; margin: 0 0 0 auto; }
+#patch-mode { margin-right: auto; }
+#patch-mode .choice { flex-direction: row; align-items: center; padding: 0 0 0 8px; }
 .trk { display: flex; gap: 6px; align-items: baseline; padding: 4px 10px; background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; }
 .trk small { color: var(--dim); font-size: 11px; }
 .trk b { font-weight: 600; font-size: 12.5px; }
@@ -230,7 +232,8 @@ header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; borde
 <div class="app">
   <header>
     <div class="brand"><h1>BLUE <b>HARE</b></h1><span>STUDIO · @VERSION@</span></div>
-    <nav id="tracks" aria-label="Tracks"></nav>
+    <nav id="tracks" aria-label="Layers"></nav>
+    <span id="patch-mode"></span>
     <button class="btn" id="undo" title="Undo (Ctrl/⌘ Z)" disabled>↶ Undo</button>
     <button class="btn" id="redo" title="Redo (Ctrl/⌘ ⇧ Z)" disabled>↷ Redo</button>
     <button class="btn" id="rec" title="Record what plays to a WAV file">● Record</button>
@@ -285,9 +288,14 @@ header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; borde
         </div>
         <div class="buttons">
           <button class="btn primary small" id="store">Save to slot</button>
-          <button class="btn small" id="export">Export</button>
-          <button class="btn small" id="import">Import</button>
+          <button class="btn small" id="export" title="The selected layer's sound, to a file">Export layer</button>
+          <button class="btn small" id="import" title="A sound file into the selected layer (Load Layer)">Load layer</button>
           <input type="file" id="file" accept=".json,application/json" hidden>
+        </div>
+        <div class="buttons" style="margin-top:5px">
+          <button class="btn small" id="patch-export" title="Every layer, embedded, with the play mode and the effects">Export patch</button>
+          <button class="btn small" id="patch-import">Import patch</button>
+          <input type="file" id="patch-file" accept=".json,application/json" hidden>
         </div>
         <p class="note" id="save-msg"></p>
       </section>

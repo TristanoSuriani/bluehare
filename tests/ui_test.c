@@ -2576,16 +2576,18 @@ static int test_quick_layers(void)
                      settings_import(&p, sizeof p) && layer_seen == 0x1Cu);
     }
 
-    /* GLO: mutes latch (lit = sounding), SOLO while held, UNMUTE ALL, TAP, levels, OCT- */
+    /* GLO: mutes latch (lit = sounding), F3 .. B3 the layer to edit (2026-10-16; was SOLO), UNMUTE ALL, TAP, levels,
+     * OCT- */
     ui_power_on();
     usb.config = 1; mo = mo_w;
     lay_combo(B_GLO, black(1));
     ok = trk[1].p[P_MUTE] == 1 && ui.layer == LAYER_GLO && !gates() && mo_w == mo;
     a = leds_at(0); b2 = leds_at(250);
     ok &= ((a & b2) >> black(0)) & 1u && !(((a | b2) >> black(1)) & 1u);           /* T1 sounding lit, T2 muted dark */
-    ok &= ((a ^ b2) >> white(0)) & 1u && ((a ^ b2) >> white(7)) & 1u && !(((a | b2) >> white(5)) & 1u);
+    ok &= ((a & b2) >> white(0)) & 1u && ((a ^ b2) >> white(1)) & 1u && ((a ^ b2) >> white(7)) & 1u &&
+          !(((a | b2) >> white(5)) & 1u);                                     /* F3: the layer edited, lit */
     key_up(black(1)); btn_up(B_GLO); frame();
-    bad += check("GLO + black key 2: T2 MUTE latched (SET), silent, no MIDI; LEDs: sounding lit, muted dark", ok &&
+    bad += check("GLO + black key 2: T2 MUTE latched (SET), silent, no MIDI; LEDs: sounding lit, muted dark, the edited layer lit", ok &&
                  trk[1].p[P_MUTE] == 1 && !ui.layer);
     lay_combo(B_GLO, black(1)); key_up(black(1)); frame();
     key_down(white(4)); key_up(white(4)); frame();
@@ -2596,14 +2598,11 @@ static int test_quick_layers(void)
     bad += check("  again: unmuted; C4: UNMUTE ALL", ok && !trk[2].p[P_MUTE] && !trk[1].p[P_MUTE]);
     lay_combo(B_GLO, white(2));
     perf_begin(CTL);
-    ok = perf_solo == 4u && ((perf_act >> PF_M1) & 15u) == 0xBu;   /* T3 solo: T1 T2 T4 muted */
-    btn_up(B_GLO); frame();
-    perf_begin(CTL);
-    ok &= perf_solo == 4u && ui.layer == LAYER_GLO;                 /* GLO let go first: the solo stays with its key */
-    key_up(white(2)); frame();
-    perf_begin(CTL);
-    bad += check("GLO + A3 held: SOLO T3 (the others muted), lasts while the key is held, not P_MUTE",
-                 ok && !perf_solo && !((perf_act >> PF_M1) & 15u) && !trk[0].p[P_MUTE] && !ui.layer);
+    ok = song.sel == 2u && !perf_solo && !((perf_act >> PF_M1) & 15u) && !gates();   /* layer 3 edited, nothing muted */
+    key_up(white(2)); btn_up(B_GLO); frame();
+    bad += check("GLO + A3: layer 3 is the one the knobs edit (as ALGORITHM picks it); no note, no mute",
+                 ok && song.sel == 2u && !trk[0].p[P_MUTE] && !ui.layer);
+    track_select(0);
     song.g[G_BPM] = 100;
     btn_down(B_GLO); frame();
     for (i = 0; i < 3u; i++) { key_down(white(7)); frame(); key_up(white(7)); frames(480); }
@@ -2736,7 +2735,7 @@ static int test_quick_layers(void)
     /* one layer at a time: a second layer button is ignored, its keys stay notes after */
     ui_power_on();
     btn_down(B_GLO); frame(); btn_down(B_EDIT); frame(); key_down(white(1)); frame();
-    ok = ui.layer == LAYER_GLO && TSEL->eng_req == trk[0].eng_req && perf_solo == 2u;
+    ok = ui.layer == LAYER_GLO && TSEL->eng_req == trk[1].eng_req && song.sel == 1u;   /* (G3: layer 2 edited) */
     key_up(white(1)); btn_up(B_GLO); frame();
     key_down(white(1)); frame();
     ok &= gates() > 0 && !ui.layer;
@@ -5566,14 +5565,16 @@ static int test_eight_tracks(void)
     ok = trk[4].p[P_LEVEL] == l4 - 10 && trk[0].p[P_LEVEL] != l4 - 10 && ui.layer == LAYER_GLO;
     key_down(black(5)); frame(); key_up(black(5)); frame();
     ok &= trk[5].p[P_MUTE] == 1 && !trk[1].p[P_MUTE];
+    key_down(white(1)); frame();
+    ok &= song.sel == 5u;                               /* G3: the view's second, layer 6 */
+    key_up(white(1)); frame();
     key_down(white(0)); frame();
-    perf_begin(CTL);
-    ok &= perf_solo == 1u << 4;                         /* F3: the view's first, track 5 */
+    ok &= song.sel == 4u;                               /* F3: the view's first, layer 5 */
     key_up(white(0)); frame();
     oct_back();
     ok &= trk[4].p[P_LEVEL] == l4 && !trk[5].p[P_MUTE];   /* OCT-: all 8 tracks' levels and mutes as it opened */
     btn_up(B_GLO); frame();
-    bad += check("  GLO with track 5 selected: KNOB 1 T5 LEVEL, black key 6 T6 MUTE, F3 SOLO T5; OCT- puts the 8 back", ok);
+    bad += check("  GLO with track 5 selected: KNOB 1 T5 LEVEL, black key 6 T6 MUTE, G3 / F3 layer 6 / 5; OCT- puts the 8 back", ok);
     btn_down(B_FX); frame();                            /* (the layer open, then the key) */
     key_down(black(4)); frame();
     ok = (perf_held >> (PF_M1 + 4u)) & 1u;

@@ -100,21 +100,24 @@ async function loadDescs(items) {
 
 // ------------------------------------------------------------------ the page's words for the parameters
 // the tabs, and the groups each shows (STU_LAYOUT's keys)
-const TABS = [["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "XIYRCPQ"], ["gen", "GENERATIVE", "GK"]];
+const TABS = [["layer", "LAYER", "ZF"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "XYRCPQ"],
+              ["gen", "GENERATIVE", "GK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
   A: { title: "Amp envelope", names: ["Attack", "Decay", "Sustain", "Release", "Level", "Octave"] },
   N: { title: "Envelope moves", names: ["Filter", "Pitch", "Shape"] },
-  S: { title: "Drive, spread, sends", names: ["Drive", "Spread", "Chorus", "Delay", "Reverb"],
+  Z: { title: "Layer", names: ["In the patch", "Key low", "Key high", "Vel low", "Vel high", "Transpose"], track: true, wide: true,
+       note: "A layer ON is part of the patch: a note played sounds on every ON layer whose key and velocity ranges hold it (STACK: a stack, a key split or a velocity split, by the ranges), or on one of them in turn (ROUND ROBIN), at the note plus its transpose. With no layer ON, the keys play the selected layer alone." },
+  F: { title: "Layer insert", names: ["Drive", "Filter", "Cutoff", "Resonance", "Low cut", "Pan mode"], track: true, wide: true,
+       note: "The layer's own processing before the patch's effects: DRIVE, a 12 dB FILTER (low-, band- or high-pass), LOW CUT; PAN MODE spreads its voices (ALT left and right, RND at random)." },
+  S: { title: "Spread, sends", names: ["Spread", "Chorus", "Delay", "Reverb"],
        note: "Saved with the sound. The delay and reverb sends lose everything under ~220 Hz: the bass stays dry." },
   V: { title: "Voice", names: ["Mode", "Glide", "Glide by", "Priority", "Allocation", "Detune", "Pan"] },
   L: { title: "LFO", names: ["Rate", "Wave", "Phase", "Fade in", "Sync", "Trigger", "Polarity"] },
   D: { title: "LFO moves", names: ["Pitch", "Filter", "Shape", "Amp"] },
   M: { title: "Mod matrix", wide: true },
-  X: { title: "Sound processing", names: ["Processing"], fx: true, wide: true, show: true,
+  X: { title: "Sound processing", names: ["Processing"], fx: true, wide: true,
        note: "BLUE HARE: its chorus, delay and reverb buses, mono lows, compressor and limiter. AMB-1 (Charles Vestal's): a 5.6 s tape echo with two wandering heads and a 160 ms Echoplex, fed into a full-rate Dattorro plate, mixed wet, one soft clip at the end; no chorus, no compressor. The same knobs drive it: TIME, FEEDBACK, COLOR, MIX the echo; SIZE, DAMPING the plate; GEN's MOTION the heads." },
-  I: { title: "Inserts", names: ["Low cut", "Pan mode"], fx: true,
-       note: "LOW CUT: a 12 dB/oct high-pass after the drive. PAN MODE: ALT voices left and right of PAN by SPREAD, RND each voice on a random side." },
   Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true,
        note: "CLEAN: low-passed repeats · TAPE, WORN: wow, flutter, a saturated loop · PING: ping-pong · DUAL: two lines" },
   R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true,
@@ -316,6 +319,7 @@ function change(scope, id, v, gestureKey) {
       if (!scope && id >= fw.PE0) refreshEngineLabels();
       if (!scope && id >= 1 && id <= 4) drawEnv();          // (P_ATK .. P_REL)
       if (scope === 2) procSync();
+      if (scope === 2 && desc[2][id]?.label === "LAYER") refreshTracks();
     } finally {
       const nx = inflight.get(k).next;
       inflight.delete(k);
@@ -433,6 +437,7 @@ async function buildGroups() {
   ctl[2].clear();
   const items = fw.layout.flatMap((g) => g.items);
   await loadDescs(items);
+  fw.SX_LMODE = desc[2].findIndex((d) => d && d.label === "MODE");
   for (const [id, title, keys] of TABS) {
     const b = h("button", { class: "tab", role: "tab", type: "button", "data-tab": id, onclick: () => showTab(id) }, title,
       id === "gen" ? h("span", { class: "live", id: "gen-live", hidden: true }) : null);
@@ -452,7 +457,7 @@ function groupBox(g) {
   const box = h("section", { class: "group" + (G.wide ? " wide" : ""), "data-group": g.key });
   const info = G.note && g.key !== "G" && !G.show ? h("button", { class: "info", type: "button", title: G.note, "aria-label": "About " + G.title,
     onclick: () => { const n = box.querySelector(".gnote"); if (n) n.hidden = !n.hidden; } }, "ⓘ") : null;
-  box.append(h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `track ${S.sel + 1}`) : null,
+  box.append(h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `layer ${S.sel + 1}`) : null,
     G.fx ? h("span", { class: "sub" }, "every track") : null, info));
   const ctrls = h("div", { class: "ctrls" });
   if (g.key === "E") {
@@ -620,12 +625,21 @@ async function nameFromDevice() {        // the track's sound as the firmware kn
 
 // ------------------------------------------------------------------ tracks, engines, presets, user slots
 async function refreshTracks() {
-  const r = await call([...Array(fw.ntrk).keys()].map((t) => ({ fn: "stu_track_engine", args: [t] })));
+  const q = [...Array(fw.ntrk).keys()];
+  const r = await call(q.map((t) => ({ fn: "stu_track_engine", args: [t] })));
+  const on = await call(q.map((t) => ({ fn: "stu_layer_on", args: [t] })));
   S.tracks = r;
   const nav = $("tracks");
   nav.textContent = "";
   r.forEach((e, t) => nav.append(h("button", { class: "trk", type: "button", "aria-pressed": String(t === S.sel),
-    onclick: () => selectTrack(t) }, h("small", {}, `TRACK ${t + 1}`), h("b", {}, fw.engines[e]?.name || "-"))));
+    onclick: () => selectTrack(t), title: on[t] ? "In the patch" : "Not in the patch" },
+    h("small", {}, h("span", { class: "dot" + (on[t] ? " on" : "") }), `LAYER ${t + 1}`), h("b", {}, fw.engines[e]?.name || "-"))));
+  const pm = $("patch-mode");                 // the patch's play mode (STACK / ROUND ROBIN), beside the layers
+  if (pm && fw.SX_LMODE >= 0 && desc[2][fw.SX_LMODE]) {
+    pm.textContent = "";
+    pm.append(control(2, fw.SX_LMODE, "Play"));
+    ctl[2].get(fw.SX_LMODE)?.show(S.x[fw.SX_LMODE]);
+  }
 }
 async function selectTrack(t) {
   if (t === S.sel) return;
@@ -770,6 +784,48 @@ async function loadSoundFile(j) {
 // performance macros, the speaker EQ; not MASTER, the level), keyed "song.<id>" / "fx.<id>" with the device's labels
 const fxItems = () => fw.layout.filter((g) => GROUPS[g.key]?.fx).flatMap((g) => g.items)
   .filter((it) => it.scope && !(it.scope === 2 && desc[2][it.id]?.label === "MASTER"));
+// a patch: its layers, each embedded whole (engine, every parameter, the layer's settings), the play mode, the effects
+const LAYER_LABELS = ["LAYER", "KEY LO", "KEY HI", "VEL LO", "VEL HI", "TRANS", "LFILT", "LCUT", "LRES", "LOWCUT", "PANMODE"];
+const sxId = (label) => desc[2].findIndex((d) => d && d.label === label);
+async function patchFile() {
+  const sel = S.sel, layers = [];
+  for (let t = 0; t < fw.ntrk; t++) {
+    await one("stu_select", t);
+    const [d] = await call([{ fn: "stu_dump", ret: ["i16", fw.P + fw.G + 4 + fw.X] }]);
+    const e = fw.engines[d[fw.P + fw.G]], params = {}, layer = {};
+    for (let i = 0; i < fw.P; i++) if (!kept.has(i)) params[i] = d[i];
+    for (const l of LAYER_LABELS) layer[l] = d[fw.P + fw.G + 4 + sxId(l)];
+    const pan = desc[0].findIndex((x) => x && x.label === "PAN");
+    layers.push({ engine: e.name, engineId: e.id, params, layer, level: d[0], pan: pan >= 0 ? d[pan] : 0 });
+  }
+  await one("stu_select", sel);
+  const fx = fxFile();
+  return { format: "blue-hare-patch", version: 1, name: cleanName($("name").value) || sound.name || "PATCH",
+           mode: S.x[sxId("MODE")], layers, fx: fx.params };
+}
+async function loadPatchFile(j) {
+  if (j.format !== "blue-hare-patch") throw new Error("not a Blue Hare patch file");
+  remember(0);
+  const sel = S.sel;
+  for (let t = 0; t < Math.min(fw.ntrk, (j.layers || []).length); t++) {
+    const L = j.layers[t], e = fw.engines.find((x) => x.id === L.engineId) || fw.engines.find((x) => x.name === L.engine);
+    if (!e) continue;
+    const q = [{ fn: "stu_select", args: [t] }, { fn: "stu_stage_begin" }];
+    for (const [k, v] of Object.entries(L.params || {})) if (+k < fw.P) q.push({ fn: "stu_stage_set", args: [+k, v | 0] });
+    q.push({ fn: "stu_stage_load", args: [e.index] });
+    for (const [l, v] of Object.entries(L.layer || {})) if (sxId(l) >= 0) q.push({ fn: "stu_set", args: [2, sxId(l), v | 0, 0] });
+    const pan = desc[0].findIndex((x) => x && x.label === "PAN");
+    if (L.level !== undefined) q.push({ fn: "stu_set", args: [0, 0, L.level | 0, 0] });
+    if (pan >= 0 && L.pan !== undefined) q.push({ fn: "stu_set", args: [0, pan, L.pan | 0, 0] });
+    await call(q);
+  }
+  if (sxId("MODE") >= 0) await one("stu_set", 2, sxId("MODE"), j.mode | 0, 0);
+  await one("stu_select", sel);
+  if (j.fx) await loadFxFile({ format: "blue-hare-fx", params: j.fx });
+  await poll(true);
+  await refreshTracks();
+  setSound(cleanName(j.name || "PATCH"), "a patch");
+}
 function fxFile() {
   const params = {}, labels = {};
   for (const it of fxItems()) {
@@ -1170,6 +1226,8 @@ $("rec").addEventListener("click", toggleRecord);
 $("store").addEventListener("click", storeSlot);
 $("export").addEventListener("click", () => { const j = soundFile(); download(`${fileBase(j.name)}.bluehare-sound.json`, JSON.stringify(j, null, 1)); });
 $("import").addEventListener("click", () => pickFile($("file"), loadSoundFile));
+$("patch-export").addEventListener("click", async () => { const j = await patchFile(); download(`${fileBase(j.name)}.bluehare-patch.json`, JSON.stringify(j, null, 1)); });
+$("patch-import").addEventListener("click", () => pickFile($("patch-file"), loadPatchFile));
 $("connect").addEventListener("click", connectDevice);
 $("send").addEventListener("click", sendDevice);
 $("oct-down").addEventListener("click", () => setOctave(octave - 1));

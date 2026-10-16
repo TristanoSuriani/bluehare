@@ -208,7 +208,7 @@ int main(void)
             }
         bad += check("every engine left renders every preset (not silent)", loud == n && n > 40u);
     }
-    /* the project format: every build writes version 9 (the track count after the name); a project of more tracks than
+    /* the project format: every build writes version 10 (the track count after the name); a project of more tracks than
      * the build is refused, one of fewer fills its first tracks. build/host/song_4trk.bin carries a 4-track project from
      * this test's 4-track run to its 8-track one */
     {
@@ -220,7 +220,7 @@ int main(void)
         trk[1].p[P_E1] = 77;
         trk[NTRK - 1u].p[P_ATK] = 21;
         project_save(0);
-        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 9u;   /* (every build: no song, no DUCK) */
+        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 10u;   /* (every build: no song, no DUCK; the layers) */
         set_engine_of(&trk[1], ENGI_SID);
         trk[NTRK - 1u].p[P_ATK] = 0;
         project_load(0);
