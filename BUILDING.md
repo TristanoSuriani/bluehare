@@ -39,7 +39,7 @@ The build makes three files in `build/`:
   ```
 
 - Node.js (optional, for the web tests).
-- Emscripten (optional, `emcc`: the browser emulator, `web/emu/`).
+- Emscripten (optional, `emcc`: the browser emulator, `web/emu/`, and the sound design studio, `web/studio/`).
 
 On Linux x86-64 the toolchain runs natively and Docker is not needed.
 
@@ -155,6 +155,29 @@ Emscripten compiles it to WebAssembly (`build/emu/bluehare.wasm`, with `index.ht
 keeps the flash's storage sectors (projects, user presets, settings) in the browser. Not emulated: USB (audio,
 MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 <https://hugelton.github.io/Felucca/webapp/try/>.
+
+## Sound design studio
+
+```
+./build.sh
+make studio                    # or web/studio/build.sh
+make serve-studio              # open http://localhost:8001/
+```
+
+The studio (`web/studio/`, Milestone 1) designs sounds with the firmware's own engines and FX chain: the browser
+emulator's build (`web/emu/bluehare_web.c`) with the studio's exports (`web/studio/studio_web.c`: the engines and
+presets, every parameter of the selected track and of the FX chain, described, set and shown as the device shows
+them, the user preset slots), in the emulator's worklet (`web/emu/worklet.js`, its "call" messages). The page
+(`index.html`, `studio.js`) has the engines, their presets by category and the sounds saved here; the parameters
+in groups (the engine, its envelope and sends first; LFO, mod matrix, voice and key folded), the delay, reverb and
+chorus; 4 tracks; the keys (mouse, computer keys A W S E .., Z X octave, Esc all off, Hold), Web MIDI in to the
+selected track; undo and redo of every change (Ctrl/⌘ Z, Ctrl/⌘ ⇧ Z); a scope and a peak meter; a WAV recording
+of what plays; the FM-1's screen. A sound goes to a slot here (kept in the browser, as the emulator keeps its
+flash), to a file (`.bluehare-sound.json`: the engine by name and id, every parameter by its id, as user presets
+and the editor protocol number them) or to a connected FM-1 (Connect, then Send: the editor protocol's `UP_PUT`,
+`web/studio/sysex.js`; Chrome or Edge, Blue Hare on the FM-1 with the same parameter count). The FX chain goes to a
+file of its own (`.bluehare-fx.json`). `web/studio/studio_test.mjs` (in the suite with Emscripten) checks it all
+through the worklet, and the page's `UP_PUT` against the firmware's own parser.
 
 ## Native image
 

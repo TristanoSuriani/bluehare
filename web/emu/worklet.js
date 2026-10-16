@@ -71,6 +71,40 @@ if (typeof registerProcessor === "function") {
       else if (m.type === "master") ex.web_master(m.value | 0);
       else if (m.type === "midi") ex.web_midi(m.data[0] | 0, m.data[1] | 0, m.data[2] | 0);
       else if (m.type === "visible") this.period = m.on ? 1 / 30 : 1 / 4;
+      else if (m.type === "call") this.call(m);
+    }
+
+    // (Blue Hare, the sound design studio) the page's calls of the wasm's exports, in order, between two render
+    // quanta: each {fn, args, str, ret}; str is written to stu_buf() before the call (ASCII), ret reads the result:
+    // "str" a C string at it, ["i16" | "i32" | "u8", n] n values at it, else the number. One reply with them all
+    call(m) {
+      const ex = this.ex, out = [];
+      try {
+        for (const c of m.calls) {
+          const f = ex[c.fn];
+          if (typeof f !== "function") throw new Error("no export " + c.fn);
+          if (c.str !== undefined) {
+            const b = new Uint8Array(ex.memory.buffer, ex.stu_buf(), 256), s = String(c.str).slice(0, 255);
+            for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0x7F;
+            b[s.length] = 0;
+          }
+          const r = f(...(c.args || []));
+          if (c.ret === "str") {
+            const b = new Uint8Array(ex.memory.buffer, r >>> 0, 256);
+            let s = "";
+            for (let i = 0; i < 256 && b[i]; i++) s += String.fromCharCode(b[i]);
+            out.push(s);
+          } else if (Array.isArray(c.ret)) {
+            const T = { i16: Int16Array, i32: Int32Array, u8: Uint8Array }[c.ret[0]];
+            out.push(Array.from(new T(ex.memory.buffer, r >>> 0, c.ret[1])));
+          } else {
+            out.push(r);
+          }
+        }
+        this.port.postMessage({ type: "ret", id: m.id, values: out });
+      } catch (err) {
+        this.port.postMessage({ type: "ret", id: m.id, error: String(err && err.message || err) });
+      }
     }
 
     publish() {

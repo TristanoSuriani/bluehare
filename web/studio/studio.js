@@ -1,0 +1,1033 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Tristano Suriani, Blue Hare: see AUTHORS.md
+// The sound design studio's page. The FM-1 firmware runs in an AudioWorklet (worklet.js, bluehare.wasm: the browser
+// emulator's build with the studio's exports, web/studio/studio_web.c); everything here asks it through "call":
+// the engines and presets, every parameter's description, value and text as the device shows it, the user preset
+// slots (kept in this browser as the emulator keeps its flash). Sounds go to a file, to a slot here, or to a
+// connected FM-1 (the editor protocol's UP_PUT, web/EDITOR_PROTOCOL.md).
+import { ED, frame, reply, parseInfo, parseUpList, upPutArgs } from "./sysex.js";
+
+const $ = (id) => document.getElementById(id);
+const h = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c !== null && c !== undefined) e.append(c);
+  return e;
+};
+const pref = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
+
+// ------------------------------------------------------------------ the firmware
+const F = { INT: 0, PCT: 1, BIPCT: 2, TIME: 3, LFOHZ: 4, CUTOFF: 5, DB: 6, SEMI: 7, ENUM: 8, BPM: 9, NOTE: 10 };
+let node = null, ac = null, analyser = null, nextId = 1;
+const pending = new Map();
+// calls: [{fn, args, str, ret}] -> their values, in order (one round trip)
+function call(calls) {
+  return new Promise((res, rej) => {
+    const id = nextId++;
+    pending.set(id, { res, rej });
+    node.port.postMessage({ type: "call", id, calls });
+  });
+}
+const one = async (fn, ...args) => (await call([{ fn, args }]))[0];
+const str = async (fn, ...args) => (await call([{ fn, args, ret: "str" }]))[0];
+
+// what the firmware told: constants, the engines, the layout, the descriptions; then the values (polled)
+const fw = { P: 0, G: 0, PE0: 0, ntrk: 4, engines: [], cats: [], slots: 32, ENG_NO: 255, layout: [] };
+const S = { p: [], g: [], engine: 0, preset: 0, user: 0, sel: 0, tracks: [] };
+const desc = { 0: [], 1: [] };           // desc[scope][id] = {fmt, min, max, def, names: [..] | null, label}
+const ctl = { 0: new Map(), 1: new Map() };   // controls by id: {set(v), refresh()}
+
+async function loadConstants() {
+  const [P, G, PE0, ntrk, ne, nc, slots, ENG_NO, lsz] = await call(
+    ["stu_pcount", "stu_gcount", "stu_pe0", "stu_ntracks", "stu_nengines", "stu_ncat", "stu_up_slots", "stu_engine_none",
+     "stu_layout_size"].map((fn) => ({ fn })));
+  Object.assign(fw, { P, G, PE0, ntrk, slots, ENG_NO });
+  const q = [];
+  for (let e = 0; e < ne; e++)
+    q.push({ fn: "stu_engine_name", args: [e], ret: "str" }, { fn: "stu_engine_id", args: [e] }, { fn: "stu_npresets", args: [e] },
+           { fn: "stu_page_title", args: [e, 0], ret: "str" }, { fn: "stu_page_title", args: [e, 1], ret: "str" });
+  for (let c = 0; c < nc; c++) q.push({ fn: "stu_cat_name", args: [c], ret: "str" });
+  q.push({ fn: "stu_layout", ret: ["u8", lsz] });
+  const r = await call(q);
+  fw.engines = [];
+  for (let e = 0; e < ne; e++) {
+    const [name, id, np, t0, t1] = r.slice(e * 5, e * 5 + 5);
+    fw.engines.push({ index: e, name, id, np, titles: [t0, t1], presets: [] });
+  }
+  fw.cats = r.slice(ne * 5, ne * 5 + nc);
+  const lay = r[r.length - 1];
+  fw.layout = [];
+  for (let i = 0; i < lay.length && lay[i];) {
+    const g = { key: String.fromCharCode(lay[i++]), items: [] };
+    while (i < lay.length && lay[i] !== 0xFF) { g.items.push({ scope: lay[i], id: lay[i + 1] }); i += 2; }
+    i++;
+    fw.layout.push(g);
+  }
+  // the presets' names and categories
+  const pq = [];
+  for (const e of fw.engines)
+    for (let k = 0; k < e.np; k++) pq.push({ fn: "stu_preset_name", args: [e.index, k], ret: "str" }, { fn: "stu_preset_cat", args: [e.index, k] });
+  const pr = await call(pq);
+  let j = 0;
+  for (const e of fw.engines)
+    for (let k = 0; k < e.np; k++) e.presets.push({ name: pr[j++], cat: pr[j++] });
+}
+
+// the descriptions of the ids given (scope 0 engine parameters change with the engine and its mode)
+async function loadDescs(items) {
+  const q = [];
+  for (const { scope, id } of items)
+    q.push({ fn: "stu_desc", args: [scope, id], ret: ["i32", 5] }, { fn: "stu_desc_label", args: [scope, id], ret: "str" });
+  const r = await call(q);
+  const named = [];
+  items.forEach(({ scope, id }, i) => {
+    const [fmt, min, max, def, nn] = r[2 * i];
+    desc[scope][id] = { fmt, min, max, def, label: r[2 * i + 1], names: null, nn };
+    if (nn) named.push({ scope, id, min, nn });
+  });
+  if (named.length) {             // an enum's names: its values as the device shows them
+    const nq = [];
+    for (const n of named) for (let k = 0; k < n.nn; k++) nq.push({ fn: "stu_enum_name", args: [n.scope, n.id, k], ret: "str" });
+    const nr = await call(nq);
+    let j = 0;
+    for (const n of named) desc[n.scope][n.id].names = nr.slice(j, j += n.nn);
+  }
+}
+
+// ------------------------------------------------------------------ the page's words for the parameters
+const GROUPS = {
+  E: { title: "Engine", wide: true },
+  A: { title: "Amp envelope", names: ["Attack", "Decay", "Sustain", "Release", "Level", "Octave"] },
+  N: { title: "Envelope moves", names: ["Filter", "Pitch", "Shape"] },
+  S: { title: "Sends", names: ["Drive", "Chorus", "Delay", "Reverb"] },
+  L: { title: "LFO", names: ["Rate", "Wave", "Phase", "Fade in", "Sync", "Trigger", "Polarity"], fold: true },
+  D: { title: "LFO moves", names: ["Pitch", "Filter", "Shape", "Amp"], fold: true },
+  M: { title: "Mod matrix", wide: true, fold: true },
+  V: { title: "Voice", names: ["Mode", "Glide", "Glide by", "Priority", "Allocation", "Detune", "Spread", "Pan"], fold: true },
+  Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true },
+  R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true },
+  C: { title: "Chorus", names: ["Rate", "Depth"], fx: true },
+  K: { title: "Key & tempo", names: ["Tempo", "Root", "Scale", "Keys snap", "Transpose", "Chord", "Voicing"], fold: true },
+};
+const ENGINE_WORDS = {
+  SID: "The C64's chip voice: pulse, saw, noise, ring, sync",
+  WAVE: "Wavetables, scanned and warped",
+  BLISS: "FM keys: electric pianos, bells, mallets",
+  WEST: "West coast: complex osc, folder, gate",
+  MODAL: "Struck, plucked and bowed resonators",
+  ECHOES: "A note and its repeats, each played anew",
+  CANYON: "Echoes' repeats, all of them",
+};
+
+// ------------------------------------------------------------------ history (every change can be taken back)
+const hist = { undo: [], redo: [], gesture: 0, lastT: 0 };
+const snapshot = () => ({ sel: S.sel, engine: S.engine, p: S.p.slice(), g: S.g.slice(), name: sound.name, sub: sound.sub });
+function remember(gestureKey) {    // before a change: the state as it is (a gesture's further changes share it)
+  const now = performance.now();
+  if (gestureKey && gestureKey === hist.gesture && now - hist.lastT < 1500) { hist.lastT = now; return; }
+  hist.gesture = gestureKey;
+  hist.lastT = now;
+  hist.undo.push(snapshot());
+  if (hist.undo.length > 200) hist.undo.shift();
+  hist.redo.length = 0;
+  syncHistory();
+}
+function syncHistory() {
+  $("undo").disabled = !hist.undo.length;
+  $("redo").disabled = !hist.redo.length;
+}
+async function restore(s) {
+  hist.gesture = 0;
+  const q = [];
+  if (s.sel !== S.sel) q.push({ fn: "stu_select", args: [s.sel] });
+  q.push({ fn: "stu_stage_begin" });
+  for (let i = 0; i < fw.P; i++) q.push({ fn: "stu_stage_set", args: [i, s.p[i]] });
+  q.push({ fn: "stu_stage_load", args: [s.engine] });
+  for (let i = 0; i < fw.P; i++) if (kept.has(i)) q.push({ fn: "stu_set", args: [0, i, s.p[i], 0xBEEF] });
+  for (let i = 0; i < fw.G; i++) if (s.g[i] !== S.g[i] && desc[1][i]) q.push({ fn: "stu_set", args: [1, i, s.g[i], 0] });
+  await call(q);
+  setSound(s.name, s.sub, false);
+  await poll(true);
+}
+async function undo() {
+  if (!hist.undo.length) return;
+  const s = hist.undo.pop();
+  hist.redo.push(snapshot());
+  await restore(s);
+  syncHistory();
+}
+async function redo() {
+  if (!hist.redo.length) return;
+  const s = hist.redo.pop();
+  hist.undo.push(snapshot());
+  await restore(s);
+  syncHistory();
+}
+const kept = new Set();
+
+// ------------------------------------------------------------------ the sound's name line
+const sound = { name: "", sub: "", edited: false };
+function setSound(name, sub, edited = false) {
+  Object.assign(sound, { name, sub, edited });
+  $("sound-name").textContent = name || "—";
+  $("sound-sub").textContent = sub || "";
+  $("sound-edited").hidden = !edited;
+  if (!edited && name) $("name").value = name.slice(0, 12);
+}
+const markEdited = () => { if (!sound.edited) { sound.edited = true; $("sound-edited").hidden = false; } };
+
+// ------------------------------------------------------------------ a knob
+const ARC = 270, A0 = -135;
+function polar(r, deg) { const a = (deg - 90) * Math.PI / 180; return [24 + r * Math.cos(a), 24 + r * Math.sin(a)]; }
+function arcPath(r, d0, d1) {
+  if (Math.abs(d1 - d0) < .5) return "";
+  const [x0, y0] = polar(r, Math.min(d0, d1)), [x1, y1] = polar(r, Math.max(d0, d1));
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${Math.abs(d1 - d0) > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+const NS = "http://www.w3.org/2000/svg";
+function svg(tag, attrs) { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; }
+
+// a control of parameter (scope, id): a knob, or (an enum of a few names) buttons, or a list
+function control(scope, id, name) {
+  const d = desc[scope][id];
+  if (!d) return h("span");
+  const label = name || d.label;
+  let el, show;
+  if (d.fmt === F.ENUM && d.names && d.names.length <= 5) {
+    const seg = h("div", { class: "seg", role: "radiogroup", "aria-label": label });
+    const bs = d.names.map((n, k) => {
+      const b = h("button", { type: "button", "aria-pressed": "false", onclick: () => change(scope, id, d.min + k, "seg" + scope + "." + id + "." + k) }, n);
+      seg.append(b);
+      return b;
+    });
+    el = h("div", { class: "choice", title: d.label }, h("span", { class: "lbl" }, label), seg);
+    show = (v) => bs.forEach((b, k) => b.setAttribute("aria-pressed", String(d.min + k === v)));
+  } else if (d.fmt === F.ENUM && d.names) {
+    const sel = h("select", { "aria-label": label, onchange: () => change(scope, id, +sel.value, 0) },
+      d.names.map((n, k) => h("option", { value: d.min + k }, n)));
+    el = h("div", { class: "choice", title: d.label }, h("span", { class: "lbl" }, label), sel);
+    show = (v) => { sel.value = String(v); };
+  } else {
+    const fixed = d.max <= d.min;
+    const bip = d.min < 0 && d.max > 0;
+    const g = svg("svg", { viewBox: "0 0 48 48", "aria-hidden": "true" });
+    g.append(svg("circle", { class: "face", cx: 24, cy: 24, r: 15, "stroke-width": 1 }));
+    g.append(svg("path", { class: "track", d: arcPath(20, A0, A0 + ARC), fill: "none", "stroke-width": 4, "stroke-linecap": "round" }));
+    const arc = svg("path", { class: "arc", fill: "none", "stroke-width": 4, "stroke-linecap": "round" });
+    const ptr = svg("line", { class: "ptr", x1: 24, y1: 24, x2: 24, y2: 12, "stroke-width": 2.4, "stroke-linecap": "round" });
+    g.append(arc, ptr);
+    const val = h("span", { class: "val" }, "");
+    el = h("div", { class: "knob" + (fixed ? " off" : ""), role: "slider", tabindex: fixed ? "-1" : "0", "aria-label": label,
+                    "aria-valuemin": d.min, "aria-valuemax": d.max, title: `${d.label} · double-click: ${d.def}` },
+      h("span", { class: "lbl" }, label), g, val);
+    const deg = (v) => A0 + ARC * (v - d.min) / Math.max(1, d.max - d.min);
+    show = (v) => {
+      const a = deg(v), z = bip ? deg(0) : A0;
+      arc.setAttribute("d", arcPath(20, z, a));
+      ptr.setAttribute("transform", `rotate(${a} 24 24)`);
+      el.setAttribute("aria-valuenow", v);
+      el.classList.toggle("moved", v !== d.def);
+    };
+    el._val = val;
+    if (!fixed) {
+      let drag = null;
+      el.addEventListener("pointerdown", (e) => {
+        if (e.button) return;
+        el.setPointerCapture(e.pointerId);
+        drag = { y: e.clientY, v: cur(scope, id), key: Symbol() };
+        e.preventDefault();
+      });
+      el.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        const span = d.max - d.min, px = e.shiftKey ? 600 : 180;
+        const v = Math.round(drag.v + (drag.y - e.clientY) * Math.max(span, 8) / px);
+        change(scope, id, clamp(v, d.min, d.max), drag.key);
+      });
+      const end = () => { drag = null; };
+      el.addEventListener("pointerup", end);
+      el.addEventListener("pointercancel", end);
+      el.addEventListener("dblclick", () => change(scope, id, d.def, 0));
+      el.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const step = e.shiftKey ? 1 : Math.max(1, Math.round((d.max - d.min) / 64));
+        change(scope, id, clamp(cur(scope, id) + (e.deltaY < 0 ? step : -step), d.min, d.max), "wheel" + scope + "." + id);
+      }, { passive: false });
+      el.addEventListener("keydown", (e) => {
+        const big = Math.max(1, Math.round((d.max - d.min) / 10));
+        const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: big, PageDown: -big }[e.key];
+        let v = null;
+        if (k) v = cur(scope, id) + k;
+        else if (e.key === "Home") v = d.min;
+        else if (e.key === "End") v = d.max;
+        else if (e.key === "Delete" || e.key === "Backspace") v = d.def;
+        if (v === null) return;
+        e.preventDefault();
+        e.stopPropagation();
+        change(scope, id, clamp(v, d.min, d.max), "key" + scope + "." + id);
+      });
+    }
+  }
+  const c = { el, show, text: (t) => { if (el._val) el._val.textContent = t; el.setAttribute?.("aria-valuetext", t); } };
+  ctl[scope].set(id, c);
+  return el;
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const cur = (scope, id) => (scope ? S.g : S.p)[id] ?? 0;
+
+// a value changed on the page: into the firmware (the latest only, one call in flight per parameter), then its text
+const inflight = new Map();
+function change(scope, id, v, gestureKey) {
+  if (cur(scope, id) === v) return;
+  remember(gestureKey || Symbol());
+  (scope ? S.g : S.p)[id] = v;
+  const c = ctl[scope].get(id);
+  if (c) c.show(v);
+  if (!scope) markEdited();
+  const k = scope + "." + id;
+  if (inflight.has(k)) { inflight.get(k).next = v; return; }
+  const send = async (x) => {
+    inflight.set(k, { next: null });
+    try {
+      const [got, text] = await call([{ fn: "stu_set", args: [scope, id, x, hashKey(gestureKey)] }, { fn: "stu_format", args: [scope, id, x], ret: "str" }]);
+      (scope ? S.g : S.p)[id] = got;
+      if (c) c.text(text);
+      if (!scope && id >= fw.PE0) refreshEngineLabels();
+      if (!scope && id >= 1 && id <= 4) drawEnv();          // (P_ATK .. P_REL)
+    } finally {
+      const nx = inflight.get(k).next;
+      inflight.delete(k);
+      if (nx !== null && nx !== x) send(nx);
+    }
+  };
+  send(v);
+}
+const keyIds = new Map();
+function hashKey(k) {                       // a gesture's tag for the firmware's own undo (ui.c edit_undo_take)
+  if (!k) return 0;
+  if (!keyIds.has(k)) keyIds.set(k, (keyIds.size % 60000) + 1000);
+  return keyIds.get(k);
+}
+
+// ------------------------------------------------------------------ the parameter groups
+let envCanvas = null;
+function drawEnv() {
+  if (!envCanvas) return;
+  const c = envCanvas, x = c.getContext("2d"), W = c.width, H = c.height;
+  const st = getComputedStyle(document.documentElement);
+  x.clearRect(0, 0, W, H);
+  const a = S.p[1] / 127, dcy = S.p[2] / 127, s = S.p[3] / 127, r = S.p[4] / 127;
+  const seg = (W - 16) / 4, xa = 8 + a * seg, xd = xa + dcy * seg, xs = xd + seg * .8, xr = xs + r * seg;
+  const y = (v) => H - 8 - v * (H - 16);
+  x.strokeStyle = st.getPropertyValue("--accent");
+  x.fillStyle = st.getPropertyValue("--accent").trim() + "22";
+  x.lineWidth = 2;
+  x.beginPath();
+  x.moveTo(8, y(0)); x.lineTo(xa, y(1)); x.lineTo(xd, y(s)); x.lineTo(xs, y(s)); x.lineTo(xr, y(0));
+  x.stroke();
+  x.lineTo(8, y(0));
+  x.fill();
+}
+
+async function buildGroups() {
+  const root = $("groups");
+  root.textContent = "";
+  ctl[0].clear();
+  ctl[1].clear();
+  const items = fw.layout.flatMap((g) => g.items);
+  await loadDescs(items);
+  let fxTitle = false;
+  const order = "EANSLDMVYRCK";            // big picture first: the engine, its envelope, the sends; then the details
+  const rank = (g) => (order.indexOf(g.key) + 1 || 99);
+  for (const g of [...fw.layout].sort((a, b) => rank(a) - rank(b))) {
+    const G = GROUPS[g.key] || { title: g.key };
+    if (G.fx && !fxTitle) { root.append(h("div", { class: "sect-title" }, "FX CHAIN · shared by all tracks")); fxTitle = true; }
+    const box = h("section", { class: "group" + (G.wide ? " wide" : ""), "data-group": g.key });
+    const head = h("h3", {}, G.title);
+    box.append(head);
+    const ctrls = h("div", { class: "ctrls" });
+    if (g.key === "E") {
+      box.id = "engine-group";
+      engineGroup(ctrls, g.items);
+    } else if (g.key === "M") {
+      ctrls.append(matrix(g.items));
+    } else {
+      g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, G.names?.[i])));
+      if (g.key === "A") {
+        envCanvas = h("canvas", { width: 300, height: 70, style: "width:100%;height:70px;display:block;margin:2px 0 6px" });
+        ctrls.prepend(envCanvas);
+      }
+    }
+    box.append(ctrls);
+    if (G.fold) {
+      const k = "bluehare-studio-open-" + g.key;
+      const open = pref(k) === "1";
+      box.classList.toggle("closed", !open);
+      const b = h("button", { type: "button", "aria-expanded": String(open) }, open ? "Hide" : "Show");
+      b.addEventListener("click", () => {
+        const o = box.classList.toggle("closed");
+        b.textContent = o ? "Show" : "Hide";
+        b.setAttribute("aria-expanded", String(!o));
+        pref(k, o ? "0" : "1");
+      });
+      head.append(b);
+    }
+    root.append(box);
+  }
+}
+function engineGroup(ctrls, items) {
+  const e = fw.engines[S.engine];
+  ctrls.textContent = "";
+  ctrls.append(h("span", { class: "subhead" }, e ? e.titles[0] : ""));
+  items.slice(0, 4).forEach((it) => ctrls.append(control(it.scope, it.id)));
+  ctrls.append(h("span", { class: "subhead" }, e ? e.titles[1] : ""));
+  items.slice(4).forEach((it) => ctrls.append(control(it.scope, it.id)));
+}
+let engItems = null, engLabelsBusy = false;
+async function refreshEngineLabels() {   // an engine's labels follow its mode (a desc hook): re-read them, rebuild if one moved
+  if (engLabelsBusy) return;
+  engLabelsBusy = true;
+  try {
+    engItems = fw.layout.find((g) => g.key === "E").items;
+    const before = engItems.map((it) => JSON.stringify(desc[0][it.id]));
+    await loadDescs(engItems);
+    const after = engItems.map((it) => JSON.stringify(desc[0][it.id]));
+    const box = $("engine-group")?.querySelector(".ctrls");
+    relabelMatrix();
+    if (box && before.join() !== after.join()) {
+      engineGroup(box, engItems);
+      await showValues(engItems);
+    }
+  } finally { engLabelsBusy = false; }
+}
+const dstSelects = [];
+function relabelMatrix() {               // the matrix's E1..E8: the engine's parameters by their names
+  for (const s of dstSelects)
+    for (const o of s.options) {
+      const m = /^E(\d)$/.exec(o.dataset.n || "");
+      if (m) o.textContent = `E${m[1]} · ${desc[0][fw.PE0 + +m[1] - 1]?.label || "-"}`;
+    }
+}
+function matrix(items) {
+  dstSelects.length = 0;
+  const m = h("div", { class: "matrix" }, h("span", { class: "h" }, ""), h("span", { class: "h" }, "Source"),
+    h("span", { class: "h" }, "Destination"), h("span", { class: "h" }, "Amount"));
+  for (let k = 0; k < 4; k++) {
+    const [src, dst, amt] = items.slice(3 * k, 3 * k + 3);
+    const sel = (it) => {
+      const d = desc[0][it.id];
+      const s = h("select", { "aria-label": `Slot ${k + 1} ${d.label}`, onchange: () => change(0, it.id, +s.value, 0) },
+        (d.names || []).map((n, j) => h("option", { value: d.min + j, "data-n": n }, n)));
+      if (it === dst) dstSelects.push(s);
+      ctl[0].set(it.id, { el: s, show: (v) => { s.value = String(v); }, text: () => {} });
+      return s;
+    };
+    m.append(h("span", { class: "slot" }, String(k + 1)), sel(src), sel(dst), control(0, amt.id, "Amount"));
+  }
+  return m;
+}
+// the values of the items given, and their texts, from the firmware
+async function showValues(items) {
+  const q = items.map(({ scope, id }) => ({ fn: "stu_format", args: [scope, id, cur(scope, id)], ret: "str" }));
+  const r = await call(q);
+  items.forEach(({ scope, id }, i) => {
+    const c = ctl[scope].get(id);
+    if (c) { c.show(cur(scope, id)); c.text(r[i]); }
+  });
+  drawEnv();
+}
+
+// ------------------------------------------------------------------ polling the firmware (MIDI CCs, the undo of
+// the device, loads all change values without the page)
+let polling = false;
+async function poll(force = false) {
+  if (!node || polling) return;
+  polling = true;
+  try {
+    const [d] = await call([{ fn: "stu_dump", ret: ["i16", fw.P + fw.G + 4] }]);
+    const p = d.slice(0, fw.P), g = d.slice(fw.P, fw.P + fw.G);
+    const [engine, preset, user, sel] = d.slice(fw.P + fw.G);
+    const engineMoved = engine !== S.engine || sel !== S.sel;
+    const changed = [];
+    for (let i = 0; i < fw.P; i++) if (force || p[i] !== S.p[i]) if (!inflight.has("0." + i)) { S.p[i] = p[i]; changed.push({ scope: 0, id: i }); }
+    for (let i = 0; i < fw.G; i++) if (force || g[i] !== S.g[i]) if (!inflight.has("1." + i)) { S.g[i] = g[i]; changed.push({ scope: 1, id: i }); }
+    const selMoved = sel !== S.sel;
+    Object.assign(S, { engine, preset, user, sel });
+    if (engineMoved || force) {
+      renderEngines();
+      renderPresets();
+      await refreshTracks();
+      await refreshEngineLabels();
+      const box = $("engine-group")?.querySelector(".ctrls");
+      if (box) engineGroup(box, fw.layout.find((x) => x.key === "E").items);
+    }
+    if (selMoved) await nameFromDevice();
+    const shown = changed.filter(({ scope, id }) => ctl[scope].has(id));
+    if (engineMoved || force) await showValues(fw.layout.flatMap((x) => x.items));
+    else if (shown.length) await showValues(shown);
+    renderPresetMark();
+  } finally { polling = false; }
+}
+async function nameFromDevice() {        // the track's sound as the firmware knows it: a user slot or a preset
+  const e = fw.engines[S.engine];
+  if (S.user) setSound(await str("stu_up_name", S.user - 1), `${e.name} · my sound ${S.user}`);
+  else if (e && e.presets[S.preset]) setSound(e.presets[S.preset].name, `${e.name} · preset ${S.preset + 1}`);
+}
+
+// ------------------------------------------------------------------ tracks, engines, presets, user slots
+async function refreshTracks() {
+  const r = await call([...Array(fw.ntrk).keys()].map((t) => ({ fn: "stu_track_engine", args: [t] })));
+  S.tracks = r;
+  const nav = $("tracks");
+  nav.textContent = "";
+  r.forEach((e, t) => nav.append(h("button", { class: "trk", type: "button", "aria-pressed": String(t === S.sel),
+    onclick: () => selectTrack(t) }, h("small", {}, `TRACK ${t + 1}`), h("b", {}, fw.engines[e]?.name || "-"))));
+}
+async function selectTrack(t) {
+  if (t === S.sel) return;
+  await one("stu_select", t);
+  hist.gesture = 0;
+  await poll(true);
+  await nameFromDevice();
+}
+function renderEngines() {
+  const box = $("engines");
+  box.textContent = "";
+  for (const e of fw.engines)
+    box.append(h("button", { class: "eng", type: "button", "aria-pressed": String(e.index === S.engine),
+      onclick: () => pickEngine(e.index) }, h("b", {}, e.name), h("small", {}, ENGINE_WORDS[e.name] || "")));
+}
+async function pickEngine(e) {
+  if (e === S.engine) return;
+  remember(0);
+  await one("stu_set_engine", e);
+  await poll(true);
+  const en = fw.engines[e];
+  setSound(en.presets[0]?.name || en.name, `${en.name} · preset 1`);
+}
+let catFilter = +(pref("bluehare-studio-cat") || 0);
+function renderPresets() {
+  const e = fw.engines[S.engine];
+  const cats = $("cats");
+  cats.textContent = "";
+  const present = new Set(e.presets.map((p) => p.cat));
+  if (!present.has(catFilter)) catFilter = 0;
+  cats.append(h("button", { class: "chip", type: "button", "aria-pressed": String(!catFilter), onclick: () => { catFilter = 0; pref("bluehare-studio-cat", 0); renderPresets(); } }, "All"));
+  for (const c of [...present].sort((a, b) => a - b))
+    if (c) cats.append(h("button", { class: "chip", type: "button", "aria-pressed": String(c === catFilter),
+      onclick: () => { catFilter = c; pref("bluehare-studio-cat", c); renderPresets(); } }, fw.cats[c] || "?"));
+  const list = $("presets");
+  list.textContent = "";
+  e.presets.forEach((p, k) => {
+    if (catFilter && p.cat !== catFilter) return;
+    list.append(h("button", { class: "row", type: "button", "data-k": k, onclick: () => pickPreset(k) },
+      h("span", { class: "n" }, String(k + 1).padStart(2, "0")), h("span", { class: "name" }, p.name),
+      p.cat ? h("span", { class: "tag" }, fw.cats[p.cat]) : null));
+  });
+  renderPresetMark();
+}
+function renderPresetMark() {
+  for (const r of $("presets").children) r.setAttribute("aria-current", String(!S.user && +r.dataset.k === S.preset));
+  for (const r of $("users").children) r.setAttribute("aria-current", String(S.user && +r.dataset.k === S.user - 1));
+}
+async function pickPreset(k) {
+  remember(0);
+  await one("stu_load_preset", k);
+  await poll(true);
+  const e = fw.engines[S.engine];
+  setSound(e.presets[k].name, `${e.name} · preset ${k + 1}`);
+}
+let users = [];
+async function refreshUsers() {
+  const q = [];
+  for (let k = 0; k < fw.slots; k++)
+    q.push({ fn: "stu_up_used", args: [k] }, { fn: "stu_up_name", args: [k], ret: "str" }, { fn: "stu_up_engine", args: [k] }, { fn: "stu_up_cat", args: [k] });
+  const r = await call(q);
+  users = [];
+  for (let k = 0; k < fw.slots; k++) users.push({ used: r[4 * k], name: r[4 * k + 1], engine: r[4 * k + 2], cat: r[4 * k + 3] });
+  const list = $("users");
+  list.textContent = "";
+  const slotSel = $("slot"), keep = slotSel.value;
+  slotSel.textContent = "";
+  users.forEach((u, k) => {
+    const n = h("span", { class: "n" }, "U" + String(k + 1).padStart(2, "0"));
+    if (u.used) {
+      list.append(h("button", { class: "row", type: "button", "data-k": k, onclick: () => pickUser(k) }, n,
+        h("span", { class: "name" }, u.name), h("span", { class: "tag" }, fw.engines[u.engine]?.name || "—")));
+    }
+    slotSel.append(h("option", { value: k }, `U${String(k + 1).padStart(2, "0")} ${u.used ? u.name : "· empty"}`));
+  });
+  if (!list.children.length) list.append(h("p", { class: "note", style: "margin:4px 8px" }, "Nothing saved yet: shape a sound, name it and press Save to slot."));
+  const firstFree = users.findIndex((u) => !u.used);
+  slotSel.value = keep !== "" ? keep : String(firstFree >= 0 ? firstFree : 0);
+  renderPresetMark();
+}
+async function pickUser(k) {
+  remember(0);
+  const rc = await one("stu_up_load", k);
+  if (rc) return say("save-msg", "That slot's sound cannot be loaded here (its engine is not in this build).", "bad");
+  await poll(true);
+  setSound(users[k].name, `${fw.engines[S.engine]?.name} · my sound ${k + 1}`);
+}
+
+// ------------------------------------------------------------------ saving, files, the FM-1
+const say = (id, t, kind = "") => { const e = $(id); e.textContent = t; e.className = "note" + (kind ? " " + kind : ""); };
+const cleanName = (s) => s.toUpperCase().replace(/[^\x20-\x7E]/g, "").slice(0, 12).trim();
+function fillCats() {
+  const c = $("cat");
+  c.textContent = "";
+  fw.cats.forEach((n, k) => c.append(h("option", { value: k }, k ? n : "From the sound")));
+}
+async function storeSlot() {
+  const name = cleanName($("name").value), k = +$("slot").value, cat = +$("cat").value;
+  if (!name) return say("save-msg", "Give the sound a name first.", "bad");
+  if (users[k]?.used && !confirm(`U${String(k + 1).padStart(2, "0")} holds ${users[k].name}. Replace it?`)) return;
+  const [rc] = await call([{ fn: "stu_up_store", args: [k, cat], str: name }]);
+  if (rc) return say("save-msg", rc === 1 ? "The name can use letters, digits and punctuation, up to 12." : "Could not write the slot.", "bad");
+  await refreshUsers();
+  setSound(name, `${fw.engines[S.engine].name} · my sound ${k + 1}`);
+  say("save-msg", `Saved to U${String(k + 1).padStart(2, "0")}.`, "ok");
+}
+function download(name, data) {
+  const a = h("a", { href: URL.createObjectURL(new Blob([data], { type: "application/json" })), download: name });
+  document.body.append(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+const fileBase = (n) => (n || "sound").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "sound";
+// a sound's file: the engine (by name and by its stored id) and every parameter by id (the same numbering as user
+// presets and the editor protocol, web/EDITOR_PROTOCOL.md), with the device's labels to read it by
+function soundFile() {
+  const e = fw.engines[S.engine], name = cleanName($("name").value) || sound.name || e.name;
+  const params = {}, labels = {};
+  for (let i = 0; i < fw.P; i++) {
+    if (kept.has(i)) continue;
+    params[i] = S.p[i];
+    if (desc[0][i]) labels[i] = desc[0][i].label;
+  }
+  return { format: "blue-hare-sound", version: 1, name, category: fw.cats[+$("cat").value] || "-", engine: e.name,
+           engineId: e.id, pcount: fw.P, params, labels };
+}
+async function loadSoundFile(j) {
+  if (j.format !== "blue-hare-sound") throw new Error("not a Blue Hare sound file");
+  let e = fw.engines.find((x) => x.id === j.engineId) || fw.engines.find((x) => x.name === j.engine);
+  if (!e) throw new Error(`its engine (${j.engine}) is not in this build`);
+  remember(0);
+  const q = [{ fn: "stu_stage_begin" }];
+  for (const [k, v] of Object.entries(j.params || {})) if (+k < fw.P) q.push({ fn: "stu_stage_set", args: [+k, v | 0] });
+  q.push({ fn: "stu_stage_load", args: [e.index] });
+  await call(q);
+  await poll(true);
+  setSound(cleanName(j.name || "IMPORTED"), `${e.name} · from a file`);
+  const c = fw.cats.indexOf(j.category);
+  if (c > 0) $("cat").value = String(c);
+}
+function fxFile() {
+  const params = {}, labels = {};
+  for (const g of fw.layout) if (GROUPS[g.key]?.fx) for (const it of g.items) { params[it.id] = S.g[it.id]; labels[it.id] = desc[1][it.id]?.label; }
+  return { format: "blue-hare-fx", version: 1, params, labels };
+}
+async function loadFxFile(j) {
+  if (j.format !== "blue-hare-fx") throw new Error("not a Blue Hare FX file");
+  remember(0);
+  const fxIds = new Set(fw.layout.filter((g) => GROUPS[g.key]?.fx).flatMap((g) => g.items.map((it) => it.id)));
+  await call(Object.entries(j.params || {}).filter(([k]) => fxIds.has(+k)).map(([k, v]) => ({ fn: "stu_set", args: [1, +k, v | 0, 0] })));
+  await poll(true);
+}
+function pickFile(input, then) {
+  input.onchange = async () => {
+    const f = input.files[0];
+    input.value = "";
+    if (!f) return;
+    try { await then(JSON.parse(await f.text())); say("save-msg", `Loaded ${f.name}.`, "ok"); }
+    catch (err) { say("save-msg", `Could not load ${f.name}: ${err.message}.`, "bad"); }
+  };
+  input.click();
+}
+
+// the FM-1 over Web MIDI: the editor protocol (sysex.js), INFO for its parameter count, UP_LIST, UP_PUT
+const dev = { access: null, input: null, output: null, wait: null, pcount: 0, slots: [] };
+function devRequest(cmd, args, ms = 1500) {
+  return new Promise((res, rej) => {
+    const t = setTimeout(() => { dev.wait = null; rej(new Error("the FM-1 did not answer")); }, ms);
+    dev.wait = { cmd, res: (a) => { clearTimeout(t); dev.wait = null; res(a); } };
+    dev.output.send(frame(cmd, args));
+  });
+}
+function devReceive(e) {
+  const d = e.data, a = dev.wait && reply(d, dev.wait.cmd);
+  if (a) dev.wait.res(a);
+  else if (d[0] >= 0x80 && d[0] < 0xF0) midiIn(d);
+}
+async function connectDevice() {
+  say("dev-msg", "");
+  try {
+    if (!navigator.requestMIDIAccess) throw new Error("this browser has no Web MIDI (Chrome and Edge have it)");
+    dev.access = await navigator.requestMIDIAccess({ sysex: true });
+    midiBind();
+    const isF = (p) => /blue ?hare|fm-?1/i.test(p.name || "") && p.state !== "disconnected";
+    dev.input = [...dev.access.inputs.values()].find(isF);
+    dev.output = [...dev.access.outputs.values()].find(isF);
+    if (!dev.input || !dev.output) throw new Error("no FM-1 found: plug it in by USB, with Blue Hare on it");
+    dev.input.onmidimessage = devReceive;
+    const info = parseInfo(await devRequest(ED.INFO, [])), ver = info.version;
+    dev.pcount = info.pcount;
+    if (dev.pcount !== fw.P)
+      throw new Error(`the FM-1 runs ${ver}, whose sounds have ${dev.pcount} parameters (this studio: ${fw.P}); update one of them`);
+    const slots = [];
+    for (let s = 0; s < 32; s += 16) slots.push(...parseUpList(await devRequest(ED.UP_LIST, [s, 16])));
+    dev.slots = slots;
+    const sel = $("dev-slot");
+    sel.textContent = "";
+    slots.forEach((s, k) => sel.append(h("option", { value: k }, `U${String(k + 1).padStart(2, "0")} ${s.used ? s.name : "· empty"}`)));
+    const free = slots.findIndex((s) => !s.used);
+    sel.value = String(free >= 0 ? free : 0);
+    $("dev-slot-field").hidden = false;
+    $("send").hidden = false;
+    $("connect").textContent = "Reconnect";
+    say("dev-msg", `Connected: ${ver}.`, "ok");
+  } catch (err) {
+    say("dev-msg", err.message + ".", "bad");
+  }
+}
+async function sendDevice() {
+  const k = +$("dev-slot").value, name = cleanName($("name").value) || sound.name;
+  if (!name) return say("dev-msg", "Give the sound a name first.", "bad");
+  if (dev.slots[k]?.used && !confirm(`The FM-1's U${String(k + 1).padStart(2, "0")} holds ${dev.slots[k].name}. Replace it?`)) return;
+  const e = fw.engines[S.engine];
+  const args = upPutArgs(k, e.id, name, S.p.slice(0, fw.P), +$("cat").value);
+  try {
+    const a = await devRequest(ED.UP_PUT, args, 3000);
+    if (a[1]) throw new Error(a[1] === 1 ? "the FM-1 refused the sound" : "the FM-1 could not write its flash (stop playback and try again)");
+    dev.slots[k] = { used: 1, engine: e.id, name };
+    $("dev-slot").options[k].textContent = `U${String(k + 1).padStart(2, "0")} ${name}`;
+    say("dev-msg", `Sent to the FM-1's U${String(k + 1).padStart(2, "0")}: SAVE > USER on the device loads it.`, "ok");
+  } catch (err) {
+    say("dev-msg", err.message + ".", "bad");
+  }
+}
+
+// ------------------------------------------------------------------ playing: the keys, the computer keys, MIDI in
+let octave = +(pref("bluehare-studio-oct") || 4), hold = false;
+const held = new Map();                  // note -> how it is held ("ptr" pointers, key letters) / latched
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const LETTERS = "awsedftgyhujkolp;";     // C .. E of the next octave
+const kbdEls = new Map();
+function buildKeys() {
+  const k = $("kbd");
+  k.textContent = "";
+  kbdEls.clear();
+  const n0 = 12 * octave, whites = [];
+  for (let n = n0; n <= n0 + 24; n++) if (![1, 3, 6, 8, 10].includes(n % 12)) whites.push(n);
+  const W = 100 / whites.length;
+  whites.forEach((n) => {
+    const i = n - n0, el = h("div", { class: "w", "data-n": n }, i < LETTERS.length ? LETTERS[i].toUpperCase() : (n % 12 ? "" : NOTE_NAMES[0] + (n / 12 - 1)));
+    k.append(el);
+    kbdEls.set(n, el);
+  });
+  whites.forEach((n, wi) => {
+    if ([0, 2, 5, 7, 9].includes(n % 12) && n + 1 <= n0 + 24) {
+      const i = n + 1 - n0;
+      const el = h("div", { class: "b", "data-n": n + 1, style: `left:calc(${(wi + 1) * W}% - ${W * .3}%);width:${W * .6}%` },
+        i < LETTERS.length ? LETTERS[i].toUpperCase() : "");
+      k.append(el);
+      kbdEls.set(n + 1, el);
+    }
+  });
+  $("oct").textContent = "C" + (octave - 1);
+  for (const n of held.keys()) kbdEls.get(n)?.classList.add("down");
+}
+function noteOn(n, how) {
+  if (!node) return;
+  if (hold && held.has(n) && how !== "midi") { noteOff(n, true); return; }
+  if (held.has(n)) return;
+  held.set(n, how);
+  node.port.postMessage({ type: "call", id: 0, calls: [{ fn: "stu_note", args: [n, +$("vel").value] }] });
+  kbdEls.get(n)?.classList.add("down");
+}
+function noteOff(n, force = false) {
+  if (!held.has(n) || (hold && !force)) return;
+  held.delete(n);
+  node.port.postMessage({ type: "call", id: 0, calls: [{ fn: "stu_note", args: [n, 0] }] });
+  kbdEls.get(n)?.classList.remove("down");
+}
+function allOff() {
+  for (const n of [...held.keys()]) noteOff(n, true);
+  if (node) node.port.postMessage({ type: "call", id: 0, calls: [{ fn: "stu_all_off" }] });
+}
+function bindKeys() {
+  const k = $("kbd");
+  const at = (e) => { const t = document.elementFromPoint(e.clientX, e.clientY); return t && t.dataset.n ? +t.dataset.n : null; };
+  const ptr = new Map();
+  k.addEventListener("pointerdown", (e) => {
+    k.setPointerCapture(e.pointerId);
+    const n = at(e);
+    if (n !== null) { ptr.set(e.pointerId, n); noteOn(n, "ptr"); }
+  });
+  k.addEventListener("pointermove", (e) => {
+    if (!ptr.has(e.pointerId) || hold) return;
+    const n = at(e), o = ptr.get(e.pointerId);
+    if (n !== null && n !== o) { noteOff(o); ptr.set(e.pointerId, n); noteOn(n, "ptr"); }
+  });
+  const up = (e) => { if (ptr.has(e.pointerId)) { noteOff(ptr.get(e.pointerId)); ptr.delete(e.pointerId); } };
+  k.addEventListener("pointerup", up);
+  k.addEventListener("pointercancel", up);
+  const typing = (e) => /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) || e.target.isContentEditable;
+  const down = new Map();
+  addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !typing(e)) { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y" && !typing(e)) { e.preventDefault(); redo(); return; }
+    if (e.metaKey || e.ctrlKey || e.altKey || typing(e) || e.repeat) return;
+    const key = e.key.toLowerCase();
+    if (key === "z") { setOctave(octave - 1); return; }
+    if (key === "x") { setOctave(octave + 1); return; }
+    if (key === "escape") { allOff(); return; }
+    const i = LETTERS.indexOf(key);
+    if (i < 0) return;
+    const n = 12 * octave + i;
+    down.set(key, n);
+    noteOn(n, "key");
+  });
+  addEventListener("keyup", (e) => {
+    const key = e.key.toLowerCase();
+    if (down.has(key)) { noteOff(down.get(key)); down.delete(key); }
+  });
+  addEventListener("blur", () => { for (const n of down.values()) noteOff(n); down.clear(); });
+}
+function setOctave(o) {
+  octave = clamp(o, 1, 8);
+  pref("bluehare-studio-oct", octave);
+  buildKeys();
+}
+// MIDI in: a controller plays the selected track (its channel, MIDI IN CH1-4: channel k + 1 plays track k + 1), its CCs
+// reach the firmware's MIDI control as on the device
+let midiAccess = null, midiBlink = 0;
+function midiIn(d) {
+  if (!node || d.length < 2) return;
+  const st = (d[0] & 0xF0) | (S.sel & 15);
+  node.port.postMessage({ type: "midi", data: [st, d[1], d[2] || 0] });
+  if ((d[0] & 0xF0) === 0x90 && d[2]) kbdEls.get(d[1])?.classList.add("down");
+  else if ((d[0] & 0xF0) === 0x80 || ((d[0] & 0xF0) === 0x90 && !d[2])) { if (!held.has(d[1])) kbdEls.get(d[1])?.classList.remove("down"); }
+  $("midi-dot").classList.add("on");
+  clearTimeout(midiBlink);
+  midiBlink = setTimeout(() => $("midi-dot").classList.remove("on"), 90);
+}
+function midiBind() {
+  const access = dev.access || midiAccess;
+  if (!access) return;
+  const names = [];
+  for (const input of access.inputs.values()) {
+    if (input.state === "disconnected") continue;
+    names.push(input.name || "an input");
+    if (input !== dev.input) input.onmidimessage = (e) => midiIn(e.data);
+  }
+  $("midi-text").textContent = names.length ? "MIDI: " + names.join(", ") : "MIDI: no input";
+  access.onstatechange = () => midiBind();
+}
+async function midiOn() {
+  if (!window.isSecureContext || !navigator.requestMIDIAccess) { $("midi-text").textContent = "MIDI: not in this browser"; return; }
+  try { midiAccess = await navigator.requestMIDIAccess(); midiBind(); }
+  catch { $("midi-text").textContent = "MIDI: not allowed"; }
+}
+
+// ------------------------------------------------------------------ the output: scope, meter, recording, screen
+let peakHold = 0, clipT = 0;
+function drawScope() {
+  requestAnimationFrame(drawScope);
+  if (!analyser || document.hidden) return;
+  const c = $("scope"), x = c.getContext("2d"), W = c.width, H = c.height;
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  let start = 0;                            // a rising zero crossing: a steady picture
+  for (let i = 1; i < buf.length / 2; i++) if (buf[i - 1] < 0 && buf[i] >= 0) { start = i; break; }
+  const st = getComputedStyle(document.documentElement);
+  x.clearRect(0, 0, W, H);
+  x.strokeStyle = st.getPropertyValue("--edge");
+  x.beginPath(); x.moveTo(0, H / 2); x.lineTo(W, H / 2); x.stroke();
+  x.strokeStyle = st.getPropertyValue("--accent");
+  x.lineWidth = 2;
+  x.beginPath();
+  const n = Math.min(1024, buf.length - start);
+  let pk = 0;
+  for (let i = 0; i < buf.length; i++) pk = Math.max(pk, Math.abs(buf[i]));
+  for (let i = 0; i < n; i++) {
+    const y = H / 2 - buf[start + i] * H / 2 * .95;
+    i ? x.lineTo(i * W / n, y) : x.moveTo(0, y);
+  }
+  x.stroke();
+  peakHold = Math.max(pk, peakHold * .96);
+  const db = 20 * Math.log10(peakHold || 1e-9);
+  $("peak").textContent = (db < -90 ? "-∞" : db.toFixed(1)) + " dB";
+  $("bar").style.width = clamp((db + 60) / 60 * 100, 0, 100) + "%";
+  if (pk >= .999) clipT = performance.now();
+  $("meter").classList.toggle("clip", performance.now() - clipT < 1500);
+}
+let recorder = null;
+async function toggleRecord() {
+  if (!ac) return;
+  const b = $("rec");
+  if (recorder) { recorder.stop(); return; }
+  const dest = ac.createMediaStreamDestination();
+  node.connect(dest);
+  const chunks = [];
+  recorder = new MediaRecorder(dest.stream);
+  recorder.ondataavailable = (e) => chunks.push(e.data);
+  recorder.onstop = async () => {
+    node.disconnect(dest);
+    recorder = null;
+    b.classList.remove("on");
+    b.textContent = "● Record";
+    try {
+      const audio = await ac.decodeAudioData(await new Blob(chunks).arrayBuffer());
+      const a = h("a", { href: URL.createObjectURL(new Blob([wav(audio)], { type: "audio/wav" })),
+                         download: `${fileBase(sound.name)}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")}.wav` });
+      document.body.append(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } catch (err) { console.warn("recording:", err); }
+  };
+  recorder.start();
+  b.classList.add("on");
+  b.textContent = "■ Stop";
+}
+function wav(buf) {                      // 16-bit stereo PCM
+  const n = buf.length, ch = Math.min(2, buf.numberOfChannels), out = new DataView(new ArrayBuffer(44 + n * 4));
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); out.setUint32(4, 36 + n * 4, true); w(8, "WAVEfmt "); out.setUint32(16, 16, true);
+  out.setUint16(20, 1, true); out.setUint16(22, 2, true); out.setUint32(24, buf.sampleRate, true);
+  out.setUint32(28, buf.sampleRate * 4, true); out.setUint16(32, 4, true); out.setUint16(34, 16, true);
+  w(36, "data"); out.setUint32(40, n * 4, true);
+  const L = buf.getChannelData(0), R = buf.getChannelData(ch - 1);
+  for (let i = 0; i < n; i++) {
+    out.setInt16(44 + i * 4, clamp(Math.round(L[i] * 32767), -32768, 32767), true);
+    out.setInt16(46 + i * 4, clamp(Math.round(R[i] * 32767), -32768, 32767), true);
+  }
+  return out.buffer;
+}
+const screenCtx = $("screen").getContext("2d"), screenImg = screenCtx.createImageData(240, 240);
+function drawScreen(fb) {
+  const d = screenImg.data;
+  for (let i = 0; i < 240 * 240; i++) {
+    const v = fb[i], p = ((v >> 8) | (v << 8)) & 0xFFFF;
+    d[i * 4] = ((p >> 11) & 31) * 255 / 31;
+    d[i * 4 + 1] = ((p >> 5) & 63) * 255 / 63;
+    d[i * 4 + 2] = (p & 31) * 255 / 31;
+    d[i * 4 + 3] = 255;
+  }
+  screenCtx.putImageData(screenImg, 0, 0);
+}
+
+// ------------------------------------------------------------------ the flash, kept in this browser
+const STORE = "bluehare-studio-flash";
+function loadFlash() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE) || "{}"), out = {};
+    for (const [off, b64] of Object.entries(raw)) out[off] = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return out;
+  } catch { return {}; }
+}
+function saveFlash(sectors) {
+  try {
+    const raw = {};
+    for (const [off, u8] of Object.entries(sectors)) {
+      let s = "";
+      for (let i = 0; i < u8.length; i += 4096) s += String.fromCharCode.apply(null, u8.subarray(i, i + 4096));
+      raw[off] = btoa(s);
+    }
+    localStorage.setItem(STORE, JSON.stringify(raw));
+    return true;
+  } catch { return false; }
+}
+
+// ------------------------------------------------------------------ switching on
+async function switchOn() {
+  const go = $("go");
+  go.disabled = true;
+  go.textContent = "Starting…";
+  try {
+    ac = new AudioContext({ sampleRate: 44100, latencyHint: "interactive" });
+    const [wasm] = await Promise.all([
+      fetch("bluehare.wasm").then((r) => { if (!r.ok) throw new Error(`bluehare.wasm: ${r.status}`); return r.arrayBuffer(); }),
+      ac.audioWorklet.addModule("worklet.js")]);
+    node = new AudioWorkletNode(ac, "bluehare", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
+    analyser = ac.createAnalyser();
+    analyser.fftSize = 2048;
+    node.connect(ac.destination);
+    node.connect(analyser);
+    await new Promise((res, rej) => {
+      node.port.onmessage = (e) => {
+        const m = e.data;
+        if (m.type === "ready") res();
+        else if (m.type === "error") rej(new Error(m.message));
+        else if (m.type === "ret") {
+          const p = pending.get(m.id);
+          if (!p) return;
+          pending.delete(m.id);
+          m.error ? p.rej(new Error(m.error)) : p.res(m.values);
+        } else if (m.type === "frame") {
+          if (m.fb) drawScreen(m.fb);
+          if (m.sectors) saveFlash(m.sectors);
+          if (m.load !== undefined) $("load").textContent = `CPU ${(m.load * 100).toFixed(0)}%`;
+        }
+      };
+      node.port.postMessage({ type: "load", wasm, sectors: loadFlash(), master: 700 }, [wasm]);
+    });
+    await ac.resume();
+    await loadConstants();
+    (await call([...Array(fw.P).keys()].map((i) => ({ fn: "stu_kept", args: [i] })))).forEach((k, i) => { if (k) kept.add(i); });
+    fillCats();
+    await poll(true);                     // the values first: the groups show them
+    await buildGroups();
+    await poll(true);
+    await refreshUsers();
+    await nameFromDevice();
+    buildKeys();
+    bindKeys();
+    $("start").hidden = true;
+    midiOn();
+    setInterval(() => poll(), 300);
+    node.port.postMessage({ type: "visible", on: !document.hidden });
+    if (ac.sampleRate !== 44100) console.warn(`the browser plays at ${ac.sampleRate} Hz: the pitch is off`);
+  } catch (err) {
+    console.error(err);
+    go.disabled = false;
+    go.textContent = "Switch on";
+    $("start-msg").textContent = "Could not start: " + (err && err.message || err) + ". A current Chrome, Edge, Firefox or Safari should work.";
+  }
+}
+
+// ------------------------------------------------------------------ the page's buttons
+$("go").addEventListener("click", switchOn);
+$("undo").addEventListener("click", undo);
+$("redo").addEventListener("click", redo);
+$("rec").addEventListener("click", toggleRecord);
+$("store").addEventListener("click", storeSlot);
+$("export").addEventListener("click", () => { const j = soundFile(); download(`${fileBase(j.name)}.bluehare-sound.json`, JSON.stringify(j, null, 1)); });
+$("import").addEventListener("click", () => pickFile($("file"), loadSoundFile));
+$("fx-export").addEventListener("click", () => download("fx-chain.bluehare-fx.json", JSON.stringify(fxFile(), null, 1)));
+$("fx-import").addEventListener("click", () => pickFile($("fx-file"), loadFxFile));
+$("connect").addEventListener("click", connectDevice);
+$("send").addEventListener("click", sendDevice);
+$("oct-down").addEventListener("click", () => setOctave(octave - 1));
+$("oct-up").addEventListener("click", () => setOctave(octave + 1));
+$("vel").addEventListener("input", () => { $("vel-v").textContent = $("vel").value; });
+$("panic").addEventListener("click", allOff);
+$("hold").addEventListener("click", () => {
+  hold = !hold;
+  $("hold").setAttribute("aria-pressed", String(hold));
+  $("hold").classList.toggle("on", hold);
+  if (!hold) allOff();
+});
+$("name").addEventListener("input", () => { const p = $("name").selectionStart; $("name").value = $("name").value.toUpperCase(); $("name").setSelectionRange(p, p); });
+$("theme").addEventListener("click", () => {
+  const light = document.documentElement.dataset.theme !== "light";
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  pref("bluehare-studio-theme", light ? "light" : "dark");
+  drawEnv();
+});
+document.documentElement.dataset.theme = pref("bluehare-studio-theme") || "dark";
+document.addEventListener("visibilitychange", () => node && node.port.postMessage({ type: "visible", on: !document.hidden }));
+requestAnimationFrame(drawScope);

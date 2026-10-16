@@ -105,6 +105,8 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
   patches) are removed; their ids retired; the host tests build IDM.
 - Blue Hare's groovebox parts are archived (2026-10-16): the SLICER (Felucca's), DUCK, and the FX layer's REPEAT,
   REVERSE and TAPE STOP (Felucca's); the FX layer has its own buffer instead of the SLICER's.
+- The sound design studio (`web/studio/`, 2026-10-16) is Blue Hare's: its page, its exports and its test. It runs on
+  the browser emulator's build and worklet (Felucca's, after X0X), which gained a "call" message for it.
 - The documentation is updated to match.
 
 ### Files moved from Felucca

@@ -89,6 +89,8 @@
 # Browser emulator (web/emu, when emcc is there): the firmware in WebAssembly (build/emu) boots, plays keys and MIDI,
 #                   draws, lights its LEDs, keeps a save across instances, plays a song bit for bit as the same file
 #                   built with cc (web/emu/native_check.c); the cost of 1 s of a heavy song against real time.
+#                   The sound design studio (web/studio: the same build with its exports, studio_test.mjs through the
+#                   worklet the page runs): engines, presets, parameters, notes, user slots, files, the FM-1's UP_PUT.
 # ENGINES (tests/engines_test.c): a build without some engines (BLUEHARE_DIST=test_subset: HARE FM1 without BLISS, ECHOES): its engines
 #                   numbered from 0 in its order, the ids both ways, a left-out engine's sound loading as its substitute
 #                   (projects, G_ENGSEL / PRESET, the song's instruments), its user presets kept but not listed, every
@@ -403,6 +405,9 @@ else
     run_now "browser emulator: the same song from the native build" "$OUT/emu_native" "$OUT/emu_native.f32"
     run_now "browser emulator: boot, keys, MIDI, screen, LEDs, PLAY, a save kept across instances, = native, cost" \
         node web/emu/emu_test.mjs build/emu/bluehare.wasm "$OUT/emu_native.f32"
+    run_now "sound design studio: the firmware with the studio's exports (web/studio/build.sh -> build/studio)" sh web/studio/build.sh
+    run_now "sound design studio: engines, presets, parameters, notes, user slots kept, sound files, the FM-1's UP_PUT" \
+        node web/studio/studio_test.mjs build/studio/bluehare.wasm
 fi
 
 # (the plugin, VST3 / AU / CLAP, and its tests: archived, archive/plugin)

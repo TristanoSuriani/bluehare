@@ -18,6 +18,9 @@ What Blue Hare adds, all by Tristano Suriani:
   the native image) are in the build; the others are in `archive/engines/`.
 - **A synthesizer, not a groovebox** *(2026-10-16)*: the SLICER, DUCK and the FX layer's REPEAT, REVERSE and TAPE STOP
   are archived; the design and the plan are in [docs/](docs/) (DesignPrinciples.md, Milestones.md, SoundAndDSP.md).
+- **The sound design studio** *(2026-10-16)*: the firmware's engines and FX chain in the browser, to design sounds,
+  try them on 4 tracks and save them to a file, to the studio's slots or straight to the FM-1's user slots
+  (`web/studio/`, `make studio`, BUILDING.md "Sound design studio").
 
 Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
 Blue Hare's parts are marked *(Blue Hare)*.
@@ -367,7 +370,7 @@ sevenths, or a fixed shape) and VOIC the voicing.
 | `firmware/` | firmware sources: `src/` app, `hal/` hardware layer, `loader/` update loader |
 | `tools/` | build script, generators, package maker and installer |
 | `assets/` | UI font, icon names |
-| `web/` | the web installer, the editor (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
+| `web/` | the web installer, the editor (`editor.html`, protocol in `EDITOR_PROTOCOL.md`) and the browser emulator (`web/emu/`), the sound design studio (`web/studio/`); the site's editor: [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp) |
 | `native/` | *(Blue Hare)* the native image: Blue Hare as a desktop application (SDL2), BUILDING.md "Native image" |
 | `archive/` | *(Blue Hare)* what is kept but neither built nor tested: the plugin (VST3, AU, CLAP by DPF), `archive/plugin/README.md` |
 | `tests/` | tests that run on the build machine |
