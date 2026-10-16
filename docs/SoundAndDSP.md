@@ -14,7 +14,7 @@ Sources are named relative to `firmware/src/` unless a path says otherwise.
 |---|---|---|
 | Sample rate | 44.1 kHz, stereo, 24-bit out | 44.1 kHz |
 | Processing block | 32 samples (`CTL`), inside a 128-frame I2S half buffer (2.9 ms) | the same code, the same blocks |
-| Arithmetic | fixed point only (the pi32v2 core has no FPU): Q15 audio, Q12 to Q30 coefficients, 32x32 into 64-bit products where needed | the same fixed-point engines; the reverbs CONCERT, CAVERN and SHIMMER in floating point (`fx_native.c`) |
+| Arithmetic | fixed point today: Q15 audio, Q12 to Q30 coefficients, 32x32 into 64-bit products where needed. The pi32v2 core has a single-precision FPU, on since 2026-10 (`-mfprev1`, tools/build.py); no engine or effect uses float yet | the same fixed-point engines; the reverbs CONCERT, CAVERN and SHIMMER in floating point (`fx_native.c`) |
 | Voices | 12 per track, 8 shared by every track (12 while the audio interrupt's measured load stays under 75 %) | 16 per track |
 | Tracks | 4 (8 still buildable) | 4 |
 

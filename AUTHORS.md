@@ -105,8 +105,10 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
   patches) are removed; their ids retired; the host tests build IDM.
 - Blue Hare's groovebox parts are archived (2026-10-16): the SLICER (Felucca's), DUCK, and the FX layer's REPEAT,
   REVERSE and TAPE STOP (Felucca's); the FX layer has its own buffer instead of the SLICER's.
-- GEN (2026-10), the generative engine on ARP (`firmware/src/gen.c`, its page, its presets, `tests/gen_test.c`), is
-  Blue Hare's.
+- GEN (2026-10), the generative engine on ARP (`firmware/src/gen.c`, its page, `tests/gen_test.c`): its composition
+  (the pieces, the breathing pad, the bells' loops, the drift, the arc, the euclidean pulse) is **amb-1's, by Charles
+  Vestal** (GPL-3.0; the excerpts in `docs/excerpt_amb1.c` and `docs/excerpt_fastmath_amb1.c`, the latter from his X0X),
+  ported to fixed point and to Blue Hare's tracks and engines by Blue Hare.
 - SH101 (2026-10) is Blue Hare's engine, its own design after the Roland SH-101 (no circuit modelled).
 - The sound design studio (`web/studio/`, 2026-10-16) is Blue Hare's: its page, its exports and its test. It runs on
   the browser emulator's build and worklet (Felucca's, after X0X), which gained a "call" message for it.

@@ -193,7 +193,10 @@ def distribution():
 
 
 def build_app():
-    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
+    # (Blue Hare, 2026-10) -mfprev1: the FM-1's pi32v2 core has a single-precision FPU (X0X's and amb-1's builds,
+    # by Charles Vestal, use it): float code compiles to FPU instructions instead of software float calls. No
+    # device code uses float yet; with -ffp-contract=off a float sum rounds as the host's does (the golden renders)
+    flags = [*CFLAGS, "-mfprev1", "-ffp-contract=off", "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
     for flag in ("BLUEHARE_FLASH", "BLUEHARE_OTA", "BLUEHARE_OTA_DRYRUN", "BLUEHARE_OTA_RAMONLY", "BLUEHARE_CDC",
                  "BLUEHARE_UART", "BLUEHARE_UAC", "BLUEHARE_UAC_TONE", "BLUEHARE_UAC_48K", "BLUEHARE_ICONS",
                  "BLUEHARE_CDC_DEFAULT"):

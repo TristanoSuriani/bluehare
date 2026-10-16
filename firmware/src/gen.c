@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
- * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
+ * The composition is amb-1's, by Charles Vestal (GPL-3.0): docs/excerpt_amb1.c */
 /* GEN (2026-10, Milestone 1): the generative ambient engine, on the ARP button. Its composition is amb1's
  * (docs/excerpt_amb1.c: the pieces, the breathing pad, the bells' loops, the drift, the arc, the euclidean pulse), in
  * fixed point and played on the first four tracks with their own sounds instead of amb1's own voices:
