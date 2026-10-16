@@ -19,7 +19,9 @@ What Blue Hare adds, all by Tristano Suriani:
   with PWM, a locked sub-oscillator and noise into a self-oscillating 24 dB ladder.
 - **A synthesizer, not a groovebox** *(2026-10-16)*: the SLICER, DUCK and the FX layer's REPEAT, REVERSE and TAPE STOP
   are archived; the design and the plan are in [docs/](docs/) (DesignPrinciples.md, Milestones.md, SoundAndDSP.md).
-- **The sound design studio** *(2026-10-16)*: the firmware's engines and FX chain in the browser, to design sounds,
+- **GEN, the generative engine** *(2026-10)*: ARP plays the four tracks as an ambient ensemble (pad, bass, bells,
+  pulse; amb1's composition), 8 pieces, on the FM-1, the native image, the emulator and the studio alike.
+- **The sound design studio** *(2026-10-16)*: the firmware's engines, effects and GEN in the browser, on one screen, to design sounds,
   try them on 4 tracks with every effect (track inserts, the shared buses, the performance layer, the master) and
   save them to a file, to the studio's slots or straight to the FM-1's user slots
   (`web/studio/`, `make studio`, BUILDING.md "Sound design studio").
@@ -77,7 +79,14 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
 - **Chord keys:** one finger plays an in-key chord (triads or sevenths of the scale, or fixed chord
   shapes), with voicings; on the keys and MIDI in
 - **Scales and voices:** 16 scales with a white-key mode, glide, MONO / LEGATO / UNISON. The arpeggiator is gone
-  (2026-10): ARP shows a TODO page for now
+  (2026-10): ARP plays GEN instead (below)
+- **GEN, the generative engine** *(Blue Hare, 2026-10)*: ARP starts and stops an ambient ensemble on the four
+  tracks, amb1's composition (docs/excerpt_amb1.c): a pad of four voices that breathe on unequal cycles (track 1), the
+  bass (2), bells in four loops of 13, 17, 23 and 29 beats that phase against each other and grow, thin and change
+  (3), a euclidean pulse (4); the chords drift on their own, voice-led. Its page (ARP) picks one of amb1's 8 pieces
+  (GARDEN, DEPARTURES, VOICES, AFTERNOON, NIGHT BUS, SHORELINE, GLASS, TIDES: the four sounds, the tempo and the
+  effects), the SCALE, the ROOT and MOTION (how far it swells and thins). The same code plays in the native image, the
+  browser emulator and the studio
 - **LFO:** RATE or **SYNC** to a note value (4 bars to 1/32, following the tempo or an external clock), **TRIG** NOTE
   or FREE, **POL** bipolar or unipolar (LFO > LFO 2)
 - **Modulation matrix:** 4 slots per track, MIDI controllers as sources, **S&H** and **SLEW** (a random value per
@@ -198,7 +207,7 @@ The pages by button:
 | LFO | LFO, LFO 2, LFO DEST, MOD | MOMENTARY (with a knob) |
 | EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
 | FX, SCL, ENV | their pages, as before | FX and SCL: their layers |
-| ARP | a placeholder (TODO): the arpeggiator is gone | (as a tap) |
+| ARP | GEN starts or stops, its page shown (KNOB 1 the preset, 2 SCALE, 3 ROOT, 4 MOTION); ARP breathes while it plays | (as a tap) |
 | REC | nothing for now (no recording) | nothing |
 
 ## Sequencer
@@ -209,7 +218,7 @@ history keeps it). PLAY still runs the transport: the click and the synced LFOs 
 TRS clock. REC does nothing for now.
 
 A project (SAVE > PROJECT, the autosave) holds the tracks' sounds, the globals and each track's
-place in the mix (WIDTH, LOW CUT, PAN MODE: their power-on values, as no page sets them for now; version 9: DUCK is
+place in the mix (WIDTH, any track's since 2026-10, LOW CUT, PAN MODE: no page of the FM-1 sets them yet, the studio does; version 9: DUCK is
 archived). Projects of
 earlier versions, the tracker's songs among them, do not open.
 

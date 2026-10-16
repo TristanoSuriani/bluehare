@@ -248,6 +248,8 @@ static void ui_leds(void)
         led_put(nl, panel.btn[FAM_BTN[fam]], 1);
     if (!ui.layer && (perf_latched || perf_k[0] || perf_k[1] || perf_k[2] || perf_k[3]))
         led_put(nl, panel.btn[B_FX], 1);                /* FX LATCH: lit while an effect or a macro is on */
+    if (gen.on && FAM_BTN[fam] != B_ARP)                /* (Blue Hare) GEN playing: ARP breathes, elsewhere */
+        led_put(nb, panel.btn[B_ARP], 1);
     if (ui.layer)                                       /* the layer's button breathes while its map is up */
         led_put(nb, panel.btn[layer_btn()], 1);
     k = oct_leds();
@@ -541,6 +543,13 @@ static int page_tap(uint32_t b)
         name_rename();                                  /* SAVE > USER / PROJECT: EDIT renames the slot */
         return 1;
     }
+    if (b == B_ARP) {                                   /* (Blue Hare) ARP: GEN starts or stops, its page shown */
+        gen_toggle();
+        if (ui.home || cur_page()->fam != FAM_ARP)
+            open_family(FAM_ARP);
+        ui.force = 1;
+        return 0;
+    }
     for (f = FAM_HOME + 1u; f < FAM_COUNT; f++)        /* (GLO SEQ SAVE ..: HOME is ui_input's, home_tap) */
         if (FAM_BTN[f] == b && b != B_HOME) {
             open_family(f);
@@ -576,6 +585,7 @@ static void ui_input(void)
     for (k = 0; k < NTRK; k++)                          /* an engine index past the build's any other way (every */
         if (trk[k].eng_req >= NENGINES)                 /* load maps ids): its first engine */
             set_engine_of(&trk[k], 0);
+    gen_poll();                                         /* (Blue Hare) GEN: a preset picked loads its sounds (ui.c) */
     perf_latch_on = fx_latch & 1u;                      /* (MENU > FX LATCH; a settings load sets it too) */
     fx_map_sync();                                      /* (the FX layer's key map: ui_layer.c, a settings load too) */
     fx_usb_fixed = (ui_prefs & PREF_USB_FIXED) != 0u;   /* (MENU > USB LEVEL: fx.c, audio.c) */

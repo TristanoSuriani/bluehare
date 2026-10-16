@@ -58,8 +58,9 @@ STU_EXPORT void stu_load_preset(uint32_t k)        /* factory preset k of the tr
 STU_EXPORT void stu_undo(void) { undo_swap(); }    /* SAVE held: the sound before the last load, and back */
 
 /* ------------------------------------------------------------- parameters --- */
-/* scope 2: the effects that are no track or song parameter (docs/SoundAndDSP.md section 3): the selected track's
- * inserts LOW CUT, WIDTH and PAN MODE (core.h trk_lowcut, trk_width, trk_pmode: the SETTINGS' on the device), the
+/* scope 2: the effects that are no track or song parameter (docs/SoundAndDSP.md section 3): the inserts LOW CUT, WIDTH
+ * (the Haas effect) and PAN MODE (core.h trk_lowcut, trk_width, trk_pmode: per track on the device, its SETTINGS'; the
+ * studio treats every effect as shared: a value set is every track's, the one shown track 1's), the
  * performance layer's macros FILTER CRUSH THROW DEPTH (perform.c perf_k, as KNOB 1..4 with FX turn them), MENU > SPEAKER
  * EQ (settings.lowcut, fx.c fx_lowcut) and MASTER (the pot). Described as the others, values through stu_x */
 enum { SX_LOWCUT, SX_WIDTH, SX_PMODE, SX_SPKEQ, SX_FILTER, SX_CRUSH, SX_THROW, SX_DEPTH, SX_MASTER, SX_COUNT };
@@ -77,15 +78,14 @@ static const param_desc_t SX[SX_COUNT] = {
     [SX_DEPTH] = {"DEPTH", F_INT, 0, 100, 0, 0, 0},
     [SX_MASTER] = {"MASTER", F_PCT, 0, 127, 87, 0, 0},
 };
-static const param_desc_t SX_FIXED = {"WIDTH", F_INT, 0, 0, 0, 0, "ms"};   /* (WIDTH on a track without it) */
 static int16_t stu_xv;                            /* (the value read, as the others' pointers give theirs) */
 static int32_t stu_x(uint32_t id)
 {
     uint32_t k = song.sel;
     switch (id) {
-    case SX_LOWCUT: return trk_lowcut[k];
-    case SX_WIDTH: return tw_has(k) ? trk_width[k] : 0;
-    case SX_PMODE: return trk_pmode[k];
+    case SX_LOWCUT: return trk_lowcut[0];
+    case SX_WIDTH: return trk_width[0];
+    case SX_PMODE: return trk_pmode[0];
     case SX_SPKEQ: return settings.lowcut % 3u;
     case SX_FILTER: case SX_CRUSH: case SX_THROW: return perf_k[id - SX_FILTER];
     case SX_DEPTH: return 100 - perf_k[3];        /* (perf_k[3] is the cut: 0 the full level) */
@@ -96,9 +96,9 @@ static void stu_x_put(uint32_t id, int32_t v)
 {
     uint32_t k = song.sel;
     switch (id) {
-    case SX_LOWCUT: trk_lowcut[k] = (uint8_t)v; break;
-    case SX_WIDTH: if (tw_has(k)) trk_width[k] = (uint8_t)v; break;
-    case SX_PMODE: trk_pmode[k] = (uint8_t)v; break;
+    case SX_LOWCUT: for (k = 0; k < NTRK; k++) trk_lowcut[k] = (uint8_t)v; break;   /* (shared: every track) */
+    case SX_WIDTH: for (k = 0; k < NTRK; k++) trk_width[k] = (uint8_t)v; break;
+    case SX_PMODE: for (k = 0; k < NTRK; k++) trk_pmode[k] = (uint8_t)v; break;
     case SX_SPKEQ: settings.lowcut = (uint8_t)v; fx_lowcut = (uint8_t)v; break;
     case SX_FILTER: case SX_CRUSH: case SX_THROW: perf_k[id - SX_FILTER] = (int8_t)v; break;
     case SX_DEPTH: perf_k[3] = (int8_t)(100 - v); break;
@@ -114,7 +114,7 @@ static const param_desc_t *stu_d(uint32_t scope, uint32_t id, int16_t **vp)
     if (scope == 2u && id < SX_COUNT) {
         stu_xv = (int16_t)stu_x(id);
         *vp = &stu_xv;
-        return id == SX_WIDTH && !tw_has(song.sel) ? &SX_FIXED : &SX[id];
+        return &SX[id];
     }
     if (scope == 0u && id < P_COUNT) {
         *vp = &TSEL->p[id];
@@ -240,14 +240,15 @@ static const uint8_t STU_LAYOUT[] = {
     'V', 0, P_VOICE, 0, P_GLIDE, 0, P_GLMODE, 0, P_PRIO, 0, P_ALLOC, 0, P_DETUNE, 0, P_PAN, 0xFF,
     /* the effects, as docs/SoundAndDSP.md section 3 lists them: the track's inserts, its sends, the shared buses, the
      * performance layer, the master */
-    'I', 0, P_DIST, X2(SX_LOWCUT), 0, P_SPRD, X2(SX_PMODE), X2(SX_WIDTH), 0xFF,
-    'S', 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,
+    'S', 0, P_DIST, 0, P_SPRD, 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,   /* (the sound's: drive, spread, sends) */
+    'I', X2(SX_LOWCUT), X2(SX_WIDTH), X2(SX_PMODE), 0xFF,
     'Y', G1(G_DTYPE), G1(G_DTIME), G1(G_DFDBK), G1(G_DCOLOR), G1(G_DMIX), 0xFF,
     'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RDAMP), 0xFF,
     'C', G1(G_CRATE), G1(G_CDEPTH), 0xFF,
     'P', X2(SX_FILTER), X2(SX_CRUSH), X2(SX_THROW), X2(SX_DEPTH), 0xFF,
     'Q', X2(SX_SPKEQ), X2(SX_MASTER), 0xFF,
-    'K', G1(G_BPM), 0, P_ROOT, 0, P_SCALE, 0, P_QUANT, 0, P_TRANS, 0, P_CHRD, 0, P_VOIC, 0xFF,
+    'K', 0, P_ROOT, 0, P_SCALE, 0, P_QUANT, 0, P_TRANS, 0, P_CHRD, 0, P_VOIC, 0xFF,
+    'G', G1(G_GPRE), G1(G_GSCL), G1(G_GROOT), G1(G_GMOT), G1(G_BPM), 0xFF,   /* GEN (gen.c), the tempo */
     0,
 };
 #undef G1
@@ -273,6 +274,34 @@ STU_EXPORT void stu_perf_off(void)               /* every effect off, the macros
 }
 /* the ids of the effects a key can hold, in the layer's order (PF_DEF), then PF_N: LPF HPF FREEZE OCT UP OCT DN */
 STU_EXPORT const uint8_t *stu_perf_ids(void) { return PF_DEF; }
+
+/* -------------------------------------------------------------------- GEN --- */
+/* GEN (gen.c): start (1) or stop (0), as ARP does; its state {on, bar, step, chords, notes played by the four roles} */
+STU_EXPORT void stu_gen(uint32_t on)
+{
+    if (on != gen.on)
+        gen_toggle();
+}
+static int32_t stu_gs[8];
+STU_EXPORT int32_t *stu_gen_state(void)
+{
+    uint32_t r;
+    stu_gs[0] = gen.on;
+    stu_gs[1] = (int32_t)gen.s.bar;
+    stu_gs[2] = (int32_t)gen.s.step;
+    stu_gs[3] = (int32_t)gen.s.nchord;
+    for (r = 0; r < 4u; r++)
+        stu_gs[4 + r] = (int32_t)gen.s.played[r];
+    return stu_gs;
+}
+STU_EXPORT char *stu_gen_chord(void)
+{
+    char b[8];
+    gen_chord_name(b);
+    return stu_say(b);
+}
+STU_EXPORT uint32_t stu_gen_npresets(void) { return GEN_NPRESETS; }
+STU_EXPORT char *stu_gen_preset_name(uint32_t k) { return stu_say(GEN_PRESETS[k % GEN_NPRESETS].name); }
 
 /* ------------------------------------------------------------ the master --- */
 /* the master's always-on stages, now: the bus compressor's gain (Q15), the limiter's level over its threshold (Q15:

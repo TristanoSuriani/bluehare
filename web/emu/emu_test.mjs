@@ -7,7 +7,7 @@
 // Checks: the page's script parses; it boots (splash, then HOME on the screen, the HOME LED; the power-on LED sweep under the splash, over by
 // 1 s), a held key sounds and lights its LED, PLAY
 // starts the sequencer (PLAY's green LED), a user preset saved from the panel (SAVE, OCT+, OCT+) reaches the flash,
-// and the flash sectors kept as the page keeps them bring it back in a fresh instance; the same gestures twice
+// and the flash sectors kept as the page keeps them bring it back in a fresh instance; ARP plays GEN and stops it; the same gestures twice
 // give the same audio (deterministic), with NATIVE.f32 (web/emu/native_check.c) the native build's, bit for bit.
 // Then the cost: 1 s of a heavy song (VOSIM, KARPLUS, WAVE chords, KIT) against real time (BENCH_MAX, default 0.5:
 // fails above half of real time on this machine).
@@ -109,6 +109,16 @@ check("PLAY: the sequencer runs, PLAY's green LED", a.ex.web_playing() === 1 && 
 a.tap(B.PLAY);
 a.render(300);
 check("PLAY again stops it", a.ex.web_playing() === 0);
+a.render(3000);                                               // (Blue Hare, 2026-10) ARP: GEN plays its four tracks
+a.peak = 0;
+a.tap(B.ARP);
+a.render(4000);
+const genPeak = a.peak;
+a.tap(B.ARP);
+a.render(6000);
+a.peak = 0;
+a.render(500);
+check(`ARP: GEN plays (peak ${genPeak.toFixed(3)}); ARP again stops it (then ${a.peak.toFixed(4)})`, genPeak > 0.02 && a.peak < genPeak / 10);
 a.ex.web_buttons(1 << B.FX);                                  // #119: FX held, its map: the effects breathe
 a.render(800);
 const brK = a.ex.web_breath_keys(), brB = a.ex.web_breath_buttons(), litK = a.ex.web_lit_keys();

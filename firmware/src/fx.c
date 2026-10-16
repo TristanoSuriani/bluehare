@@ -1011,17 +1011,18 @@ static __attribute__((noinline)) void track_lowcut(uint32_t k, int32_t *b, uint3
     tmix[k].s2 = s2;
 }
 
-/* (Blue Hare) WIDTH (core.h trk_width): the Haas effect on one of the last TW_N tracks. The track's sample x (its level
+/* (Blue Hare) WIDTH (core.h trk_width): the Haas effect on a track (any, 2026-10). The track's sample x (its level
  * applied) splits at ~250 Hz (high: two one-pole high-passes, 12 dB/oct, so 60 Hz is ~-25 dB in it; low = x - high);
  * one side plays x, the other low + the high of WIDTH ms before (tw_buf, the highs halved into 16 bits). The first of these tracks is late on the right (it sits
  * left, as its PAN), the next on the left, and so on. The sends take x, as always; the mono sum keeps the lows whole */
 #define TW_LEN 1024u                     /* (20 ms: 882 samples) */
-static int16_t tw_buf[TW_N][TW_LEN] __attribute__((section(".pool")));
-static uint16_t tw_w[TW_N];
+static int16_t tw_buf[NTRK][TW_LEN] __attribute__((section(".pool")));
+static uint16_t tw_w[NTRK];
 static __attribute__((noinline)) void mix_haas(track_t *t, uint32_t k, const int32_t *b, uint32_t n, int32_t lvl, int32_t gl,
                                                int32_t gr, int32_t c, int32_t d, int32_t r, int32_t xmax)
 {
-    uint32_t j = k - TW_FIRST, i, w = tw_w[j], dl = ((uint32_t)trk_width[k] * 441u + 5u) / 10u, right = !(j & 1u);
+    uint32_t j = k % NTRK, i, w = tw_w[j], dl = ((uint32_t)trk_width[k] * 441u + 5u) / 10u, right = !(j & 1u);   /* (even
+                                                    * tracks late on the right: track 3 as before) */
     int16_t *q = tw_buf[j];
     int32_t h1 = tmix[k].h1, h2 = tmix[k].h2, pk = t->peak;
     for (i = 0; i < n; i++) {

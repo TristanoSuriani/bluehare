@@ -60,8 +60,8 @@ int main(void)
     /* power-on */
     ok = TW_FIRST == NTRK / 2u;
     for (k = 0; k < NTRK; k++)
-        ok &= tw_has(k) ? trk_width[k] == TW_DEF && trk_lowcut[k] == TL_DEF : !trk_width[k] && !trk_lowcut[k];
-    bad += check("power-on: the rhythm section (the first half) dry and centred; the rest WIDTH 12 ms, LOW CUT 120 Hz", ok);
+        ok &= tw_has(k) && (tw_wide(k) ? trk_width[k] == TW_DEF && trk_lowcut[k] == TL_DEF : !trk_width[k] && !trk_lowcut[k]);
+    bad += check("power-on: the rhythm section (the first half) dry and centred; the rest WIDTH 12 ms, LOW CUT 120 Hz (any track may have WIDTH)", ok);
 
     /* LOW CUT */
     {
@@ -134,13 +134,13 @@ int main(void)
     project_load(0);
     ok &= proj_ram[0][PROJ_HDR] == PROJ_VER && trk_width[NTRK - 1u] == 7u && trk_lowcut[NTRK - 1u] == 2u && trk_lowcut[0] == 6u;
     bad += check("the store keeps WIDTH and LOW CUT; the power-on values have them as before", ok);
-    trk_width[0] = 5;                                 /* (the rhythm section has no WIDTH) */
+    trk_width[0] = 5;                                 /* (2026-10: any track has WIDTH) */
     trk_width[TW_FIRST] = 99;
     trk_lowcut[1] = 9;
     ok = !project_save(0);
     project_load(0);
-    ok &= !trk_width[0] && !trk_width[TW_FIRST] && !trk_lowcut[1];
-    bad += check("bounds: WIDTH on a rhythm track -> 0, past 20 -> 0; LOW CUT past the last -> OFF (when loaded)", ok);
+    ok &= trk_width[0] == 5u && !trk_width[TW_FIRST] && !trk_lowcut[1];
+    bad += check("bounds: WIDTH on track 1 kept (any track has it), past 20 -> 0; LOW CUT past the last -> OFF (when loaded)", ok);
     printf("%s\n", bad ? "WIDTH TEST FAILED" : "width test passed");
     return bad ? 1 : 0;
 }

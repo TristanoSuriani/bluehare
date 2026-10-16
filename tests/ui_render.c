@@ -579,6 +579,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
 static void setup(int s)
 {
     memset(kb_chn, 0, sizeof kb_chn);               /* no key held (roll_playing holds one) */
+    memset(&gen, 0, sizeof gen);                    /* (GEN stopped: S_ARP plays it) */
     state();
     switch (s) {
     case S_HOME: song.octave = 2; usb.config = 1; break;
@@ -637,7 +638,10 @@ static void setup(int s)
         break;
     }
     case S_CHORD_OFF: go_title("CHORD"); break;
-    case S_ARP: go_title("ARP"); break;
+    case S_ARP:                                      /* (Blue Hare, 2026-10) ARP: GEN playing, FM7, bar 3 */
+        gen.on = 1; gen.s.npc = 4; gen.s.pcs[0] = 5; gen.s.pcs[1] = 9; gen.s.pcs[2] = 0; gen.s.pcs[3] = 4; gen.s.bar = 2;
+        go_title("GEN");
+        break;
     case S_VOICE: go_title("VOICE"); break;
     case S_CLOCK: go_title("CLOCK"); break;          /* (1.2: HOME > MIXER > CLOCK; up to 1.1.5 GLO > GLOBAL) */
     /* 1.2: the old SYSTEM page's items in the MENU: MIDI > MIDI IN (ROUT) on CH5-8; AUDIO > TUNE (-12 ct) selected;

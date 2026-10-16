@@ -99,26 +99,31 @@ async function loadDescs(items) {
 }
 
 // ------------------------------------------------------------------ the page's words for the parameters
+// the tabs, and the groups each shows (STU_LAYOUT's keys)
+const TABS = [["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "IYRCPQ"], ["gen", "GENERATIVE", "GK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
   A: { title: "Amp envelope", names: ["Attack", "Decay", "Sustain", "Release", "Level", "Octave"] },
   N: { title: "Envelope moves", names: ["Filter", "Pitch", "Shape"] },
-  I: { title: "Track inserts", names: ["Drive", "Low cut", "Spread", "Pan mode", "Width (T3-4)"], fx: true, track: true },
-  S: { title: "Sends", names: ["Chorus", "Delay", "Reverb"], fx: true, track: true,
-       note: "The delay and reverb sends lose everything under ~220 Hz, so the bass stays dry." },
-  L: { title: "LFO", names: ["Rate", "Wave", "Phase", "Fade in", "Sync", "Trigger", "Polarity"], fold: true },
-  D: { title: "LFO moves", names: ["Pitch", "Filter", "Shape", "Amp"], fold: true },
-  M: { title: "Mod matrix", wide: true, fold: true },
-  V: { title: "Voice", names: ["Mode", "Glide", "Glide by", "Priority", "Allocation", "Detune", "Pan"], fold: true },
-  Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true, shared: true,
+  S: { title: "Drive, spread, sends", names: ["Drive", "Spread", "Chorus", "Delay", "Reverb"],
+       note: "Saved with the sound. The delay and reverb sends lose everything under ~220 Hz: the bass stays dry." },
+  V: { title: "Voice", names: ["Mode", "Glide", "Glide by", "Priority", "Allocation", "Detune", "Pan"] },
+  L: { title: "LFO", names: ["Rate", "Wave", "Phase", "Fade in", "Sync", "Trigger", "Polarity"] },
+  D: { title: "LFO moves", names: ["Pitch", "Filter", "Shape", "Amp"] },
+  M: { title: "Mod matrix", wide: true },
+  I: { title: "Inserts", names: ["Low cut", "Haas", "Pan mode"], fx: true,
+       note: "LOW CUT: a 12 dB/oct high-pass after the drive. HAAS (the FM-1's WIDTH): the Haas effect, the highs over ~250 Hz late on one side. PAN MODE: ALT voices left and right of PAN by SPREAD, RND each voice on a random side." },
+  Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true,
        note: "CLEAN: low-passed repeats · TAPE, WORN: wow, flutter, a saturated loop · PING: ping-pong · DUAL: two lines" },
-  R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true, shared: true,
+  R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true,
        note: "ROOM: combs · SPRING: a dispersive spring · HALL: an 8-line FDN · GATED: HALL cut off · CONCERT: 16 lines. The native app adds CAVERN and SHIMMER." },
-  C: { title: "Chorus", names: ["Rate", "Depth"], fx: true, shared: true },
-  P: { title: "Performance", names: ["Filter", "Crush", "Throw", "Depth"], fx: true, wide: true,
-       note: "Hold a button (or latch it) as you would a white key with FX held on the FM-1. FILTER sweeps LPF (left) or HPF (right); CRUSH reduces bits; THROW sends the dry mix into the delay and reverb; DEPTH is the hold effects' level (OCT UP / DN: the shimmer)." },
-  Q: { title: "Master", names: ["Speaker EQ", "Master"], fx: true, wide: true },
-  K: { title: "Key & tempo", names: ["Tempo", "Root", "Scale", "Keys snap", "Transpose", "Chord", "Voicing"], fold: true },
+  C: { title: "Chorus", names: ["Rate", "Depth"], fx: true },
+  P: { title: "Performance", names: ["Filter", "Crush", "Throw", "Depth"], fx: true,
+       note: "Hold a button, or latch it, as a white key with FX held on the FM-1. FILTER: LPF left, HPF right; CRUSH: fewer bits; THROW: the dry mix into the delay and reverb; DEPTH: the hold effects' level (OCT UP / DN: the shimmer)." },
+  Q: { title: "Master", names: ["Speaker EQ", "Master"], fx: true },
+  G: { title: "Generative", names: ["Piece", "Scale", "Root", "Motion", "Tempo"], wide: true,
+       note: "Four tracks as an ensemble: track 1 a pad of four breathing voices, 2 the bass, 3 bells in four loops of 13, 17, 23 and 29 beats, 4 a euclidean pulse. The chords drift on their own. A piece loads the four sounds, the tempo and the effects; SCALE and ROOT change the key at once; MOTION how far the music swells and thins. On the FM-1: ARP starts and stops it." },
+  K: { title: "Keys", names: ["Root", "Scale", "Snap", "Transpose", "Chord", "Voicing"], track: true },
 };
 const ENGINE_WORDS = {
   SID: "The C64's chip voice: pulse, saw, noise, ring, sync",
@@ -406,55 +411,95 @@ async function meterPoll() {
   for (const b of perfEls) b.setAttribute("aria-pressed", String(!!((on >>> +b.dataset.e) & 1)));
 }
 
+let tabNow = pref("bluehare-studio-tab") || "sound";
+function showTab(id) {
+  tabNow = TABS.some((t) => t[0] === id) ? id : "sound";
+  pref("bluehare-studio-tab", tabNow);
+  for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === tabNow));
+  for (const p of $("groups").children) p.hidden = p.dataset.tab !== tabNow;
+  if ($("fx-actions")) $("fx-actions").hidden = tabNow !== "fx";
+  drawEnv();
+}
 async function buildGroups() {
-  const root = $("groups");
+  const root = $("groups"), tabs = $("tabs");
   root.textContent = "";
+  tabs.textContent = "";
   ctl[0].clear();
   ctl[1].clear();
   ctl[2].clear();
   const items = fw.layout.flatMap((g) => g.items);
   await loadDescs(items);
-  let fxTitle = false;
-  const order = "EANLDMVISYRCPQK";         // the sound (big picture first, details folded), its effects, then the key
-  const rank = (g) => (order.indexOf(g.key) + 1 || 99);
-  for (const g of [...fw.layout].sort((a, b) => rank(a) - rank(b))) {
-    const G = GROUPS[g.key] || { title: g.key };
-    if (G.fx && !fxTitle) { root.append(h("div", { class: "sect-title" }, "EFFECTS")); fxTitle = true; }
-    const box = h("section", { class: "group" + (G.wide ? " wide" : ""), "data-group": g.key });
-    const head = h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `track ${S.sel + 1}`) : null,
-      G.shared ? h("span", { class: "sub" }, "shared by all tracks") : null);
-    box.append(head);
-    const ctrls = h("div", { class: "ctrls" });
-    if (g.key === "E") {
-      box.id = "engine-group";
-      engineGroup(ctrls, g.items);
-    } else if (g.key === "M") {
-      ctrls.append(matrix(g.items));
-    } else {
-      g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, G.names?.[i])));
-      if (g.key === "P") ctrls.prepend(perfButtons());
-      if (g.key === "Q") ctrls.append(masterStages());
-      if (G.note) ctrls.append(h("p", { class: "note gnote" }, G.note));
-      if (g.key === "A") {
-        envCanvas = h("canvas", { width: 300, height: 70, style: "width:100%;height:70px;display:block;margin:2px 0 6px" });
-        ctrls.prepend(envCanvas);
-      }
+  for (const [id, title, keys] of TABS) {
+    const b = h("button", { class: "tab", role: "tab", type: "button", "data-tab": id, onclick: () => showTab(id) }, title,
+      id === "gen" ? h("span", { class: "live", id: "gen-live", hidden: true }) : null);
+    tabs.append(b);
+    const panel = h("div", { class: "groups", role: "tabpanel", "data-tab": id });
+    for (const key of keys) {
+      const g = fw.layout.find((x) => x.key === key);
+      if (g) panel.append(groupBox(g));
     }
-    box.append(ctrls);
-    if (G.fold) {
-      const k = "bluehare-studio-open-" + g.key;
-      const open = pref(k) === "1";
-      box.classList.toggle("closed", !open);
-      const b = h("button", { type: "button", "aria-expanded": String(open) }, open ? "Hide" : "Show");
-      b.addEventListener("click", () => {
-        const o = box.classList.toggle("closed");
-        b.textContent = o ? "Show" : "Hide";
-        b.setAttribute("aria-expanded", String(!o));
-        pref(k, o ? "0" : "1");
-      });
-      head.append(b);
+    root.append(panel);
+  }
+  tabs.append(fxActions());
+  showTab(tabNow);
+}
+function groupBox(g) {
+  const G = GROUPS[g.key] || { title: g.key };
+  const box = h("section", { class: "group" + (G.wide ? " wide" : ""), "data-group": g.key });
+  const info = G.note && g.key !== "G" ? h("button", { class: "info", type: "button", title: G.note, "aria-label": "About " + G.title,
+    onclick: () => { const n = box.querySelector(".gnote"); if (n) n.hidden = !n.hidden; } }, "ⓘ") : null;
+  box.append(h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `track ${S.sel + 1}`) : null,
+    G.fx ? h("span", { class: "sub" }, "every track") : null, info));
+  const ctrls = h("div", { class: "ctrls" });
+  if (g.key === "E") {
+    box.id = "engine-group";
+    engineGroup(ctrls, g.items);
+  } else if (g.key === "M") {
+    ctrls.append(matrix(g.items));
+  } else {
+    if (g.key === "G") ctrls.append(genBar());
+    if (g.key === "P") ctrls.append(perfButtons());
+    if (g.key === "A") {
+      envCanvas = h("canvas", { id: "env-graph", width: 300, height: 112 });
+      ctrls.append(envCanvas);
     }
-    root.append(box);
+    g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, G.names?.[i])));
+    if (g.key === "Q") ctrls.append(masterStages());
+    if (G.note) ctrls.append(h("p", { class: "gnote", hidden: g.key !== "G" }, G.note));   /* (the others: ⓘ) */
+  }
+  box.append(ctrls);
+  return box;
+}
+// the effects' file: at the top of the EFFECTS tab
+function fxActions() {
+  const file = h("input", { type: "file", accept: ".json,application/json", hidden: true });
+  return h("div", { id: "fx-actions", class: "tabacts", title: "Every effect here is shared by the four tracks. An effects file keeps them all (not MASTER)." },
+    h("button", { class: "btn small", type: "button", onclick: () => download("effects.bluehare-fx.json", JSON.stringify(fxFile(), null, 1)) }, "Export effects"),
+    h("button", { class: "btn small", type: "button", onclick: () => pickFile(file, loadFxFile) }, "Import effects"), file);
+}
+// GEN: play / stop, the chord, the bar, a light for each role as it plays
+let genOn = false, genPlayed = [0, 0, 0, 0];
+function genBar() {
+  const play = h("button", { class: "btn primary play", type: "button", id: "gen-play", onclick: async () => {
+    await one("stu_gen", genOn ? 0 : 1);
+    await genPoll();
+  } }, "▶ Play");
+  return h("div", { class: "genbar" }, play, h("span", { class: "chord", id: "gen-chord" }, "—"),
+    h("span", { class: "where", id: "gen-where" }, "stopped"),
+    h("span", { class: "roles" }, ["PAD", "BASS", "BELLS", "PULSE"].map((n, i) => h("span", { class: "role", id: "gen-r" + i }, n))));
+}
+async function genPoll() {
+  if (!node || !$("gen-play")) return;
+  const [st, chord] = await call([{ fn: "stu_gen_state", ret: ["i32", 8] }, { fn: "stu_gen_chord", ret: "str" }]);
+  genOn = !!st[0];
+  $("gen-play").textContent = genOn ? "■ Stop" : "▶ Play";
+  $("gen-play").classList.toggle("on", genOn);
+  $("gen-chord").textContent = genOn ? chord || "—" : "—";
+  $("gen-where").textContent = genOn ? `bar ${st[1] + 1} · step ${st[2] + 1}` : "stopped";
+  $("gen-live").hidden = !genOn;
+  for (let r = 0; r < 4; r++) {
+    $("gen-r" + r).classList.toggle("hit", genOn && st[4 + r] !== genPlayed[r]);
+    genPlayed[r] = st[4 + r];
   }
 }
 function engineGroup(ctrls, items) {
@@ -1085,6 +1130,7 @@ async function switchOn() {
     midiOn();
     setInterval(() => poll(), 300);
     setInterval(() => meterPoll(), 120);
+    setInterval(() => genPoll(), 150);
     node.port.postMessage({ type: "visible", on: !document.hidden });
     if (ac.sampleRate !== 44100) console.warn(`the browser plays at ${ac.sampleRate} Hz: the pitch is off`);
   } catch (err) {
@@ -1097,14 +1143,19 @@ async function switchOn() {
 
 // ------------------------------------------------------------------ the page's buttons
 $("go").addEventListener("click", switchOn);
+for (const [b, pane] of [["lt-presets", "pane-presets"], ["lt-users", "pane-users"]])
+  $(b).addEventListener("click", () => {
+    for (const [b2, p2] of [["lt-presets", "pane-presets"], ["lt-users", "pane-users"]]) {
+      $(b2).setAttribute("aria-selected", String(b2 === b));
+      $(p2).hidden = p2 !== pane;
+    }
+  });
 $("undo").addEventListener("click", undo);
 $("redo").addEventListener("click", redo);
 $("rec").addEventListener("click", toggleRecord);
 $("store").addEventListener("click", storeSlot);
 $("export").addEventListener("click", () => { const j = soundFile(); download(`${fileBase(j.name)}.bluehare-sound.json`, JSON.stringify(j, null, 1)); });
 $("import").addEventListener("click", () => pickFile($("file"), loadSoundFile));
-$("fx-export").addEventListener("click", () => download("fx-chain.bluehare-fx.json", JSON.stringify(fxFile(), null, 1)));
-$("fx-import").addEventListener("click", () => pickFile($("fx-file"), loadFxFile));
 $("connect").addEventListener("click", connectDevice);
 $("send").addEventListener("click", sendDevice);
 $("oct-down").addEventListener("click", () => setOctave(octave - 1));

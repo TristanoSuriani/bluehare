@@ -44,6 +44,10 @@
 #                   as before; TRIG NOTE / FREE; POL UNI 0..+1, the matrix's AMP.
 # SEQUENCER: a placeholder (SEQ shows TODO). The renders' songs play through the tests' own player (tests/hostsim.c
 #                   host_seq, on seq.c's seq_hook): rows of a 1/16, swung, as the tracker played them, so the goldens stay.
+# GEN (tests/gen_test.c, Blue Hare 2026-10): the generative engine on the ARP button: stopped silent; every role
+#                   plays, in its range, on the scale and ROOT; chords every BARS bars; steps at the tempo; a scale
+#                   change at once; MOTION; a fixed seed's notes; stop lets everything go; each preset (WAVs in
+#                   build/gen_demo/).
 # MOD (tests/mod_test.c): the modulation matrix: slots that do nothing are bit-identical, every source on each
 #                   kind of destination, clamping, MIDI CC1 / CC11 / aftertouch routing, the cost of 4 active
 #                   slots (at most +5 %), demos in build/mod_demo/.
@@ -305,6 +309,9 @@ if [ -f build/gen/bluehare_tables.h ]; then
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/mod_test" tests/mod_test.c -lm
     mkdir -p build/mod_demo
     slow run "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" "$OUT/mod_test" build/mod_demo
+    compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/gen_test" tests/gen_test.c -lm
+    mkdir -p build/gen_demo
+    run "GEN, the generative engine: roles, scale, chords, tempo, MOTION, the seed, stop, every preset (demos)" "$OUT/gen_test" build/gen_demo
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/sound14_test" tests/sound14_test.c -lm
     mkdir -p build/sound14_demo
     slow run "sound items: matrix S&H / SLEW / DEPTH, SPREAD (bit for bit at 0, L / R, mono sum), cost, demos" \

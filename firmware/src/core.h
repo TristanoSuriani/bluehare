@@ -149,8 +149,9 @@ enum {                          /* global parameters */
     G_BPM, G_SWING, G_CLOCK, G_TUNE,
     G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX,
     G_RSIZE, G_RDAMP, G_CRATE, G_CDEPTH,
-    G_MIDI, G_SYNC, G_ROUTE, G_INFO,   /* G_ROUTE: MIDI IN, 0 CH1-4 (channels 1..4 -> parts 1..4, 5..16 ignored), 1 SEL;
-                                        * 1.2: 2..4 CH5-8 CH9-12 CH13-16 (seq.c midi_base) */
+    G_GPRE, G_GSCL, G_ROUTE, G_GROOT,  /* G_ROUTE: MIDI IN, 0 CH1-4 (channels 1..4 -> parts 1..4, 5..16 ignored), 1 SEL;
+                                        * 1.2: 2..4 CH5-8 CH9-12 CH13-16 (seq.c midi_base). (Blue Hare, 2026-10) GEN's
+                                        * preset, scale and root (gen.c): the ids of G_MIDI, G_SYNC and G_INFO, inert */
     G_SLOT, G_NAME, G_LOAD, G_SAVE,
     G_ENGSEL, G_ENGGO,          /* no page: the editor switches the engine with a SET of G_ENGSEL; G_ENGGO is
                                  * unused (ids are fixed by the formats and the protocol) */
@@ -160,8 +161,8 @@ enum {                          /* global parameters */
                                  * of formats before FUN7 load it as ROOM (project.c proj_rtype_room) */
     G_DTYPE,                    /* DELAY TYPE (Blue Hare 1.5): 0 CLEAN, 1 TAPE, 2 WORN (fx.c). Was G_DRLVL, the GM
                                  * drum part's level (inert since 1.0: range 0..0, so every song stored 0, CLEAN) */
-    G_DRREV,                    /* inert (label "-", on no page): the GM drum part it set is gone; kept because the
-                                 * ids and G_COUNT are fixed by the formats and the protocol */
+    G_GMOT,                     /* (Blue Hare, 2026-10) GEN's MOTION (gen.c): the id of G_DRREV, inert (the GM drum
+                                 * part's reverb send) since 1.0; the ids and G_COUNT are fixed by the formats */
     G_COUNT
 };
 
@@ -318,10 +319,10 @@ static song_t song;
 
 
 /* (Blue Hare) each track's place in the mix, the song's (SETTINGS' WIDTH and LOW CUT; project.c, version 5):
- *   trk_width   0 off, 1..TW_MAX ms: the Haas effect, on the last TW_N tracks only (5..8, or 3..4 on 4 tracks: the
- *               rhythm section stays in the middle): the track's highs (over ~250 Hz) late on one side, the side
- *               changing track by track (the first late on the right, so it sits left: as its PAN), its lows as they
- *               are on both (fx.c mix_haas)
+ *   trk_width   0 off, 1..TW_MAX ms: the Haas effect (fx.c mix_haas), on any track (2026-10; before, the last half
+ *               alone); on by default on the last TW_N (5..8, or 3..4 on 4 tracks: the rhythm section stays in the
+ *               middle): the track's highs (over ~250 Hz) late on one side, the side changing track by track (track 3
+ *               late on the right, so it sits left: as its PAN; track 4 on the left ..), its lows as they are on both
  *   trk_lowcut  0 off, 1..TL_N - 1: a 12 dB/oct high-pass at TL_HZ[] on the track, after DIST and the SLICER (fx.c
  *               track_lowcut) */
 #define TW_N (NTRK / 2u)
@@ -332,7 +333,8 @@ static song_t song;
 #define TL_DEF 4u                         /* (120 Hz: the wide tracks' default; the rhythm section's OFF) */
 static const uint16_t TL_HZ[TL_N] = {0, 40, 60, 80, 120, 160, 240, 320};
 static uint8_t trk_width[NTRK], trk_lowcut[NTRK];
-static inline int tw_has(uint32_t k) { return k >= TW_FIRST && k < NTRK; }
+static inline int tw_has(uint32_t k) { return k < NTRK; }            /* (WIDTH: every track's, 2026-10) */
+static inline int tw_wide(uint32_t k) { return k >= TW_FIRST && k < NTRK; }   /* .. on at power-on: the last half */
 /* ((Blue Hare) DUCK, a kick track ducking the others, was archived 2026-10-16: archive/fx/README.md) */
 /* (Blue Hare, 2026-10) PAN MODE (SETTINGS' PAN MODE; project.c version 7): trk_pmode[k] TP_ALT the voices left, right,
  * left .. of PAN by SPRD (SPREAD as it was: POLY and UNISON), TP_RND each new voice on a side picked at random, in every
@@ -344,8 +346,8 @@ static void trk_mix_defaults(void)
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++) {
-        trk_width[k] = (uint8_t)(tw_has(k) ? TW_DEF : 0u);
-        trk_lowcut[k] = (uint8_t)(tw_has(k) ? TL_DEF : 0u);
+        trk_width[k] = (uint8_t)(tw_wide(k) ? TW_DEF : 0u);
+        trk_lowcut[k] = (uint8_t)(tw_wide(k) ? TL_DEF : 0u);
         trk_pmode[k] = TP_ALT;
     }
 }

@@ -168,6 +168,7 @@ static void ui_power_on(void)
     memset(&song, 0, sizeof song);
     trk_mix_defaults();                           /* (nothing playing) */
     seq_hook = 0;                                 /* (the sequencer: a placeholder; no test song) */
+    memset(&gen, 0, sizeof gen);                  /* (GEN stopped, as at power-on: ARP started it in a test before) */
     memset(&ui, 0, sizeof ui);
     page_over = 0;                                /* (no layer's knobs; roll_settle's test page gone) */
     memset(&nm, 0, sizeof nm);                    /* NAME closed, no project name */
@@ -1784,8 +1785,9 @@ static int test_page_cycles(void)
         for (i = 0; i < NPAGES; i++) {
             ok &= !str_eq(PAGES[i].title, "GLOBAL") && !str_eq(PAGES[i].title, "SYSTEM");
             for (k = 0; k < 4u && PAGES[i].scope == SC_GLOBAL; k++)
-                ok &= PAGES[i].id[k] != G_TUNE && PAGES[i].id[k] != G_ROUTE && PAGES[i].id[k] != G_MIDI &&
-                      PAGES[i].id[k] != G_SYNC && PAGES[i].id[k] != G_INFO;
+                ok &= PAGES[i].id[k] != G_TUNE && PAGES[i].id[k] != G_ROUTE &&
+                      (str_eq(PAGES[i].title, "GEN") || (PAGES[i].id[k] != G_GPRE && PAGES[i].id[k] != G_GSCL &&
+                                                         PAGES[i].id[k] != G_GROOT));   /* (2026-10: GEN's ids) */
             if (str_eq(PAGES[i].title, "CLOCK"))
                 clock = i + 1u;
         }

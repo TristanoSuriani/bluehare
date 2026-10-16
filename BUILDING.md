@@ -164,22 +164,25 @@ make studio                    # or web/studio/build.sh
 make serve-studio              # open http://localhost:8001/
 ```
 
-The studio (`web/studio/`, Milestone 1) designs sounds with the firmware's own engines and FX chain: the browser
-emulator's build (`web/emu/bluehare_web.c`) with the studio's exports (`web/studio/studio_web.c`: the engines and
-presets, every parameter of the selected track and of the FX chain, described, set and shown as the device shows
-them, the user preset slots), in the emulator's worklet (`web/emu/worklet.js`, its "call" messages). The page
-(`index.html`, `studio.js`) has the engines, their presets by category and the sounds saved here; the parameters
-in groups (the engine, its envelope first; LFO, mod matrix, voice and key folded); every effect of
-`docs/SoundAndDSP.md` section 3 (the track's inserts DIST, LOW CUT, SPREAD, PAN MODE, WIDTH; its sends; the shared
-delay, reverb and chorus; the performance layer's hold effects, latched or held, and its macros; the master's SPEAKER
-EQ and MASTER, its always-on stages with the compressor's and the limiter's gain reduction); 4 tracks; the keys (mouse, computer keys A W S E .., Z X octave, Esc all off, Hold), Web MIDI in to the
-selected track; undo and redo of every change (Ctrl/⌘ Z, Ctrl/⌘ ⇧ Z); a scope and a peak meter; a WAV recording
-of what plays; the FM-1's screen. A sound goes to a slot here (kept in the browser, as the emulator keeps its
-flash), to a file (`.bluehare-sound.json`: the engine by name and id, every parameter by its id, as user presets
-and the editor protocol number them) or to a connected FM-1 (Connect, then Send: the editor protocol's `UP_PUT`,
-`web/studio/sysex.js`; Chrome or Edge, Blue Hare on the FM-1 with the same parameter count). The FX chain goes to a
-file of its own (`.bluehare-fx.json`). `web/studio/studio_test.mjs` (in the suite with Emscripten) checks it all
-through the worklet, and the page's `UP_PUT` against the firmware's own parser.
+The studio (`web/studio/`, Milestone 1) designs sounds with the firmware's own engines, effects and generative engine:
+the browser emulator's build (`web/emu/bluehare_web.c`) with the studio's exports (`web/studio/studio_web.c`: the
+engines and presets, every parameter of the selected track, of the song and of the effects that are neither,
+described, set and shown as the device shows them; the user preset slots; GEN), in the emulator's worklet
+(`web/emu/worklet.js`, its "call" messages). One screen (a laptop's, 1280 x 800 and up; narrower, a page that
+scrolls): the engines and the presets or saved sounds on the left; the sound in four tabs in the middle (SOUND: the
+engine, the envelope, the drive, spread and sends, the voice; MOVEMENT: the LFO and the mod matrix; EFFECTS: every
+effect of `docs/SoundAndDSP.md` section 3, all shared by the four tracks: LOW CUT, HAAS (WIDTH) and PAN MODE on every
+track, the delay, reverb and chorus, the performance layer's hold effects and macros, the master's SPEAKER EQ and
+MASTER with its stages and the compressor's and limiter's gain reduction; GENERATIVE: GEN's play and stop, preset,
+scale, root, motion, tempo, its chord and its roles, and the track's keys); output, saving and the FM-1 on the right
+(a scope and a peak meter, a WAV recording, the FM-1's screen); the keys at the bottom (mouse, computer keys A W S E ..,
+Z X octave, Esc all off, Hold; Web MIDI in to the selected track). Undo and redo of every change (Ctrl/⌘ Z, Ctrl/⌘ ⇧ Z).
+A sound goes to a slot here (kept in the browser, as the emulator keeps its flash), to a file (`.bluehare-sound.json`:
+the engine by name and id, every parameter by its id, as user presets and the editor protocol number them) or to a
+connected FM-1 (Connect, then Send: the editor protocol's `UP_PUT`, `web/studio/sysex.js`; Chrome or Edge, Blue Hare on
+the FM-1 with the same parameter count). The effects go to a file of their own (`.bluehare-fx.json`).
+`web/studio/studio_test.mjs` (in the suite with Emscripten) checks it through the worklet, and the page's `UP_PUT`
+against the firmware's own parser.
 
 ## Native image
 

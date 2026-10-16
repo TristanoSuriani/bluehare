@@ -290,6 +290,8 @@ static uint32_t graph_signature(void)
     }
     if (pg->graph == GR_MOD)
         h ^= (mod_ui_slot + 1u) * 40503u;
+    if (pg->graph == GR_GEN)                         /* (Blue Hare) GEN: its chord and bar */
+        h = (h ^ (gen.on + 2u * gen.s.nchord + 977u * gen.s.bar + 7919u * (uint32_t)song.g[G_GROOT])) * 16777619u;
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < 4u; i++)
             h ^= (uint32_t)graph_project_used(i) << (20u + i);
@@ -841,6 +843,19 @@ static void draw_graph(void)
             cv_oy = 0;
             panel_note("TURN TO PICK", "[OCT+] CONFIRM", 0);
             break;
+        case GR_GEN: {                                  /* (Blue Hare) GEN: playing or not, the chord, the bar */
+            char ch[8], b[20];
+            cv_oy = 0;
+            if (!gen.on) {
+                panel_note("GEN STOPPED", "[ARP] PLAY", "PAD BASS BELLS PULSE");
+                break;
+            }
+            gen_chord_name(ch);
+            str_cpy(b, "BAR ", sizeof b);
+            fmt_int(b + 4, (int32_t)(gen.s.bar % 1000u) + 1);
+            panel_note(ch, b, "[ARP] STOP");
+            break;
+        }
         default:
             if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WAVE) graph_wave(t, c);
             else { cv_oy = 0; graph_scope(c); }

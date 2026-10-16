@@ -53,7 +53,7 @@ keys / MIDI (USB, TRS)
 | **LOW CUT** | Two one-pole high-passes (12 dB/oct) at 40 to 320 Hz, after DIST, so the sends lose the lows too. | `fx.c` `track_lowcut` |
 | **SPREAD** | POLY and UNISON voices alternate left and right of PAN by SPRD; the track carries a sum and a side signal (L - R), the side bypassing DIST so a distorted chord keeps its clean stereo. | `fx.c` `mix_spread`, `voice.c` |
 | **PAN MODE** | ALT spreads voices in turn (as SPREAD); RND puts each new voice on a random side. | `voice.c` `voice_start` |
-| **WIDTH** | Haas widening on the upper half of the tracks: the signal splits at ~250 Hz; one side plays it whole, the other plays the lows plus the highs delayed 1 to 20 ms. The mono sum keeps its lows. | `fx.c` `mix_haas` |
+| **WIDTH** | Haas widening, on any track (on at power-on on the upper half, 12 ms; the studio sets it on all): the signal splits at ~250 Hz; one side plays it whole, the other plays the lows plus the highs delayed 1 to 20 ms. The mono sum keeps its lows. | `fx.c` `mix_haas` |
 
 Archived 2026-10-16 (`archive/fx/README.md`): the **SLICER** (a tempo-synced 16-step GATE / STUT insert) and **DUCK**
 (a kick track ducking the others).
@@ -176,6 +176,25 @@ bass (SH101), keys (BLISS) and bells (MODAL).
 ## Next
 
 Milestone 1 has SH101 (above) and the sound design studio (`web/studio/`: every engine and every effect of section 3
-in the browser, the firmware itself in WebAssembly). Next: the generative ambient engine on the ARP button, then FX
+in the browser, the firmware itself in WebAssembly) and GEN (section 8). Next: FX
 presets (the FX screen chooses between presets of the chain in section 3). The 2x oversampling stays unused: SH101's
 saturation sits inside its filter's feedback loop, where the half-band's delay would detune the resonance.
+
+## 8. GEN, the generative engine
+
+`gen.c`, on the ARP button, the same code on the FM-1, the native image, the emulator and the studio. Its composition
+is amb1's (`docs/excerpt_amb1.c`), ported to fixed point and played on the four tracks with their own sounds (amb1's
+own voices, float pads, FM bells, drums and plate, are not used). It runs in the audio interrupt's event step once a
+block (`seq.c` `events_block`), its decisions once a 1/16, out of the sample loops.
+
+| Part | Algorithm |
+|---|---|
+| **Clock** | 1/16 steps of the song's tempo (`beat_samples`: BPM, or the MIDI clock's), the transport running or not; seconds as steps at the tempo. |
+| **Randomness** | One xorshift32 generator, seeded from the clock at each start (a fixed seed in the tests: the same notes at the same steps). |
+| **Harmony** | The scale (SCL's) on ROOT; a chord stacks the scale's thirds from a degree, four tones in a scale of six notes or more, else three. DRIFT: after its time (20 s to 5 min, x 0.7..1.3) the chord moves on the next bar to another degree, by weight (seven-note scales I 4, IV V vi 3, ii 2, iii 1, vii 0.4; others I 3, the rest 1.5). A key turned while it plays: the chord again on its degree, at once. |
+| **Arc** | A slow random swell, -1 sparse to +1 full: a new target every 50 to 150 s (pushed away from the middle), reached over ~35 s, times MOTION. The bells' count, the rests and the pulse's strength follow it. |
+| **Pad** (track 1) | Four voices that breathe, as Music for Airports' "2/1": each on its own cycle (1 : 1.21 : 1.43 : 1.67 of 4 to 16 s by SWELL, x 0.85..1.15) holds its note through the rise and the hang (55 %), lets go for the fall (the sound's release) and rests; each breath takes the voice's current note. The notes: the chord's tones voice-led from the last ones over the 24 orders (the least movement, no two voices on one note, G#2..F5). A chord change: a voice on a note the new chord lacks lets go and breathes in on its new note a second later. |
+| **Bass** (track 2) | The chord's root (C2..B2, BASS OCT), held; halfway to the next chord, FIFTH's chance of the fifth; at a change it may sit the chord out (EVOLVE, more when the arc is sparse). |
+| **Bells** (track 3) | Four loops of 13, 17, 23 and 29 quarter notes, each in its register (C5, G4, G5, D4 by ROOT; BELL OCT), phasing against each other. Each holds 0 to 5 notes (DENSITY, swelled and thinned by the arc): scale steps over the chord's degree, a chord tone 72 % (an octave up 30 % of those), else a passing 2nd, 4th or 6th. At the end of a pass: grown or pruned to the count; EVOLVE moves a note or changes it, and rests the next pass now and then. Sometimes a bell's octave with it, softer. |
+| **Pulse** (track 4) | Three euclidean patterns (Bjorklund), 16, 12 and 7 steps (HITS of 5, 7, 3), rotated 0, 2, 3: a thump on the chord's root (C2..B2), a tick on its fifth and a longer one on its root, high. Each bar EVOLVE may turn a pattern or move a hit (within one of its home), or rest the pulse 2 to 4 bars. Its velocity follows the arc. |
+| **Pieces** | amb1's 8 (GARDEN, DEPARTURES, VOICES, AFTERNOON, NIGHT BUS, SHORELINE, GLASS, TIDES): each role's level (0: silent), DENSITY, EVOLVE, DRIFT, HITS, SWELL, MOTION, FIFTH, the tempo, ROOT, the scale, the octaves; here also the four tracks' sounds (an engine id and a preset name) and the delay, reverb and chorus. Picking one loads them; the first start since power-on loads the one shown. |

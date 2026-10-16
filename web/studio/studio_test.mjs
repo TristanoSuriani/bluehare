@@ -25,7 +25,7 @@ for (const f of ["studio.js", "sysex.js"]) {
   const html = fs.readFileSync(new URL("./index.html", import.meta.url), "utf8");
   const ids = [...fs.readFileSync(new URL("./studio.js", import.meta.url), "utf8").matchAll(/\$\("([\w-]+)"\)/g)].map((m) => m[1]);
   const js = fs.readFileSync(new URL("./studio.js", import.meta.url), "utf8");
-  const missing = [...new Set(ids)].filter((id) => !html.includes(`id="${id}"`) && !js.includes(`.id = "${id}"`) && !js.includes(`"${id}")`));
+  const missing = [...new Set(ids)].filter((id) => !html.includes(`id="${id}"`) && !js.includes(`.id = "${id}"`) && !js.includes(`"${id}")`) && !js.includes(`id: "${id}"`));
   check("every element studio.js looks up is in index.html", !missing.length);
   if (missing.length) console.log("  missing:", missing.join(" "));
 }
@@ -87,7 +87,7 @@ for (let i = 0; i < lay.length && lay[i];) {
   groups.push(g);
 }
 check(`the layout: ${groups.map((g) => g.key).join("")} (${groups.reduce((n, g) => n + g.items.length, 0)} parameters)`,
-  groups.map((g) => g.key).join("") === "EANLDMVISYRCPQK");
+  groups.map((g) => g.key).join("") === "EANLDMVSIYRCPQKG");
 const descOk = groups.every((g) => g.items.every(([s, id]) => {
   const [fmt, min, max, def] = d.call([{ fn: "stu_desc", args: [s, id], ret: ["i32", 5] }])[0];
   return id < [P, G, X][s] && min <= def && def <= max && d.str("stu_desc_label", s, id) !== "" && fmt >= 0;
@@ -114,14 +114,14 @@ check(`scope 2: ${Object.keys(SX).join(" ")}`, ["LOWCUT", "WIDTH", "PANMODE", "S
   .every((n) => n in SX));
 d.one("stu_set", 2, SX.LOWCUT, 3, 0);
 d.one("stu_set", 2, SX.PANMODE, 1, 0);
-check(`track 1's LOW CUT and PAN MODE set ("${d.str("stu_format", 2, SX.LOWCUT, 3)}"); WIDTH fixed off on track 1`,
-  d.one("stu_get", 2, SX.LOWCUT) === 3 && d.one("stu_get", 2, SX.PANMODE) === 1 &&
-  d.call([{ fn: "stu_desc", args: [2, SX.WIDTH], ret: ["i32", 5] }])[0][2] === 0);
-d.one("stu_select", 3);
-check("track 4: its own LOW CUT (120 Hz by default), WIDTH there (12 ms, up to 20)",
-  d.one("stu_get", 2, SX.LOWCUT) === 4 && d.one("stu_get", 2, SX.WIDTH) === 12 &&
-  d.call([{ fn: "stu_desc", args: [2, SX.WIDTH], ret: ["i32", 5] }])[0][2] === 20);
+d.one("stu_set", 2, SX.WIDTH, 9, 0);
+let shared = true;
+for (const t of [0, 1, 2, 3]) {
+  d.one("stu_select", t);
+  shared &&= d.one("stu_get", 2, SX.LOWCUT) === 3 && d.one("stu_get", 2, SX.PANMODE) === 1 && d.one("stu_get", 2, SX.WIDTH) === 9;
+}
 d.one("stu_select", 0);
+check(`LOW CUT ("${d.str("stu_format", 2, SX.LOWCUT, 3)}"), WIDTH (the Haas effect, 9 ms) and PAN MODE: shared, every track's`, shared);
 d.one("stu_set", 2, SX.SPKEQ, 2, 0);
 check("SPEAKER EQ BASS+, back to FLAT", d.one("stu_get", 2, SX.SPKEQ) === 2 && d.one("stu_set", 2, SX.SPKEQ, 0, 0) === 0);
 d.one("stu_set", 2, SX.DEPTH, 60, 0);
@@ -150,6 +150,25 @@ check(`OCT UP latched: on after a press, off after the next (peak ${oup.ref.toFi
   oup.on === 1 << 8 && oup.off === 0 && Math.abs(oup.wet - oup.ref) > 0.001);
 const mt = d.call([{ fn: "stu_meters", ret: ["i32", 2] }])[0];
 check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)`, mt[0] > 0 && mt[0] <= 32768 && mt[1] > 0 && mt[1] <= 32768);
+
+// GEN: started and stopped as ARP does, its state; a preset picked loads its sounds and tempo (ui.c gen_poll)
+{
+  const G_GPRE = 12, G_BPM = 0;
+  d.one("stu_set", 1, G_GPRE, 3, 0);                 /* AFTERNOON: WAVE, SH101, BLISS, MODAL; 84 BPM */
+  d.render(100);
+  const eng = [0, 1, 2, 3].map((t) => names[d.one("stu_track_engine", t)]);
+  check(`a GEN piece picked (AFTERNOON) loads its four sounds and tempo: ${eng.join(" ")}, ${d.one("stu_get", 1, G_BPM)} BPM`,
+    eng.join() === "WAVE,SH101,BLISS,MODAL" && d.one("stu_get", 1, G_BPM) === 84);
+  d.one("stu_gen", 1);
+  d.render(6000);
+  const st = d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0], chord = d.str("stu_gen_chord");
+  check(`GEN plays: bar ${st[1] + 1}, notes (pad bass bells pulse) ${st.slice(4).join(" ")}, the chord ${chord}`,
+    st[0] === 1 && st[4] > 0 && st[5] > 0 && st[6] + st[7] > 0 && chord.length > 0);
+  d.one("stu_gen", 0);
+  d.render(100);
+  check("GEN stops", d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0][0] === 0);
+  d.render(6000);
+}
 
 // a note
 d.one("stu_note", 60, 100);

@@ -23,7 +23,6 @@ static const char *const N_GLMODE[] = {"RATE", "TIME"};
 static const char *const N_PRIO[] = {"LAST", "LOW", "HIGH"};
 static const char *const N_ALLOC[] = {"ROT", "REUSE"};
 static const char *const N_CLOCK[] = {"INT", "USB", "TRS"};
-static const char *const N_MIDI_INPUT[] = {"USB", "TRS"};
 /* MIDI IN (seq.c midi_base): 1..4 -> parts, 5..16 ignored / all -> selected / (1.2, append-only) 5..8, 9..12, 13..16 -> parts */
 #if NTRK == 8                                   /* (Blue Hare, TRACKS 8) blocks of 8: tracks 1 .. 8 on channels 1 .. 8 or 9 .. 16 */
 static const char *const N_ROUTE[] = {"CH1-8", "SEL", "CH9-16"};
@@ -41,6 +40,8 @@ static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCER
 static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL"};   /* G_DTYPE: the delay bus's (fx.c
                                                                    * dly_tape; PING, DUAL: Blue Hare's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
+/* (Blue Hare, 2026-10) GEN's presets (gen.c GEN_PRESETS, in that order: the names it shows on the knob) */
+static const char *const N_GEN_PRESET[] = {"GARDN", "DEPRT", "VOICE", "AFTER", "NIGHT", "SHORE", "GLASS", "TIDES"};
 /* modulation matrix (mod.c): sources, destinations (E1..E8 = P_E0..P_E7: shown with the engine's labels).
  * Append-only (stored values keep their meaning): S&H SLEW and DEPTH (#132) came after EXPR and E8 */
 static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"};
@@ -154,15 +155,15 @@ static const param_desc_t GP[G_COUNT] = {
     [G_RDAMP] = PD("DAMP", F_PCT, 0, 127, 60),
     [G_CRATE] = PD("CRT", F_LFOHZ, 0, 127, 40),
     [G_CDEPTH] = PD("CDP", F_PCT, 0, 127, 60),
-    /* G_MIDI, G_SYNC, G_INFO: the old SYSTEM page's (gone in 1.2), on no page: MIDI's value was never read (its card
-     * showed the USB state), SYNC was a placeholder, CPU a reading; the USB state and the CPU load are MENU > SYSTEM >
-     * INFO's now (ui_menu.c). Kept: the ids and G_COUNT are fixed by the formats and the protocol */
-    [G_MIDI] = PE("MIDI", N_MIDI_INPUT, 0),
-    [G_SYNC] = PE("SYNC", N_DASH, 0),
+    /* (Blue Hare, 2026-10) the GEN page's (gen.c): the preset, the scale, the root, MOTION; ids 12, 13, 15 and 26 were
+     * the old SYSTEM page's MIDI, SYNC and CPU (on no page since 1.2) and the GM drum part's reverb send (inert since
+     * 1.0). Their defaults: the first piece's (GARDEN: D dorian) and MOTION at its middle */
+    [G_GPRE] = PE("GEN", N_GEN_PRESET, 0),
+    [G_GSCL] = PE("SCL", N_SCALE, 3),
     /* MIDI IN's routing, edited on MENU > MIDI > MIDI IN (1.2: menu_items.c MI_MIDIIN; up to 1.1.5 GLO > SYSTEM ROUT),
      * stored with the project as before. (was "--": stored 0 = CH1-4, as MIDI IN always was) */
     [G_ROUTE] = PE("ROUT", N_ROUTE, 0),
-    [G_INFO] = PD("CPU", F_INT, 0, 0, 0),
+    [G_GROOT] = PD("ROOT", F_NOTE, 0, 11, 2),
     [G_SLOT] = PD("SLOT", F_INT, 1, 1, 1),   /* (1.5: one song; 1.4 had four projects) */
     [G_NAME] = PE("NAME", N_DASH, 0),
     [G_LOAD] = PE("LOAD", N_GO, 0),
@@ -176,9 +177,7 @@ static const param_desc_t GP[G_COUNT] = {
     /* the delay's type on DLY 2: the id of the old GM drum part's level (G_DRLVL, inert since 1.0: every song holds
      * 0, CLEAN) */
     [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
-    /* inert: it set the GM drum part's reverb send, which is gone (drums are the DRUM engine on any part). On no
-     * page; kept so the ids and G_COUNT, which the project format and the editor protocol depend on, do not move */
-    [G_DRREV] = PD("-", F_INT, 0, 0, 0),
+    [G_GMOT] = PD("MOTN", F_PCT, 0, 127, 64),
 };
 
 static const param_desc_t *track_desc(const track_t *t, uint32_t id)
@@ -346,7 +345,8 @@ enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE,
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_TRK };   /* SC_TRK: the TRACKS page (ui_input.c tracks_edit) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
        GR_MOD, GR_TOOLS, GR_CHORD,
-       GR_TODO };                  /* (GR_TODO: SEQ's placeholder, ui_draw.c draw_todo) */
+       GR_TODO,                    /* (GR_TODO: SEQ's placeholder, ui_draw.c draw_todo) */
+       GR_GEN };                   /* (Blue Hare, 2026-10) the GEN page: playing or not, the chord, the bar */
 
 typedef struct {
     const char *title;
@@ -378,7 +378,8 @@ static const page_t PAGES[] = {
     {"USER", FAM_SAVE, SC_GLOBAL, GR_USER, {0xFF, 0xFF, 0xFF, 0xFF}},       /* user presets: SLOT LOAD ERASE SAVE */
     {"PROJECT", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {0xFF, 0xFF, G_LOAD, G_SAVE}},   /* the song store (1.5: one song) */
     {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},
-    {"ARP", FAM_ARP, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},   /* (the arpeggiator gone, 2026-10: a placeholder) */
+    /* (Blue Hare, 2026-10) ARP: the generative engine (gen.c); ARP starts and stops it (ui_input.c page_tap) */
+    {"GEN", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GPRE, G_GSCL, G_GROOT, G_GMOT}},
     /* (Blue Hare) the sequencer's placeholder: SEQ (and GLO, which opened the song) shows TODO */
     {"SEQ", FAM_SEQ, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5

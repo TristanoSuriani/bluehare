@@ -204,7 +204,7 @@ sets them back to 127, user presets and projects store them (older ones load at 
 Other enums that grew: `P_SDIV` (DIV, id 30) has 10 names (1/4, 1/8, 1/16, 1/32, 8T, 16T, 1/2, 1/1, 2BAR,
 4BAR; the first six keep their numbers), `P_AMODE` (id 17) 15 (OFF, UP, DN, UPDN, RND, ORD, REPEAT, and since 1.2 DNUP, UP+8, CONV, DIVG, PINKY, THUMB, WALK,
 CHORD: values 7..14, appended; an editor that knows only 7 names shows the value by `DESC`'s name) and the
-global `G_CLOCK` (id 2, label "CLK") 3 (INT, USB, TRS). `G_MIDI` (id 12) is an enum of USB / TRS that nothing reads.
+global `G_CLOCK` (id 2, label "CLK") 3 (INT, USB, TRS). (Blue Hare, 2026-10) ids 12, 13, 15 and 26 are GEN's, the generative engine on ARP: 12 `G_GPRE` ("GEN", its 8 pieces GARDN .. TIDES; a SET loads the preset's four sounds, tempo and effects), 13 `G_GSCL` ("SCL", the scale names of SCL), 15 `G_GROOT` ("ROOT", F_NOTE 0..11), 26 `G_GMOT` ("MOTN", 0..127, 64 the preset's activity); they were `G_MIDI`, `G_SYNC`, `G_INFO` and `G_DRREV`, inert.
 
 **Retired enum values (aliases).** A value that no longer exists keeps its number, so stored sounds stay valid:
 `DESC` names it like the value it now plays (an alias), the device never holds it (a `SET` of it lands on that value

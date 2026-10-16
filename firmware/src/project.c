@@ -296,7 +296,7 @@ static int proj_read(pr_t *r, int apply)
         if (apply)
             trk_mix_defaults();                     /* (a track the project does not hold: as at power-on) */
         for (k = 0; apply && k < ntr; k++) {        /* (the others out of range: OFF) */
-            trk_width[k] = (uint8_t)(tw_has(k) && wd[k] <= TW_MAX ? wd[k] : 0u);   /* (WIDTH: the last tracks' alone) */
+            trk_width[k] = (uint8_t)(tw_has(k) && wd[k] <= TW_MAX ? wd[k] : 0u);   /* (WIDTH: any track, 2026-10) */
             trk_lowcut[k] = (uint8_t)(lc[k] < TL_N ? lc[k] : 0u);
             trk_pmode[k] = pm[k];
         }

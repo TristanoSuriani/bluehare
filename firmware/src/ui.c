@@ -691,6 +691,63 @@ static void track_defaults(track_t *t)
         t->p[i] = TP[i].def;
 }
 
+/* (Blue Hare, 2026-10) GEN (gen.c). Preset k: each of the first four tracks its sound (the preset of that name of its
+ * engine; a build without the engine: its substitute, its first preset), the scale, root and tempo, the FX chain */
+static void gen_apply(uint32_t k)
+{
+    const gen_preset_t *p = &GEN_PRESETS[k % GEN_NPRESETS];
+    static const uint8_t FXID[10] = {G_RTYPE, G_RSIZE, G_RDAMP, G_DTYPE, G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX, G_CRATE, G_CDEPTH};
+    uint32_t r, i;
+    for (r = 0; r < GEN_ROLES && r < NTRK; r++) {
+        int sub;
+        uint32_t e = eng_load_id(p->eng[r], &sub), pi = 0;
+        track_t *t = &trk[r];
+        if (e == ENG_NO)
+            continue;
+        e = eng_for_track(t, e);
+        for (i = 0; !sub && i < ENGINES[e]->npresets; i++)
+            if (str_eq(ENGINES[e]->presets[i].name, p->snd[r])) {
+                pi = i;
+                break;
+            }
+        if (t->eng_req != e)
+            set_engine_of(t, e);
+        apply_preset_to(t, pi);
+    }
+    song.g[G_GSCL] = p->scale;
+    song.g[G_GROOT] = p->root;
+    song.g[G_BPM] = p->bpm;
+    song.g[G_GMOT] = (int16_t)(p->motion * 127 / 100);
+    for (i = 0; i < 10u; i++)
+        song.g[FXID[i]] = (int16_t)param_fit(&GP[FXID[i]], p->fx[i]);
+    ui.force = 1;
+}
+/* the main loop: the preset knob (the GEN page, the editor, the studio) moved: its sounds. (Not at power-on: the
+ * project's sounds stay until a preset is picked) */
+static uint8_t gen_loaded;                       /* a preset's sounds loaded since power-on */
+static void gen_poll(void)
+{
+    static int16_t last = -1;
+    if (last < 0)
+        last = song.g[G_GPRE];
+    if (song.g[G_GPRE] != last) {
+        last = song.g[G_GPRE];
+        gen_apply((uint32_t)clamp(last, 0, GEN_NPRESETS - 1));
+        gen_loaded = 1;
+    }
+}
+/* ARP: GEN on or off. The first start since power-on loads the preset shown (its sounds, tempo, FX): GEN plays what its
+ * page says; later starts keep what was changed since */
+static void gen_toggle(void)
+{
+    if (!gen.on && !gen_loaded) {
+        gen_apply((uint32_t)clamp(song.g[G_GPRE], 0, GEN_NPRESETS - 1));
+        gen_loaded = 1;
+    }
+    gen.req = gen.on ? 2u : 1u;
+    ui_say("GEN ", gen.on ? "STOPPED" : "PLAYING");
+}
+
 /* switch engine (its defaults + first preset) and say so */
 static void select_engine(uint32_t e)
 {

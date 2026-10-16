@@ -316,6 +316,8 @@ static void keyboard_block(void)
     kb_prev = cur;
 }
 
+#include "gen.c"                   /* (Blue Hare, 2026-10) GEN: the generative engine, on the ARP button */
+
 /* -------------------------------------------------------- sequencer --- */
 /* the sequencer: a placeholder for now (SEQ shows TODO). seq_hook, when set, gets every block the samples the
  * transport moved on (events_block, after the keys and MIDI IN; 0 while stopped): where the sequencer will play. The
@@ -467,6 +469,7 @@ static void events_block(uint32_t n)
                 seq_n = midi_clock_advance(fm1_ms);
         }
     }
+    gen_block(n);                                     /* (Blue Hare) GEN: its own clock, transport or not */
     if (seq_hook)
         seq_hook(song.playing ? seq_n : 0u);
     if (song.playing)
