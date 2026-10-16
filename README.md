@@ -31,8 +31,6 @@ The rest of this README started as Felucca's. Its install links, site, sponsorsh
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/hugelton)
 
-![Felucca 1.0](docs/felucca-1.0.png)
-
 **TL;DR:** Felucca 1.4.1 — 1.4 plus DRUM lane mutes on the EDIT layer and an FM6 voice bank, field testing. Connect your FM-1 to a computer by USB,
 open the [web installer](https://hugelton.github.io/Felucca/) in Chrome or Edge, and press Install;
 no extra hardware is needed. Installing is at your own risk: M-VAVE's updater or the installer's
@@ -176,8 +174,6 @@ where marked here:
 - **The web editor** needs its 1.4 update for the new features; use the one on the site.
 
 ## Controls
-
-![FM-1 controls with Felucca](docs/controls.jpg)
 
 - Tap a page button for its page, again for the next; HOME returns home. Page buttons act when let go
 - Hold FX, GLO, SCL or EDIT for its quick layer; hold SAVE to undo, HOME for the menu; hold LFO and turn a

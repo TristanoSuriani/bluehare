@@ -53,8 +53,7 @@ All by Hügelton Instruments (Leo Kuroshita), in this tree:
 | What | Licence | Where |
 | --- | --- | --- |
 | Felucca: firmware, tools, web pages, tests | GPL-3.0-only | `LICENSE` |
-| The DRUM engine's lanes and General MIDI map (the engine itself removed by Blue Hare) | GPL-3.0-only | `firmware/src/shared/drum_map.c` |
-| The controls picture | GPL-3.0-only | `docs/controls.jpg` |
+| The DRUM engine's lanes and General MIDI map (the engine itself removed by Blue Hare) | GPL-3.0-only | `archive/engines/drum_map.c` |
 | The Fukiai icon font (<https://github.com/hugelton/Fukiai>): the firmware's icons (rasterised at build time by `tools/gen_aa_icons.py`) and the web editor's | MIT | `web/fukiai.ttf`, `LICENSES/MIT-Fukiai.txt`, `web/FUKIAI-LICENSE.txt` |
 
 ## Third-party material
