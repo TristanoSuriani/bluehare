@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* Every engine in the tree: ENGINE(NAME, id, substitute). Included where a table over all of them is built (core.h,
- * engines.c, params.c) and read by tools/gen_dist.py (a distribution names engines from here).
+/* Every engine in the tree: ENGINE(NAME, id, substitute), (2026-10-17) generated from the component registry
+ * (firmware/components.txt, by tools/gen_dist.py into build/gen/engines_registry.h); the archived ones below. Included
+ * where a table over all of them is built (core.h, engines.c, params.c).
  *   NAME        its name (ENG_<NAME> in its eng_*.c file; the device and the editor show it)
  *   id          fixed for good: what the stores and the editor protocol use. Append-only; 1 DIGITAL, 4 SAMPLE, 8 GRAIN,
  *               13 SLICE are retired (removed in 1.5), 27 ACID too (Blue Hare: WASP took its place), and Felucca's
@@ -11,22 +12,13 @@
  *               core.h EID_COUNT
  *   substitute  the engine a sound of this one loads as in a distribution without it (and down that one's own, if it
  *               is missing too; at the end the distribution's first engine): engines.c eng_load_id
- * (2026-10-17) Every engine here is also in the component registry (firmware/components.txt: its layer, files, credit);
- * tools/gen_dist.py checks the two agree. The native-only engines and NATIVE distributions are gone (Native builds
- * every component: dist_all.h)
+ * (2026-10-17) The native-only engines and NATIVE distributions are gone (Native builds every component: dist_all.h)
  * ARCHIVED(NAME, id): an engine taken out (below); empty unless the includer defines it */
 #ifndef ARCHIVED
 #define ARCHIVED(N, id)
 #define ARCHIVED_DEFAULT
 #endif
-ENGINE(WAVE, 14, BLISS)
-ENGINE(WEST, 16, MODAL)
-ENGINE(SID, 24, WAVE)
-ENGINE(BLISS, 26, WAVE)
-ENGINE(MODAL, 34, WEST)
-ENGINE(SH101, 61, SID)        /* (2026-10, Milestone 1) the little monosynth: VCO, sub, noise, 24 dB ladder */
-ENGINE(VOSIM, 21, WAVE)       /* (back 2026-10-16) two formants of pulse trains: voices, reeds, brass; WAVE has vowels */
-ENGINE(STRINGS, 55, WAVE)     /* (back 2026-10-17, in ECHOES' place) a string ensemble, its ensemble chorus */
+#include "engines_registry.h"   /* (2026-10-17) the engines: ENGINE(NAME, id, SUB), generated from firmware/components.txt */
 
 /* (Blue Hare, 2026-10-16: Milestone 1) archived: the sources in archive/engines/, out of every build and test.
  * Their ids stay theirs (core.h EID_RETIRED: a stored sound of one is refused): one comes back by moving its
