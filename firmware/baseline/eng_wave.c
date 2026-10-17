@@ -16,6 +16,9 @@
  * lands between samples where the cycle ends (no jitter: the sync stays on the note's harmonics). DTN adds a
  * second oscillator on the same frames, detuned by up to 127 cents (0: one oscillator, half the cost). Then DRV,
  * the low-pass (CUT RES, the key half tracked) and CRSH: the output held for 1 .. 16 samples and cut to fewer bits.
+ * (2026-10-17, after the Waldorf PoC) TBL's second half plays the same banks STEPPED (BASIC8 ..), a PPG / Microwave
+ * way: POS jumps from frame to frame (the nearest, no crossfade), the samples are read without interpolation and cut
+ * to 8 bits (the steps and their images are the sound).
  * Voice state: ph[0] / ph[1] the oscillators' cycles, ph[2] / s[2] their synced reading phases, s[0] s[1] the
  * filter, s[3] the held sample, s[4] the hold count. */
 #include "bluehare_wavetables.h"
@@ -39,11 +42,13 @@ static inline uint32_t wt_level(uint32_t inc, uint32_t lim)
     return l;
 }
 
-/* frame t's level (1024 >> l samples) at phase ph, linearly interpolated */
-static inline int32_t wt_read(const int16_t *t, uint32_t l, uint32_t ph)
+/* frame t's level (1024 >> l samples) at phase ph, linearly interpolated (stepped: the sample as it is, 8 bits) */
+static inline int32_t wt_read(const int16_t *t, uint32_t l, uint32_t ph, uint32_t stepped)
 {
     uint32_t i = ph >> (22u + l), f = (ph >> (7u + l)) & 0x7FFFu;
     int32_t a = t[i], b = t[(i + 1u) & ((1024u >> l) - 1u)];
+    if (stepped)
+        return a & ~0xFF;
     return a + (((b - a) * (int32_t)f) >> 15);
 }
 
@@ -71,7 +76,12 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     const int16_t *p = t->p;
     int32_t pos = clamp((p[P_E1] << 8) + m->shape - (64 << 8), 0, 127 << 8);
     int32_t fq = pos * 7 / 127, xf = (fq & 255) << 7;   /* frame position, Q8; the crossfade to the next, Q15 */
-    uint32_t fi = (uint32_t)fq >> 8, bank = (uint32_t)p[P_E0] % WT_NBANK;
+    uint32_t tbl = (uint32_t)p[P_E0] % (2u * WT_NBANK), stepped = tbl >= WT_NBANK, bank = tbl % WT_NBANK, fi;
+    if (stepped) {                                    /* the nearest frame, no crossfade */
+        fq = (fq + 128) & ~255;
+        xf = 0;
+    }
+    fi = (uint32_t)fq >> 8;
     const int16_t *fa = WT_DATA + (bank * WT_NFRAME + fi) * WT_FRAME_LEN;
     const int16_t *fb = fi + 1u < WT_NFRAME ? fa + WT_FRAME_LEN : fa;
     uint32_t sync = (uint32_t)p[P_E2], det = (uint32_t)p[P_E3], i;
@@ -92,21 +102,21 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     for (i = 0; i < n; i++) {
         int32_t a, b, s;
         if (sync) {                                   /* read at the sync speed, restarted with the cycle, windowed */
-            a = wt_read(fa + o1, l1, r0);
-            a += ((wt_read(fb + o1, l1, r0) - a) * xf) >> 15;
+            a = wt_read(fa + o1, l1, r0, stepped);
+            a += ((wt_read(fb + o1, l1, r0, stepped) - a) * xf) >> 15;
             a = (a * (sine_i(ph0 >> 1) >> 1)) >> 14;
             r0 += rinc1;
         } else {
-            a = wt_read(fa + o1, l1, ph0);
-            a += ((wt_read(fb + o1, l1, ph0) - a) * xf) >> 15;
+            a = wt_read(fa + o1, l1, ph0, stepped);
+            a += ((wt_read(fb + o1, l1, ph0, stepped) - a) * xf) >> 15;
         }
         ph0 += inc1;
         if (sync && ph0 < inc1)                       /* the cycle ended: restart where it did, between samples */
             r0 = (ph0 >> 8) * er1;
         if (det) {                                    /* the second oscillator, as the first */
             uint32_t q = sync ? r1 : ph1;
-            b = wt_read(fa + o2, l2, q);
-            b += ((wt_read(fb + o2, l2, q) - b) * xf) >> 15;
+            b = wt_read(fa + o2, l2, q, stepped);
+            b += ((wt_read(fb + o2, l2, q, stepped) - b) * xf) >> 15;
             if (sync) {
                 b = (b * (sine_i(ph1 >> 1) >> 1)) >> 14;
                 r1 += rinc2;
@@ -181,7 +191,7 @@ static const engine_t ENG_WAVE = {
     .cats = "KPLBPUKLPPPPBBUPPLBUBKPL",
     .page_title = {"WAVE", "TONE"},
     .edit = {
-        {"TBL", F_ENUM, 0, WT_NBANK - 1, 0, N_WT_BANK, 0},
+        {"TBL", F_ENUM, 0, 2 * WT_NBANK - 1, 0, N_WT_BANK, 0},
         {"POS", F_PCT, 0, 127, 0, 0, 0},
         {"SYNC", F_PCT, 0, 127, 0, 0, 0},
         {"DTN", F_INT, 0, 127, 0, 0, "ct"},

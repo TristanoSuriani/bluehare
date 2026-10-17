@@ -52,7 +52,7 @@ native:
 
 tables:
 	$(ENV) && mkdir -p build/host && python3 tools/gen_dist.py . build/gen && \
-	  cc -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o build/host/descdump tests/os/descdump.c -lm && \
+	  cc -O1 -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o build/host/descdump tests/os/descdump.c -lm && \
 	  build/host/descdump > build/host/desc.json && python3 tools/gen_editor_mock.py build/host/desc.json web/editor.html && \
 	  python3 tools/gen_dist.py --credits .
 

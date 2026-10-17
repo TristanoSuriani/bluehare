@@ -189,12 +189,17 @@ static uint32_t str_hash(uint32_t h, const char *s)
 static void graph_wave(const track_t *t, uint16_t c)
 {
     int32_t pos = clamp(t->p[P_E1], 0, 127) << 8, fq = pos * 7 / 127, xf = (fq & 255) << 7, x, py = 48;
-    uint32_t fi = (uint32_t)fq >> 8;
-    const int16_t *fa = WT_DATA + ((uint32_t)t->p[P_E0] % WT_NBANK * WT_NFRAME + fi) * WT_FRAME_LEN;
+    uint32_t tbl = (uint32_t)t->p[P_E0] % (2u * WT_NBANK), fi;
+    if (tbl >= WT_NBANK) {                           /* stepped: the nearest frame */
+        fq = (fq + 128) & ~255;
+        xf = 0;
+    }
+    fi = (uint32_t)fq >> 8;
+    const int16_t *fa = WT_DATA + (tbl % WT_NBANK * WT_NFRAME + fi) * WT_FRAME_LEN;
     const int16_t *fb = fi + 1u < WT_NFRAME ? fa + WT_FRAME_LEN : fa;
     cv_rect(PANEL_X0, 48, PANEL_W, 1, T_RAISE);
     for (x = 0; x <= 216; x += 2) {
-        uint32_t k = (uint32_t)x * 511u / 216u;
+        uint32_t k = (uint32_t)x * 1023u / 216u;          /* (the top level: 1024 samples) */
         int32_t v = fa[k] + (((fb[k] - fa[k]) * xf) >> 15), y = 48 - v * 38 / 32767;
         if (x)
             cv_line(12 + x - 2, py, 12 + x, y, c);

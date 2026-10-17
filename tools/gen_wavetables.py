@@ -134,8 +134,23 @@ def bank_bits():                # stepped: a sine in fewer and fewer levels, the
             wave(steps(3)), wave(lambda p: 1.0 if bits[int(frac(p) * 8)] else -1.0)]
 
 
+def bank_ppg():                 # (2026-10-17, after the Waldorf PoC) a saw blending into a pulse that widens, PPG-like
+    out = []
+    for f in range(FRAMES):
+        m = f / (FRAMES - 1)
+        out.append(wave(lambda p, m=m: saw(p) * (1 - m) + pulse(0.1 + 0.8 * m)(p) * m))
+    return out
+
+
+def bank_drive():               # (2026-10-17) a sine and its third harmonic, driven harder frame by frame
+    return [wave(lambda p, m=f / (FRAMES - 1): math.tanh((math.sin(2 * math.pi * p) +
+                                                          0.5 * m * math.sin(6 * math.pi * p)) * (1 + 5 * m)))
+            for f in range(FRAMES)]
+
+
 BANKS = [("BASIC", bank_basic), ("ADDTV", bank_addtv), ("SYNC", bank_sync), ("RESO", bank_reso),
-         ("VOX", bank_vox), ("FM", bank_fm), ("DIGI", bank_digi), ("BITS", bank_bits)]
+         ("VOX", bank_vox), ("FM", bank_fm), ("DIGI", bank_digi), ("BITS", bank_bits),
+         ("PPG", bank_ppg), ("DRIVE", bank_drive)]   # (appended: the stores' TBL values keep their banks)
 
 
 def render(h, length, hmax, gain):
@@ -167,7 +182,8 @@ def main(path):
              f"#define WT_NFRAME {FRAMES}",
              f"#define WT_FRAME_LEN {flen}   /* the {len(LEVELS)} mip levels of a frame, longest first: " +
              ", ".join(f"{n} samples / {h} harmonics" for n, h in LEVELS) + " */",
-             "#define WT_BANK_NAMES_INIT " + ", ".join(f'"{n}"' for n in names),
+             "#define WT_BANK_NAMES_INIT " + ", ".join(f'"{n}"' for n in names) + ", " +
+             ", ".join(f'"{n}8"' for n in names) + "   /* then each stepped (eng_wave.c) */",
              f"static const int16_t WT_DATA[{len(data)}] = {{"]
     for i in range(0, len(data), 16):
         lines.append("    " + ", ".join(str(v) for v in data[i:i + 16]) + ",")

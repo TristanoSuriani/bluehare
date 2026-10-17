@@ -106,6 +106,39 @@ int main(void)
     }
     snprintf(msg, sizeof msg, "built with firmware/baseline alone; every engine sounds a note (%u of %u)", loud, NENGINES);
     check(msg, loud == NENGINES);
+#if BLUEHARE_ENG_WAVE
+    {   /* (2026-10-17) WAVE's stepped banks (TBL's second half): 8-bit samples, the nearest frame (POS between two plays
+         * the nearer, bit for bit), where the smooth bank crossfades */
+        static int32_t o[4][256];
+        uint32_t k, bits = 0, stepped_same, smooth_same;
+        track_t *t = &trk[0];
+        for (k = 0; k < WT_NBANK * WT_NFRAME * WT_FRAME_LEN; k++)
+            bits |= (uint32_t)wt_read(WT_DATA + k / 1024u * 1024u, 0, (k % 1024u) << 22, 1) & 0xFFu;
+        patch_engine(t, ENGI_WAVE);
+        t->p[P_E4] = 127;                               /* (the filter open, no resonance, no drive, no crush) */
+        t->p[P_E5] = t->p[P_E6] = t->p[P_E7] = t->p[P_E2] = t->p[P_E3] = 0;
+        for (k = 0; k < 4u; k++) {
+            voice_t v;
+            vmod_t m = {0};
+            memset(&v, 0, sizeof v);
+            m.inc = 5000000u;                           /* (~56 Hz: the top level) */
+            m.pitch16 = v.pitch16 = 33 * 16;
+            m.amp0 = m.amp1 = 32767;
+            m.cutoff = 0;
+            m.shape = 64 << 8;
+            t->p[P_E0] = (int16_t)(k < 2u ? WT_NBANK : 0);   /* BASIC8, then BASIC */
+            t->p[P_E1] = (int16_t)(k & 1u ? 73 : 70);       /* POS 70 (frame 3.86), 73 (frame 4.02) */
+            wave_note_on(t, &v);
+            memset(o[k], 0, sizeof o[k]);
+            wave_render(t, &v, o[k], 256, &m);
+        }
+        stepped_same = !memcmp(o[0], o[1], sizeof o[0]);
+        smooth_same = !memcmp(o[2], o[3], sizeof o[2]);
+        check("WAVE stepped (BASIC8 ..): 8-bit samples, the nearest frame bit for bit; the smooth bank crossfades",
+              !bits && stepped_same && !smooth_same && !strcmp(N_WT_BANK[WT_NBANK], "BASIC8") &&
+              ENG_WAVE.edit[0].max == 2 * WT_NBANK - 1);
+    }
+#endif
     midi_enqueue(0x09u | 0x90u << 8 | 64u << 16 | 100u << 24, 1u);   /* MIDI IN: the baseline's ring, channel 1 */
     i = (uint32_t)run(200);
     midi_enqueue(0x08u | 0x80u << 8 | 64u << 16, 1u);
