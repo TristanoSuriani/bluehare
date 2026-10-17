@@ -17,6 +17,7 @@
  * DUAL (Blue Hare 2026-10): a true stereo delay, two lines in dly_buf's halves (up to 0.74 s each, as PING): the left
  * echoes at TIME, the right at three quarters of it (a straight time against its dotted one: 1/4 left, 3/16 right),
  * each its own low-passed loop (COLR, FDBK), a quarter of each fed into the other's (the echoes cross and smear) */
+#include "fastmath.h"                    /* (2026-10-17: the float parts: the master, PLATE, AMB, the EQ) */
 #define DLY_LEN DEV_NAT(65536u, 1048576u)   /* 1.49 s: 1/4 at 40 BPM fits (native: 23.8 s, 4BAR at 41 BPM; PING's right
                                               * side 11.9 s) */
 #define CHO_LEN 2048u
@@ -219,6 +220,14 @@ static inline int32_t spk_bass(int32_t m)
     return sb_hl + (sb_hl >> 1);      /* x1.5 (#180: x3 peaked at 1.5 .. 3.5 x a full-scale kick, the limiter */
 }                                     /* pulled the mix down up to 16 dB on each hit and the buzz took over) */
 
+/* the master's soft clip, in float (2026-10-17): 32767 tanh(x / 32768), the curve dsp.c softclip's table samples
+ * (tanh up to 2: the same ceiling, 0.964), exact between its points; rounded to the nearest */
+static inline int32_t softclip_f(float x)
+{
+    float a = fm_fabsf(x) * (1.0f / 32768.0f), y;
+    y = 32767.0f * fm_tanhf(a < 2.0f ? a : 2.0f);
+    return (int32_t)(x < 0.0f ? -(y + 0.5f) : y + 0.5f);
+}
 static inline void master_out(int32_t *l, int32_t *r)
 {
     int32_t al, ar, a;
@@ -239,13 +248,16 @@ static inline void master_out(int32_t *l, int32_t *r)
         lim_env += (a - lim_env) >> 2;
     else if (lim_env > LIM_T)
         lim_env -= ((lim_env - LIM_T) >> 12) + 1;
-    if (lim_env > LIM_T) {
-        int32_t g = (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)lim_env);   /* < 32768 */
-        *l = ((*l >> 4) * g) >> 11;                      /* >> 4 first: |l| may be far above Q15 */
-        *r = ((*r >> 4) * g) >> 11;
+    {                                 /* (2026-10-17, the second review's H) the gain and the soft clip in float: */
+        float fl = (float)*l, fr = (float)*r;   /* no bits shifted off a limited signal, the curve exact */
+        if (lim_env > LIM_T) {
+            float g = (float)LIM_T / (float)lim_env;
+            fl *= g;
+            fr *= g;
+        }
+        *l = softclip_f(fl);
+        *r = softclip_f(fr);
     }
-    *l = softclip(*l);
-    *r = softclip(*r);
 }
 
 /* length of one division (N_DIV order) in samples at the song tempo */
@@ -1289,18 +1301,14 @@ static __attribute__((noinline)) void bus_comp(int32_t *out, uint32_t n)
         bc_env += (pk - bc_env) >> 2;               /* (a block is 0.73 ms: ~3 ms) */
     else
         bc_env -= (bc_env >> 8) + (bc_env > 0);     /* (~190 ms) */
-    if (bc_env > BC_T) {                            /* g = (T + (env - T) / 3) / env, Q15; both under 2^16 first */
-        uint32_t e = (uint32_t)bc_env, num = BC_T + (((uint32_t)bc_env - BC_T) * 21845u >> 16);
-        while (e > 65535u) {
-            e >>= 1;
-            num >>= 1;
-        }
-        g1 = (int32_t)((num << 15) / (e | 1u));
-    }
+    if (bc_env > BC_T)                              /* g = (T + (env - T) / 3) / env (2026-10-17: in float, exact) */
+        g1 = (int32_t)(32768.0f * ((float)BC_T + (float)(bc_env - BC_T) * (1.0f / 3.0f)) / (float)bc_env);
     step = n == CTL ? (g1 - g0) >> CTL_LOG2 : 0;
-    for (i = 0; i < 2u * n; i++) {                   /* x * g in two parts (the mix may be far above Q15): exact at */
-        int32_t g = n == CTL ? g0 + step * (int32_t)(i / 2u + 1u) : g1, x = out[i];   /* g 1, no floor of a */
-        out[i] = ((x >> 8) * g >> 7) + ((x & 255) * g >> 15);                          /* small negative one */
+    if (g0 == 32768 && g1 == 32768)
+        return;                                     /* (at unity: the mix as it is, bit for bit) */
+    for (i = 0; i < 2u * n; i++) {                   /* (in float: no bits shifted off; rounded to the nearest) */
+        float g = (float)(n == CTL ? g0 + step * (int32_t)(i / 2u + 1u) : g1) * (1.0f / 32768.0f), y = (float)out[i] * g;
+        out[i] = (int32_t)(y < 0.0f ? y - 0.5f : y + 0.5f);
     }
     bc_g = g1;
 }
