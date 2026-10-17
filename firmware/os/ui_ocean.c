@@ -21,7 +21,7 @@ static struct {
     int16_t sx[OC_NSTAR];
     uint8_t ss[OC_NSTAR];
     int32_t glow, flick;                     /* the rays' brightness (0..256), the tails' flick (0..16) */
-    uint32_t seen[GEN_ROLES];                /* GEN's notes counted at the last frame (gen.s.played) */
+    uint32_t seen[8];                        /* the player's roles' notes counted at the last frame (player.c notes) */
 } oc;
 
 /* a colour of the ocean in the palette's terms: GREY and MONO keep their screens neutral (its luma, gray) */
@@ -81,26 +81,29 @@ static void oc_bubble(int32_t x, uint32_t h)
         }
 }
 /* the music since the last frame: GEN's notes, role by role */
-static void oc_listen(uint32_t w, uint32_t h)
+static void oc_listen(uint32_t w, uint32_t h)        /* (the player's roles, by name: GEN's, or any other's) */
 {
+    const player_t *p = player();
+    int32_t bell = player_role("BELL"), bass = player_role("BASS"), pad = player_role("PAD");
     uint32_t r, n;
-    for (r = 0; r < GEN_ROLES; r++) {
-        n = gen.s.played[r] - oc.seen[r];
-        oc.seen[r] = gen.s.played[r];
+    for (r = 0; p && r < p->nroles && r < 8u; r++) {
+        uint32_t now = p->notes(r);
+        n = now - oc.seen[r];
+        oc.seen[r] = now;
         if (!n || n > 64u)                               /* (a restart: counted from now) */
             continue;
-        if (r == GR_BELL) {                              /* bells: bubbles from the sand, where a starfish lies */
+        if ((int32_t)r == bell) {                        /* bells: bubbles from the sand, where a starfish lies */
             while (n--) {
                 uint32_t k = oc_rand(OC_NSTAR);
                 oc_bubble(oc.sx[k], h);
                 oc_bubble(oc.sx[k], h);
             }
-        } else if (r == GR_BASS) {                       /* the bass: the king fish crosses, if he is not already */
+        } else if ((int32_t)r == bass) {                 /* the bass: the king fish crosses, if he is not already */
             if (!oc.king.live)
                 oc_fish_new(&oc.king, w, h, 1);
-        } else if (r == GR_PAD) {                        /* a breath: the light grows */
+        } else if ((int32_t)r == pad) {                  /* a breath: the light grows */
             oc.glow = oc.glow + 90 > 256 ? 256 : oc.glow + 90;
-        } else {                                         /* a hit, a swell: the shoal's tails flick */
+        } else {                                         /* a hit, a swell, anything else: the shoal's tails flick */
             oc.flick = 16;
         }
     }
@@ -247,10 +250,8 @@ static void oc_frame(void)
     if (oc.flick)
         oc.flick--;
     {                                                    /* the chord and the bar, small, on the deep */
-        char ch[8], b[16];
-        gen_chord_name(ch);
-        str_cpy(b, "BAR ", sizeof b);
-        fmt_int(b + 4, (int32_t)(gen.s.bar % 1000u) + 1);
+        char ch[8], b[8];
+        player()->status(ch, b);
         cv_bg = oc_c(RGB(8, 90, 140));
         cv_text(cv_text(10, 4, &AF_S, ch, oc_c(RGB(235, 248, 255))) + 10, 4, &AF_S, b, oc_c(RGB(150, 200, 230)));
     }

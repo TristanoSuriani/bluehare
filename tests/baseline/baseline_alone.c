@@ -111,6 +111,9 @@ int main(void)
     midi_enqueue(0x08u | 0x80u << 8 | 64u << 16, 1u);
     run(400);
     check("MIDI IN through the baseline's ring (midi_in.c) plays and releases", i > 300u && mi_r == mi_w);
+    check("the player interface (player.c): GEN, its four roles by name, its pieces",
+          player() && !strcmp(player()->name, "GEN") && player()->nroles == 4u && player_role("BELL") == 2 &&
+          player_role("BASS") == 1 && player()->npieces == GEN_NPRESETS && !strcmp(player()->piece_name(0), "GARDEN"));
     gen_load_piece(0);                                  /* GARDEN: its sounds through os_load_sound */
     gen.seed = 7u;
     gen.req = 1;

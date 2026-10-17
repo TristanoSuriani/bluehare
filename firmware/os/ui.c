@@ -657,35 +657,43 @@ static void os_load_sound(uint32_t track, uint32_t engine, uint32_t preset)
         set_engine_of(t, engine);
     apply_preset_to(t, preset);
 }
-static void gen_apply(uint32_t k)
+static void gen_apply(uint32_t k)                 /* (the player's piece k: player.c load) */
 {
-    gen_load_piece(k);
+    if (!player())
+        return;
+    player()->load(k);
     ui.force = 1;
 }
-/* the main loop: the preset knob (the GEN page, the editor, the studio) moved: its sounds. (Not at power-on: the
- * project's sounds stay until a preset is picked) */
-static uint8_t gen_loaded;                       /* a preset's sounds loaded since power-on */
+/* the main loop: the piece knob (the player's: GEN's page, the editor, the studio) moved: its sounds. (Not at
+ * power-on: the project's sounds stay until a piece is picked) */
+static uint8_t gen_loaded;                       /* a piece's sounds loaded since power-on */
 static void gen_poll(void)
 {
     static int16_t last = -1;
+    const player_t *p = player();
+    if (!p || p->piece_id == 0xFFu)
+        return;
     if (last < 0)
-        last = song.g[G_GPRE];
-    if (song.g[G_GPRE] != last) {
-        last = song.g[G_GPRE];
-        gen_apply((uint32_t)clamp(last, 0, GEN_NPRESETS - 1));
+        last = song.g[p->piece_id];
+    if (song.g[p->piece_id] != last) {
+        last = song.g[p->piece_id];
+        gen_apply((uint32_t)clamp(last, 0, (int32_t)p->npieces - 1));
         gen_loaded = 1;
     }
 }
-/* ARP: GEN on or off. The first start since power-on loads the preset shown (its sounds, tempo, FX): GEN plays what its
- * page says; later starts keep what was changed since */
+/* ARP: the player (GEN) on or off. The first start since power-on loads the piece shown (its sounds, tempo, FX): it
+ * plays what its page says; later starts keep what was changed since */
 static void gen_toggle(void)
 {
-    if (!gen.on && !gen_loaded) {
-        gen_apply((uint32_t)clamp(song.g[G_GPRE], 0, GEN_NPRESETS - 1));
+    const player_t *p = player();
+    if (!p)
+        return;
+    if (!p->playing() && !gen_loaded && p->piece_id != 0xFFu) {
+        gen_apply((uint32_t)clamp(song.g[p->piece_id], 0, (int32_t)p->npieces - 1));
         gen_loaded = 1;
     }
-    gen.req = gen.on ? 2u : 1u;
-    ui_say("GEN ", gen.on ? "STOPPED" : "PLAYING");
+    ui_say(p->name, p->playing() ? " STOPPED" : " PLAYING");
+    p->request(!p->playing());
 }
 
 /* switch engine (its defaults + first preset) and say so */

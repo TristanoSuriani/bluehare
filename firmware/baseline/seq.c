@@ -160,19 +160,19 @@ static void lay_wheel(void)
 }
 #define LAY_CHORD 1323u                    /* MONO layers: notes this close (30 ms) are a chord's, not a phrase's */
 static uint32_t lay_clk, lay_last[NTRK];   /* (samples: events_block) the last note each layer took */
-static int gen_play(uint32_t note, uint32_t vel);   /* (gen.c: PLAY ALONG) */
+static int player_key_on(uint32_t note, uint32_t vel);   /* (player.c: a player's keys, GEN's PLAY ALONG) */
+static int player_key_off(uint32_t note);
 /* (2026-10-17) what the baseline asks of the instrument around it (Blue Hare OS: keyboard.c; a host without keys: none):
  * the keys' block (scanned, played through input_on / input_off, once a block in events_block) and whether a key holds a
  * note on track t (MIDI's All Notes Off leaves it) */
 static void os_keys_block(void);
 static int os_keys_hold_track(uint32_t track);
 static int os_keys_hold_note(uint32_t track, uint32_t note);   /* (a key held on track sounds note) */
-static int gen_play_off(uint32_t note);
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     uint32_t k, m;
     last_note = (uint8_t)note;
-    if (gen_play(note, vel))                       /* (2026-10-17) GEN playing: the key in its scale, on its bells */
+    if (player_key_on(note, vel))                  /* (2026-10-17) a player playing (GEN): the key its way */
         return;
     if (!lay_init) {
         memset(lay_tn, 0xFF, sizeof lay_tn);
@@ -212,7 +212,7 @@ static void input_off(track_t *t, uint32_t note)
     uint32_t k, any = 0;
     if (midi_note_held(t, note))
         return;
-    if (gen_play_off(note))
+    if (player_key_off(note))
         return;
     if (lay_init && note < 128u)
         for (k = 0; k < NTRK; k++)
@@ -228,6 +228,7 @@ static void input_off(track_t *t, uint32_t note)
 
 #include "patch.c"                 /* (Blue Hare, 2026-10-17) a sound loaded into a layer */
 #include "gen.c"                   /* (Blue Hare, 2026-10) GEN: the generative engine, on the ARP button */
+#include "player.c"                /* (2026-10-17) the players' interface: GEN the first */
 
 /* -------------------------------------------------------- sequencer --- */
 /* the sequencer: a placeholder for now (SEQ shows TODO). seq_hook, when set, gets every block the samples the
@@ -382,7 +383,8 @@ static void events_block(uint32_t n)
                 seq_n = midi_clock_advance(fm1_ms);
         }
     }
-    gen_block(n);                                     /* (Blue Hare) GEN: its own clock, transport or not */
+    if (player())
+        player()->block(n);                           /* (Blue Hare) the player (GEN): its own clock, transport or not */
     if (seq_hook)
         seq_hook(song.playing ? seq_n : 0u);
     if (song.playing)

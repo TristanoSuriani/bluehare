@@ -292,8 +292,17 @@ static uint32_t graph_signature(void)
     if (pg->graph == GR_MOD)
         h ^= (mod_ui_slot + 1u) * 40503u;
     if (pg->graph == GR_GEN)                         /* (Blue Hare) GEN: its chord and bar; playing, the ocean moves */
-        h = (h ^ (gen.on + 2u * gen.s.nchord + 977u * gen.s.bar + 7919u * (uint32_t)song.g[G_GROOT] +
-                  (gen.on ? 104729u * (ui.frame / 2u) : 0u))) * 16777619u;
+    {                                                /* (the player's status lines; playing, every other frame) */
+        char a[8], b[8];
+        memset(a, 0, sizeof a);                     /* (the bytes after the strings: in the hash too) */
+        memset(b, 0, sizeof b);
+        if (player_playing())
+            player()->status(a, b);
+        h = (h ^ ((uint32_t)player_playing() + 7919u * (uint32_t)song.g[G_GROOT] +
+                  (player_playing() ? 104729u * (ui.frame / 2u) : 0u))) * 16777619u;
+        for (i = 0; i < 8u; i++)
+            h = (h ^ (uint8_t)a[i] ^ (uint32_t)(uint8_t)b[i] << 8) * 16777619u;
+    }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < 4u; i++)
             h ^= (uint32_t)graph_project_used(i) << (20u + i);
@@ -845,22 +854,20 @@ static void draw_graph(void)
             cv_oy = 0;
             panel_note("TURN TO PICK", "[OCT+] CONFIRM", 0);
             break;
-        case GR_GEN:                                    /* (Blue Hare) GEN: stopped, or the ocean while it plays */
+        case GR_GEN:                                    /* (Blue Hare) the player (GEN): stopped, or the ocean */
             cv_oy = 0;
-            if (!gen.on) {
+            if (!player_playing()) {
                 panel_note("GEN STOPPED", "[ARP] PLAY", "PAD BASS BELLS PULSE");
                 oc.ready = 0;                           /* (the next start: a fresh shoal) */
                 break;
             }
 #if BLUEHARE_UI_OCEAN
-            oc_frame();                                 /* (ui_ocean.c: its chord and bar on top) */
+            oc_frame();                                 /* (ui_ocean.c: its status lines on top) */
 #else
-            {                                           /* (no ocean in this build: the chord and the bar) */
-                char ch[8], b[20];
-                gen_chord_name(ch);
-                str_cpy(b, "BAR ", sizeof b);
-                fmt_int(b + 4, (int32_t)(gen.s.bar % 1000u) + 1);
-                panel_note(ch, b, "[ARP] STOP");
+            {                                           /* (no ocean in this build: the status lines) */
+                char a[8], b[8];
+                player()->status(a, b);
+                panel_note(a, b, "[ARP] STOP");
             }
 #endif
             break;

@@ -248,7 +248,7 @@ static void ui_leds(void)
         led_put(nl, panel.btn[FAM_BTN[fam]], 1);
     if (!ui.layer && (perf_latched || perf_k[0] || perf_k[1] || perf_k[2] || perf_k[3]))
         led_put(nl, panel.btn[B_FX], 1);                /* FX LATCH: lit while an effect or a macro is on */
-    if (gen.on && FAM_BTN[fam] != B_ARP)                /* (Blue Hare) GEN playing: ARP breathes, elsewhere */
+    if (player_playing() && FAM_BTN[fam] != B_ARP)      /* (Blue Hare) the player (GEN) playing: ARP breathes */
         led_put(nb, panel.btn[B_ARP], 1);
     if (ui.layer)                                       /* the layer's button breathes while its map is up */
         led_put(nb, panel.btn[layer_btn()], 1);
@@ -544,7 +544,7 @@ static int page_tap(uint32_t b)
         return 1;
     }
     if (b == B_ARP && BLUEHARE_PLUGIN_GEN) {            /* (Blue Hare) ARP: GEN starts or stops; starting it shows */
-        uint32_t i, mix = !gen.on;                      /* GEN MIX (the roles' densities), stopping it GEN */
+        uint32_t i, mix = !player_playing();            /* GEN MIX (the roles' densities), stopping it GEN */
         gen_toggle();
         for (i = 0; i < NPAGES; i++)
             if (PAGES[i].fam == FAM_ARP && (PAGES[i].id[0] == G_GDPAD) == mix)

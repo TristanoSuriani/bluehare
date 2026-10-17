@@ -634,6 +634,7 @@ static __attribute__((noinline)) void gen_step(void)   /* (once a 1/16: out of t
     }
 }
 
+static int gen_play_off(uint32_t note);         /* (PLAY ALONG, below) */
 static __attribute__((noinline)) void gen_stop_now(void)
 {
     uint32_t r;

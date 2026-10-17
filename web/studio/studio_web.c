@@ -379,7 +379,7 @@ STU_EXPORT const uint8_t *stu_perf_ids(void) { return PF_DEF; }
 /* GEN (gen.c): start (1) or stop (0), as ARP does; its state {on, bar, step, chords, notes played by the four roles} */
 STU_EXPORT void stu_gen(uint32_t on)
 {
-    if (on != gen.on)
+    if ((int)on != player_playing())
         gen_toggle();
 }
 static int32_t stu_gs[8];
