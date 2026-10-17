@@ -245,7 +245,7 @@ async function editorMock() {
     const rd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 14)));
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 14, 5)));
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 14, 0)));
-    ok(rd.label === "ROUT" && rd.def === 0 && eq(rd.names, ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"]) && r1.value === 4 && r0.value === 0 && info.gcount === 27,
+    ok(rd.label === "ROUT" && rd.def === 0 && eq(rd.names, ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"]) && r1.value === 4 && r0.value === 0 && info.gcount === 31,
       "editor: MIDI IN routing (ROUT CH1-4 / SEL / CH5-8 / CH9-12 / CH13-16, global id 14)");
   }
   {
@@ -255,9 +255,9 @@ async function editorMock() {
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 10)));
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 0)));
     const d26 = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 26)));
-    ok(rd.label === "TYPE" && rd.def === 2 && eq(rd.names, ["ROOM", "SPRING", "HALL", "GATED", "CONCERT"]) && r1.value === 4 && r0.value === 0 &&
-       d26.label === "MOTN" && d26.max === 127 && d26.def === 64 && info.gcount === 27,
-      "editor: REVERB TYPE (ROOM / SPRING / HALL / GATED / CONCERT, global id 24; 26 GEN's MOTION, G_COUNT still 27)");
+    ok(rd.label === "TYPE" && rd.def === 2 && eq(rd.names, ["ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE"]) && r1.value === 5 && r0.value === 0 &&
+       d26.label === "MOTN" && d26.max === 127 && d26.def === 64 && info.gcount === 31,
+      "editor: REVERB TYPE (ROOM / SPRING / HALL / GATED / CONCERT / PLATE, global id 24; 26 GEN's MOTION; G_COUNT 31: the EQ)");
   }
   {
     /* FX > DLY 2 TYPE (G_DTYPE 25, the old drum level's id, Blue Hare 1.5): CLEAN (0, the default) / TAPE / WORN / PING / DUAL;
@@ -265,8 +265,8 @@ async function editorMock() {
     const dd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 25)));
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 25, 10)));
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 25, 0)));
-    ok(dd.label === "TYPE" && dd.def === 0 && eq(dd.names, ["CLEAN", "TAPE", "WORN", "PING", "DUAL"]) && r1.value === 4 &&
-       r0.value === 0 && info.gcount === 27, "editor: DELAY TYPE (CLEAN / TAPE / WORN / PING / DUAL, global id 25)");
+    ok(dd.label === "TYPE" && dd.def === 0 && eq(dd.names, ["CLEAN", "TAPE", "WORN", "PING", "DUAL", "AMB"]) && r1.value === 5 &&
+       r0.value === 0 && info.gcount === 31, "editor: DELAY TYPE (CLEAN / TAPE / WORN / PING / DUAL / AMB, global id 25)");
   }
   const st = E.parse[E.CMD.STEP_SET](await rq(E.req.stepSet(5, { n: 2, notes: [60, 64], time: 0, flags: 1, vel: 100 })));
   ok(st.n === 2 && st.notes[1] === 64 && st.vel === 100, "editor: STEP_SET");

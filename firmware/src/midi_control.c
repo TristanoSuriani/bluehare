@@ -325,6 +325,25 @@ static void __attribute__((noinline)) midi_route_block(void)
  * (realtime and clock are handled in events_block, SysEx never reaches here). With ROUT CH1-4 channels
  * 5..16 are ignored entirely (with CH5-8 .. CH13-16 every channel outside the block): notes, bend, CCs (CC1/11/64, RPN, and the CC120/121/123 panic and reset),
  * channel aftertouch, so they stay free for other instruments. */
+/* (2026-10-17) a controller of channel ch's track, or with layers ON of every ON layer (the patch is played as one
+ * instrument: CC1 / CC11 / aftertouch to their matrices, the mapped CCs to their parameters); CC1 is the crossfade's
+ * WHEEL too */
+static void __attribute__((noinline)) midi_ctl_layers(uint32_t st, uint32_t ch, uint32_t d1, uint32_t d2)
+{
+    uint32_t k;
+    if (st == 0xB0u && d1 == 1u)
+        lay.xval = (uint8_t)d2;
+    if (!layers_on()) {
+        mod_midi(midi_track(ch), st, d1, d2);
+        return;
+    }
+    for (k = 0; k < NTRK; k++)
+        if (lay.on[k]) {
+            mod_midi(&trk[k], st, d1, d2);
+            if (st == 0xB0u && d1 != 1u && d1 != 11u && d1 != 121u && midi_track(ch) != &trk[k])
+                midi_cc_map(&trk[k], d1, d2);           /* (the channel's own track: midi_control's) */
+        }
+}
 static void __attribute__((noinline)) midi_event(uint32_t st, uint32_t ch, uint32_t d1, uint32_t d2)
 {
     if (song.g[G_ROUTE] != 1 && !midi_in_block(ch))
@@ -335,8 +354,8 @@ static void __attribute__((noinline)) midi_event(uint32_t st, uint32_t ch, uint3
         midi_channel(ch)->bend = (int16_t)((int32_t)(d1 | (d2 << 7)) - 8192);
         midi_expression_channel(ch);
     } else if (st == 0xB0u) {
-        mod_midi(midi_track(ch), st, d1, d2);
+        midi_ctl_layers(st, ch, d1, d2);
         midi_control(ch, d1, d2);
     } else if (st == 0xD0u)
-        mod_midi(midi_track(ch), st, d1, d2);
+        midi_ctl_layers(st, ch, d1, d2);
 }

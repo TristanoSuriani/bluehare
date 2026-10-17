@@ -159,10 +159,12 @@ enum {                          /* global parameters */
     G_RTYPE,                    /* REVERB TYPE: 0 ROOM, 1 SPRING, 2 HALL (1.2, the power-on default) (fx.c). Was
                                  * G_DRCH, the GM drum part's MIDI channel (inert since 1.0, never read); projects
                                  * of formats before FUN7 load it as ROOM (project.c proj_rtype_room) */
-    G_DTYPE,                    /* DELAY TYPE (Blue Hare 1.5): 0 CLEAN, 1 TAPE, 2 WORN (fx.c). Was G_DRLVL, the GM
+    G_DTYPE,                    /* DELAY TYPE (Blue Hare 1.5): 0 CLEAN, 1 TAPE, 2 WORN, 3 PING, 4 DUAL, 5 AMB (fx.c). Was G_DRLVL, the GM
                                  * drum part's level (inert since 1.0: range 0..0, so every song stored 0, CLEAN) */
     G_GMOT,                     /* (Blue Hare, 2026-10) GEN's MOTION (gen.c): the id of G_DRREV, inert (the GM drum
                                  * part's reverb send) since 1.0; the ids and G_COUNT are fixed by the formats */
+    G_EQLO, G_EQLM, G_EQHM, G_EQHI,  /* (2026-10-17) the patch's EQ (fx.c eq_block): LOW shelf 100 Hz, LOW MID 400 Hz,
+                                      * HIGH MID 2.5 kHz, HIGH shelf 8 kHz, -12 .. +12 dB each (projects of format 11) */
     G_COUNT
 };
 
@@ -195,6 +197,7 @@ typedef struct {
     uint32_t age;
     uint8_t mvel;                /* mod.c: the note-on velocity (before UNISON scaling) and RAND of the note */
     int16_t mrnd;
+    uint16_t xg;                 /* (2026-10-17) the layers' crossfade: the note's level on this layer, Q15 */
 } voice_t;
 
 typedef struct {                 /* per-voice control-rate modulation, computed in voice.c */
@@ -341,15 +344,25 @@ static uint8_t trk_pmode[NTRK];
  * key split, a velocity split, by the ranges), or on one of them in turn (LM_ROBIN: round-robin), each transposed by
  * its own TRANS; with no layer ON, on the selected one alone (as before layers). Each layer's insert after DIST and
  * LOW CUT: a 12 dB state-variable filter (lay.ftype OFF LP BP HP, its cutoff and resonance: fx.c track_filter).
- * Saved with the song (project.c version 10). seq.c layer_on / layer_off route the notes */
+ * Saved with the song (project.c version 10). seq.c layer_on / layer_off route the notes.
+ * (2026-10-17) The crossfade: with XFADE on (lay.xsrc VEL, KEY or WHEEL) the layers given a place on it (lay.xpos 0 ..
+ * 127; -1 OFF: not in it, always at full level) fade into each other along it, equal power, two neighbours at a time:
+ * at a layer's place that layer alone, below the first place the first, above the last the last. VEL and KEY: each
+ * note's own level on each layer (a layer at 0 for it does not play it); WHEEL: the layers' levels now (MIDI CC1, the
+ * studio's MORPH: lay.xval), every voice at once (seq.c lay_xgain, voice.c, fx.c mix_part) */
 enum { LM_STACK, LM_ROBIN, LM_N };
+enum { LX_OFF, LX_VEL, LX_KEY, LX_WHEEL, LX_N };
 enum { LF_OFF, LF_LP, LF_BP, LF_HP, LF_N };
 static struct {
     uint8_t mode;                         /* LM_* (the patch's) */
     uint8_t on[NTRK], klo[NTRK], khi[NTRK], vlo[NTRK], vhi[NTRK];
     int8_t tr[NTRK];                      /* semitones, -24 .. 24 */
     uint8_t ftype[NTRK], fcut[NTRK], fres[NTRK];   /* LF_*, 0 .. 127 (CUTOFF_HZ), 0 .. 127 */
+    uint8_t xsrc;                         /* LX_* (the patch's crossfade) */
+    int8_t xpos[NTRK];                    /* the layer's place on it, 0 .. 127; -1 OFF */
+    uint8_t xval;                         /* WHEEL's value now (not saved) */
 } lay;
+static int32_t lay_wg[NTRK], lay_wt[NTRK];   /* WHEEL: each layer's level now and where it goes (Q15; seq.c, fx.c) */
 static void trk_mix_defaults(void)
 {
     uint32_t k;
@@ -365,8 +378,11 @@ static void trk_mix_defaults(void)
         lay.ftype[k] = LF_OFF;
         lay.fcut[k] = 100;
         lay.fres[k] = 20;
+        lay.xpos[k] = -1;
+        lay_wg[k] = lay_wt[k] = 32767;
     }
     lay.mode = LM_STACK;
+    lay.xsrc = LX_OFF;
 }
 
 /* SWING of a track's step clock (#31): CLOCK's SWING, at most 100 (the host tests' song player swings by it; the

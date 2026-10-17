@@ -32,7 +32,7 @@
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
 #endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER 10u                           /* (Blue Hare) 8: no song (the sequencer is a placeholder); 9: no DUCK;
+#define PROJ_VER 11u                           /* (Blue Hare) 11 (2026-10-17): the EQ (G_COUNT 31), the layers' crossfade; 8: no song (the sequencer is a placeholder); 9: no DUCK;
                                                   * 10: the layers (core.h lay) */
 #define PROJ_HDR 16u
 #if !BLUEHARE_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */
@@ -178,6 +178,10 @@ static void proj_write(pw_t *w, const char *name)
         pw_bytes(w, lay.ftype, NTRK);
         pw_bytes(w, lay.fcut, NTRK);
         pw_bytes(w, lay.fres, NTRK);
+        pw_u8(w, lay.xsrc);                             /* (version 11: the crossfade; a place + 1, 0 OFF) */
+        for (k = 0; k < NTRK; k++)
+            tr[k] = (uint8_t)(lay.xpos[k] + 1);
+        pw_bytes(w, tr, NTRK);
     }
     {
         uint32_t h = w->h;
@@ -323,18 +327,21 @@ static int proj_read(pr_t *r, int apply)
         }
     }
     {                                               /* the layers (version 10): a value out of range refuses the song */
-        uint8_t mode = (uint8_t)pr_u8(r), v[9][8];
+        uint8_t mode = (uint8_t)pr_u8(r), v[10][8], xsrc;
         uint32_t j;
         for (j = 0; j < 9u; j++)
             pr_bytes(r, v[j], ntr);
-        if (mode >= LM_N)
+        xsrc = (uint8_t)pr_u8(r);
+        pr_bytes(r, v[9], ntr);
+        if (mode >= LM_N || xsrc >= LX_N)
             return 1;
         for (k = 0; k < ntr; k++)
             if (v[0][k] > 1u || v[1][k] > 127u || v[2][k] > 127u || v[3][k] > 127u || v[4][k] > 127u ||
-                v[5][k] < 40u || v[5][k] > 88u || v[6][k] >= LF_N || v[7][k] > 127u || v[8][k] > 127u)
+                v[5][k] < 40u || v[5][k] > 88u || v[6][k] >= LF_N || v[7][k] > 127u || v[8][k] > 127u || v[9][k] > 128u)
                 return 1;
         if (apply) {
             lay.mode = mode;
+            lay.xsrc = xsrc;
             for (k = 0; k < ntr; k++) {
                 lay.on[k] = v[0][k];
                 lay.klo[k] = v[1][k];
@@ -345,6 +352,7 @@ static int proj_read(pr_t *r, int apply)
                 lay.ftype[k] = v[6][k];
                 lay.fcut[k] = v[7][k];
                 lay.fres[k] = v[8][k];
+                lay.xpos[k] = (int8_t)(v[9][k] - 1);
             }
         }
     }

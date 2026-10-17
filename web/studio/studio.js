@@ -100,7 +100,7 @@ async function loadDescs(items) {
 
 // ------------------------------------------------------------------ the page's words for the parameters
 // the tabs, and the groups each shows (STU_LAYOUT's keys)
-const TABS = [["layer", "LAYER", "ZF"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "XYRCPQ"],
+const TABS = [["layer", "LAYER", "ZFJ"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "XYRCUPQ"],
               ["gen", "GENERATIVE", "GK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
@@ -110,6 +110,8 @@ const GROUPS = {
        note: "A layer ON is part of the patch: a note played sounds on every ON layer whose key and velocity ranges hold it (STACK: a stack, a key split or a velocity split, by the ranges), or on one of them in turn (ROUND ROBIN), at the note plus its transpose. With no layer ON, the keys play the selected layer alone." },
   F: { title: "Layer insert", names: ["Drive", "Filter", "Cutoff", "Resonance", "Low cut", "Pan mode"], track: true, wide: true,
        note: "The layer's own processing before the patch's effects: DRIVE, a 12 dB FILTER (low-, band- or high-pass), LOW CUT; PAN MODE spreads its voices (ALT left and right, RND at random)." },
+  J: { title: "Crossfade", names: ["Crossfade by", "Place", "Morph"], track: true, wide: true,
+       note: "The layers given a place fade into each other along VELOCITY, KEY or the WHEEL (MIDI CC1, or MORPH here), two neighbours at a time, equal power: at a layer's place that layer alone. A layer at OFF stays at full level: a bass under a morphing pad. VELOCITY and KEY set each note's level as it starts; a layer faded out for a note does not play it." },
   S: { title: "Spread, sends", names: ["Spread", "Chorus", "Delay", "Reverb"],
        note: "Saved with the sound. The delay and reverb sends lose everything under ~220 Hz: the bass stays dry." },
   V: { title: "Voice", names: ["Mode", "Glide", "Glide by", "Priority", "Allocation", "Detune", "Pan"] },
@@ -117,11 +119,13 @@ const GROUPS = {
   D: { title: "LFO moves", names: ["Pitch", "Filter", "Shape", "Amp"] },
   M: { title: "Mod matrix", wide: true },
   X: { title: "Sound processing", names: ["Processing"], fx: true, wide: true,
-       note: "BLUE HARE: its chorus, delay and reverb buses, mono lows, compressor and limiter. AMB-1 (Charles Vestal's): a 5.6 s tape echo with two wandering heads and a 160 ms Echoplex, fed into a full-rate Dattorro plate, mixed wet, one soft clip at the end; no chorus, no compressor. The same knobs drive it: TIME, FEEDBACK, COLOR, MIX the echo; SIZE, DAMPING the plate; GEN's MOTION the heads." },
+       note: "BLUE HARE: its chorus, delay and reverb buses (amb-1's plate and echo among their types: PLATE, AMB), the EQ, mono lows, compressor and limiter. AMB-1 (Charles Vestal's): a 5.6 s tape echo with two wandering heads and a 160 ms Echoplex, fed into a full-rate Dattorro plate, mixed wet, one soft clip at the end; no chorus, no compressor. The same knobs drive it: TIME, FEEDBACK, COLOR, MIX the echo; SIZE, DAMPING the plate; GEN's MOTION the heads." },
   Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true,
-       note: "CLEAN: low-passed repeats · TAPE, WORN: wow, flutter, a saturated loop · PING: ping-pong · DUAL: two lines" },
+       note: "CLEAN: low-passed repeats · TAPE, WORN: wow, flutter, a saturated loop · PING: ping-pong · DUAL: two lines · AMB: amb-1's 5.3 s tape echo with two wandering heads (GEN's MOTION) and a 160 ms Echoplex, its echoes fed into the reverb" },
   R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true,
-       note: "ROOM: combs · SPRING: a dispersive spring · HALL: an 8-line FDN · GATED: HALL cut off · CONCERT: 16 lines. The native app adds CAVERN and SHIMMER." },
+       note: "ROOM: combs · SPRING: a dispersive spring · HALL: an 8-line FDN · GATED: HALL cut off · CONCERT: 16 lines · PLATE: amb-1's Dattorro plate, in float. The native app adds CAVERN and SHIMMER." },
+  U: { title: "EQ", names: ["Low", "Low mid", "High mid", "High"], fx: true,
+       note: "The patch's four bands on the mix, before the compressor: shelves at 100 Hz and 8 kHz, peaks at 400 Hz and 2.5 kHz, ±12 dB." },
   C: { title: "Chorus", names: ["Rate", "Depth"], fx: true },
   P: { title: "Performance", names: ["Filter", "Crush", "Throw", "Depth"], fx: true,
        note: "Hold a button, or latch it, as a white key with FX held on the FM-1. FILTER: LPF left, HPF right; CRUSH: fewer bits; THROW: the dry mix into the delay and reverb; DEPTH: the hold effects' level (OCT UP / DN: the shimmer)." },
@@ -138,7 +142,7 @@ const ENGINE_WORDS = {
   BLISS: "FM keys: electric pianos, bells, mallets",
   WEST: "West coast: complex osc, folder, gate",
   MODAL: "Struck, plucked and bowed resonators",
-  ECHOES: "A note and its repeats, each played anew",
+  STRINGS: "A string ensemble: 16', 8', 4' and its chorus",
   CANYON: "Echoes' repeats, all of them",
 };
 
@@ -458,7 +462,7 @@ function groupBox(g) {
   const info = G.note && g.key !== "G" && !G.show ? h("button", { class: "info", type: "button", title: G.note, "aria-label": "About " + G.title,
     onclick: () => { const n = box.querySelector(".gnote"); if (n) n.hidden = !n.hidden; } }, "ⓘ") : null;
   box.append(h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `layer ${S.sel + 1}`) : null,
-    G.fx ? h("span", { class: "sub" }, "every track") : null, info));
+    G.fx ? h("span", { class: "sub" }, "the patch") : null, info));
   const ctrls = h("div", { class: "ctrls" });
   if (g.key === "E") {
     box.id = "engine-group";

@@ -67,7 +67,8 @@ STU_EXPORT void stu_undo(void) { undo_swap(); }    /* SAVE held: the sound befor
  * them), MENU > SPEAKER EQ (settings.lowcut, fx.c fx_lowcut), MASTER (the pot) and the sound processing (fx.c fx_proc:
  * Blue Hare's buses and master, or amb-1's). Described as the others, values through stu_x */
 enum { SX_LOWCUT, SX_PMODE, SX_SPKEQ, SX_FILTER, SX_CRUSH, SX_THROW, SX_DEPTH, SX_MASTER, SX_PROC,
-       SX_LON, SX_KLO, SX_KHI, SX_VLO, SX_VHI, SX_LTR, SX_LFT, SX_LFC, SX_LFR, SX_LMODE, SX_COUNT };
+       SX_LON, SX_KLO, SX_KHI, SX_VLO, SX_VHI, SX_LTR, SX_LFT, SX_LFC, SX_LFR, SX_LMODE,
+       SX_XSRC, SX_XPOS, SX_XVAL, SX_COUNT };   /* (2026-10-17: the crossfade, the layer's place on it, MORPH) */
 static const char *const N_SX_LOWCUT[TL_N] = {"OFF", "40Hz", "60Hz", "80Hz", "120Hz", "160Hz", "240Hz", "320Hz"};
 static const char *const N_SX_PMODE[] = {"ALT", "RND"};
 static const char *const N_SX_SPKEQ[] = {"FLAT", "LOWCUT", "BASS+"};
@@ -75,6 +76,7 @@ static const char *const N_SX_PROC[] = {"BLUE HARE", "AMB-1"};
 static const char *const N_SX_ONOFF[] = {"OFF", "ON"};
 static const char *const N_SX_LFT[LF_N] = {"OFF", "LP", "BP", "HP"};
 static const char *const N_SX_LMODE[LM_N] = {"STACK", "ROUND ROBIN"};
+static const char *const N_SX_XSRC[LX_N] = {"OFF", "VELOCITY", "KEY", "WHEEL"};
 static const param_desc_t SX[SX_COUNT] = {
     [SX_LOWCUT] = {"LOWCUT", F_ENUM, 0, TL_N - 1, 0, N_SX_LOWCUT, 0},
     [SX_PMODE] = {"PANMODE", F_ENUM, 0, 1, 0, N_SX_PMODE, 0},
@@ -95,6 +97,9 @@ static const param_desc_t SX[SX_COUNT] = {
     [SX_LFC] = {"LCUT", F_CUTOFF, 0, 127, 100, 0, 0},
     [SX_LFR] = {"LRES", F_PCT, 0, 127, 20, 0, 0},
     [SX_LMODE] = {"MODE", F_ENUM, 0, LM_N - 1, 0, N_SX_LMODE, 0},
+    [SX_XSRC] = {"XFADE", F_ENUM, 0, LX_N - 1, 0, N_SX_XSRC, 0},
+    [SX_XPOS] = {"XPOS", F_INT, -1, 127, -1, 0, 0},
+    [SX_XVAL] = {"MORPH", F_INT, 0, 127, 0, 0, 0},
 };
 static int16_t stu_xv;                            /* (the value read, as the others' pointers give theirs) */
 static int32_t stu_x(uint32_t id)
@@ -117,6 +122,9 @@ static int32_t stu_x(uint32_t id)
     case SX_LFC: return lay.fcut[k];
     case SX_LFR: return lay.fres[k];
     case SX_LMODE: return lay.mode;
+    case SX_XSRC: return lay.xsrc;
+    case SX_XPOS: return lay.xpos[k];
+    case SX_XVAL: return lay.xval;
     default: return (int32_t)(web_master_adc * 127u + 511u) / 1023;
     }
 }
@@ -140,11 +148,41 @@ static void stu_x_put(uint32_t id, int32_t v)
     case SX_LFC: lay.fcut[k] = (uint8_t)v; break;
     case SX_LFR: lay.fres[k] = (uint8_t)v; break;
     case SX_LMODE: lay.mode = (uint8_t)v; break;
+    case SX_XSRC: lay.xsrc = (uint8_t)v; break;
+    case SX_XPOS: lay.xpos[k] = (int8_t)v; break;
+    case SX_XVAL: lay.xval = (uint8_t)v; break;
     default: web_master((uint32_t)v * 1023u / 127u); break;
     }
 }
 /* a layer's ON, and how many of its voices sound now (the page's layer row; the tests) */
 STU_EXPORT uint32_t stu_layer_on(uint32_t t) { return lay.on[t % NTRK]; }
+/* (the tests) a layer's crossfade: the loudest note's level on it (Q15; 0 none sounding), WHEEL's level now; its
+ * newest voice's start (the voices' clock) and note */
+STU_EXPORT uint32_t stu_track_xg(uint32_t t)
+{
+    uint32_t i, g = 0;
+    for (i = 0; i < NVOICE; i++)
+        if (trk[t % NTRK].v[i].active && trk[t % NTRK].v[i].gate && trk[t % NTRK].v[i].xg > g)
+            g = trk[t % NTRK].v[i].xg;
+    return g;
+}
+STU_EXPORT int32_t stu_layer_wg(uint32_t t) { return lay_wg[t % NTRK]; }
+STU_EXPORT uint32_t stu_track_age(uint32_t t)
+{
+    uint32_t i, a = 0;
+    for (i = 0; i < NVOICE; i++)
+        if (trk[t % NTRK].v[i].active && trk[t % NTRK].v[i].age > a)
+            a = trk[t % NTRK].v[i].age;
+    return a;
+}
+STU_EXPORT uint32_t stu_track_note(uint32_t t)
+{
+    uint32_t i, a = 0, n = 0;
+    for (i = 0; i < NVOICE; i++)
+        if (trk[t % NTRK].v[i].active && trk[t % NTRK].v[i].gate && trk[t % NTRK].v[i].age >= a)
+            a = trk[t % NTRK].v[i].age, n = trk[t % NTRK].v[i].note;
+    return n;
+}
 STU_EXPORT uint32_t stu_track_voices(uint32_t t)
 {
     uint32_t i, n = 0;
@@ -242,6 +280,8 @@ STU_EXPORT char *stu_format(uint32_t scope, uint32_t id, int32_t v)
     const char *unit = "";
     if (!d)
         return stu_say("");
+    if (scope == 2u && id == SX_XPOS && v < 0)
+        return stu_say("OFF");
     if (scope == 2u && (id == SX_KLO || id == SX_KHI)) {   /* a key as its name and octave (60: C4) */
         static const char *const NN[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
         int32_t n = clamp(v, 0, 127);
@@ -299,6 +339,8 @@ static const uint8_t STU_LAYOUT[] = {
     'S', 0, P_SPRD, 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,             /* (the sound's: spread, sends) */
     'X', X2(SX_PROC), 0xFF,                                           /* Blue Hare's processing or amb-1's */
     'W', X2(SX_LMODE), 0xFF,                                          /* the patch's play mode */
+    'J', X2(SX_XSRC), X2(SX_XPOS), X2(SX_XVAL), 0xFF,                 /* the crossfade: the patch's, the layer's place */
+    'U', G1(G_EQLO), G1(G_EQLM), G1(G_EQHM), G1(G_EQHI), 0xFF,        /* the patch's EQ */
     'Y', G1(G_DTYPE), G1(G_DTIME), G1(G_DFDBK), G1(G_DCOLOR), G1(G_DMIX), 0xFF,
     'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RDAMP), 0xFF,
     'C', G1(G_CRATE), G1(G_CDEPTH), 0xFF,

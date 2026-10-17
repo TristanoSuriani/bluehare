@@ -32,12 +32,12 @@ static const char *const N_ROUTE[] = {"CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-1
 static const char *const N_NOTE[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const N_DASH[] = {"--"};
 #ifdef BLUEHARE_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "CAVERN", "SHIMMER"};
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE", "CAVERN", "SHIMMER"};
 #else
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT"};   /* (Blue Hare: GATED, every
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE"};   /* (Blue Hare: GATED, every
                                                                    * build's; CONCERT the device's since 2026-10) */
 #endif
-static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL"};   /* G_DTYPE: the delay bus's (fx.c
+static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL", "AMB"};   /* G_DTYPE: the delay bus's (fx.c
                                                                    * dly_tape; PING, DUAL: Blue Hare's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
 /* (Blue Hare, 2026-10) GEN's presets (gen.c GEN_PRESETS, in that order: the names it shows on the knob) */
@@ -178,6 +178,11 @@ static const param_desc_t GP[G_COUNT] = {
      * 0, CLEAN) */
     [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
     [G_GMOT] = PD("MOTN", F_PCT, 0, 127, 64),
+    /* (2026-10-17) the patch's EQ (fx.c eq_block) */
+    [G_EQLO] = {"LOW", F_INT, -12, 12, 0, 0, "dB"},
+    [G_EQLM] = {"LMID", F_INT, -12, 12, 0, 0, "dB"},
+    [G_EQHM] = {"HMID", F_INT, -12, 12, 0, 0, "dB"},
+    [G_EQHI] = {"HIGH", F_INT, -12, 12, 0, 0, "dB"},
 };
 
 static const param_desc_t *track_desc(const track_t *t, uint32_t id)
@@ -363,9 +368,10 @@ static const page_t PAGES[] = {
     {"MOD", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},   /* KNOB 1: the slot (mod_ui_slot) */
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
     {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
-    {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN (Blue Hare) */
-    {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL / GATED */
+    {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN / PING / DUAL / AMB */
+    {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL / GATED / CONCERT / PLATE */
     {"CHORUS", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
+    {"EQ", FAM_FX, SC_GLOBAL, GR_NONE, {G_EQLO, G_EQLM, G_EQHM, G_EQHI}},   /* (2026-10-17) the patch's 4 bands */
     {"SCL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_TRANS}},
     {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, 0xFF, 0xFF}},   /* SCL again: the chord keys (chord.c) */
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},

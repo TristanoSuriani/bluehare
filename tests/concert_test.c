@@ -68,7 +68,8 @@ int main(void)
     double last, side;
     double h = band(2, 90, 60, 0.05, 1.0, 0, 0, 0), cc = band(4, 90, 60, 0.05, 1.0, 0, 0, &side);
     double c40a = band(4, 40, 60, 0.6, 1.2, 0, 0, 0), c110a = band(4, 110, 60, 0.6, 1.2, 0, 0, 0);
-    ck("REVERB TYPE 4 is CONCERT on the device", !strcmp(N_RTYPE[4], "CONCERT") && GP[G_RTYPE].max == 4);
+    ck("REVERB TYPE 4 is CONCERT on the device (5 PLATE after it)", !strcmp(N_RTYPE[4], "CONCERT") && !strcmp(N_RTYPE[5], "PLATE") &&
+       GP[G_RTYPE].max == 5);
     snprintf(what, sizeof what, "SIZE 90 DAMP 60: its level near HALL's (%+.1f dB over 50 ms .. 1 s)", 10 * log10(cc / h));
     ck(what, fabs(10 * log10(cc / h)) < 3.0);
     snprintf(what, sizeof what, "stereo: the side %.0f %% of its energy", 100 * side);

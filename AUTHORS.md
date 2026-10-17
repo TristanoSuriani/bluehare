@@ -110,7 +110,7 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
   Vestal** (GPL-3.0; the excerpts in `docs/excerpt_amb1.c` and `docs/excerpt_fastmath_amb1.c`, the latter from his X0X),
   ported to fixed point and to Blue Hare's tracks and engines by Blue Hare.
   amb-1's sound processing (`firmware/src/fx_amb.c`: the plate reverb, the tape echo and Echoplex, the master) is
-  his too, ported for the studio's comparison (EFFECTS > PROCESSING). GEN's amb-1 algorithm is kept for comparison
+  his too, ported for the studio's comparison (EFFECTS > PROCESSING) and, since 2026-10-17, inside Blue Hare's chain on the device as REVERB TYPE PLATE and DELAY TYPE AMB; `firmware/src/fastmath.h` is his X0X's maths library, unchanged. GEN's amb-1 algorithm is kept for comparison
   only, until Blue Hare's own generative algorithms replace it.
 - SH101 (2026-10) is Blue Hare's engine, its own design after the Roland SH-101 (no circuit modelled).
 - The sound design studio (`web/studio/`, 2026-10-16) is Blue Hare's: its page, its exports and its test. It runs on

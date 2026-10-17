@@ -46,7 +46,11 @@ static struct {
     int32_t tp_wd, tp_fd;                /* .. the wow's and the flutter's depth now (Q8 samples, glide) */
     int32_t tp_drv, tp_fbk, tp_hpm;      /* .. the drive (Q8), the feedback (Q15), the low cut's share (Q15): glide */
     uint32_t tp_wow, tp_flt;             /* .. their phases */
+    uint8_t amb_on;                      /* (2026-10-17) DELAY TYPE AMB running: the line is amb-1's tape (fx_amb.c) */
+    uint32_t dclr;                       /* .. switching to or from it: the line's part being cleared + 1 (0: none) */
 } fx;
+#define DT_AMB 5u
+#define DCLR_N 4096u                     /* (a part a block: 8 KB) */
 
 /* SPRING (G_RTYPE 1): one spring of a spring tank, mono like the other buses, in the ROOM's own buffers (no
  * RAM of its own): the input and the loop's return -> a low cut (~110 Hz: a spring carries little bass) ->
@@ -520,6 +524,71 @@ static __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *o
     hl.side = 1;
 }
 
+static int32_t wside[CTL];               /* (Blue Hare) the buses' side: + left, - right (mix_block) */
+#include "fx_amb.c"                      /* (Blue Hare, 2026-10-17) amb-1's plate and echoes: PLATE, AMB (float) */
+
+/* (Blue Hare, 2026-10-17) the patch's EQ (G_EQLO .. G_EQHI): four bands on the mix after MASTER, before the lows in
+ * mono and the compressor, in float on the FPU (fastmath.h): a low shelf at 100 Hz, peaks at 400 Hz and 2.5 kHz (Q
+ * 0.9), a high shelf at 8 kHz (shelf slope 1), -12 .. +12 dB each (R. Bristow-Johnson's cookbook biquads, transposed
+ * direct form II). A band's gain glides to its knob by 0.25 dB a block (a turn does not click); a band at 0 dB is
+ * passed by (its biquad is then the identity, its states 0: it starts again from silence, seamlessly) */
+static const float EQ_HZ[4] = {100.0f, 400.0f, 2500.0f, 8000.0f};
+static struct {
+    float g[4];                          /* the gains now (dB) */
+    float b0[4], b1[4], b2[4], a1[4], a2[4];
+    float s[4][2][2];                    /* the states: band, channel, two */
+} eq;
+static void eq_coef(uint32_t k, float db)
+{
+    float A = fm_exp2f(db * (0.166096405f * 0.5f)), w = 2.0f * FM_PI * EQ_HZ[k] / (float)FS, c = fm_cosf(w),
+          sn = fm_sinf(w), b0, b1, b2, a0, a1, a2;
+    if (k == 0u || k == 3u) {                           /* shelves, S = 1: alpha = sin / 2 * sqrt(2) */
+        float al = sn * 0.70710678f, r = 2.0f * fm_sqrtf(A) * al, ap = A + 1.0f, am = A - 1.0f;
+        if (!k) {
+            b0 = A * (ap - am * c + r); b1 = 2.0f * A * (am - ap * c); b2 = A * (ap - am * c - r);
+            a0 = ap + am * c + r; a1 = -2.0f * (am + ap * c); a2 = ap + am * c - r;
+        } else {
+            b0 = A * (ap + am * c + r); b1 = -2.0f * A * (am + ap * c); b2 = A * (ap + am * c - r);
+            a0 = ap - am * c + r; a1 = 2.0f * (am - ap * c); a2 = ap - am * c - r;
+        }
+    } else {                                            /* peaks, Q 0.9 */
+        float al = sn * (1.0f / (2.0f * 0.9f));
+        b0 = 1.0f + al * A; b1 = -2.0f * c; b2 = 1.0f - al * A;
+        a0 = 1.0f + al / A; a1 = -2.0f * c; a2 = 1.0f - al / A;
+    }
+    a0 = 1.0f / a0;
+    eq.b0[k] = b0 * a0; eq.b1[k] = b1 * a0; eq.b2[k] = b2 * a0; eq.a1[k] = a1 * a0; eq.a2[k] = a2 * a0;
+}
+static __attribute__((noinline)) void eq_block(int32_t *out, uint32_t n)
+{
+    uint32_t k, i, ch;
+    for (k = 0; k < 4u; k++) {
+        float t = (float)clamp(song.g[G_EQLO + k], -12, 12), d = t - eq.g[k];
+        if (d != 0.0f) {
+            eq.g[k] += d > 0.25f ? 0.25f : d < -0.25f ? -0.25f : d;
+            eq_coef(k, eq.g[k]);
+            if (eq.g[k] == 0.0f)
+                eq.s[k][0][0] = eq.s[k][0][1] = eq.s[k][1][0] = eq.s[k][1][1] = 0.0f;
+        }
+        if (eq.g[k] == 0.0f)
+            continue;
+        for (ch = 0; ch < 2u; ch++) {
+            const float b0 = eq.b0[k], b1 = eq.b1[k], b2 = eq.b2[k], a1 = eq.a1[k], a2 = eq.a2[k];
+            float s1 = eq.s[k][ch][0], s2 = eq.s[k][ch][1];
+            int32_t *o = out + ch;
+            for (i = 0; i < n; i++, o += 2) {
+                float x = (float)*o, y = b0 * x + s1;
+                s1 = b1 * x - a1 * y + s2;
+                s2 = b2 * x - a2 * y;
+                *o = (int32_t)fm_clampf(y, -8.0e6f, 8.0e6f);
+            }
+            eq.s[k][ch][0] = fm_flush(s1);
+            eq.s[k][ch][1] = fm_flush(s2);
+        }
+    }
+}
+
+
 #ifndef BLUEHARE_NATIVE
 /* (Blue Hare, 2026-10) CONCERT on the device (G_RTYPE 4; the native image has its own, floating point, fx_native.c):
  * HALL grown into the memory four tracks freed. At half the rate as HALL (22.05 kHz): the send (two samples
@@ -538,7 +607,7 @@ static __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *o
 static const uint16_t CN_LEN[CN_NL] = {577, 641, 691, 751, 809, 863, 937, 997, 1061, 1117, 1181, 1237, 1301, 1361, 1423, 1489};
 static const uint16_t CN_AP[CN_NAP] = {71, 53, 191, 139};
 #define CN_SUM (577 + 641 + 691 + 751 + 809 + 863 + 937 + 997 + 1061 + 1117 + 1181 + 1237 + 1301 + 1361 + 1423 + 1489)
-static struct {
+typedef struct {
     int16_t buf[CN_SUM];                 /* the lines, one after the other */
     int16_t ap[71 + 53 + 191 + 139];     /* the diffusers */
     int16_t pre[512];                    /* the pre-delay */
@@ -547,7 +616,13 @@ static struct {
     int16_t g[CN_NL], sz;                /* the lines' gains (Q15), for SIZE sz - 1 (0: none yet) */
     int32_t x, hp, he, m, s;             /* the send's last sample, its low cut; the last mid and side out */
     uint32_t ph;                         /* the drift */
-} cn __attribute__((section(".pool")));
+} cn_t;
+static union {                           /* (2026-10-17) CONCERT's state or PLATE's lines: one reverb runs at a time */
+    cn_t c;
+    float pl[AMB_PL_HALF];
+} rv_u __attribute__((section(".pool")));
+#define cn (rv_u.c)
+#define PL_MEM (rv_u.pl)
 
 static inline int32_t tl_pole(int32_t *s, int32_t x, int32_t k);   /* (LOW CUT's pole, below) */
 static __attribute__((noinline)) void concert_gains(int32_t sz)   /* (as hall_gains, no matrix factor: the / 4 is its) */
@@ -634,10 +709,14 @@ static __attribute__((noinline)) void rev_concert(const int32_t *rev_in, int32_t
 
 #ifdef BLUEHARE_NATIVE
 #include "fx_native.c"                                   /* (Blue Hare) the native image's reverbs: CONCERT, CAVERN, SHIMMER */
-#define RT_LAST 6
+static float pl_mem_native[AMB_PL_HALF];
+#define PL_MEM pl_mem_native
+#define RT_LAST 7                                        /* (5 PLATE; 6 CAVERN, 7 SHIMMER: fx_native.c's 5, 6) */
 #else
-#define RT_LAST 4                                        /* (2026-10: the device's CONCERT) */
+#define RT_LAST 5                                        /* (2026-10: the device's CONCERT; 10-17: PLATE) */
 #endif
+#define RT_PLATE 5
+#define RN_OF(rt) ((rt) == 4 ? 4u : (uint32_t)(rt) - 1u)   /* (native: fx_native.c's numbering of CONCERT CAVERN SHIMMER) */
 
 /* (Blue Hare) GATED (G_RTYPE 3): HALL, dense, cut off sharply: a hit in the send opens the gate, it stays open for
  * SIZE's hold (~60 .. ~500 ms) after the last one, then shuts over ~10 ms (the 80s gated snare; LINNKIT's, WAR's).
@@ -694,7 +773,6 @@ static int32_t part_buf[CTL];                            /* a part's block (mix_
 
 /* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are
  * cleared, the new one starts from silence */
-static int32_t wside[CTL];               /* (Blue Hare) the buses' side: + left, - right (mix_block) */
 static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t *wet, uint32_t n, int32_t rt)
 {
     static int32_t ts[CTL];                         /* (ROOM's side, faded with it) */
@@ -702,9 +780,12 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
     uint32_t i;
     for (i = 0; i < n; i++)
         t[i] = ts[i] = 0;
+    if (fx.rtype == RT_PLATE)
+        rev_plate(rev_in, t, n);
+    else
 #ifdef BLUEHARE_NATIVE
     if (fx.rtype >= 4u)
-        rev_native(fx.rtype, rev_in, t, ts, n);
+        rev_native(RN_OF(fx.rtype), rev_in, t, ts, n);
     else
 #else
     if (fx.rtype == 4u)
@@ -726,6 +807,8 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
     }
     rev_clear();
     fx.rtype = (uint8_t)rt;
+    if (rt == RT_PLATE)                             /* (its lines over CONCERT's memory, cleared: from silence) */
+        amb_plate_init(&amb_dp, PL_MEM, AMB_NUM_HALF, AMB_PRE_HALF), amb_pm = amb_ps = 0.0f;
 }
 
 /* TAPE / WORN (DELAY TYPE 1, 2): the delay bus as a tape echo, its output added to wet (see the top). dl the delay
@@ -801,7 +884,26 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         fx.tp_fbk = fb;
         fx.tp_wow = fx.tp_flt = 0;
     }
-    if (dt) {
+    if ((song.g[G_DTYPE] == (int16_t)DT_AMB) != fx.amb_on && !fx.dclr)
+        fx.dclr = 1;                                  /* AMB on or off: the line cleared first, the delay silent */
+    if (fx.dclr) {
+        uint32_t a = (fx.dclr - 1u) * DCLR_N;
+        memset(&dly_buf[a], 0, DCLR_N * sizeof dly_buf[0]);
+        if (a + DCLR_N < DLY_LEN) {
+            fx.dclr++;
+        } else {
+            fx.dclr = 0;
+            fx.amb_on = song.g[G_DTYPE] == (int16_t)DT_AMB;
+            fx.dtype = fx.tp_out = 0;
+            fx.dly_lp = fx.dly_lp2 = 0;
+            fx.dly_w = 0;
+            if (fx.amb_on)
+                amb_echo_init(&amb_de, dly_buf, AMB_TAPE_DEV, dly_buf + AMB_TAPE_DEV, 0);
+        }
+    }
+    if (fx.amb_on || fx.dclr) {
+        dt = 0;
+    } else if (dt) {
         fx.dtype = (uint8_t)dt;
         fx.tp_out = 0;
     } else if (fx.dtype) {                            /* .. -> CLEAN: the tape until its read is CLEAN's, then CLEAN */
@@ -832,7 +934,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         y += ca + cb;                                 /* (left 2 ca, right 2 cb: each as loud as the mono one was) */
         sd = ca - cb;
         fx.cho_w++;
-        if (fx.dtype) {                               /* TAPE, WORN: dly_tape after the loop (the same line) */
+        if (fx.dtype || fx.amb_on || fx.dclr) {       /* TAPE, WORN, AMB: after the loop (the same line) */
             wet[i] = y;
             wside[i] = sd;
             continue;
@@ -877,16 +979,20 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         wet[i] = y;
         wside[i] = sd;
     }
-    if (fx.dtype)
+    if (fx.amb_on && !fx.dclr)
+        dly_amb(dly_in, (int32_t *)rev_in, wet, n);   /* (its echoes feed the reverb's send: amb-1's) */
+    else if (fx.dtype)
         dly_tape(dly_in, wet, n, dl, fb, col, dmix);
     rt = song.g[G_RTYPE];
     rt = rt >= 1 && rt <= RT_LAST ? rt : 0;
     hl.side = 0;
     if (rt != fx.rtype)
         rev_switch(rev_in, wet, n, rt);
+    else if (rt == RT_PLATE)
+        rev_plate(rev_in, wet, n);
 #ifdef BLUEHARE_NATIVE
     else if (rt >= 4)
-        rev_native((uint32_t)rt, rev_in, wet, wside, n);
+        rev_native(RN_OF(rt), rev_in, wet, wside, n);
 #else
     else if (rt == 4)
         rev_concert(rev_in, wet, n);
@@ -956,6 +1062,8 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     int32_t *d = spread_buf;
     uint32_t i;
     int32_t lvl = LEVEL_Q12[t->p[P_LEVEL] & 127], pan = t->p[P_PAN], s = (t->p[P_SPRD] + 1) >> 1;
+    if (lay_wg[(uint32_t)(t - trk) % NTRK] < 32767)     /* (the layers' crossfade on WHEEL) */
+        lvl = (lvl * lay_wg[(uint32_t)(t - trk) % NTRK]) >> 15;
     if (!s)
         s = 32;                                         /* (PAN MODE RND at SPRD 0: half the width) */
     int32_t pa = clamp(pan - s, -64, 63), pb = clamp(pan + s, -64, 63);
@@ -1056,6 +1164,8 @@ static void mix_part(track_t *t, uint32_t n)
         mix_spread(t, b, n);
     else {
         int32_t lvl = LEVEL_Q12[t->p[P_LEVEL] & 127], pan = t->p[P_PAN];
+        if (lay_wg[(uint32_t)(t - trk) % NTRK] < 32767)   /* (the layers' crossfade on WHEEL: seq.c lay_wheel) */
+            lvl = (lvl * lay_wg[(uint32_t)(t - trk) % NTRK]) >> 15;
         int32_t gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
         int32_t c = t->p[P_CHOR] * 258, d = t->p[P_DLY] * 258, r = t->p[P_REV] * 258, pk = t->peak;
         int32_t xmax = c > d ? c : d;
@@ -1117,6 +1227,7 @@ static __attribute__((noinline)) void perf_master(int32_t *out, uint32_t n)
         out[2u * i] = mix_l[i];
         out[2u * i + 1u] = mix_r[i];
     }
+    eq_block(out, n);                                   /* (Blue Hare, 2026-10-17) */
     mono_lows(out, n);                                  /* (Blue Hare, 2026-10) */
     bus_comp(out, n);                                   /* (Blue Hare) */
     for (i = 0; i < n; i++) {
@@ -1190,7 +1301,7 @@ static void mix_track(uint32_t i, uint32_t n, int32_t mg)
 #define BLUEHARE_AMBFX 0
 #endif
 #if BLUEHARE_AMBFX
-#include "fx_amb.c"                                 /* (Blue Hare, 2026-10) amb-1's processing, the studio's choice */
+#include "fx_amb_chain.c"                           /* (Blue Hare, 2026-10) amb-1's whole chain, the studio's choice */
 #endif
 
 static void mix_block(int32_t *out, uint32_t n)
@@ -1227,6 +1338,7 @@ static void mix_block(int32_t *out, uint32_t n)
         out[2u * i] = (((mix_l[i] + wet[i] + wside[i]) >> 2) * mg) >> 10;
         out[2u * i + 1u] = (((mix_r[i] + wet[i] - wside[i]) >> 2) * mg) >> 10;
     }
+    eq_block(out, n);                                   /* (Blue Hare, 2026-10-17) */
     mono_lows(out, n);                                  /* (Blue Hare, 2026-10) */
     bus_comp(out, n);                                   /* (Blue Hare) */
     for (i = 0; i < n; i++) {

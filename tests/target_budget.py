@@ -28,6 +28,7 @@ FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER
          "rev_concert",                                     # (Blue Hare 2026-10) REVERB TYPE CONCERT, the device's (fx.c)
          "mono_lows",                                       # (Blue Hare 2026-10) the master's lows in mono (fx.c)
          "dly_tape",                                        # DELAY TYPE TAPE / WORN (Blue Hare 1.5, fx.c), when chosen
+         "rev_plate", "dly_amb", "eq_block",                # (2026-10-17) PLATE, AMB (fx_amb.c), the EQ: float, the FPU
          "sid_render", "wave_render", "bliss_render",       # (Blue Hare 2026-10-16: HARE FM1's engines; the others archived)
          "west_render", "modal_render", "strings_render",   # (STRINGS back 2026-10-17, in ECHOES' place)
          "sh101_render",                                    # (2026-10, Milestone 1)

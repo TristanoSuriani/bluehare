@@ -14,7 +14,7 @@ Sources are named relative to `firmware/src/` unless a path says otherwise.
 |---|---|---|
 | Sample rate | 44.1 kHz, stereo, 24-bit out | 44.1 kHz |
 | Processing block | 32 samples (`CTL`), inside a 128-frame I2S half buffer (2.9 ms) | the same code, the same blocks |
-| Arithmetic | fixed point today: Q15 audio, Q12 to Q30 coefficients, 32x32 into 64-bit products where needed. The pi32v2 core has a single-precision FPU, on since 2026-10 (`-mfprev1`, tools/build.py); no engine or effect uses float yet | the same fixed-point engines; the reverbs CONCERT, CAVERN and SHIMMER in floating point (`fx_native.c`) |
+| Arithmetic | fixed point today: Q15 audio, Q12 to Q30 coefficients, 32x32 into 64-bit products where needed. The pi32v2 core has a single-precision FPU, on since 2026-10 (`-mfprev1`, tools/build.py). Since 2026-10-17 the effects ported from amb-1 (PLATE, AMB) and the EQ run in float on it, their maths X0X's `fastmath.h` (Charles Vestal's: no libm on the device); the engines stay fixed point | the same fixed-point engines; the reverbs CONCERT, CAVERN and SHIMMER in floating point (`fx_native.c`) |
 | Voices | 12 per track, 8 shared by every track (12 while the audio interrupt's measured load stays under 75 %) | 16 per track |
 | Tracks | 4 (8 still buildable) | 4 |
 
@@ -34,10 +34,11 @@ keys / MIDI (USB, TRS)
   -> note input: scale map (QNT SNAP / WHITE), TRN, octave; chord keys (CHRD, VOIC)       seq.c, chord.c
   -> voice allocation (POLY / MONO / LEGATO / UNISON, glide, the shared budget, stealing)  voice.c
   -> per voice: ADSR, LFO, modulation matrix -> the engine's render                         voice.c, mod.c, eng_*.c
-  -> per track: DIST -> LOW CUT -> level, pan, SPREAD / PAN MODE                            fx.c
-       sends -> chorus | delay (sends low-cut) | reverb (sends low-cut)                    fx.c
+  -> layers: the ON layers a note reaches (ranges, STACK / ROUND ROBIN, TRANS, crossfade)  seq.c
+  -> per layer: DIST -> LOW CUT -> FILTER -> level (x WHEEL crossfade), pan, SPREAD         fx.c
+       sends -> chorus | delay (sends low-cut) | reverb (sends low-cut)                    fx.c, fx_amb.c
   -> mix -> FX layer (filters, FREEZE, OCT UP / DN, macros, mutes)                        perform.c
-  -> master: MONO LOWS -> bus compressor -> peak limiter -> soft clip -> DC blocker
+  -> master: EQ (4 bands, float) -> MONO LOWS -> bus compressor -> peak limiter -> soft clip -> DC blocker
              -> SPEAKER EQ (FLAT / LOWCUT / BASS+) -> MASTER                                fx.c, master.c
   -> USB audio (44.1 kHz, or 48 kHz through the resampler)                                  usb.c, uac_fir.h
   -> DAC, with the metronome's click added here only                                        audio.c, click.c
@@ -66,12 +67,14 @@ Archived 2026-10-16 (`archive/fx/README.md`): the **SLICER** (a tempo-synced 16-
 | **Delay: TAPE / WORN** | The same line read with wow (~0.5 Hz) and flutter (~6 Hz) between samples; TIME changes glide (the echoes bend in pitch); the loop is low-passed, high-passed and saturated, so high FDBK runs away into a bounded howl. WORN has more of each. | `fx.c` `dly_tape` |
 | **Delay: PING** | Ping-pong: the left echo at TIME, the right at twice it, the loop round both (up to 0.74 s). | `fx.c` |
 | **Delay: DUAL** | True stereo: two lines, left at TIME and right at 3/4 of it, each with its own low-passed loop, a quarter of each fed into the other. | `fx.c` |
+| **Delay: AMB** *(2026-10-17)* | amb-1's echoes (Charles Vestal's), in float: a 5.3 s tape loop at a quarter rate in the delay's own line, darker and thinner each pass (COLR, FDBK), wow, two heads that wander across the stereo field (GEN's MOTION), the second sliding to another place on the loop now and then; and a 160 ms Echoplex, fed back, its second tap right. The echoes feed the reverb's send, as amb-1's feed its plate. Switching to or from it clears the line 4096 samples a block (12 ms of silence). | `fx_amb.c` `dly_amb` |
 | **Sends low-cut** | The delay and reverb sends lose everything under ~220 Hz (two one-pole high-passes), so the bass stays dry and out of the tails. | `fx.c` `send_lowcut` |
 | **Reverb: ROOM** | Freeverb-like: 4 damped combs and 2 allpasses; the combs signed in turn (+ - + -) give a side signal for width. | `fx.c` `rev_room` |
 | **Reverb: SPRING** | One spring of a tank (after Välimäki, Parker and Abel): a low cut (~110 Hz), a chain of stretched first-order allpasses `(a + z^-4)/(1 + a z^-4)` whose group delay rises with frequency (the chirp, the "boing"), a loop delay with one-pole damping; two pickups. | `fx.c` `rev_spring` |
 | **Reverb: HALL** | A feedback delay network at half rate (22.05 kHz): a low cut, 2 allpass diffusers, 8 mutually prime lines (21 to 34 ms), four of them read through slow sine modulation, one-pole damping, and an 8x8 Paley conference matrix (each line feeds the 7 others, none itself). RT60 0.5 s to 9 s, set from SIZE through a 2^-x approximation. Stereo from split line sums. | `fx.c` `rev_hall` |
 | **Reverb: GATED** | HALL cut off sharply: a hit opens the gate, it holds 60 to 500 ms after the last one, then closes over ~10 ms (the 80s gated snare). | `fx.c` |
 | **Reverb: CONCERT** | HALL grown: half rate, a 12 ms pre-delay, 4 diffusers, 16 modulated lines (26 to 67 ms), mixed by a 16x16 Hadamard matrix computed as a fast Walsh transform (lossless). ~34 KB of the memory pool. | `fx.c` `rev_concert` |
+| **Reverb: PLATE** *(2026-10-17)* | amb-1's plate (Charles Vestal's): Dattorro's ("Effect Design, Part 1", JAES 1997) in float at half rate: a 30 ms pre-delay, a bandwidth low-pass, four input diffusers, a figure-8 tank of two modulated allpasses, delays, damping low-passes and allpasses, seven taps a side. SIZE the decay (0.6 to 0.975), DAMP the damping. Its lines (69 KB) share CONCERT's memory; as loud as HALL. | `fx_amb.c` `rev_plate` |
 | **Native-only reverbs** | CONCERT at full rate in floating point, CAVERN (a 70 ms gap, six discrete wall echoes, then a long dark FDN tail) and SHIMMER (a two-head pitch shifter an octave up inside the loop). On the device they load as HALL. | `fx_native.c` |
 
 ### 3.3 The performance layer (FX held)
@@ -93,6 +96,7 @@ Black keys 1 to 4 mute tracks 1 to 4 while held. Every effect starts and ends wi
 
 | Stage | Algorithm | Where |
 |---|---|---|
+| **EQ** *(2026-10-17)* | The patch's four bands, in float: a low shelf at 100 Hz, peaks at 400 Hz and 2.5 kHz (Q 0.9), a high shelf at 8 kHz, ±12 dB each (RBJ cookbook biquads, transposed direct form II; coefficients from `fastmath.h`). A gain glides 0.25 dB a block; a band at 0 dB is passed by, bit for bit. FX > EQ on the FM-1. | `fx.c` `eq_block` |
 | **MONO LOWS** | The mix's side signal high-passed at ~120 Hz (12 dB/oct); the lows of the side removed from both channels, so the bass is mono. | `fx.c` `mono_lows` |
 | **Bus compressor** | 3:1 above a threshold 6 dB under the limiter's; level from the block peak, ~3 ms attack, ~190 ms release, the gain ramped across the block. | `fx.c` `bus_comp` |
 | **Peak limiter** | ~0.1 ms attack, ~150 ms release, its threshold where tanh is still nearly linear, so chords get quieter instead of crushed. | `fx.c` |
@@ -174,7 +178,9 @@ bass (SH101), keys (BLISS) and bells (MODAL).
 
 ## Next
 
-Milestone 1 has SH101 (above) and the sound design studio (`web/studio/`: every engine and every effect of section 3
+2026-10-17: amb-1's plate and echoes as REVERB TYPE PLATE and DELAY TYPE AMB, the EQ, all in float with fast math
+(`tests/float_fx_test.c` checks fastmath against libm, the EQ's bands, PLATE's tail and level, AMB's echoes and its
+switch). Milestone 1 has SH101 (above) and the sound design studio (`web/studio/`: every engine and every effect of section 3
 in the browser, the firmware itself in WebAssembly) and GEN (section 8). Next: FX
 presets (the FX screen chooses between presets of the chain in section 3). The 2x oversampling stays unused: SH101's
 saturation sits inside its filter's feedback loop, where the half-band's delay would detune the resonance.

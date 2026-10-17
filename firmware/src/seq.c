@@ -170,6 +170,49 @@ static uint32_t layer_targets(uint32_t note, uint32_t vel)   /* the layers a not
     }
     return m;
 }
+/* (2026-10-17) the crossfade (core.h lay.xsrc): layer k's level (Q15) at s (0 .. 127) along it: equal power between
+ * the two places around s (sine and cosine of a quarter turn), the ON layers with a place taking part; a layer without
+ * one (or XFADE OFF) at full level */
+static int32_t lay_xgain(uint32_t k, int32_t s)
+{
+    int32_t p = lay.xpos[k], lo = -1, hi = 128, mn = 128, mx = -1, q;
+    uint32_t j;
+    if (lay.xsrc == LX_OFF || p < 0)
+        return 32767;
+    for (j = 0; j < NTRK; j++) {
+        if (!lay.on[j] || (q = lay.xpos[j]) < 0)
+            continue;
+        if (q <= s && q > lo)
+            lo = q;
+        if (q >= s && q < hi)
+            hi = q;
+        mn = q < mn ? q : mn;
+        mx = q > mx ? q : mx;
+    }
+    if (lo < 0)
+        return p == mn ? 32767 : 0;                     /* (below the first place: the first) */
+    if (hi > 127)
+        return p == mx ? 32767 : 0;                     /* (above the last: the last) */
+    if (lo == hi || (p != lo && p != hi))
+        return p == lo ? 32767 : 0;
+    {
+        uint32_t ph = (uint32_t)(s - lo) * (0x40000000u / (uint32_t)(hi - lo));   /* (the share of a quarter turn) */
+        int32_t g = sine_i(p == hi ? ph : 0x40000000u + ph);
+        return g < 0 ? 0 : g > 32767 ? 32767 : g;
+    }
+}
+/* once a block (events_block): WHEEL's levels, each gliding to its place's (~5 ms) */
+static void lay_wheel(void)
+{
+    uint32_t k;
+    for (k = 0; k < NTRK; k++) {
+        int32_t t = lay.xsrc == LX_WHEEL && lay.on[k] ? lay_xgain(k, lay.xval) : 32767, d = t - lay_wg[k];
+        lay_wt[k] = t;
+        lay_wg[k] += d > 4096 ? 4096 : d < -4096 ? -4096 : d;
+    }
+}
+#define LAY_CHORD 1323u                    /* MONO layers: notes this close (30 ms) are a chord's, not a phrase's */
+static uint32_t lay_clk, lay_last[NTRK];   /* (samples: events_block) the last note each layer took */
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     uint32_t k, m;
@@ -190,7 +233,16 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
         }
         if ((m >> k) & 1u) {
             uint32_t n2 = (uint32_t)clamp((int32_t)note + lay.tr[k], 0, 127);
-            trk_note_on(&trk[k], n2, vel);
+            int32_t g = lay.xsrc == LX_VEL ? lay_xgain(k, (int32_t)vel) : lay.xsrc == LX_KEY ? lay_xgain(k, (int32_t)note)
+                                                                                           : 32767;
+            if (!g)
+                continue;                                /* (faded out for this note: not played) */
+            voice_xg = (uint16_t)g;
+            voice_chord = trk_vmode(&trk[k]) != V_POLY && lay_clk - lay_last[k] < LAY_CHORD;   /* (a MONO layer: a */
+            trk_note_on(&trk[k], n2, vel);                                                     /* chord, no stutter) */
+            voice_xg = 0xFFFFu;
+            voice_chord = 0;
+            lay_last[k] = lay_clk;
             lay_tn[note][k] = (uint8_t)n2;
         }
     }
@@ -454,6 +506,8 @@ static void events_block(uint32_t n)
     uint32_t i, pr, seq_n = n;
     uint32_t clock_mode = (uint32_t)song.g[G_CLOCK];
     seq_n = tgt_seq_block(n, &clock_mode);         /* (target.h: the plugin's host's transport over CLOCK) */
+    lay_clk += n;                                  /* (the layers: the chord window, WHEEL's levels) */
+    lay_wheel();
     if (midi_clock.mode != clock_mode) {
         seq_stop();
         memset(&midi_clock, 0, sizeof midi_clock);
