@@ -24,7 +24,7 @@ const eq = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 const py = (code, ...args) => execFileSync("python3", ["-c", code, ...args], { maxBuffer: 1 << 26 });
 const HERE = new URL(".", import.meta.url).pathname;
 /* what lives outside web/, each overridable (a web-only checkout passes them, or the checks skip):
-   BLUEHARE_DESC  the firmware's parameter / protocol table (tests/descdump.c -> build/host/desc.json)
+   BLUEHARE_DESC  the firmware's parameter / protocol table (tests/os/descdump.c -> build/host/desc.json)
    BLUEHARE_ROOT  the Blue Hare tree with a ./build.sh build (the package check) */
 const DESC = process.env.BLUEHARE_DESC || join(HERE, "../build/host/desc.json");
 const FW_ROOT = process.env.BLUEHARE_ROOT || join(HERE, "..");
@@ -299,7 +299,7 @@ async function editorPresetAliases() {
   done();
 }
 
-/* the mock's tables == the firmware's (build/host/desc.json from tests/descdump.c, written by run_tests.sh):
+/* the mock's tables == the firmware's (build/host/desc.json from tests/os/descdump.c, written by run_tests.sh):
    parameter descriptors, engines (titles, EDIT, presets), power-on sounds. The step sequencer's tables (NSTEP, the
    factory patterns, a preset's suggested pattern, the DRUM grid's lane notes) are the editor's own since 1.5 (the
    firmware has none): kept for firmware before 1.5, not compared */
@@ -335,7 +335,7 @@ function mockTables() {
   m2.stop();
   cmp("firmware: G_ENGSEL names == engine names", fw.GP[fw.G_ENGSEL].names, fw.ENG.map((e) => e.name));
   const mj = join(DESC, "../menu.json");
-  if (E.MENU && existsSync(mj)) {                   /* the MENU settings: tests/editor_test.c's MENU_DESC replies */
+  if (E.MENU && existsSync(mj)) {                   /* the MENU settings: tests/os/editor_test.c's MENU_DESC replies */
     const fm = JSON.parse(readFileSync(mj, "utf8"));
     cmp("MENU settings", E.MENU.map((x) => ({ id: x.id, kind: x.kind || 0, min: x.kind === 1 ? x.min : 0,
       max: x.kind === 1 ? x.max : (x.names || m2.state.palettes).length - 1, value: x.def, name: x.name,

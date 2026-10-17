@@ -48,7 +48,7 @@ typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #ifndef GFX_HOOK_RULE
 #define GFX_HOOK_RULE(x, y, w, h) ((void)0)        /* a divider drawn on the screen (ui_draw.c lcd_rule): no box may touch it */
 #endif
-/* the alignment check (tests/ui_render.c): GFX_HOOK_ALIGN declares that the next item(s) drawn (a text, an icon, a
+/* the alignment check (tests/os/ui_render.c): GFX_HOOK_ALIGN declares that the next item(s) drawn (a text, an icon, a
  * keycap, a cushion) are meant to sit centred in the box x0..x1, y0..y1 (canvas drawing coordinates, x1 y1 past it)
  * along AL_H and / or AL_V; AL_N(n): the next n items together. A text's ink is measured across (its glyphs' boxes)
  * and its capitals' band up and down (GFX_HOOK_PEN: its line top and face); an icon's ink from its cell

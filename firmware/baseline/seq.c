@@ -231,7 +231,7 @@ static void input_off(track_t *t, uint32_t note)
 /* -------------------------------------------------------- sequencer --- */
 /* the sequencer: a placeholder for now (SEQ shows TODO). seq_hook, when set, gets every block the samples the
  * transport moved on (events_block, after the keys and MIDI IN; 0 while stopped): where the sequencer will play. The
- * host tests play their songs through it (tests/hostsim.c host_seq) */
+ * host tests play their songs through it (tests/lib/hostsim.c host_seq) */
 static void (*seq_hook)(uint32_t n);
 
 /* PLAY: the transport from its start: the metronome with it */

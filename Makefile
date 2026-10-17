@@ -12,7 +12,9 @@
 #   make tables                    what is generated from the firmware and the registry: the web editor's mock tables
 #                                  (tools/gen_editor_mock.py), AUTHORS.md's components (tools/gen_dist.py --credits)
 #   make quick                     the fast tier of the tests (QUICK=1: about a minute)
-#   make test                      the whole suite (NATIVE=0 / SANITIZE=0 leave parts out)
+#   make test [LAYER=..]           the whole suite (NATIVE=0 / SANITIZE=0 leave parts out); LAYER=baseline|os|fm1|native:
+#                                  that layer's tests and those of the layers above it (tests/<layer>/steps.sh)
+#   make test-changed              the layers the working tree changes (LAYER=auto: the lowest one and above)
 #   make test-core                 the suite without the native image (most firmware work)
 #   make serve [DIST=hare_fm1]     the emulator on http://localhost:8000
 #   make serve-studio [DIST=..]    the studio on http://localhost:8001
@@ -26,7 +28,7 @@ TESTCC := cc -O1 -Wall -Wno-unused-function
 EMUDIR = build/emu$(if $(filter-out ,$(DIST)),-$(DIST),)
 STUDIODIR = build/studio$(if $(filter-out ,$(DIST)),-$(DIST),)
 
-.PHONY: firmware firmwares emu emus studio native tables quick test test-core serve serve-studio help
+.PHONY: firmware firmwares emu emus studio native tables quick test test-changed test-core serve serve-studio help
 help:
 	@sed -n '/^#   make/s/^#   //p' $(MAKEFILE_LIST)
 
@@ -50,7 +52,7 @@ native:
 
 tables:
 	$(ENV) && mkdir -p build/host && python3 tools/gen_dist.py . build/gen && \
-	  cc -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o build/host/descdump tests/descdump.c -lm && \
+	  cc -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o build/host/descdump tests/os/descdump.c -lm && \
 	  build/host/descdump > build/host/desc.json && python3 tools/gen_editor_mock.py build/host/desc.json web/editor.html && \
 	  python3 tools/gen_dist.py --credits .
 
@@ -58,7 +60,10 @@ quick:
 	$(ENV) && QUICK=1 CC="$(TESTCC)" sh tests/run_tests.sh
 
 test:
-	$(ENV) && $(EMENV); CC="$(TESTCC)" sh tests/run_tests.sh
+	$(ENV) && $(EMENV); LAYER="$(or $(LAYER),all)" CC="$(TESTCC)" sh tests/run_tests.sh
+
+test-changed:
+	$(ENV) && $(EMENV); LAYER=auto CC="$(TESTCC)" sh tests/run_tests.sh
 
 test-core:
 	$(ENV) && $(EMENV); NATIVE=0 CC="$(TESTCC)" sh tests/run_tests.sh

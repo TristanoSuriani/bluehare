@@ -18,7 +18,7 @@
  * (g = 10^(-3 len / (RT60 FS))), then mixed by a 16 x 16 Hadamard matrix (a fast Walsh transform, / 4: lossless) and
  * written back with the send. Out: the even lines' signed sum left, the odd lines' right -> the mid to the wet bus, the
  * side to wside (as ROOM's). The levels: at SIZE 90 and DAMP 60, a burst of noise sends out what HALL does
- * (tests/native_test.c). Silence in ends in silence out (denormals flushed, the output rounded to integers). */
+ * (tests/native/native_test.c). Silence in ends in silence out (denormals flushed, the output rounded to integers). */
 #include <math.h>
 #define RN_NL 16u
 #define RN_LMAX 8192u                    /* a line's buffer (CAVERN's longest 7237 + the drift) */

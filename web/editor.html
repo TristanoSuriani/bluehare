@@ -984,7 +984,7 @@ const mixer = {
 
 /* ------------------------------------------------------------ mock device --- */
 /* Implements the protocol like firmware/os/editor.c, with tables copied from params.c
-   and the engine sources (test_web.mjs checks them against the firmware's, tests/descdump.c). Used with ?mock=1 (add &legacy=1 for a firmware without cmds 16..26).
+   and the engine sources (test_web.mjs checks them against the firmware's, tests/os/descdump.c). Used with ?mock=1 (add &legacy=1 for a firmware without cmds 16..26).
    opt: {legacy: no user bank / WATCH, v3: no TRACK_PARAM / TRACK_CHANGED (firmware 0.8),
          auto: false = no simulated knobs (tests drive sim.*),
          watchMs: how long WATCH lasts after the last request (3000), slots: user bank size (32)} */

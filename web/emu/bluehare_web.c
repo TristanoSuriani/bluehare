@@ -4,7 +4,7 @@
  * The design (the device clock driven by the audio the worklet asks for, the exports below, the saved
  * flash handed back before boot) follows X0X's browser build, web/emu/x0x_web.c of charlesvestal/fm1-x0x
  * (GPL-3.0), a Felucca fork. */
-/* Blue Hare in the browser: the firmware's sources, as the host tests build them (tests/hostsim.c: libc,
+/* Blue Hare in the browser: the firmware's sources, as the host tests build them (tests/lib/hostsim.c: libc,
  * engines, voices, FX, sequencer; then the UI, main.c, storage and projects, in src/bluehare.c's order),
  * compiled to WebAssembly and run in an AudioWorklet against a simulated FM-1:
  *   - the device clock: TIMER4 ticks (24 MHz) and fm1_ms advance with the audio the worklet asks for; the
@@ -35,7 +35,7 @@
 
 static uint8_t nor[0x100000];            /* the SPI NOR (erased: 0xFF) */
 #define main hostsim_main
-#include "../../tests/hostsim.c"
+#include "../../tests/lib/hostsim.c"
 #undef main
 
 /* ------------------------------------------------------------ the clock --- */

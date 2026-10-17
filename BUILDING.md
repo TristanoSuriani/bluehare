@@ -20,7 +20,7 @@ The build makes three files in `build/`:
 ## Source layout (2026-10-17)
 
 The code follows the architecture's layers (docs: "Blue Hare architecture"): the OS may use the baseline, never the
-reverse, and `tests/baseline_alone.c` builds the baseline with only its own directory on the include path to keep it
+reverse, and `tests/baseline/baseline_alone.c` builds the baseline with only its own directory on the include path to keep it
 so.
 
 | Directory | Layer | What |
@@ -107,7 +107,7 @@ BLUEHARE_DIST=<name> ./build.sh      # another one (build/bluehare-<name>.fwsc)
 | Distribution | Tracks | Engines |
 | --- | --- | --- |
 | `hare_fm1` | 4 | SID SH101 WAVE VOSIM BLISS WEST MODAL STRINGS: Blue Hare's one distribution (2026-10-16, Milestone 1), palette ICE |
-| `test_subset` | 4 | the host tests' build without some engines and the PLATE component, never an image: SID WAVE WEST MODAL (`tests/engines_test.c`) |
+| `test_subset` | 4 | the host tests' build without some engines and the PLATE component, never an image: SID WAVE WEST MODAL (`tests/os/engines_test.c`) |
 | `all` | 4 | no file: generated from the registry (`firmware/components.txt`), every engine and component; Native's (2026-10-17: `hare_native` and NATIVE distributions are gone) |
 
 A distribution picks components besides its engines (2026-10-17): `FX <NAME>`, `PLUGIN <NAME>`, `UI <NAME>` lines,
@@ -262,7 +262,7 @@ open "build/native/Blue Hare.app"
 
 Songs, sounds and presets are stored as on the device: a song made here plays on the FM-1 with the device's voices,
 CONCERT, CAVERN and SHIMMER as HALL, and a delay longer than 1.49 s cut short.
-`tests/native_test.c` checks all of it in each distribution and prints how fast the computer renders every track full
+`tests/native/native_test.c` checks all of it in each distribution and prints how fast the computer renders every track full
 (about 30 times real time on an M1 Pro).
 
 ## Plugin (archived)
@@ -273,6 +273,11 @@ works properly). It is out of the build and the tests; its build notes are kept 
 image.
 
 ## Tests
+
+*(2026-10-17)* The tests follow the layers: `tests/baseline/`, `tests/os/`, `tests/fm1/`, `tests/native/` (and
+`tests/lib/`, the shared harness `hostsim.c`), each with its `steps.sh`. `make test LAYER=<layer>` runs a layer's
+tests and those of the layers above it (baseline: everything; os: os, fm1, native; fm1 or native: itself);
+`make test-changed` picks the lowest layer the working tree touches. The FM-1 layer alone runs in about 30 s.
 
 ```
 tests/run_tests.sh
@@ -286,9 +291,9 @@ drawing code against stubs: every screen in every palette is rendered and checke
 overlapping text; PNGs land in `build/ui_new/`), every engine (the regression renders of each preset), the chord keys, the modulation matrix, the FX layer, the reverbs, the SLICER
 and swing.
 
-The regression suite (`tests/regress.c`) renders every engine and preset and compares a
-hash of each render with `tests/golden.txt`; it also checks levels, voices and the CPU
-cost (`tests/cpu_baseline.txt`, `tests/target_budget.txt`). After an intended change of
+The regression suite (`tests/baseline/regress.c`) renders every engine and preset and compares a
+hash of each render with `tests/baseline/golden.txt`; it also checks levels, voices and the CPU
+cost (`tests/baseline/cpu_baseline.txt`, `tests/fm1/target_budget.txt`). After an intended change of
 the sound, `GOLDEN_UPDATE=1 sh tests/run_tests.sh` rewrites the hashes; `BUDGET_UPDATE=1`
 does the same for the cost files.
 

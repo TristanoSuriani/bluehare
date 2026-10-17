@@ -205,7 +205,7 @@ def build_app():
             flags.append(f"-D{flag}={v}")
     flags.append(f"-DBLUEHARE_DIST={distribution()}")   # (core.h includes build/gen/dist_<name>.h)
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "dist.txt").write_text(distribution() + "\n")   # (what build/bluehare.* is: tests/target_budget.py)
+    (OUT / "dist.txt").write_text(distribution() + "\n")   # (what build/bluehare.* is: tests/fm1/target_budget.py)
     v = os.environ.get("BLUEHARE_USB_LAYOUT")   # firmware/fm1/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DBLUEHARE_USB_LAYOUT={v}")

@@ -206,7 +206,7 @@ d.one("stu_set", 2, SX.PANMODE, 0, 0);
 // (2026-10-17) the patch's EQ, PLATE and AMB
 {
   const G_DTYPE = 25, G_RTYPE = 24, G_EQLO = 27, G_EQHI = 30, P_DLY = 35, P_REV = 36;
-  check(`EQ: four bands of the patch, ±12 dB ("${d.str("stu_format", 1, G_EQLO, 12)}", "${d.str("stu_format", 1, G_EQHI, -12)}"; their response: tests/float_fx_test.c)`,
+  check(`EQ: four bands of the patch, ±12 dB ("${d.str("stu_format", 1, G_EQLO, 12)}", "${d.str("stu_format", 1, G_EQHI, -12)}"; their response: tests/baseline/float_fx_test.c)`,
     d.str("stu_format", 1, G_EQLO, 12).includes("dB") && d.one("stu_set", 1, G_EQHI, 40, 0) === 12 && d.one("stu_set", 1, G_EQHI, 0, 0) === 0);
   const tail = (sendId, gid, type) => {
     d.one("stu_set", 1, gid, type, 0); d.one("stu_set", 0, sendId, 100, 0); d.render(200);

@@ -10,7 +10,7 @@ the prototype (a Kaiser-windowed sinc of 160 * N taps at 7.056 MHz, cut-off FC):
 The table holds the taps oldest input first (UAC_FIR[p][i] = L * PROTO[p + 160 (N-1-i)]), Q30, and only the
 phases 0 .. 79: the prototype is symmetric, so phase 159 - p is phase p read backwards. Each phase's taps sum
 to exactly 1 << 30 (unity gain at DC, the rounding left on its largest tap).
-Why these numbers (tests/uac_test.c measures them on the C code):
+Why these numbers (tests/fm1/uac_test.c measures them on the C code):
   N = 24, FC = 22 kHz, beta 9: images that would fold below 20 kHz (input above 28.1 kHz at 7.056 MHz) are
   down 90 dB, the passband is flat within 0.06 dB to 18 kHz (-1.2 dB at 20 kHz); with Q30 taps the 1 kHz SNR
   sits at the 16-bit floor (~94 dB at -1 dBFS); Q15 taps would cap it near 87 dB.

@@ -697,7 +697,7 @@ static __attribute__((noinline)) void rev_concert(const int32_t *rev_in, int32_t
             off += CN_LEN[k];
         }
         {                                               /* back to 44.1 kHz, between samples */
-            int32_t mm = ((l + r) * 3) >> 1, ss = ((l - r) * 3) >> 1;   /* (x 1.5: HALL's level, tests/concert_test.c) */
+            int32_t mm = ((l + r) * 3) >> 1, ss = ((l - r) * 3) >> 1;   /* (x 1.5: HALL's level, tests/baseline/concert_test.c) */
             out[2u * i] += (mp + mm) >> 1;
             out[2u * i + 1u] += mm;
             rev_side[2u * i] = (sp + ss) >> 1;

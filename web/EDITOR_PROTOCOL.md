@@ -12,11 +12,11 @@ older firmware sends them) and the backup's FM6 objects (ids 8 and 9: always lis
 taken and ignored, rc 0, so an older archive still restores). The sections on FM6 below describe Felucca's firmware.
 
 The firmware side is `firmware/os/editor.c`. Commands 1-15, track selection, dumps, step reads
-and parameter writes (27, 29, 30, 31) were checked on hardware. `tests/editor_test.c` also exercises the real C
+and parameter writes (27, 29, 30, 31) were checked on hardware. `tests/os/editor_test.c` also exercises the real C
 handler, malformed transfers and stop timeouts against simulated flash. User-preset
 flash writes and live pushes (16-26, 32) have host coverage; that does not establish
 their hardware behavior. The step chance byte, motion (64) and the full backup (65-67) have host
-coverage only (`tests/editor_test.c`, `tests/backup_test.c`, `web/test_backup.mjs`).
+coverage only (`tests/os/editor_test.c`, `tests/os/backup_test.c`, `web/test_backup.mjs`).
 
 **v3 (four tracks):** the device has four tracks, each a synth part (since 1.0; before it, track 4
 was a GM drum track: see "Track 4 since 1.0" below). One
@@ -1143,5 +1143,5 @@ requests for 64 rows) or ORDER / INSTR / FILTER / VARCOUNT and VARIATION / WIDTH
 The tracks' own settings on the device's SETTINGS page other than CUT / RES (ATTACK, DECAY, SUSTAIN, RELEASE, FLT ENV,
 DIST, CHORUS, DELAY, REVERB, LEVEL, PAN) are track parameters: `TRACK_PARAM` (31) reads and sets them.
 
-`tests/editor_test.c` (tracker_protocol) covers the firmware side; `web/test_web.mjs` (editorTracker) covers the
+`tests/os/editor_test.c` (tracker_protocol) covers the firmware side; `web/test_web.mjs` (editorTracker) covers the
 editor's requests, replies and its mock device.

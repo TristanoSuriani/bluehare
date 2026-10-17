@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Tristano Suriani (Blue Hare)
 # Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
-"""The web editor's mock device's tables (web/editor.html) from the firmware's own (tests/descdump.c's JSON:
+"""The web editor's mock device's tables (web/editor.html) from the firmware's own (tests/os/descdump.c's JSON:
 build/host/desc.json, the host tests' build: the primary distribution), between markers: /*MOCK-COUNTS-*/ (P_COUNT,
 G_COUNT, P_E0, G_ENGSEL, P_SLCR), /*MOCK-TP-*/ and /*MOCK-GP-*/ (2026-10-17: every track and global parameter's
 descriptor, by id), /*MOCK-ENG-*/ (the engines by id: titles, EDIT, presets), /*MOCK-TRKDEF-*/ (the power-on sounds,

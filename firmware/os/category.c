@@ -21,7 +21,7 @@ static uint32_t cat_of_engine(uint32_t e)
 
 #ifndef UP_HOST
 /* the factory presets' categories: each engine's cats (engine_t), a letter per preset in its order (B BASS, L LEAD, P PAD,
- * U PLUCK, K KEYS, D DRUM, F FX, O OTHER). tests/ui_test.c checks every string against its engine's preset count. A
+ * U PLUCK, K KEYS, D DRUM, F FX, O OTHER). tests/os/ui_test.c checks every string against its engine's preset count. A
  * preset's category is a hint for browsing: nothing else reads it */
 static uint32_t preset_cat(uint32_t e, uint32_t k)    /* factory preset k of engine (index) e */
 {
