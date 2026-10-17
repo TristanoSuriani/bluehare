@@ -4,9 +4,11 @@
 # Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 """The WAVE engine's wavetables (firmware/baseline/eng_wave.c): Blue Hare's own, from formulas in this file.
 
-8 banks of 8 single-cycle frames; WAVE scans between a bank's frames (POS). Each frame is kept as 7 band-limited
-copies (mip levels) so high notes do not alias: level l is 512 >> l samples long and holds harmonics 1 .. 64 >> l
-(8 samples a harmonic: the images of the linear interpolation stay 30 dB and more under the harmonics). A frame is given as a waveform (sampled at 2048
+8 banks of 8 single-cycle frames; WAVE scans between a bank's frames (POS). Each frame is kept as 8 band-limited
+copies (mip levels) so high notes do not alias: level l is 1024 >> l samples long and holds harmonics 1 .. 256 >> l
+(2026-10-17: was 512 samples / 64 harmonics at the top, so a note under ~413 Hz lost its highs: a 55 Hz bass stopped
+at 3.5 kHz, now at 14 kHz, every note above ~94 Hz full to 12 .. 24 kHz. 4 samples a harmonic: the linear
+interpolation's images 21 dB under the topmost harmonic, which is itself 40 .. 50 dB down in most frames). A frame is given as a waveform (sampled at 2048
 points, its harmonics taken by DFT) or as a spectrum; every level of a frame has the level-0 copy's gain (peak
 0.9 of full scale), so a level change keeps the loudness.
   gen_wavetables.py OUT.h"""
@@ -16,18 +18,22 @@ import sys
 from operator import mul
 
 N = 2048                        # points a waveform is sampled at, for its DFT
-HMAX = 64                       # harmonics of level 0
-LEVELS = [(512, 64), (256, 32), (128, 16), (64, 8), (32, 4), (16, 2), (8, 1)]   # (length, harmonics) per mip level
+HMAX = 256                      # harmonics of level 0
+LEVELS = [(1024, 256), (512, 128), (256, 64), (128, 32), (64, 16), (32, 8), (16, 4), (8, 2)]   # (length, harmonics)
 FRAMES = 8
+
+
+COS = [math.cos(2 * math.pi * n / N) for n in range(N)]   # one cycle's (indexed k n mod N: no table a harmonic)
+SIN = [math.sin(2 * math.pi * n / N) for n in range(N)]
 
 
 def dft(x):
     """harmonics 1..HMAX of one cycle x (N points): [(a_k cos, b_k sin)]"""
     out = []
     for k in range(1, HMAX + 1):
-        c = [math.cos(2 * math.pi * k * n / N) for n in range(N)]
-        s = [math.sin(2 * math.pi * k * n / N) for n in range(N)]
-        out.append((2 * sum(map(mul, x, c)) / N, 2 * sum(map(mul, x, s)) / N))
+        idx = [(k * n) % N for n in range(N)]
+        out.append((2 * sum(x[n] * COS[i] for n, i in enumerate(idx)) / N,
+                    2 * sum(x[n] * SIN[i] for n, i in enumerate(idx)) / N))
     return out
 
 
@@ -133,10 +139,12 @@ BANKS = [("BASIC", bank_basic), ("ADDTV", bank_addtv), ("SYNC", bank_sync), ("RE
 
 
 def render(h, length, hmax, gain):
+    c = [math.cos(2 * math.pi * n / length) for n in range(length)]
+    s = [math.sin(2 * math.pi * n / length) for n in range(length)]
+    terms = [(k, a, b) for k, (a, b) in enumerate(h[:hmax], 1) if a or b]   # (the silent harmonics skipped)
     out = []
     for n in range(length):
-        x = 2 * math.pi * n / length
-        v = sum(a * math.cos(k * x) + b * math.sin(k * x) for k, (a, b) in enumerate(h[:hmax], 1))
+        v = sum(a * c[(k * n) % length] + b * s[(k * n) % length] for k, a, b in terms)
         out.append(max(-32767, min(32767, round(v * gain))))
     return out
 

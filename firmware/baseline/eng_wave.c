@@ -6,8 +6,9 @@
  *
  * TBL picks the bank, POS the place between its frames (the two neighbours crossfaded): the SHP routings move it
  * (ENV DEST / LFO DEST SHP, the matrix's SHP: a step of shape is a step of POS), so an envelope or an LFO scans the
- * table. Every frame is stored 7 times, band-limited to 64, 32, .. 2 harmonics and the fundamental alone (512 .. 8
- * samples): each block plays the fullest copy whose harmonics alias no lower than ~20 kHz at the voice's pitch,
+ * table. Every frame is stored 8 times, band-limited to 256, 128, .. 2 harmonics (1024 .. 8 samples; 2026-10-17: was
+ * 64 .. 1 in 512 .. 8, the low notes' highs cut): each block plays the fullest copy whose harmonics alias no lower
+ * than ~20 kHz at the voice's pitch,
  * read with linear interpolation (no aliasing on high notes, the same loudness on every copy).
  * SYNC (0 = off) reads the frame faster than the voice's cycle, 1x .. 8x (at most ~18 kHz: high notes sync less),
  * restarting it every cycle; a half-sine
@@ -19,28 +20,30 @@
  * filter, s[3] the held sample, s[4] the hold count. */
 #include "bluehare_wavetables.h"
 static const char *const N_WT_BANK[] = {WT_BANK_NAMES_INIT, 0};
-static const uint16_t WT_LVL_OFF[7] = {0, 512, 768, 896, 960, 992, 1008};   /* each mip level's start in a frame */
-#define WT_LIM 36521831u        /* phase increment of 413 Hz: 64 harmonics reach 24 kHz (0.5442 x 2^32 / 64), past
+#define WT_NLVL 8u
+static const uint16_t WT_LVL_OFF[WT_NLVL] = {0, 1024, 1536, 1792, 1920, 1984, 2016, 2032};   /* each level's start */
+_Static_assert(WT_FRAME_LEN == 2040, "gen_wavetables.py's levels: 1024 .. 8 samples");
+#define WT_LIM 9130458u         /* phase increment of 94 Hz: 256 harmonics reach 24 kHz (0.5442 x 2^32 / 256), past
                                  * Nyquist but folding back above 20 kHz (Blue Hare: was 20 kHz, a copy switched to
                                  * half its harmonics ~20 % lower) */
-#define WT_LIM_SYNC 30434000u   /* SYNC's: 344 Hz, 64 harmonics reach 20 kHz (its window spreads each harmonic: the
+#define WT_LIM_SYNC 7608500u    /* SYNC's: 86 Hz, 256 harmonics reach 20 kHz (its window spreads each harmonic: the
                                  * ones past Nyquist would fold below 20 kHz) */
 #define WT_RMAX 1750000000u     /* the fastest a synced frame is read: ~18 kHz */
 
-/* the mip level for phase increment inc: harmonics (64 >> l) x the pitch below lim x 64 */
+/* the mip level for phase increment inc: harmonics (256 >> l) x the pitch below lim x 256 */
 static inline uint32_t wt_level(uint32_t inc, uint32_t lim)
 {
     uint32_t l = 0;
-    while (l < 6u && inc >= (lim << l))
+    while (l < WT_NLVL - 1u && inc >= (lim << l))
         l++;
     return l;
 }
 
-/* frame t's level (512 >> l samples) at phase ph, linearly interpolated */
+/* frame t's level (1024 >> l samples) at phase ph, linearly interpolated */
 static inline int32_t wt_read(const int16_t *t, uint32_t l, uint32_t ph)
 {
-    uint32_t i = ph >> (23u + l), f = (ph >> (8u + l)) & 0x7FFFu;
-    int32_t a = t[i], b = t[(i + 1u) & ((512u >> l) - 1u)];
+    uint32_t i = ph >> (22u + l), f = (ph >> (7u + l)) & 0x7FFFu;
+    int32_t a = t[i], b = t[(i + 1u) & ((1024u >> l) - 1u)];
     return a + (((b - a) * (int32_t)f) >> 15);
 }
 
