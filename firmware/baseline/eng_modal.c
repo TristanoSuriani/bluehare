@@ -23,7 +23,8 @@
  * go, the bow lifts (~30 ms) and the body rings on (DECAY).
  * Voice state: the track's block (engines.c eng_slab, MD_POLY voices a track): the modes, the exciter. */
 #define MD_NM 12
-#define MD_POLY 4
+#define MD_POLY 4                /* (a MODAL voice costs about two of another engine's, 12 resonators: 8 tried 2026-10-17,
+                                  * a chord at twice the heaviest other engine's cost, not shown to fit the FM-1) */
 #define MD_FMAX 1846000000u      /* a mode's highest frequency, cycles a sample Q32 (~0.43: ~19 kHz) */
 #ifndef MD_BOW_G
 #define MD_BOW_G 4194304.0f      /* BOW: force 1.0 into the modes at C3 (Q22: 1.0; measured: steady, pitched, -18 .. -8 dB) */

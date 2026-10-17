@@ -442,10 +442,10 @@ static int chk_budget(char *msg, uint32_t n)
                 trk_note_off(&trk[p], k);
     rel_at = fpos;
     finish();
-    snprintf(msg, n, "4 POLY parts, random notes: at most %u voices active (budget %u), MODAL part at most %u (cap 4), "
+    snprintf(msg, n, "4 POLY parts, random notes: at most %u voices active (budget %u), MODAL part at most %u (cap %u), "
              "%u voices taken, %u still fading after their block, all free %.2f s after the note-offs",
-             worst, VOICE_BASE, vworst, voice_kills - kills0, fading, R.free_s);
-    return worst <= VOICE_BASE && vworst <= 4u && !fading && R.free_s >= 0 && voice_kills > kills0;
+             worst, VOICE_BASE, vworst, (unsigned)MD_POLY, voice_kills - kills0, fading, R.free_s);
+    return worst <= VOICE_BASE && vworst <= MD_POLY && !fading && R.free_s >= 0 && voice_kills > kills0;
 }
 
 /* MIDI packets in one audio block can reuse a voice before its stolen tail fades. */
@@ -773,7 +773,8 @@ static int chk_keep_mono(char *m, uint32_t n) { return chk_keep(m, n, V_MONO); }
 static int chk_keep_legato(char *m, uint32_t n) { return chk_keep(m, n, V_LEGATO); }
 static int chk_keep_unison(char *m, uint32_t n) { return chk_keep(m, n, V_UNISON); }
 
-/* an engine's voice cap (MODAL's 4; the VOICE engine's once): 8 keys in POLY and in UNISON (alone: the budget does not limit it) */
+/* an engine's voice cap (MODAL's MD_POLY, 8 since 2026-10-17; the VOICE engine's once): 12 keys in POLY and in UNISON
+ * (alone: the budget does not limit it) */
 static int chk_voice_cap(char *msg, uint32_t n)
 {
     uint32_t mode, k, i, most[2] = {0, 0};
@@ -782,7 +783,7 @@ static int chk_voice_cap(char *msg, uint32_t n)
         host_tracks_init();
         host_preset(t, ENGI_MODAL, 0);
         t->p[P_VOICE] = mode ? V_UNISON : V_POLY;
-        for (k = 0; k < 8u; k++)
+        for (k = 0; k < 12u; k++)
             trk_note_on(t, 60u + 2u * k, 100);
         for (k = 0; k < FS / 2u / CTL; k++) {
             uint32_t a = 0;
@@ -791,16 +792,16 @@ static int chk_voice_cap(char *msg, uint32_t n)
                 a += t->v[i].active;
             most[mode] = a > most[mode] ? a : most[mode];
         }
-        for (k = 0; k < 8u; k++)
+        for (k = 0; k < 12u; k++)
             trk_note_off(t, 60u + 2u * k);
         for (k = 0; k < 4u * FS / CTL && !parts_free(); k++)
             blk();
         if (!parts_free())
             most[mode] = 99;
     }
-    snprintf(msg, n, "MODAL, 8 keys: at most %u voices in POLY, %u in UNISON (cap 4); freed after release",
-             most[0], most[1]);
-    return most[0] == 4u && most[1] == 4u;
+    snprintf(msg, n, "MODAL, 12 keys: at most %u voices in POLY, %u in UNISON (cap %u); freed after release",
+             most[0], most[1], (unsigned)MD_POLY);
+    return most[0] == MD_POLY && most[1] == MD_POLY;
 }
 
 /* no hanging notes: 6 s of random MIDI note-ons / offs on channels 1..4 (the parts), 5, 10 and 16 (ignored
