@@ -214,8 +214,8 @@ int main(void)
               hi > 0 && hi < lo * 1.21 && a0 > 0 && ac / a0 > 0.9 && pk < 2 * 22000 && w[7] > w[5] * 0.25);
     }
 #endif
-#if BLUEHARE_ENG_POLY
-    {   /* (2026-10-17) POLY: SLOP 0 two voices of a note the same sample for sample, SLOP 127 not; a harder touch
+#if BLUEHARE_ENG_OBIE
+    {   /* (2026-10-17) OBIE: SLOP 0 two voices of a note the same sample for sample, SLOP 127 not; a harder touch
          * brighter; 24 dB darker than 12 dB at one cutoff; nothing past full scale. Brightness as above */
         static int32_t o[6][4096];
         double br[6];
@@ -227,7 +227,7 @@ int main(void)
             vmod_t m = {0};
             double e = 0, d = 0;
             memset(t->v, 0, sizeof t->v);
-            patch_engine(t, ENGI_POLY);
+            patch_engine(t, ENGI_OBIE);
             t->p[P_E0] = 0;                             /* SAW, the filter half open, a little resonance */
             t->p[P_E4] = 70;
             t->p[P_E5] = 20;
@@ -242,10 +242,10 @@ int main(void)
             if (k == 4u || k == 5u)
                 t->p[P_E7] = 0;
             v->gate = v->active = 1;
-            poly_note_on(t, v);
+            obie_note_on(t, v);
             memset(o[k], 0, sizeof o[k]);
             for (j = 0; j < 4096u; j += CTL)
-                poly_render(t, v, o[k] + j, CTL, &m);
+                obie_render(t, v, o[k] + j, CTL, &m);
             for (j = 1; j < 4096u; j++) {
                 e += (double)o[k][j] * o[k][j];
                 d += (double)(o[k][j] - o[k][j - 1u]) * (o[k][j] - o[k][j - 1u]);
@@ -253,7 +253,7 @@ int main(void)
             }
             br[k] = e > 0 ? d / e : 0;
         }
-        check("POLY: SLOP 0 two voices alike, SLOP 127 apart; a harder touch brighter; 24 dB darker than 12; unclipped",
+        check("OBIE: SLOP 0 two voices alike, SLOP 127 apart; a harder touch brighter; 24 dB darker than 12; unclipped",
               !memcmp(o[0], o[1], sizeof o[0]) && memcmp(o[2], o[3], sizeof o[2]) && br[4] > br[0] * 1.1 &&
               br[5] < br[4] && pk < 65534);
     }

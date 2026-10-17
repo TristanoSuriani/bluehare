@@ -31,14 +31,14 @@ FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER
          "rev_plate", "dly_amb", "eq_block",                # (2026-10-17) PLATE, AMB (fx_amb.c), the EQ: float, the FPU
          "sid_render", "wave_render",       # (Blue Hare 2026-10-16: HARE FM1's engines; the others archived)
          "modal_render",                                    # (WEST, SH101, BLISS, STRINGS archived 2026-10-17)
-         "poly_render",                                     # (2026-10-17: after the OB-Xa)
+         "obie_render",                                     # (2026-10-17: after the OB-Xa)
          "vosim_render"]                                    # (back from the archive 2026-10-16)
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a BLUEHARE_UAC_48K=0 or BLUEHARE_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
 # the one build/bluehare.dis is: tools/build.py), skipped then
 ENGINE_OF = {"sid_render": "SID", "wave_render": "WAVE",
-             "modal_render": "MODAL", "vosim_render": "VOSIM", "poly_render": "POLY"}
+             "modal_render": "MODAL", "vosim_render": "VOSIM", "obie_render": "OBIE"}
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...

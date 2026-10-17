@@ -12,7 +12,7 @@
 ENGINE  SID      baseline  eng_sid.c                          24  WAVE    | a C64 sound-chip voice: pulse, saw, noise, ring, sync          | Tristano Suriani
 ENGINE  WAVE     baseline  eng_wave.c                         14  MODAL   | wavetables, scanned and warped                                | Tristano Suriani
 ENGINE  VOSIM    baseline  eng_vosim.c                        21  WAVE    | two formants of pulse trains: voices, reeds, brass            | Tristano Suriani
-ENGINE  POLY     baseline  eng_poly.c                         62  WAVE    | an eight-voice analog polysynth after the OB-Xa: two oscillators, 12 / 24 dB, slop | Tristano Suriani
+ENGINE  OBIE     baseline  eng_obie.c                         62  WAVE    | an eight-voice analog polysynth after the OB-Xa: two oscillators, 12 / 24 dB, slop | Tristano Suriani
 ENGINE  MODAL    baseline  eng_modal.c,shared/phys_dsp.c      34  WAVE    | struck, plucked and bowed resonators                      | Tristano Suriani; its resonators DaisySP's (MIT)
 FX      PLATE    baseline  fx_amb.c,fastmath.h                -   -       | REVERB TYPE PLATE: Dattorro's plate, in float                 | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani
 FX      AMB      baseline  fx_amb.c,fastmath.h                -   -       | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | Charles Vestal (amb-1); ported by Tristano Suriani

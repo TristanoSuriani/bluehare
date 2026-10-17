@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* POLY (2026-10-17): an eight-voice analog polysynth after the Oberheim OB-Xa of 1981 (Blue Hare's own design, in
+/* OBIE (2026-10-17; POLY for its first hours): an eight-voice analog polysynth after the Oberheim OB-Xa of 1981 (Blue Hare's own design, in
  * float on the FPU: no circuit modelled, no code of anyone's). Each voice: two oscillators, band-limited (polyBLEP),
  * WAVE SAW, PULSE (PW: 50 % down to ~5 %; the SHAPE routings move it: PWM) or both; the second INTV semitones away
  * and DTN apart (0 .. ~25 cents: the thickness). WAVE SYNC: the second a saw hard-synced to the first, INTV its
@@ -58,7 +58,7 @@ static inline float po_sat(float x)                   /* tanh's shape, rational:
     return x * (27.0f + x2) / (27.0f + 9.0f * x2);
 }
 
-static void poly_note_on(track_t *t, voice_t *v)
+static void obie_note_on(track_t *t, voice_t *v)
 {
     int32_t nz = v->s[5] ? v->s[5] : (int32_t)(0x6C8E9CF5u ^ (v->age * 2654435761u)), k;
     uint32_t r;
@@ -73,7 +73,7 @@ static void poly_note_on(track_t *t, voice_t *v)
     v->s[7] = 0;
 }
 
-static void poly_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+static void obie_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
     const int16_t *p = t->p;
     uint32_t wave = (uint32_t)p[P_E0] & 3u, i, ph1 = v->ph[0], ph2 = v->ph[1], inc1, inc2;
@@ -105,7 +105,7 @@ static void poly_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     fc = fm_minf(fc, 0.40f * (float)FS);
     g = fm_tanf(3.14159265f * fc / (float)FS);
     res = (float)p[P_E5] * (1.0f / 127.0f);
-    outg = 9000.0f;
+    outg = 36000.0f;                                  /* (2026-10-17: +12 dB, the other engines' level) */
     if (p[P_E6] & 1) {                                /* 24 dB: the ladder */
         float G = g / (1.0f + g), G2 = G * G, k = 4.2f * res, inv = 1.0f / (1.0f + k * G2 * G2), a = 1.0f - G;
         float c1 = G2 * G * a, c2 = G2 * a, c3 = G * a, boost = 1.0f + 0.5f * k;
@@ -188,7 +188,7 @@ static void poly_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
 }
 
 /* {WAVE, PW, DTN, INTV, CUT, RES, FILT, SLOP}; WAVE 0 SAW 1 PULSE 2 SAW+P 3 SYNC; FILT 0 12 dB 1 24 dB */
-static const preset_t POLY_PRESETS[] = {
+static const preset_t OBIE_PRESETS[] = {
     {"OB BRASS", {0, 64, 30, 0, 55, 20, 0, 50}, {5, 70, 100, 40}, 40, 0, FX(0, 30, 10, 40)},
     {"BIG STAB", {0, 64, 25, 0, 70, 10, 0, 40}, {0, 60, 90, 30}, 30, 0, FX(0, 30, 15, 45)},
     {"OB STRINGS", {0, 64, 45, 0, 75, 5, 0, 60}, {70, 90, 115, 85}, 0, 0, FX(0, 70, 15, 70)},
@@ -203,9 +203,9 @@ static const preset_t POLY_PRESETS[] = {
     {"FIFTHS STAB", {0, 64, 15, 7, 65, 20, 0, 30}, {0, 70, 90, 40}, 30, 0, FX(0, 20, 25, 45)},
 };
 
-static const engine_t ENG_POLY = {
-    .name = "POLY",
-    .id = EID_POLY,
+static const engine_t ENG_OBIE = {
+    .name = "OBIE",
+    .id = EID_OBIE,
     .cc = 0x56,                  /* CC74 CUT, CC71 RES */
     .cats = "LLPPPLLLBFKL",
     .page_title = {"OSC", "FILTER"},
@@ -219,10 +219,10 @@ static const engine_t ENG_POLY = {
         {"FILT", F_ENUM, 0, 1, 0, N_PO_FILT, 0},
         {"SLOP", F_PCT, 0, 127, 40, 0, 0},
     },
-    .presets = POLY_PRESETS,
-    .npresets = NELEM(POLY_PRESETS),
-    .note_on = poly_note_on,
-    .render = poly_render,
+    .presets = OBIE_PRESETS,
+    .npresets = NELEM(OBIE_PRESETS),
+    .note_on = obie_note_on,
+    .render = obie_render,
     .knob = {P_E4, P_E5, P_E2, P_REL},
     .plain = {P_E4, P_E5, P_E2, P_E7},
 };
