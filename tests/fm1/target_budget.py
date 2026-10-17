@@ -31,13 +31,14 @@ FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER
          "rev_plate", "dly_amb", "eq_block",                # (2026-10-17) PLATE, AMB (fx_amb.c), the EQ: float, the FPU
          "sid_render", "wave_render",       # (Blue Hare 2026-10-16: HARE FM1's engines; the others archived)
          "modal_render",                                    # (WEST, SH101, BLISS, STRINGS archived 2026-10-17)
+         "poly_render",                                     # (2026-10-17: after the OB-Xa)
          "vosim_render"]                                    # (back from the archive 2026-10-16)
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a BLUEHARE_UAC_48K=0 or BLUEHARE_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
 # the one build/bluehare.dis is: tools/build.py), skipped then
 ENGINE_OF = {"sid_render": "SID", "wave_render": "WAVE",
-             "modal_render": "MODAL", "vosim_render": "VOSIM"}
+             "modal_render": "MODAL", "vosim_render": "VOSIM", "poly_render": "POLY"}
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...
@@ -99,7 +100,7 @@ def built_engines():
     here = os.path.dirname(os.path.abspath(__file__))
     d = os.path.join(os.path.dirname(dis) or ".", "dist.txt")
     name = open(d).read().strip() if os.path.exists(d) else "default"
-    path = os.path.join(here, "..", "distributions", f"{name}.txt")
+    path = os.path.join(here, "..", "..", "distributions", f"{name}.txt")   # (tests/fm1: two up, since the tests by layer)
     if not os.path.exists(path):                    # (an image of a distribution archived since: stale)
         return name, None
     return name, {ln.split("#", 1)[0].strip().upper() for ln in open(path)} - {""}

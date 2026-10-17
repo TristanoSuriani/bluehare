@@ -50,8 +50,8 @@ async function editorMock() {
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   {   /* the primary distribution's engines by id (HARE FM1), "-" for the rest: retired (0 .. 13, 27), archived, left out */
-    const HARE = { 14: "WAVE", 21: "VOSIM", 24: "SID", 34: "MODAL" };
-    ok(info.nengines === 62 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
+    const HARE = { 14: "WAVE", 21: "VOSIM", 24: "SID", 34: "MODAL", 62: "POLY" };
+    ok(info.nengines === 63 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
   let descs = 0;
@@ -140,7 +140,7 @@ async function editorMock() {
   ok(!prefs.favorites[info.nengines][31] && !E.devicePresetRows(info, names, prefs).some((r) => r.user), "editor: erased slot disappears and loses star");
   {   /* the lists in the device's order (engines.c ENGINE_ORDER): SID first, WAVE second, MODAL last, "-" never; the ids stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]), o = E.engineOrder(info.engines);
-    ok(shown.join() === "SID,WAVE,VOSIM,MODAL" && o[0] === 24 && o[1] === 14 && o[2] === 21 && o[3] === 34,
+    ok(shown.join() === "SID,WAVE,VOSIM,POLY,MODAL" && o[0] === 24 && o[1] === 14 && o[2] === 21 && o[3] === 62 && o[4] === 34,
        "editor: engines listed SID first, MODAL last (ids kept)");
     ok(E.engineOrder(["SID", "X", "-", "MODAL", "WAVE"]).join() === "0,4,3,1", "editor: an unknown engine follows the known ones");
     m.state.favorites[34][0] = m.state.favorites[14][0] = true;
@@ -507,7 +507,7 @@ async function editorLibrarian() {
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
   ok(file.format === "bluehare-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
     file.paramLabels[83] === "-#13" && file.paramLabels[90] === "-#20" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
-    file.engines.length === 62,
+    file.engines.length === 63,
     "library file: versioned, with P_COUNT, labels and engines");
   const back = E.readLibraryFile(file, ctx);
   ok(back.patches.length === 2 && !back.skipped && eq(back.patches[0].p, cap.p) && eq(back.patches[1].p, bass.p)

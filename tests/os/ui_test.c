@@ -3169,10 +3169,10 @@ static int test_retired_engines(void)
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
         {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"},
-        {ENGI_MODAL, EID_MODAL, "MODAL"}};
+        {ENGI_POLY, EID_POLY, "POLY"}, {ENGI_MODAL, EID_MODAL, "MODAL"}};
     static const uint8_t ARCH[10] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM, EID_ECHOES, EID_CANYON, EID_WEST,
                                      EID_SH101, EID_BLISS, EID_STRINGS};   /* (archived, 2026-10-16 .. 17) */
-    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "MODAL"};
+    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "POLY", "MODAL"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3240,7 +3240,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID WAVE VOSIM MODAL (ENGINES[]); PRESETS lists them so",
+    bad += check("engines shown SID WAVE VOSIM POLY MODAL (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;

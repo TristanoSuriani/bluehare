@@ -214,6 +214,50 @@ int main(void)
               hi > 0 && hi < lo * 1.21 && a0 > 0 && ac / a0 > 0.9 && pk < 2 * 22000 && w[7] > w[5] * 0.25);
     }
 #endif
+#if BLUEHARE_ENG_POLY
+    {   /* (2026-10-17) POLY: SLOP 0 two voices of a note the same sample for sample, SLOP 127 not; a harder touch
+         * brighter; 24 dB darker than 12 dB at one cutoff; nothing past full scale. Brightness as above */
+        static int32_t o[6][4096];
+        double br[6];
+        int32_t pk = 0;
+        uint32_t k, j;
+        track_t *t = &trk[0];
+        for (k = 0; k < 6u; k++) {
+            voice_t *v = &t->v[k & 1u];
+            vmod_t m = {0};
+            double e = 0, d = 0;
+            memset(t->v, 0, sizeof t->v);
+            patch_engine(t, ENGI_POLY);
+            t->p[P_E0] = 0;                             /* SAW, the filter half open, a little resonance */
+            t->p[P_E4] = 70;
+            t->p[P_E5] = 20;
+            t->p[P_E6] = k == 5u ? 1 : 0;               /* (k 4: 12 dB, k 5: 24 dB) */
+            t->p[P_E7] = k < 2u ? 0 : 127;              /* (k 0, 1: SLOP 0; 2, 3: SLOP 127) */
+            v->age = k;                                 /* (each voice its own random offsets) */
+            m.inc = pitch_inc(48 * 16);
+            m.pitch16 = v->pitch16 = 48 * 16;
+            m.amp0 = m.amp1 = 32767;
+            m.shape = 64 << 8;
+            v->vel = (uint8_t)(k == 4u ? 127 : k == 5u ? 127 : 100);
+            if (k == 4u || k == 5u)
+                t->p[P_E7] = 0;
+            v->gate = v->active = 1;
+            poly_note_on(t, v);
+            memset(o[k], 0, sizeof o[k]);
+            for (j = 0; j < 4096u; j += CTL)
+                poly_render(t, v, o[k] + j, CTL, &m);
+            for (j = 1; j < 4096u; j++) {
+                e += (double)o[k][j] * o[k][j];
+                d += (double)(o[k][j] - o[k][j - 1u]) * (o[k][j] - o[k][j - 1u]);
+                pk = o[k][j] > pk ? o[k][j] : -o[k][j] > pk ? -o[k][j] : pk;
+            }
+            br[k] = e > 0 ? d / e : 0;
+        }
+        check("POLY: SLOP 0 two voices alike, SLOP 127 apart; a harder touch brighter; 24 dB darker than 12; unclipped",
+              !memcmp(o[0], o[1], sizeof o[0]) && memcmp(o[2], o[3], sizeof o[2]) && br[4] > br[0] * 1.1 &&
+              br[5] < br[4] && pk < 65534);
+    }
+#endif
     midi_enqueue(0x09u | 0x90u << 8 | 64u << 16 | 100u << 24, 1u);   /* MIDI IN: the baseline's ring, channel 1 */
     i = (uint32_t)run(200);
     midi_enqueue(0x08u | 0x80u << 8 | 64u << 16, 1u);

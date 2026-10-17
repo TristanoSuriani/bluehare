@@ -16,6 +16,7 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
+#include "eng_poly.c"           /* POLY: an analog polysynth after the OB-Xa (2026-10-17) */
 #include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
 
 /* the block's size: the largest this build's engines ask for (core.h BLUEHARE_ENG_*) */
