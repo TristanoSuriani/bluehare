@@ -15,10 +15,25 @@
  * a soft touch rings dark, a hard one bright, as a mallet does), and the SHP routings (ENV / LFO DEST SHP, the
  * matrix's) move POS, the place struck (an LFO wandering over the bar). The plain page (MENU > EXPERT OFF): MATRL
  * EXCIT DECAY BRIGHT; STRUCT POS DAMP BEAT on EXPERT's.
+ * (2026-10-17) BOW is a friction bow (was noise while held): each sample the bow's speed against the body's at the
+ * contact (the modes' sum, as struck, a sample late) gives the force through a friction curve (sticking while slow
+ * against it, slipping past; Smith's / STK's bow table, (|dv s| + 0.75)^-4), pushed into the modes: the body is
+ * dragged along and let go, the Helmholtz motion, so it sings at its modes' pitch, swells in and sustains while held.
+ * Velocity is the bow's speed (louder), BRIGHT its pressure (more: the stick holds longer, rougher, brighter); let
+ * go, the bow lifts (~30 ms) and the body rings on (DECAY).
  * Voice state: the track's block (engines.c eng_slab, MD_POLY voices a track): the modes, the exciter. */
 #define MD_NM 12
 #define MD_POLY 4
 #define MD_FMAX 1846000000u      /* a mode's highest frequency, cycles a sample Q32 (~0.43: ~19 kHz) */
+#ifndef MD_BOW_G
+#define MD_BOW_G 4194304.0f      /* BOW: force 1.0 into the modes at C3 (Q22: 1.0; measured: steady, pitched, -18 .. -8 dB) */
+#endif
+#ifndef MD_BOW_K
+#define MD_BOW_K 2.0f            /* BOW: the output (Q15, 1.0 full scale) as the body's speed */
+#endif
+#define MD_BOW_V 0.25f           /* BOW: the bow's speed at full velocity */
+#define MD_BOW_INC 12740059u     /* (C3's phase increment at 44.1 kHz: where MD_BOW_G is the force) */
+static float bow_tv, bow_slope, bow_g;   /* (md_render: this block's) */
 static const char *const N_MD_MATRL[] = {"BAR", "MRMBA", "BELL", "GLASS", "PLATE", "DRUM", "TUBE", "STRING", 0};
 static const char *const N_MD_EXCIT[] = {"MALLET", "PLUCK", "BOW", "CLICK", 0};
 static const uint16_t MD_RATIO[8][MD_NM] = {   /* the materials' modes over the fundamental, Q8 */
@@ -47,6 +62,7 @@ typedef struct {
     uint32_t n, key;             /* the modes sounding; what the coefficients were worked out for */
     uint32_t age, rng;           /* samples since the strike; the noise */
     int32_t lp;                  /* the exciter's low-pass */
+    float bv, bc, yb;            /* BOW: its speed, its contact (0 lifted .. 1), the body's speed at it */
 } md_voice_t;
 
 static inline __attribute__((always_inline)) md_voice_t *md_of(track_t *t, voice_t *v)
@@ -73,6 +89,8 @@ static void modal_note_on(track_t *t, voice_t *v)
                                                        * modes from rest, not what rang when it last played) */
         memset(d->s, 0, sizeof d->s);
     d->key = 0;
+    if (!v->env && !v->env_out)
+        d->bv = d->bc = d->yb = 0.0f;
 }
 
 /* the coefficients for the pitch inc and the track's parameters, the materials' table tbl; POS and BRIGHT as played
@@ -143,12 +161,9 @@ static void md_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vm
                 e = (32767 - sine_i(d->age * pinc + 0x40000000u)) << 6;
         } else if (ex == 3u) {
             e = d->age == 0u ? 1 << 24 : 0;
-        } else if ((ex == 1u && d->age < 441u) || (ex == 2u && v->gate)) {
+        } else if (ex == 1u && d->age < 441u) {
             int32_t nz = (int32_t)(int16_t)(px_rand(&rs) >> 16) << 7;
-            if (ex == 1u)
-                nz = ((nz >> 2) * (441 - (int32_t)d->age) / 441) << 2;
-            else
-                nz >>= 3;
+            nz = ((nz >> 2) * (441 - (int32_t)d->age) / 441) << 2;
             lp += (int32_t)(((int64_t)(nz - lp) * kl) >> 15);
             e = lp;
         }
@@ -156,10 +171,27 @@ static void md_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vm
     }
     d->lp = lp;
     d->rng = rs;
+    {   /* BOW: its speed (velocity) and contact follow the key (~7 ms, lifted in ~30 ms); BRIGHT its pressure */
+        bow_tv = v->gate ? MD_BOW_V * (0.35f + 0.65f / 127.0f * (float)v->vel)
+                         : d->bv;                     /* (let go: the bow keeps its speed while it lifts, no brake) */
+        bow_slope = 5.0f - 4.0f / 127.0f * (float)br;
+        bow_g = MD_BOW_G * (float)MD_BOW_INC / (float)(m->inc | 1u);   /* (the modes' gain grows with the pitch, their Q
+                                                       * f T: the force falls as it rises, the same pull on every key) */
+    }
     for (i = 0; i < n; i++) {                         /* the modes, band-pass (phys_dsp.c px_modal_run) */
         int64_t acc = 0;
         const px_mode_t *c = d->m;
         int32_t (*sp)[2] = d->s, xi = x[i], y;
+        if (ex == 2u) {                               /* the bow's force from the speeds a sample ago */
+            float dv, s, f;
+            d->bv += (bow_tv - d->bv) * 0.003f;
+            d->bc += ((v->gate ? 1.0f : 0.0f) - d->bc) * (v->gate ? 0.003f : 0.0008f);
+            dv = d->bv - d->yb;
+            s = (dv < 0.0f ? -dv : dv) * bow_slope + 0.75f;
+            s = 1.0f / (s * s);
+            f = dv * (s * s > 1.0f ? 1.0f : s * s) * d->bc;
+            xi = (int32_t)(f * bow_g);
+        }
         for (k = 0; k < d->n; k++, c++, sp++) {
             int32_t s1 = sp[0][0], s2 = sp[0][1], tt, vv;
             tt = px_m(c->gh, xi - px_m(c->rpg, s1, 28) - s2, 30);
@@ -171,6 +203,7 @@ static void md_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vm
         }
         y = (int32_t)(acc >> sh);                     /* (Q28 x Q22 -> Q15 and +30 dB at 28: the modes ring far below the
                                                        * strike) */
+        d->yb = (float)y * (MD_BOW_K / 32768.0f);     /* (BOW: the body's speed at the contact) */
         y = soft_knee(clamp(y, -98304, 98304), 22000);
         out[i] += voice_amp(clamp(y, -32767, 32767), m, i) << 1;
     }

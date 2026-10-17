@@ -173,6 +173,46 @@ int main(void)
         check("VOSIM: SHP moves the formants up (brighter); MODAL: a hard strike rings brighter than a soft one",
               br[1] > br[0] * 1.3 && br[3] > br[2] * 1.3);
     }
+    {   /* (2026-10-17) MODAL's friction bow (BOWED STRING, C3): it sustains while held, level within 10 % from 0.5 s
+         * to 1.5 s, pitched (the signal a period later nearly itself), no clipping; let go it rings on */
+        static int32_t o[FS * 2];
+        track_t *t = &trk[0];
+        voice_t *v = &t->v[0];
+        vmod_t m = {0};
+        double w[8] = {0}, ac = 0, a0 = 0, lo = 1e30, hi = 0;
+        int32_t pk = 0;
+        uint32_t j, per;
+        memset(t->v, 0, sizeof t->v);
+        patch_engine(t, ENGI_MODAL);
+        patch_preset(t, patch_find_preset(ENGI_MODAL, "BOWED STRING"));
+        m.inc = pitch_inc(48 * 16);
+        m.pitch16 = v->pitch16 = 48 * 16;
+        m.amp0 = m.amp1 = 32767;
+        m.shape = 64 << 8;
+        v->vel = 100;
+        v->gate = v->active = 1;
+        modal_note_on(t, v);
+        memset(o, 0, sizeof o);
+        for (j = 0; j + CTL <= FS * 2u; j += CTL) {
+            v->gate = j < FS * 3u / 2u;
+            modal_render(t, v, o + j, CTL, &m);
+        }
+        per = (uint32_t)(((uint64_t)1 << 32) / m.inc);
+        for (j = 0; j < FS * 2u; j++) {
+            pk = o[j] > pk ? o[j] : -o[j] > pk ? -o[j] : pk;
+            w[j * 8u / (FS * 2u)] += (double)o[j] * o[j];
+        }
+        for (j = 2; j < 6u; j++) {
+            lo = w[j] < lo ? w[j] : lo;
+            hi = w[j] > hi ? w[j] : hi;
+        }
+        for (j = FS / 2u; j < FS; j++) {
+            ac += (double)o[j] * o[j + per];
+            a0 += (double)o[j] * o[j];
+        }
+        check("MODAL's friction bow: sustains while held (level within 10 %), pitched, unclipped; let go it rings on",
+              hi > 0 && hi < lo * 1.21 && a0 > 0 && ac / a0 > 0.9 && pk < 2 * 22000 && w[7] > w[5] * 0.25);
+    }
 #endif
     midi_enqueue(0x09u | 0x90u << 8 | 64u << 16 | 100u << 24, 1u);   /* MIDI IN: the baseline's ring, channel 1 */
     i = (uint32_t)run(200);
