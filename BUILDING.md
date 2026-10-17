@@ -25,15 +25,17 @@ so.
 
 | Directory | Layer | What |
 | --- | --- | --- |
-| `firmware/baseline/` | Blue Hare baseline | The sound: engines (`eng_*.c`, `engine_ids.h`), voices, modulation, effects (fixed point and float: `fx.c`, `fx_amb.c`, `fastmath.h`), GEN, note input and the layers (`seq.c`), MIDI's meaning (`midi_control.c`, `midi_clock.c`, the input ring `midi_in.c`), the parameters |
+| `firmware/baseline/` | Blue Hare baseline | The sound: engines (`eng_*.c`, `engine_ids.h`), voices, modulation, effects (fixed point and float: `fx.c`, `fx_amb.c`, `fastmath.h`), GEN, note input and the layers (`seq.c`), MIDI's meaning (`midi_control.c`, `midi_clock.c`, the input ring `midi_in.c`), the parameters; a sound loaded into a layer (`patch.c`), the song's format (`song.c`), the players' interface (`player.c`: GEN the first) |
 | `firmware/os/` | Blue Hare OS | The instrument's system: the UI (`ui*.c`, `gfx.c`, GEN's ocean `ui_ocean.c`), the keys (`keyboard.c`), storage, presets, projects, the editor protocol, updates, the console |
 | `firmware/fm1/` | Blue Hare FM1 | The FM-1 port: the device's unity build `bluehare.c`, the audio interrupt (`audio.c`), the screen driver, USB, TRS MIDI; with `firmware/hal/` (registers) and `firmware/loader/` |
 | `distributions/` | HARE OS FM1 distro | What the FM-1 build is made of |
 | `native/` | Blue Hare Native | The desktop app (for now on the emulator: the device's view) |
 
-What the baseline asks of the instrument around it is three keyboard hooks (`os_keys_block`, `os_keys_hold_track`,
-`os_keys_hold_note`, defined in `firmware/os/keyboard.c`) and `midi_out_event` (USB); a port feeds MIDI in through
-`midi_enqueue`.
+What the baseline asks of the instrument around it: three keyboard hooks (`os_keys_block`, `os_keys_hold_track`,
+`os_keys_hold_note`, in `firmware/os/keyboard.c`) and `os_load_sound` (a sound loaded the OS's way: undo, sync, the
+audio held off; `firmware/os/ui.c`); a port feeds MIDI in through `midi_enqueue` and stores the song's stream
+(`song.c`'s sink and source) where it likes (`firmware/os/project.c`: flash chunks). Native's side of `target.h` is
+`native/target_host.c`.
 
 ## Prerequisites (macOS)
 
