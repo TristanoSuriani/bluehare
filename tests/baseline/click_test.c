@@ -64,7 +64,9 @@ static void fresh(void)
     click_req = 0; click_mode = CLICK_OFF; click_lvl = 1;
     fx_usb_fixed = 0;
     mi_r = mi_w = 0; midi_in_overflow = 0; midi_beat_samples = 0;
-    fm1_in.notes = kb_prev = 0;
+#ifndef HOST_BASELINE
+    fm1_in.notes = kb_prev = 0;                  /* (the keys: the OS's) */
+#endif
     fm1_ms = 0;
     song.sel = 0;
     nb = 0;

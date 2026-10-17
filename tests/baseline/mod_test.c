@@ -428,6 +428,7 @@ static void test_midi(void)
     pkt(0xB0, 121, 0);                           /* reset all controllers */
     blocks(1);
     check("CC121 resets MODW / AT / EXPR of the channel's track", trk[0].mw == 0 && trk[1].mw == 55);
+#ifndef HOST_BASELINE                                  /* (TRS MIDI: the FM-1's parser; not in the baseline alone) */
     fresh(0, 0);
     song.sel = 1;
     for (i = 0; i < sizeof TRS; i++)
@@ -442,6 +443,7 @@ static void test_midi(void)
     blocks(1);
     song.g[G_ROUTE] = 0;
     check("TRS: ROUT SEL: ch 5 -> the selected track (2)", trk[1].mw == 9);
+#endif
     check("MODW -> PAN +63 through MIDI: the part is on the right (fresh FX)", in_child(pan_e2e));
 }
 /* ------------------------------------------------------------------ 4 --- */

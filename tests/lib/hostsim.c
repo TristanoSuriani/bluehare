@@ -36,10 +36,29 @@ static struct { volatile uint32_t notes, buttons; } fm1_in;
 #include "../../firmware/baseline/voice.c"
 #include "../../firmware/baseline/fx.c"
 static void fm1_delay_ms(uint32_t ms) { (void)ms; }
+/* (2026-10-17, the second review's D) HOST_BASELINE: the baseline alone (tests/baseline, built with firmware/baseline
+ * only on the include path): no USB, no TRS MIDI, no keys; what the baseline asks of the instrument, stubbed here as a
+ * host without keys that loads a sound at once. Without it: the whole sound side of the FM-1 (USB, TRS MIDI IN, the
+ * keys), as the OS's and the FM-1's tests want it */
+#ifndef HOST_BASELINE
 #include "../../firmware/fm1/usb.c"
 #include "../../firmware/fm1/midi_uart.c"                /* TRS MIDI IN: its parser (um_byte) feeds midi_in_q */
+#endif
 #include "../../firmware/baseline/seq.c"
+#ifndef HOST_BASELINE
 #include "../../firmware/os/keyboard.c"
+#else
+static void os_keys_block(void) {}
+static int os_keys_hold_track(uint32_t t) { (void)t; return 0; }
+static int os_keys_hold_note(uint32_t t, uint32_t n) { (void)t; (void)n; return 0; }
+static void os_load_sound(uint32_t track, uint32_t engine, uint32_t preset)
+{
+    track_t *t = &trk[track % NTRK];
+    if (t->eng_req != engine)
+        patch_engine(t, engine);
+    patch_preset(t, preset);
+}
+#endif
 #ifdef BLUEHARE_NATIVE
 #include "../../native/target_host.c"   /* (2026-10-17: Native's side of target.h, out of the baseline) */
 #endif
@@ -544,6 +563,7 @@ static int xfade_test(const char *dir)
     return bad || !late_ok;
 }
 
+#ifndef HOST_BASELINE                   /* (the TRS parser: the FM-1's, not in the baseline alone) */
 /* TRS MIDI IN (midi_uart.c, untested on hardware): bytes through its parser into the same queue as
  * USB, routed by channel: ROUT CH1-4 1..4 -> parts 1..4, others (10 too) ignored; ROUT SEL all -> the
  * selected track; running
@@ -599,6 +619,7 @@ static int trs_test(void)
            ok_hang ? "ok" : "FAIL");
     return !ok_parts + !ok_ch10 + !ok_sel + !ok_off + !ok_hang;
 }
+#endif
 
 static int tracks_test(const char *dir)
 {
@@ -631,6 +652,7 @@ static int tracks_test(const char *dir)
         if (!WIFEXITED(st) || WEXITSTATUS(st))
             fail++;
         fflush(stdout);
+#ifndef HOST_BASELINE
         pid = fork();
         if (!pid) {
             int rc = trs_test();
@@ -641,6 +663,7 @@ static int tracks_test(const char *dir)
         if (!WIFEXITED(st) || WEXITSTATUS(st))
             fail++;
         fflush(stdout);
+#endif
         pid = fork();
         if (!pid) {
             int rc = xfade_test(dir);

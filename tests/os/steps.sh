@@ -15,6 +15,11 @@ if [ ! -f build/gen/bluehare_tables.h ]; then
     return 0 2>/dev/null || exit 0
 fi
 I="-Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1"
+compile $CC -O2 -w $I -o "$OUT/scale_test" tests/os/scale_test.c -lm
+run "scales: white-key mapping and note lifecycle" "$OUT/scale_test"
+slow compile $CC -O2 -w $I -o "$OUT/perform_test" tests/os/perform_test.c -lm
+mkdir -p build/perform_demo build/fx_demo
+slow run "FX layer effects: at once, stereo, the archived ones nothing, silent keys, idle bit-identical, clicks, OCT UP / DN, the key map, cost, demos" "$OUT/perform_test" build/perform_demo build/fx_demo
 compile $CC -w $I -o "$OUT/chord_test" tests/os/chord_test.c -lm
 run "chord keys: diatonic and fixed chords, voicings, MONO root, releases, MIDI IN" "$OUT/chord_test"
 compile $CC -O1 -w $I -o "$OUT/lfo2_test" tests/os/lfo2_test.c -lm

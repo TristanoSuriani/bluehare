@@ -7,7 +7,9 @@ if [ ! -f build/gen/bluehare_tables.h ]; then
     echo "== skip the baseline's tests (run ./build.sh once)"
     return 0 2>/dev/null || exit 0
 fi
-I="-Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1"
+# (2026-10-17, the second review's D) built on firmware/baseline alone: the harness's HOST_BASELINE mode (no USB, no
+# TRS MIDI, no keys: tests/lib/hostsim.c), nothing of the OS or the FM-1 on the include path
+I="-DHOST_BASELINE -Ibuild/gen -Ifirmware/baseline -Itests/lib"
 run "the component registry (firmware/components.txt): AUTHORS.md's table is its" python3 tools/gen_dist.py --credits-check .
 compile $CC -O1 -w -Ibuild/gen -Ifirmware/baseline -o "$OUT/baseline_alone" tests/baseline/baseline_alone.c -lm
 run "the baseline alone (firmware/baseline only on the include path): every engine, MIDI IN, GEN" "$OUT/baseline_alone"
@@ -15,8 +17,6 @@ slow compile $CC -O2 -w $I -o "$OUT/hostsim" tests/lib/hostsim.c -lm
 slow run "DSP render (ANALOG preset 0)" "$OUT/hostsim" 0 0 1 "$OUT/render.wav"
 mkdir -p build/tracks_demo
 slow run "TRACKS: 4-track pattern, voice budget, engine switch, cost" env TRACKS=build/tracks_demo "$OUT/hostsim" 0 0 1 "$OUT/tracks.wav"
-compile $CC -O2 -w $I -o "$OUT/scale_test" tests/baseline/scale_test.c -lm
-run "scales: white-key mapping and note lifecycle" "$OUT/scale_test"
 compile $CC -O2 -w $I -o "$OUT/speaker_test" tests/baseline/speaker_test.c -lm
 run "SPEAKER EQ: FLAT / LOWCUT / BASS+ responses, BASS+ harmonics of the bass, the sub cut, no offset after, headroom on a full-scale kick (#180)" "$OUT/speaker_test"
 compile $CC -O2 -w $I -o "$OUT/click_test" tests/baseline/click_test.c -lm
@@ -35,9 +35,6 @@ slow run "sound items: matrix S&H / SLEW / DEPTH, SPREAD (bit for bit at 0, L / 
     "$OUT/sound14_test" build/sound14_demo
 compile $CC -O2 -w $I -o "$OUT/swing_test" tests/baseline/swing_test.c -lm
 run "SWING: track + global at most 100, the song player's step lengths, the SWG display" "$OUT/swing_test"
-slow compile $CC -O2 -w $I -o "$OUT/perform_test" tests/baseline/perform_test.c -lm
-mkdir -p build/perform_demo build/fx_demo
-slow run "FX layer effects: at once, stereo, the archived ones nothing, silent keys, idle bit-identical, clicks, OCT UP / DN, the key map, cost, demos" "$OUT/perform_test" build/perform_demo build/fx_demo
 slow compile $CC -O2 -w $I -o "$OUT/reverb_test" tests/baseline/reverb_test.c -lm
 mkdir -p build/reverb_demo
 slow run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, DELAY TYPE, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
