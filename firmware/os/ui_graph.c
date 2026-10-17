@@ -852,7 +852,17 @@ static void draw_graph(void)
                 oc.ready = 0;                           /* (the next start: a fresh shoal) */
                 break;
             }
+#if BLUEHARE_UI_OCEAN
             oc_frame();                                 /* (ui_ocean.c: its chord and bar on top) */
+#else
+            {                                           /* (no ocean in this build: the chord and the bar) */
+                char ch[8], b[20];
+                gen_chord_name(ch);
+                str_cpy(b, "BAR ", sizeof b);
+                fmt_int(b + 4, (int32_t)(gen.s.bar % 1000u) + 1);
+                panel_note(ch, b, "[ARP] STOP");
+            }
+#endif
             break;
         default:
             if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WAVE) graph_wave(t, c);

@@ -273,10 +273,10 @@ if [ -f build/gen/bluehare_tables.h ]; then
     mkdir -p build/ui_new/ppm build/ui_slot
     slow run "UI renders: layout lint (every screen and palette, every page, engine and column value), GREY gray, MONO neutral, alignment by ink (1 px fails), draw cost" \
         sh -c '"$1" build/ui_new build/ui_slot && { ! python3 -c "import PIL" 2>/dev/null || python3 tests/ui_render.py build/ui_new build/ui_slot; }' _ "$OUT/ui_render"
-    slow compile $CC -O1 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=hare_native "-DBLUEHARE_VERSION=\"$FV\"" -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -Itests \
+    slow compile $CC -O1 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=all "-DBLUEHARE_VERSION=\"$FV\"" -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -Itests \
         -o "$OUT/ui_render_native" tests/ui_render.c -lm
     mkdir -p build/ui_native/ppm build/ui_native_slot
-    slow run "UI renders, HARE NATIVE (the native image's): its engines, CONCERT CAVERN SHIMMER, its version line: the same lint and alignment" \
+    slow run "UI renders, Native (every component: dist_all.h): CONCERT CAVERN SHIMMER, its version line: the same lint and alignment" \
         "$OUT/ui_render_native" build/ui_native build/ui_native_slot
     compile $CC -w -DBLUEHARE_NTRK=8 -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o "$OUT/ui_test8" tests/ui_test.c -lm
     run "UI built with 8 tracks (step 3c): every check above, the view 1..4 / 5..8, GLO / FX on 8 tracks, MIDI IN blocks of 8" "$OUT/ui_test8"
@@ -314,6 +314,7 @@ if [ -f build/gen/bluehare_tables.h ]; then
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o "$OUT/mod_test" tests/mod_test.c -lm
     mkdir -p build/mod_demo
     slow run "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" "$OUT/mod_test" build/mod_demo
+    run "the component registry (firmware/components.txt): AUTHORS.md's table is its" python3 tools/gen_dist.py --credits-check .
     compile $CC -O1 -w -Ibuild/gen -Ifirmware/baseline -o "$OUT/baseline_alone" tests/baseline_alone.c -lm
     run "the baseline alone (firmware/baseline only on the include path): every engine, MIDI IN, GEN" "$OUT/baseline_alone"
     compile $CC -O2 -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o "$OUT/float_fx_test" tests/float_fx_test.c -lm
@@ -343,17 +344,12 @@ if [ -f build/gen/bluehare_tables.h ]; then
     run "REVERB TYPE GATED: HALL's level while it holds, cut after SIZE's hold, a longer SIZE longer, a hit opens it again" "$OUT/gated_test"
     slow compile $CC -O2 -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o "$OUT/regress" tests/regress.c -lm
     slow run "regression, HARE FM1 (the primary) built with 4 tracks: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
-    for d in hare_fm1 hare_native; do
+    for d in hare_fm1 all; do
         slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=$d -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -Itests -o "$OUT/native_test_$d" tests/native_test.c -lm
         slow run "native image ($d): 16 voices a track, the device's engines as they are, CONCERT CAVERN SHIMMER, the long delay" "$OUT/native_test_$d"
     done
-    slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=hare_native -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o "$OUT/regress_hare_native" tests/regress.c -lm
-    slow run "regression, HARE NATIVE (the native image's): its presets' golden renders (as the device's)" "$OUT/regress_hare_native" tests/golden.txt tests/cpu_baseline.txt
-    if ${CC%% *} -fsyntax-only -w -DBLUEHARE_DIST=hare_native -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 tests/hostsim.c 2>/dev/null; then
-        echo "== FAILED: a NATIVE distribution builds without BLUEHARE_NATIVE"; fail=1
-    else
-        echo "== a NATIVE distribution refuses a device build (core.h: BLUEHARE_NATIVE only)"
-    fi
+    slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=all -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o "$OUT/regress_native" tests/regress.c -lm
+    slow run "regression, Native (every component): its presets' golden renders (as the device's)" "$OUT/regress_native" tests/golden.txt tests/cpu_baseline.txt
     $CC -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o "$OUT/descdump" tests/descdump.c -lm
     echo "== parameter and engine tables as JSON (for the editor mock test)"
     "$OUT/descdump" > "$OUT/desc.json" || fail=1
@@ -434,12 +430,12 @@ if [ "${NATIVE:-1}" = 0 ] || [ "$QUICK" = 1 ]; then
 elif ! command -v sdl2-config >/dev/null 2>&1 || [ ! -f build/gen/bluehare_tables.h ]; then
     echo "== skip the native image (needs SDL2: brew install sdl2)"
 else
-    run_now "native image: the desktop application builds (native/build.sh -> build/native)" sh native/build.sh
+    run_now "native image: the desktop application builds, every component (native/build.sh -> build/native)" sh native/build.sh
     run_now "native image: boots (dummy drivers), the screen draws, the clock follows the audio, HOME lit, a key sounds, MASTER dragged and scrolled" \
+        build/native/blue-hare-all --selftest
+    run_now "native image, HARE FM1's set: builds (native/build.sh hare_fm1)" sh native/build.sh hare_fm1
+    run_now "native image, HARE FM1's set: boots, the screen draws, the clock follows the audio, HOME lit, a key sounds" \
         build/native/blue-hare-hare_fm1 --selftest
-    run_now "native image, HARE NATIVE: builds (native/build.sh hare_native)" sh native/build.sh hare_native
-    run_now "native image, HARE NATIVE: boots, the screen draws, the clock follows the audio, HOME lit, a key sounds" \
-        build/native/blue-hare-hare_native --selftest
 fi
 
 barrier

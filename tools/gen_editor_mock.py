@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Tristano Suriani (Blue Hare)
 # Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
-"""The web editor's mock device's engine tables (web/editor.html: ENG, by id, and G_ENGSEL's names) from the firmware's
-own (tests/descdump.c's JSON: build/host/desc.json, the host tests' build: the primary distribution), between the
-markers /*MOCK-ENG-BEGIN*/ .. /*MOCK-ENG-END*/, /*MOCK-ENGSEL-*/ (G_ENGSEL's names) and /*MOCK-TRKDEF-*/ (the power-on
-sounds, the first engine), /*MOCK-ORDER-*/ (the engines' display order, ENGINE_ORDER). web/test_web.mjs
-checks the mock against the firmware: run this after an engine, a parameter or a preset changes.
+"""The web editor's mock device's tables (web/editor.html) from the firmware's own (tests/descdump.c's JSON:
+build/host/desc.json, the host tests' build: the primary distribution), between markers: /*MOCK-COUNTS-*/ (P_COUNT,
+G_COUNT, P_E0, G_ENGSEL, P_SLCR), /*MOCK-TP-*/ and /*MOCK-GP-*/ (2026-10-17: every track and global parameter's
+descriptor, by id), /*MOCK-ENG-*/ (the engines by id: titles, EDIT, presets), /*MOCK-TRKDEF-*/ (the power-on sounds,
+the first engine), /*MOCK-ORDER-*/ (the engines' display order, ENGINE_ORDER). web/test_web.mjs checks the mock
+against the firmware (`make tables` runs this): run it after an engine, a parameter or a preset changes.
   gen_editor_mock.py DESC.json web/editor.html"""
 import json
 import sys
@@ -55,8 +56,12 @@ def main(dj, html):
                   f"  const FIRST_E = E_OF({js(d['ORDER'][0])});   /* the build's first engine */")
     i, j = text.index("/*MOCK-ORDER-BEGIN*/") + len("/*MOCK-ORDER-BEGIN*/"), text.index("/*MOCK-ORDER-END*/")
     text = text[:i] + f"\nconst ENGINE_ORDER = {js(d['ORDER'])};\n" + text[j:]
-    names = d["GP"][d["G_ENGSEL"]]["names"]
-    text = splice(text, "/*MOCK-ENGSEL-BEGIN*/", "/*MOCK-ENGSEL-END*/", f"    E(\"ENG\", {js(names)}, 0),")
+    text = splice(text, "/*MOCK-COUNTS-BEGIN*/", "/*MOCK-COUNTS-END*/",
+                  f"  const P_COUNT = {d['P_COUNT']}, G_COUNT = {d['G_COUNT']}, NSTEP = 64, P_E0 = {d['P_E0']}, "
+                  f"G_ENGSEL = {d['G_ENGSEL']}, P_SLCR = {d['P_SLCR']};")
+    for key in ("TP", "GP"):
+        text = splice(text, f"/*MOCK-{key}-BEGIN*/", f"/*MOCK-{key}-END*/",
+                      "\n".join(f"    {desc(x)},{' ' * max(1, 60 - len(desc(x)))}/* {i} */" for i, x in enumerate(d[key])))
     open(html, "w").write(text)
     print(f"editor mock: {sum(e['name'] != '-' for e in d['ENG'])} engines of {len(d['ENG'])} ids")
 

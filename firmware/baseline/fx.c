@@ -562,6 +562,8 @@ static void eq_coef(uint32_t k, float db)
 static __attribute__((noinline)) void eq_block(int32_t *out, uint32_t n)
 {
     uint32_t k, i, ch;
+    if (!BLUEHARE_FX_EQ)                                /* (the EQ not in this build) */
+        return;
     for (k = 0; k < 4u; k++) {
         float t = (float)clamp(song.g[G_EQLO + k], -12, 12), d = t - eq.g[k];
         if (d != 0.0f) {
@@ -619,7 +621,9 @@ typedef struct {
 } cn_t;
 static union {                           /* (2026-10-17) CONCERT's state or PLATE's lines: one reverb runs at a time */
     cn_t c;
+#if BLUEHARE_FX_PLATE
     float pl[AMB_PL_HALF];
+#endif
 } rv_u __attribute__((section(".pool")));
 #define cn (rv_u.c)
 #define PL_MEM (rv_u.pl)
@@ -709,11 +713,13 @@ static __attribute__((noinline)) void rev_concert(const int32_t *rev_in, int32_t
 
 #ifdef BLUEHARE_NATIVE
 #include "fx_native.c"                                   /* (Blue Hare) the native image's reverbs: CONCERT, CAVERN, SHIMMER */
+#if BLUEHARE_FX_PLATE
 static float pl_mem_native[AMB_PL_HALF];
+#endif
 #define PL_MEM pl_mem_native
 #define RT_LAST 7                                        /* (5 PLATE; 6 CAVERN, 7 SHIMMER: fx_native.c's 5, 6) */
 #else
-#define RT_LAST 5                                        /* (2026-10: the device's CONCERT; 10-17: PLATE) */
+#define RT_LAST (4 + BLUEHARE_FX_PLATE)                  /* (2026-10: the device's CONCERT; 10-17: PLATE, a component) */
 #endif
 #define RT_PLATE 5
 #define RN_OF(rt) ((rt) == 4 ? 4u : (uint32_t)(rt) - 1u)   /* (native: fx_native.c's numbering of CONCERT CAVERN SHIMMER) */
@@ -807,8 +813,10 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
     }
     rev_clear();
     fx.rtype = (uint8_t)rt;
+#if BLUEHARE_FX_PLATE
     if (rt == RT_PLATE)                             /* (its lines over CONCERT's memory, cleared: from silence) */
         amb_plate_init(&amb_dp, PL_MEM, AMB_NUM_HALF, AMB_PRE_HALF), amb_pm = amb_ps = 0.0f;
+#endif
 }
 
 /* TAPE / WORN (DELAY TYPE 1, 2): the delay bus as a tape echo, its output added to wet (see the top). dl the delay
@@ -884,7 +892,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         fx.tp_fbk = fb;
         fx.tp_wow = fx.tp_flt = 0;
     }
-    if ((song.g[G_DTYPE] == (int16_t)DT_AMB) != fx.amb_on && !fx.dclr)
+    if ((BLUEHARE_FX_AMB && song.g[G_DTYPE] == (int16_t)DT_AMB) != fx.amb_on && !fx.dclr)
         fx.dclr = 1;                                  /* AMB on or off: the line cleared first, the delay silent */
     if (fx.dclr) {
         uint32_t a = (fx.dclr - 1u) * DCLR_N;
@@ -893,7 +901,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             fx.dclr++;
         } else {
             fx.dclr = 0;
-            fx.amb_on = song.g[G_DTYPE] == (int16_t)DT_AMB;
+            fx.amb_on = BLUEHARE_FX_AMB && song.g[G_DTYPE] == (int16_t)DT_AMB;
             fx.dtype = fx.tp_out = 0;
             fx.dly_lp = fx.dly_lp2 = 0;
             fx.dly_w = 0;
@@ -984,6 +992,8 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     else if (fx.dtype)
         dly_tape(dly_in, wet, n, dl, fb, col, dmix);
     rt = song.g[G_RTYPE];
+    if (rt == RT_PLATE && !BLUEHARE_FX_PLATE)
+        rt = 2;                                       /* (PLATE not in this build: HALL) */
     rt = rt >= 1 && rt <= RT_LAST ? rt : 0;
     hl.side = 0;
     if (rt != fx.rtype)

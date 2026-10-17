@@ -1,0 +1,22 @@
+# Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
+# The component registry (2026-10-17, the architecture's item 3): everything a distribution can pick, one a line:
+#   KIND  NAME  LAYER  FILES  | WHAT | CREDIT
+# KIND: ENGINE (its id and substitute: firmware/baseline/engine_ids.h), FX (an effect beside the baseline's fixed chain),
+# PLUGIN (a player on top of the engines), UI (a part of Blue Hare OS's screens). LAYER: baseline, os, fm1 (the
+# directories under firmware/). FILES: comma-separated, in that layer's directory. A distribution (distributions/*.txt)
+# lists its engines by name, and its FX, PLUGIN and UI components on lines `FX <NAME>` .. (none of a kind: all of it);
+# tools/gen_dist.py checks each against this file and gives BLUEHARE_<KIND>_<NAME> 0 or 1 to the build. The credits
+# table in AUTHORS.md ("Components in the build") is generated from this file (tools/gen_dist.py --credits).
+ENGINE  SID      baseline  eng_sid.c                 | a C64 sound-chip voice: pulse, saw, noise, ring, sync          | Tristano Suriani
+ENGINE  SH101    baseline  eng_sh101.c               | the little monosynth: saw, pulse, sub, noise, a 24 dB ladder  | Tristano Suriani
+ENGINE  WAVE     baseline  eng_wave.c                | wavetables, scanned and warped                                | Tristano Suriani
+ENGINE  VOSIM    baseline  eng_vosim.c               | two formants of pulse trains: voices, reeds, brass            | Tristano Suriani
+ENGINE  BLISS    baseline  eng_bliss.c               | FM keys: electric pianos, bells, mallets                      | Tristano Suriani
+ENGINE  WEST     baseline  eng_west.c                | west coast: complex oscillator, folder, low-pass gate         | Tristano Suriani
+ENGINE  MODAL    baseline  eng_modal.c,shared/phys_dsp.c | struck, plucked and bowed resonators                      | Tristano Suriani; its resonators DaisySP's (MIT)
+ENGINE  STRINGS  baseline  eng_strings.c             | a string ensemble, its ensemble chorus                        | Tristano Suriani
+FX      PLATE    baseline  fx_amb.c,fastmath.h       | REVERB TYPE PLATE: Dattorro's plate, in float                 | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani
+FX      AMB      baseline  fx_amb.c,fastmath.h       | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | Charles Vestal (amb-1); ported by Tristano Suriani
+FX      EQ       baseline  fx.c,fastmath.h           | the patch's EQ: four bands, in float                          | Tristano Suriani
+PLUGIN  GEN      baseline  gen.c                     | the generative ensemble on ARP: pad, bass, bells, pulse or waves | Charles Vestal (amb-1's composition); Tristano Suriani
+UI      OCEAN    os        ui_ocean.c                | the ocean on GEN's pages while it plays                       | Tristano Suriani, after his generative proof of concept

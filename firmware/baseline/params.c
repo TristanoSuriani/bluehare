@@ -34,10 +34,17 @@ static const char *const N_DASH[] = {"--"};
 #ifdef BLUEHARE_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
 static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE", "CAVERN", "SHIMMER"};
 #else
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE"};   /* (Blue Hare: GATED, every
-                                                                   * build's; CONCERT the device's since 2026-10) */
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT",   /* (Blue Hare: GATED, every */
+#if BLUEHARE_FX_PLATE                                             /* build's; CONCERT the device's since 2026-10; */
+                                      "PLATE"                     /* PLATE a component, 2026-10-17) */
 #endif
-static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL", "AMB"};   /* G_DTYPE: the delay bus's (fx.c
+};
+#endif
+static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL",
+#if BLUEHARE_FX_AMB                                               /* (AMB a component, 2026-10-17) */
+                                      "AMB"
+#endif
+};   /* G_DTYPE: the delay bus's (fx.c
                                                                    * dly_tape; PING, DUAL: Blue Hare's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
 /* (Blue Hare, 2026-10) GEN's presets (gen.c GEN_PRESETS, in that order: the names it shows on the knob) */
@@ -376,7 +383,9 @@ static const page_t PAGES[] = {
     {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN / PING / DUAL / AMB */
     {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL / GATED / CONCERT / PLATE */
     {"CHORUS", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
+#if BLUEHARE_FX_EQ
     {"EQ", FAM_FX, SC_GLOBAL, GR_NONE, {G_EQLO, G_EQLM, G_EQHM, G_EQHI}},   /* (2026-10-17) the patch's 4 bands */
+#endif
     {"SCL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_TRANS}},
     {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, 0xFF, 0xFF}},   /* SCL again: the chord keys (chord.c) */
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},
@@ -390,9 +399,11 @@ static const page_t PAGES[] = {
     {"PROJECT", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {0xFF, 0xFF, G_LOAD, G_SAVE}},   /* the song store (1.5: one song) */
     {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},
     /* (Blue Hare, 2026-10) ARP: the generative engine (gen.c); ARP starts and stops it (ui_input.c page_tap) */
+#if BLUEHARE_PLUGIN_GEN
     {"GEN", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GPRE, G_GSCL, G_GROOT, G_GMOT}},
     /* (2026-10-17) while GEN plays: how busy each role is (ARP starting it opens this page, stopping it GEN's) */
     {"GEN MIX", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GDPAD, G_GDBASS, G_GDBELL, G_GDTEX}},
+#endif
     /* (Blue Hare) the sequencer's placeholder: SEQ (and GLO, which opened the song) shows TODO */
     {"SEQ", FAM_SEQ, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5

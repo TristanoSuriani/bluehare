@@ -11,9 +11,9 @@
  *               core.h EID_COUNT
  *   substitute  the engine a sound of this one loads as in a distribution without it (and down that one's own, if it
  *               is missing too; at the end the distribution's first engine): engines.c eng_load_id
- * (Blue Hare) An engine marked native (the comment after it) is the native image's alone (BLUEHARE_NATIVE: more than
- * the FM-1's CPU or memory holds): only a NATIVE distribution may list it (tools/gen_dist.py), and on the device its
- * sounds load as its substitute, which shares its controls
+ * (2026-10-17) Every engine here is also in the component registry (firmware/components.txt: its layer, files, credit);
+ * tools/gen_dist.py checks the two agree. The native-only engines and NATIVE distributions are gone (Native builds
+ * every component: dist_all.h)
  * ARCHIVED(NAME, id): an engine taken out (below); empty unless the includer defines it */
 #ifndef ARCHIVED
 #define ARCHIVED(N, id)

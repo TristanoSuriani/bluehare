@@ -107,8 +107,14 @@ BLUEHARE_DIST=<name> ./build.sh      # another one (build/bluehare-<name>.fwsc)
 | Distribution | Tracks | Engines |
 | --- | --- | --- |
 | `hare_fm1` | 4 | SID SH101 WAVE VOSIM BLISS WEST MODAL STRINGS: Blue Hare's one distribution (2026-10-16, Milestone 1), palette ICE |
-| `hare_native` | 4 | HARE FM1's engines for the native image (`NATIVE`: the native image's alone, "Native image" below) |
-| `test_subset` | 4 | the host tests' build without some engines, never an image: SID WAVE WEST MODAL (`tests/engines_test.c`) |
+| `test_subset` | 4 | the host tests' build without some engines and the PLATE component, never an image: SID WAVE WEST MODAL (`tests/engines_test.c`) |
+| `all` | 4 | no file: generated from the registry (`firmware/components.txt`), every engine and component; Native's (2026-10-17: `hare_native` and NATIVE distributions are gone) |
+
+A distribution picks components besides its engines (2026-10-17): `FX <NAME>`, `PLUGIN <NAME>`, `UI <NAME>` lines,
+names from `firmware/components.txt` (none of a kind listed: every one of it). The build gets
+`BLUEHARE_<KIND>_<NAME>` 0 or 1; a component left out is compiled out (PLATE: its memory, its type; a song's PLATE
+plays HALL; AMB plays CLEAN). `make tables` regenerates what depends on the registry and the firmware's tables: the
+web editor's mock tables and AUTHORS.md's components.
 
 *(2026-10-16)* Blue Hare builds one distribution; the infrastructure for several stays (a new `distributions/*.txt` is
 a new build). The earlier ones (IDM, FOUNDRY, WAREHOUSE, CHIP, IDM NATIVE, REF) are in `archive/distributions/`, with
@@ -208,8 +214,8 @@ against the firmware's own parser.
 
 ```
 ./build.sh
-native/build.sh                # or native/build.sh hare_native
-open "build/native/Blue Hare HARE FM1.app" # or run build/native/blue-hare-hare_fm1
+native/build.sh                # every component; or native/build.sh hare_fm1, the FM-1's set
+open "build/native/Blue Hare.app" # or run build/native/blue-hare-all
 ```
 
 Blue Hare as a desktop application (`native/bluehare_native.c`): the same simulated FM-1 the browser emulator runs
@@ -250,8 +256,8 @@ it, and `core.h` refuses a device build of one) shares the controls of the engin
 the FM-1 as that engine. None is in the build now (CANYON was archived with ECHOES, 2026-10-17).
 
 ```
-native/build.sh hare_native
-open "build/native/Blue Hare HARE NATIVE.app"
+native/build.sh
+open "build/native/Blue Hare.app"
 ```
 
 Songs, sounds and presets are stored as on the device: a song made here plays on the FM-1 with the device's voices,

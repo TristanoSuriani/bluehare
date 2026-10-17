@@ -342,6 +342,7 @@ function mockTables() {
       names: x.names || m2.state.palettes, unit: x.unit || "", tab: x.tab, tabName: E.MENU_TABS[x.tab] })), fm);
   }
   diffs.slice(0, 20).forEach((d) => console.log("  " + d));
+  if (diffs.length) console.log("  (generated: make tables, tools/gen_editor_mock.py)");
   ok(!diffs.length, `editor: mock tables == firmware (${diffs.length} differences)`);
   /* #31: percent values as the firmware formats them (param_format), SWG 0..100 shows its value */
   const pd = (fw.PCT || []).filter(([sc, i, v, , txt]) => E.fmtValue((sc ? T.GP : T.TP)[i], v)[0] !== txt);   /* [scope, index, value, max, text] */

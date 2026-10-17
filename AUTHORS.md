@@ -29,6 +29,29 @@ A file Leo Kuroshita wrote carries his copyright line. Where Blue Hare changed i
 changes in it. A few upstream files never had a header (for example `firmware/os/settings_persist.c` and some
 tests); git history shows the changes to those.
 
+## Components in the build
+
+What a distribution can be made of today (`firmware/components.txt`, the registry; this table is generated from it by
+`python3 tools/gen_dist.py --credits .`, do not edit it by hand). The archived engines are listed further down.
+
+<!-- COMPONENTS-BEGIN -->
+| Component | Kind | What | Where | Credit |
+| --- | --- | --- | --- | --- |
+| SID | engine | a C64 sound-chip voice: pulse, saw, noise, ring, sync | `firmware/baseline/eng_sid.c` | Tristano Suriani |
+| SH101 | engine | the little monosynth: saw, pulse, sub, noise, a 24 dB ladder | `firmware/baseline/eng_sh101.c` | Tristano Suriani |
+| WAVE | engine | wavetables, scanned and warped | `firmware/baseline/eng_wave.c` | Tristano Suriani |
+| VOSIM | engine | two formants of pulse trains: voices, reeds, brass | `firmware/baseline/eng_vosim.c` | Tristano Suriani |
+| BLISS | engine | FM keys: electric pianos, bells, mallets | `firmware/baseline/eng_bliss.c` | Tristano Suriani |
+| WEST | engine | west coast: complex oscillator, folder, low-pass gate | `firmware/baseline/eng_west.c` | Tristano Suriani |
+| MODAL | engine | struck, plucked and bowed resonators | `firmware/baseline/eng_modal.c`, `firmware/baseline/shared/phys_dsp.c` | Tristano Suriani; its resonators DaisySP's (MIT) |
+| STRINGS | engine | a string ensemble, its ensemble chorus | `firmware/baseline/eng_strings.c` | Tristano Suriani |
+| PLATE | fx | REVERB TYPE PLATE: Dattorro's plate, in float | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani |
+| AMB | fx | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1); ported by Tristano Suriani |
+| EQ | fx | the patch's EQ: four bands, in float | `firmware/baseline/fx.c`, `firmware/baseline/fastmath.h` | Tristano Suriani |
+| GEN | plugin | the generative ensemble on ARP: pad, bass, bells, pulse or waves | `firmware/baseline/gen.c` | Charles Vestal (amb-1's composition); Tristano Suriani |
+| OCEAN | ui | the ocean on GEN's pages while it plays | `firmware/os/ui_ocean.c` | Tristano Suriani, after his generative proof of concept |
+<!-- COMPONENTS-END -->
+
 ## Blue Hare: Tristano Suriani
 
 ### New files

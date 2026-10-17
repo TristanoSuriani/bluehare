@@ -75,8 +75,8 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   `Blue Hare HARE FM1.app` on macOS), the same firmware in a window with the panel, the computer's sound out and MIDI in,
   its saves in a file: the base for heavier engines and effects than the FM-1 can hold. Every track has its own 16
   voices there, three more reverbs (CONCERT: HALL at the full rate and twice the lines; CAVERN: a cave's echoes and
-  a 30 s tail; SHIMMER: a tail climbing in octaves), a 23.8 s delay line, and a distribution of its own, HARE NATIVE,
-  (BUILDING.md "Native image")
+  a 30 s tail; SHIMMER: a tail climbing in octaves), a 23.8 s delay line, and every component of the registry
+  (`firmware/components.txt`; BUILDING.md "Native image")
 
 - **Six engines** in HARE FM1 (below), each with its own factory presets; every factory sound has a category (BASS, LEAD,
   PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by

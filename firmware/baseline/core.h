@@ -87,9 +87,6 @@ enum {                           /* the indices: the distribution's engines in i
     NENGINES                     /* engines in this build (1 .. 16) */
 };                               /* (the ones left out: ENGI_<NAME> ENG_ABSENT, in the generated header) */
 typedef char eng_count_ok[NENGINES > 0 && NENGINES <= 16 ? 1 : -1];
-#if (BLUEHARE_DIST_NATIVE || BLUEHARE_ENG_CANYON) && !defined(BLUEHARE_NATIVE)
-#error "a NATIVE distribution, or a native engine: the native image's alone (native/build.sh)"
-#endif
 #define NENG_SHOWN NENGINES      /* (the engines one can pick: all of the build's, in their order) */
 /* engine index e is engine X (a uint8_t compared without the warning that an engine left out would raise: still false,
  * folded away) */

@@ -659,7 +659,7 @@ static __attribute__((noinline)) void gen_start(void)
     gen_drift_reset();
     GS.arc_left = 1;
     GS.pos = 0x7FFFFFFFu;                       /* (the first step at once) */
-    gen.on = NTRK >= GEN_ROLES;
+    gen.on = NTRK >= GEN_ROLES && BLUEHARE_PLUGIN_GEN;   /* (GEN a component, 2026-10-17) */
 }
 /* every block (events_block): a start or a stop asked for, then the steps due in these n samples */
 static __attribute__((noinline)) void gen_block(uint32_t n)

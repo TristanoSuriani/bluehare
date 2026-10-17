@@ -8,7 +8,9 @@
 #   make emu [DIST=hare_fm1]       the browser emulator (web/emu/build.sh -> build/emu or build/emu-<dist>)
 #   make emus                      the emulator of every device distribution
 #   make studio [DIST=hare_fm1]    the sound design studio (web/studio/build.sh -> build/studio or build/studio-<dist>)
-#   make native [DIST=hare_native] the desktop application (native/build.sh)
+#   make native [DIST=hare_fm1]    the desktop application (native/build.sh; without DIST every component)
+#   make tables                    what is generated from the firmware and the registry: the web editor's mock tables
+#                                  (tools/gen_editor_mock.py), AUTHORS.md's components (tools/gen_dist.py --credits)
 #   make quick                     the fast tier of the tests (QUICK=1: about a minute)
 #   make test                      the whole suite (NATIVE=0 / SANITIZE=0 leave parts out)
 #   make test-core                 the suite without the native image (most firmware work)
@@ -24,7 +26,7 @@ TESTCC := cc -O1 -Wall -Wno-unused-function
 EMUDIR = build/emu$(if $(filter-out ,$(DIST)),-$(DIST),)
 STUDIODIR = build/studio$(if $(filter-out ,$(DIST)),-$(DIST),)
 
-.PHONY: firmware firmwares emu emus studio native quick test test-core serve serve-studio help
+.PHONY: firmware firmwares emu emus studio native tables quick test test-core serve serve-studio help
 help:
 	@sed -n '/^#   make/s/^#   //p' $(MAKEFILE_LIST)
 
@@ -45,6 +47,12 @@ studio:
 
 native:
 	$(ENV) && sh native/build.sh $(DIST)
+
+tables:
+	$(ENV) && mkdir -p build/host && python3 tools/gen_dist.py . build/gen && \
+	  cc -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o build/host/descdump tests/descdump.c -lm && \
+	  build/host/descdump > build/host/desc.json && python3 tools/gen_editor_mock.py build/host/desc.json web/editor.html && \
+	  python3 tools/gen_dist.py --credits .
 
 quick:
 	$(ENV) && QUICK=1 CC="$(TESTCC)" sh tests/run_tests.sh

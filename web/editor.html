@@ -994,48 +994,142 @@ function makeMockDevice(opt = {}) {
   const E = (label, names, def) => D(label, F.ENUM, 0, names.length - 1, def, names);
   const MSRC = ["OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"];   /* (append-only: S&H SLEW, #132) */
   const MDST = ["OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE", "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"];   /* (DEPTH: #132) */
-  const TP = [
-    D("LVL", F.DB, 0, 127, 104),
-    D("ATK", F.TIME, 0, 127, 10), D("DEC", F.TIME, 0, 127, 70), D("SUS", F.PCT, 0, 127, 90), D("REL", F.TIME, 0, 127, 60),
-    D("FLT", F.BIPCT, -64, 63, 0), D("PIT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("OCT", F.INT, -4, 4, 0),   /* 8: OCT (Blue Hare; was ENV DEST FX, inert) */
-    D("RATE", F.LFOHZ, 0, 127, 60), E("WAVE", ["SIN", "TRI", "SAW", "SQR", "S&H"], 0), D("PHS", F.INT, 0, 127, 0), D("FADE", F.TIME, 0, 127, 0),
-    D("PIT", F.BIPCT, -64, 63, 0), D("FLT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("AMP", F.PCT, 0, 127, 0),
-    ...Array.from({ length: 8 }, () => D("-", F.INT, 0, 0, 0)),   /* 17..24: the arpeggiator's until 2026-10 (inert) */
-    D("ROOT", F.NOTE, 0, 11, 0), E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 0), E("QNT", ["OFF", "SNAP", "WHITE"], 0), D("TRN", F.SEMI, -24, 24, 0),
-    D("LEN", F.STEPS, 1, 64, 16), E("DIV", NDIV, 2), D("SWG", F.PCT, 0, 100, 0), D("GATE", F.PCT, 1, 127, 64),
-    D("DST", F.PCT, 0, 127, 0), D("CHO", F.PCT, 0, 127, 0), D("DLY", F.PCT, 0, 127, 0), D("REV", F.PCT, 0, 127, 0),
-    E("VCE", ["POLY", "MONO", "LEG", "UNI"], 0), D("GLD", F.TIME, 0, 127, 0), D("PAN", F.BIPCT, -64, 63, 0), E("MUTE", NONOFF, 0),
-    E("GLMOD", ["RATE", "TIME"], 0), E("PRIO", ["LAST", "LOW", "HIGH"], 0), E("ALLOC", ["ROT", "REUSE"], 0), D("DTUNE", F.INT, 0, 127, 40),
-    ...Array.from({ length: 4 }, () => D("-", F.INT, 0, 0, 0)),   /* 45..48: the SLICER's until 2026-10-16 (archived): inert */
-    ...[1, 2, 3, 4].flatMap((k) => [E("SRC" + k, MSRC, 0), E("DST" + k, MDST, 0), D("AMT" + k, F.BIPCT, -64, 63, 0)]),   /* the matrix */
-  ];
-  const GP = [
-    D("BPM", F.BPM, 40, 240, 120), D("SWG", F.PCT, 0, 100, 0), E("CLK", ["INT", "USB", "TRS"], 0), D("TUNE", F.INT, -50, 50, 0),
-    E("TIME", NDIV, 1), D("FDBK", F.PCT, 0, 120, 60), D("COLR", F.PCT, 0, 127, 70), D("MIX", F.PCT, 0, 127, 90),
-    D("SIZE", F.PCT, 0, 127, 90), D("DAMP", F.PCT, 0, 127, 60), D("CRT", F.LFOHZ, 0, 127, 40), D("CDP", F.PCT, 0, 127, 60),
-    /* (Blue Hare, 2026-10) ids 12, 13, 15: GEN's preset, scale and root (were MIDI, SYNC, CPU, inert) */
-    E("GEN", ["GARDN", "DEPRT", "VOICE", "AFTER", "NIGHT", "SHORE", "GLASS", "TIDES"], 0),
-    E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 3),
-    E("ROUT", ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"], 0), D("ROOT", F.NOTE, 0, 11, 2),
-    D("SLOT", F.INT, 1, 1, 1), E("NAME", NDASH, 0), E("LOAD", NGO, 0), E("SAVE", NGO, 0),   /* (1.5: one song) */
-/*MOCK-ENGSEL-BEGIN*/
-    E("ENG", ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "WAVE", "-", "WEST", "-", "-", "-", "-", "VOSIM", "-", "-", "SID", "-", "BLISS", "-", "-", "-", "-", "-", "-", "-", "MODAL", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "STRINGS", "-", "-", "-", "-", "-", "SH101"], 0),
-  /*MOCK-ENGSEL-END*/
-    E("SET", NGO, 0),
-    E("CLRSQ", NGO, 0), E("INIT", NGO, 0),          /* (CLRSQ: unused, the id kept) */
-    E("TYPE", ["ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE"], 2),   /* G_RTYPE (id 24, was G_DRCH): the reverb's model (HALL: 1.2; GATED, CONCERT: Blue Hare) */
-    E("TYPE", ["CLEAN", "TAPE", "WORN", "PING", "DUAL", "AMB"], 0),   /* G_DTYPE (id 25, was G_DRLVL): the delay's (Blue Hare 1.5; PING, DUAL after) */
-    D("MOTN", F.PCT, 0, 127, 64),                   /* G_GMOT (id 26, was G_DRREV): GEN's MOTION (Blue Hare, 2026-10) */
-    D("LOW", F.INT, -12, 12, 0, null, "dB"),        /* G_EQLO .. G_EQHI (27 .. 30): the patch's EQ (2026-10-17) */
-    D("LMID", F.INT, -12, 12, 0, null, "dB"),
-    D("HMID", F.INT, -12, 12, 0, null, "dB"),
-    D("HIGH", F.INT, -12, 12, 0, null, "dB"),
-    D("PAD", F.PCT, 0, 127, 64),                    /* G_GDPAD .. G_GDTEX (31 .. 34): GEN's densities (2026-10-17) */
-    D("BASS", F.PCT, 0, 127, 64),
-    D("BELL", F.PCT, 0, 127, 64),
-    D("PL/WV", F.PCT, 0, 127, 64),
-  ];
   const NONE = D("-", F.INT, 0, 0, 0);
+  const TP = [/*MOCK-TP-BEGIN*/
+    D("LVL", F.DB, 0, 127, 104),                                 /* 0 */
+    D("ATK", F.TIME, 0, 127, 10),                                /* 1 */
+    D("DEC", F.TIME, 0, 127, 70),                                /* 2 */
+    D("SUS", F.PCT, 0, 127, 90),                                 /* 3 */
+    D("REL", F.TIME, 0, 127, 60),                                /* 4 */
+    D("FLT", F.BIPCT, -64, 63, 0),                               /* 5 */
+    D("PIT", F.BIPCT, -64, 63, 0),                               /* 6 */
+    D("SHP", F.BIPCT, -64, 63, 0),                               /* 7 */
+    D("OCT", F.INT, -4, 4, 0),                                   /* 8 */
+    D("RATE", F.LFOHZ, 0, 127, 60),                              /* 9 */
+    E("WAVE", ["SIN", "TRI", "SAW", "SQR", "S&H"], 0),           /* 10 */
+    D("PHS", F.INT, 0, 127, 0),                                  /* 11 */
+    D("FADE", F.TIME, 0, 127, 0),                                /* 12 */
+    D("PIT", F.BIPCT, -64, 63, 0),                               /* 13 */
+    D("FLT", F.BIPCT, -64, 63, 0),                               /* 14 */
+    D("SHP", F.BIPCT, -64, 63, 0),                               /* 15 */
+    D("AMP", F.PCT, 0, 127, 0),                                  /* 16 */
+    NONE,                                                        /* 17 */
+    NONE,                                                        /* 18 */
+    NONE,                                                        /* 19 */
+    NONE,                                                        /* 20 */
+    NONE,                                                        /* 21 */
+    NONE,                                                        /* 22 */
+    NONE,                                                        /* 23 */
+    NONE,                                                        /* 24 */
+    D("ROOT", F.NOTE, 0, 11, 0),                                 /* 25 */
+    E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 0), /* 26 */
+    E("QNT", ["OFF", "SNAP", "WHITE"], 0),                       /* 27 */
+    D("TRN", F.SEMI, -24, 24, 0),                                /* 28 */
+    D("LEN", F.STEPS, 1, 64, 16),                                /* 29 */
+    E("DIV", ["1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"], 2), /* 30 */
+    D("SWG", F.PCT, 0, 100, 0),                                  /* 31 */
+    D("GATE", F.PCT, 1, 127, 64),                                /* 32 */
+    D("DST", F.PCT, 0, 127, 0),                                  /* 33 */
+    D("CHO", F.PCT, 0, 127, 0),                                  /* 34 */
+    D("DLY", F.PCT, 0, 127, 0),                                  /* 35 */
+    D("REV", F.PCT, 0, 127, 0),                                  /* 36 */
+    E("VCE", ["POLY", "MONO", "LEG", "UNI"], 0),                 /* 37 */
+    D("GLD", F.TIME, 0, 127, 0),                                 /* 38 */
+    D("PAN", F.BIPCT, -64, 63, 0),                               /* 39 */
+    E("MUTE", ["OFF", "ON"], 0),                                 /* 40 */
+    E("GLMOD", ["RATE", "TIME"], 0),                             /* 41 */
+    E("PRIO", ["LAST", "LOW", "HIGH"], 0),                       /* 42 */
+    E("ALLOC", ["ROT", "REUSE"], 0),                             /* 43 */
+    D("DTUNE", F.INT, 0, 127, 40),                               /* 44 */
+    NONE,                                                        /* 45 */
+    NONE,                                                        /* 46 */
+    NONE,                                                        /* 47 */
+    NONE,                                                        /* 48 */
+    E("SRC1", ["OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"], 0), /* 49 */
+    E("DST1", ["OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE", "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"], 0), /* 50 */
+    D("AMT1", F.BIPCT, -64, 63, 0),                              /* 51 */
+    E("SRC2", ["OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"], 0), /* 52 */
+    E("DST2", ["OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE", "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"], 0), /* 53 */
+    D("AMT2", F.BIPCT, -64, 63, 0),                              /* 54 */
+    E("SRC3", ["OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"], 0), /* 55 */
+    E("DST3", ["OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE", "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"], 0), /* 56 */
+    D("AMT3", F.BIPCT, -64, 63, 0),                              /* 57 */
+    E("SRC4", ["OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"], 0), /* 58 */
+    E("DST4", ["OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE", "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"], 0), /* 59 */
+    D("AMT4", F.BIPCT, -64, 63, 0),                              /* 60 */
+    D("ATK", F.TIME, 0, 127, 0),                                 /* 61 */
+    D("DEC", F.TIME, 0, 127, 0),                                 /* 62 */
+    D("SUS", F.PCT, 0, 127, 127),                                /* 63 */
+    D("REL", F.TIME, 0, 127, 0),                                 /* 64 */
+    D("LVL", F.PCT, 0, 127, 127),                                /* 65 */
+    D("ATK", F.TIME, 0, 127, 0),                                 /* 66 */
+    D("DEC", F.TIME, 0, 127, 0),                                 /* 67 */
+    D("SUS", F.PCT, 0, 127, 127),                                /* 68 */
+    D("REL", F.TIME, 0, 127, 0),                                 /* 69 */
+    D("LVL", F.PCT, 0, 127, 127),                                /* 70 */
+    D("ATK", F.TIME, 0, 127, 0),                                 /* 71 */
+    D("DEC", F.TIME, 0, 127, 0),                                 /* 72 */
+    D("SUS", F.PCT, 0, 127, 127),                                /* 73 */
+    D("REL", F.TIME, 0, 127, 0),                                 /* 74 */
+    D("LVL", F.PCT, 0, 127, 127),                                /* 75 */
+    D("ATK", F.TIME, 0, 127, 0),                                 /* 76 */
+    D("DEC", F.TIME, 0, 127, 0),                                 /* 77 */
+    D("SUS", F.PCT, 0, 127, 127),                                /* 78 */
+    D("REL", F.TIME, 0, 127, 0),                                 /* 79 */
+    D("LVL", F.PCT, 0, 127, 127),                                /* 80 */
+    E("CHRD", ["OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"], 0), /* 81 */
+    E("VOIC", ["CLOSE", "OPEN", "INV1", "INV2", "+OCT"], 0),     /* 82 */
+    NONE,                                                        /* 83 */
+    NONE,                                                        /* 84 */
+    NONE,                                                        /* 85 */
+    NONE,                                                        /* 86 */
+    NONE,                                                        /* 87 */
+    NONE,                                                        /* 88 */
+    NONE,                                                        /* 89 */
+    NONE,                                                        /* 90 */
+    E("SYNC", ["OFF", "4BAR", "2BAR", "1/1", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0), /* 91 */
+    E("TRIG", ["NOTE", "FREE"], 0),                              /* 92 */
+    E("POL", ["BI", "UNI"], 0),                                  /* 93 */
+    E("QNTZ", ["OFF", "ON"], 1),                                 /* 94 */
+    D("SPRD", F.PCT, 0, 127, 0),                                 /* 95 */
+  /*MOCK-TP-END*/];
+  const GP = [/*MOCK-GP-BEGIN*/
+    D("BPM", F.BPM, 40, 240, 120),                               /* 0 */
+    D("SWG", F.PCT, 0, 100, 0),                                  /* 1 */
+    E("CLK", ["INT", "USB", "TRS"], 0),                          /* 2 */
+    D("TUNE", F.INT, -50, 50, 0),                                /* 3 */
+    E("TIME", ["1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"], 1), /* 4 */
+    D("FDBK", F.PCT, 0, 120, 60),                                /* 5 */
+    D("COLR", F.PCT, 0, 127, 70),                                /* 6 */
+    D("MIX", F.PCT, 0, 127, 90),                                 /* 7 */
+    D("SIZE", F.PCT, 0, 127, 90),                                /* 8 */
+    D("DAMP", F.PCT, 0, 127, 60),                                /* 9 */
+    D("CRT", F.LFOHZ, 0, 127, 40),                               /* 10 */
+    D("CDP", F.PCT, 0, 127, 60),                                 /* 11 */
+    E("GEN", ["GARDN", "DEPRT", "VOICE", "AFTER", "NIGHT", "SHORE", "GLASS", "TIDES"], 0), /* 12 */
+    E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 3), /* 13 */
+    E("ROUT", ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"], 0), /* 14 */
+    D("ROOT", F.NOTE, 0, 11, 2),                                 /* 15 */
+    D("SLOT", F.INT, 1, 1, 1),                                   /* 16 */
+    E("NAME", ["--"], 0),                                        /* 17 */
+    E("LOAD", ["--", "GO"], 0),                                  /* 18 */
+    E("SAVE", ["--", "GO"], 0),                                  /* 19 */
+    E("ENG", ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "WAVE", "-", "WEST", "-", "-", "-", "-", "VOSIM", "-", "-", "SID", "-", "BLISS", "-", "-", "-", "-", "-", "-", "-", "MODAL", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "STRINGS", "-", "-", "-", "-", "-", "SH101"], 0), /* 20 */
+    E("SET", ["--", "GO"], 0),                                   /* 21 */
+    E("CLRSQ", ["--", "GO"], 0),                                 /* 22 */
+    E("INIT", ["--", "GO"], 0),                                  /* 23 */
+    E("TYPE", ["ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE"], 2), /* 24 */
+    E("TYPE", ["CLEAN", "TAPE", "WORN", "PING", "DUAL", "AMB"], 0), /* 25 */
+    D("MOTN", F.PCT, 0, 127, 64),                                /* 26 */
+    D("LOW", F.INT, -12, 12, 0, null, "dB"),                     /* 27 */
+    D("LMID", F.INT, -12, 12, 0, null, "dB"),                    /* 28 */
+    D("HMID", F.INT, -12, 12, 0, null, "dB"),                    /* 29 */
+    D("HIGH", F.INT, -12, 12, 0, null, "dB"),                    /* 30 */
+    D("PAD", F.PCT, 0, 127, 64),                                 /* 31 */
+    D("BASS", F.PCT, 0, 127, 64),                                /* 32 */
+    D("BELL", F.PCT, 0, 127, 64),                                /* 33 */
+    D("PL/WV", F.PCT, 0, 127, 64),                               /* 34 */
+  /*MOCK-GP-END*/];
   /* a retired engine number (1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE: removed in 1.5; engines.c ENG_NONE) */
   const GONE = { name: "-", titles: ["-", "-"], edit: [NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE], presets: [] };
   const RATIO = [".5", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16"];
@@ -1370,14 +1464,10 @@ function makeMockDevice(opt = {}) {
     [[36, 42, 42, 42, 38, 42, 36, 42, 36, 42, 42, 36, 38, 42, 46, 42], [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]],   /* 12 BEAT (DRUM) */
     [[48, 51, 55, 60, 63, 67, 72, 75, 48, 51, 55, 60, 63, 67, 72, 75], [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]],   /* 13 ARP */
   ];
-  for (let op = 0; op < 4; op++) TP.push(D("ATK", F.TIME, 0, 127, 0), D("DEC", F.TIME, 0, 127, 0), D("SUS", F.PCT, 0, 127, 127), D("REL", F.TIME, 0, 127, 0), D("LVL", F.PCT, 0, 127, 127));
-  TP.push(E("CHRD", ["OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"], 0),   /* the chord keys 81, 82 */
-    E("VOIC", ["CLOSE", "OPEN", "INV1", "INV2", "+OCT"], 0));
-  for (let k = 0; k < 8; k++) TP.push(NONE);   /* 83..90: the kits' lane levels until 2026-10-16 (archived): inert */
-  TP.push(E("SYNC", ["OFF", "4BAR", "2BAR", "1/1", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0),   /* 1.2: LFO 2 (91..93) */
-    E("TRIG", ["NOTE", "FREE"], 0), E("POL", ["BI", "UNI"], 0), E("QNTZ", ["OFF", "ON"], 1),   /* and QUANTIZE (94) */
-    D("SPRD", F.PCT, 0, 127, 0));   /* SPREAD (95, #148) */
+  /* (2026-10-17: TP above is the firmware's whole, 0 .. 95, generated: no appends here) */
+  /*MOCK-COUNTS-BEGIN*/
   const P_COUNT = 104, G_COUNT = 35, NSTEP = 64, P_E0 = 96, G_ENGSEL = 20, P_SLCR = 45;
+  /*MOCK-COUNTS-END*/
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const enumOrig = (d, v) => d.fmt === F.ENUM && d.names ? aliasOf(d.names, v - d.min) + d.min : v;   /* params.c enum_orig */
   /* four tracks (firmware v3), four synth parts (1.0); engine / preset / p / step below are the selected track's */
