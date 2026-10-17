@@ -223,7 +223,8 @@ static void song_setup(void)
     song.playing = 0;                              /* (a test before may leave the transport running) */
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, ENGI_BLISS, 4);                   /* BLISS's GLASS BELL */
+    host_preset(t2, ENGI_MODAL, (uint32_t)patch_find_preset(ENGI_MODAL, "GLASS"));   /* MODAL's GLASS (BLISS's GLASS BELL
+                                                    * until archived) */
     host_drums(td);                                /* hostsim's drums */
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i], d[4], k = 0;

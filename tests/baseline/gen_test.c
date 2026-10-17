@@ -80,8 +80,8 @@ static void setup(uint32_t piece)
         for (uint32_t k = 0; k < P_E0; k++)
             trk[i].p[k] = TP[k].def;
     host_preset(&trk[0], BLUEHARE_ENG_WAVE ? ENGI_WAVE : 0u, 8);        /* (GARDEN's sounds, by hand: gen_apply is the */
-    host_preset(&trk[1], ENGI_WAVE, 12);      /* UI's): WARM PAD, SUB BASS, GLASS BELL, WOOD DRUM */
-    host_preset(&trk[2], BLUEHARE_ENG_BLISS ? ENGI_BLISS : 0u, 4);
+    host_preset(&trk[1], ENGI_WAVE, (uint32_t)patch_find_preset(ENGI_WAVE, "SUB BASS"));      /* UI's): WARM PAD, SUB BASS, GLASS BELL, WOOD DRUM */
+    host_preset(&trk[2], ENGI_MODAL, (uint32_t)patch_find_preset(ENGI_MODAL, "GLASS"));
     host_preset(&trk[3], BLUEHARE_ENG_MODAL ? ENGI_MODAL : 0u, 7);
     song.master_q12 = 4096;
     song.g[G_GPRE] = (int16_t)piece;

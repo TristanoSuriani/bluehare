@@ -61,19 +61,19 @@ typedef struct {
 static const gen_preset_t GEN_PRESETS[] = {
     /*            scl rt bpm  pad bas bel pul  den evo hit swe mot fif drift boct bass  sounds */
     {"GARDEN",     3, 2, 72, {60, 45, 65, 40}, 40, 35, 35, 60, 50, 35, 39, 0, 0,
-     {EID_WAVE, EID_WAVE, EID_BLISS, EID_MODAL}, {"WARM PAD", "SUB BASS", "GLASS BELL", "WOOD DRUM"},
+     {EID_WAVE, EID_WAVE, EID_MODAL, EID_MODAL}, {"WARM PAD", "SUB BASS", "GLASS", "WOOD DRUM"},
      {2, 102, 76, 3, 7, 55, 50, 57, 40, 60}},
     {"DEPARTURES", 1, 1, 60, {35, 0, 75, 40}, 35, 30, 0, 55, 40, 25, 59, -1, 0,
      {EID_WAVE, EID_WAVE, EID_MODAL, EID_SID}, {"STRING PAD", "SUB BASS", "KALIMBA", "SURF"},
      {4, 108, 100, 3, 7, 55, 60, 38, 35, 60}, 1},
     {"VOICES",     2, 5, 56, {85, 25, 0, 30}, 30, 30, 0, 70, 55, 30, 77, 0, -1,
-     {EID_WAVE, EID_WAVE, EID_BLISS, EID_SID}, {"CHOIR PAD", "SUB BASS", "CELESTA", "SURF"},
+     {EID_WAVE, EID_WAVE, EID_MODAL, EID_SID}, {"CHOIR PAD", "SUB BASS", "GLOCKEN", "SURF"},
      {4, 114, 42, 1, 9, 50, 40, 25, 30, 70}, 1},
     {"AFTERNOON",  9, 7, 84, {50, 35, 65, 25}, 55, 45, 30, 50, 55, 40, 34, 0, 0,
-     {EID_WAVE, EID_WAVE, EID_BLISS, EID_MODAL}, {"GLASS PAD", "SUB BASS", "FM BELLS", "WOOD DRUM"},
+     {EID_WAVE, EID_WAVE, EID_MODAL, EID_MODAL}, {"GLASS PAD", "SUB BASS", "CHIMES", "WOOD DRUM"},
      {2, 95, 51, 3, 6, 55, 55, 64, 45, 55}},
     {"NIGHT BUS",  2, 9, 96, {45, 55, 55, 60}, 45, 50, 55, 40, 70, 45, 30, 0, 0,
-     {EID_WAVE, EID_SID, EID_BLISS, EID_MODAL}, {"MORPH PAD", "SID BASS", "SOFT EP", "WOOD DRUM"},
+     {EID_WAVE, EID_SID, EID_MODAL, EID_MODAL}, {"MORPH PAD", "SID BASS", "TINE EP", "WOOD DRUM"},
      {2, 89, 83, 1, 6, 60, 50, 70, 50, 50}},
     {"SHORELINE",  5, 4, 64, {40, 30, 60, 55}, 30, 40, 0, 80, 85, 20, 59, 0, 0,
      {EID_WAVE, EID_WAVE, EID_MODAL, EID_SID}, {"WARM PAD", "SUB BASS", "GLOCKEN", "SURF"},
@@ -82,7 +82,7 @@ static const gen_preset_t GEN_PRESETS[] = {
      {EID_WAVE, EID_WAVE, EID_MODAL, EID_MODAL}, {"GLASS PAD", "SUB BASS", "GLASS", "WOOD DRUM"},
      {2, 102, 57, 3, 6, 50, 65, 57, 45, 50}},
     {"TIDES",      4, 10, 70, {55, 40, 60, 35}, 45, 75, 40, 60, 95, 55, 26, 0, 0,
-     {EID_WAVE, EID_WAVE, EID_BLISS, EID_MODAL}, {"EVOLVER", "SUB BASS", "TUBULAR", "WOOD DRUM"},
+     {EID_WAVE, EID_WAVE, EID_MODAL, EID_MODAL}, {"EVOLVER", "SUB BASS", "TUBULAR", "WOOD DRUM"},
      {4, 108, 51, 4, 7, 55, 50, 64, 40, 60}},
 };
 #define GEN_NPRESETS (sizeof GEN_PRESETS / sizeof GEN_PRESETS[0])

@@ -495,7 +495,7 @@ static void test_cost(void)
 {
     uint32_t e_phys = eng_by_name("PHYS"), pp = preset_by_name(e_phys, "BOWED METAL");
     uint8_t phys[NPART][3] = {{(uint8_t)e_phys, (uint8_t)pp, 8}}, idle[NPART][3] = {{0}};
-    uint8_t mix[NPART][3] = {{ENGI_BLISS, 0, 8}, {ENGI_SID, 0, 8}, {(uint8_t)e_phys, (uint8_t)pp, 4}, {ENGI_VOSIM, 0, 4}};
+    uint8_t mix[NPART][3] = {{ENGI_WAVE, 0, 8}, {ENGI_SID, 0, 8}, {(uint8_t)e_phys, (uint8_t)pp, 4}, {ENGI_VOSIM, 0, 4}};
     double c_idle, c0, c1, m0, m1;
     if (!instr_now()) {
         printf("mod: cost: no instruction counter on this host (proc_pid_rusage), skipped\n");
@@ -557,8 +557,9 @@ static int demos(const char *dir)
         fclose(f);
         n++;
     }
-    /* VEL -> AMP: BLISS's E.PIANO, the same note at velocities 10 .. 127, twice as much dynamics */
-    fresh(ENGI_BLISS, 0);
+    /* VEL -> AMP: MODAL's GRAND (BLISS's E.PIANO until archived), the same note at velocities 10 .. 127, twice as much
+     * dynamics */
+    fresh(ENGI_MODAL, (uint32_t)patch_find_preset(ENGI_MODAL, "GRAND"));
     slot(t, 0, MS_VEL, MD_AMP, 63);
     slot(t, 1, MS_VEL, MD_CUT, 30);
     if ((f = demo_open(dir, "vel_amp", 16u * (FS / 4u / CTL) * CTL + FS / CTL * CTL))) {

@@ -193,3 +193,8 @@ What they were (from the README of before; the distributions as they were then):
 - **SH101** *(Blue Hare, Milestone 1; archived 2026-10-17)*: the little monosynth after the Roland SH-101: saw, pulse
   (PW), a sub (three types), noise, a 24 dB ladder. Its WIND and SURF live on in SID; GEN's basses are WAVE's SUB BASS
   and SID BASS. Id 61 retired with it
+- **BLISS** *(1.5; archived 2026-10-17)*: two-operator FM keys: electric pianos, bells, mallets. MODAL's struck
+  materials sound better; its pianos (GRAND, UPRIGHT, FELT, TINE EP, REED EP, TOY) took the keys' place, GEN's bells are
+  MODAL's. Id 26 retired with it
+- **STRINGS** *(1.5, WAREHOUSE; back 2026-10-17, archived again the same day)*: a string ensemble, 16', 8', 4' through
+  its ensemble chorus. MODAL's BOWED STRING (a friction bow) does strings better. Id 55 retired with it

@@ -294,8 +294,7 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     host_tracks_init();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, BLUEHARE_ENG_BLISS ? (uint32_t)ENGI_BLISS : 0u, 0);   /* (BLISS's E.PIANO; VOSIM's FORMANT PAD until
-                                                    * the engines were archived) */
+    host_preset(t2, ENGI_WAVE, 0);                 /* (WAVE's WARM PAD; BLISS's E.PIANO until it was archived) */
     host_preset(t3, ENGI_SID, 0);
     host_drums(td);
     for (i = 0; i < 16u; i++) {
@@ -697,7 +696,7 @@ static int tracks_test(const char *dir)
                    e + 1u < NENGINES ? "," : "\n");
     {   /* FM6, PHASE, VOICE (their heaviest presets) and drums on part 4 at once: 3 + 3 + 2 notes and the hits in the
          * budget of 8 */
-        const uint8_t fm = ENGI_BLISS;
+        const uint8_t fm = ENGI_VOSIM;
         uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 3}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 2},
                                    {ENGI_MODAL, 7, DRUM_HITS}};
         uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 8}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 4},

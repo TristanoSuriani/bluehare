@@ -26,6 +26,8 @@
 ARCHIVED(BYTE, 15)
 ARCHIVED(WEST, 16)            /* (2026-10-17, with SH101: fewer engines, the kept ones better) */
 ARCHIVED(SH101, 61)
+ARCHIVED(BLISS, 26)           /* (2026-10-17: MODAL's keys and bells sound better; its pianos took BLISS's place) */
+ARCHIVED(STRINGS, 55)         /* (2026-10-17: MODAL's BOWED STRING does strings better) */
 ARCHIVED(ECHOES, 36)          /* (2026-10-17: STRINGS took its place) */
 ARCHIVED(CANYON, 58)          /* (2026-10-17, with ECHOES: its repeats are ECHOES') */
 ARCHIVED(HOOVER, 17)

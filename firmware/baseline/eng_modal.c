@@ -249,13 +249,23 @@ static const preset_t MODAL_PRESETS[] = {
     {"GLOCKEN", {0, 0, 64, 25, 95, 25, 110, 0}, {0, 0, 127, 90}, 0, 0, FX(0, 10, 30, 55)},
     {"SOFT MARIMBA", {1, 0, 64, 15, 70, 80, 45, 0}, {0, 0, 127, 75}, 0, 0, FX(0, 10, 20, 35)},
     {"BOWED STRING", {7, 2, 64, 25, 115, 40, 55, 4}, {50, 0, 127, 100}, 0, 0, FX(0, 40, 30, 75)},
+    /* (2026-10-17, BLISS archived) pianos: a felt hammer (MALLET) on STRING's modes, stretched a little (STRUCT, a
+     * piano's inharmonic stretch), BEAT the unison strings of a note; the dampers on release (a short REL). The
+     * electric ones: TINE EP a struck bar whose high modes die at once (the bell, then the near-sine), REED EP TUBE's
+     * odd partials, a little drive */
+    {"GRAND", {7, 0, 66, 18, 95, 55, 72, 14}, {0, 0, 127, 22}, 0, 0, FX(0, 0, 10, 35)},
+    {"UPRIGHT", {7, 0, 65, 22, 82, 70, 58, 24}, {0, 0, 127, 18}, 0, 0, FX(0, 0, 10, 25)},
+    {"FELT", {7, 0, 65, 20, 92, 85, 25, 10}, {0, 0, 127, 40}, 0, 0, FX(0, 10, 15, 55)},
+    {"TINE EP", {0, 0, 64, 10, 100, 85, 55, 4}, {0, 0, 127, 20}, 0, 0, FX(0, 40, 15, 30)},
+    {"REED EP", {6, 0, 64, 30, 85, 60, 65, 0}, {0, 0, 127, 16}, 0, 0, FX(12, 20, 10, 25)},
+    {"TOY", {0, 0, 64, 30, 70, 40, 100, 30}, {0, 0, 127, 25}, 0, 0, FX(0, 0, 20, 35)},
 };
 
 static const engine_t ENG_MODAL = {
     .name = "MODAL",
     .id = EID_MODAL,
     .cc = 0x57,                  /* CC74 DECAY, CC71 BRIGHT */
-    .cats = "KKKKKKKDUUKKPPPFFFFDKKKP",
+    .cats = "KKKKKKKDUUKKPPPFFFFDKKKPKKKKKK",
     .page_title = {"BODY", "STRIKE"},
     .edit = {
         {"MATRL", F_ENUM, 0, 7, 1, N_MD_MATRL, 0},

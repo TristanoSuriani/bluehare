@@ -149,48 +149,36 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     v->s[4] = cnt;
 }
 
-/* (2026-10-17) TBL: 0 BASIC 1 SYNC 2 RESO 3 VOX 4 DIGI 5 PPG, 6 .. 11 the same stepped (the ADDTV presets moved to
- * BASIC, the FM ones to DIGI, the BITS ones to BASIC stepped) */
+/* (2026-10-17) TBL: 0 BASIC 1 SYNC 2 RESO 3 VOX 4 DIGI 5 PPG, 6 .. 11 the same stepped. Twelve presets, rewritten
+ * after the user's listening: WARM PAD, SCAN PAD and VOX MORPH kept (VOX MORPH now low-passed), the rest new, each
+ * moving (the table scanned by the envelope or a slow LFO, ENV -> FILTER) the way MODAL's sounds do. GEN's pieces use
+ * SUB BASS, STRING PAD, CHOIR PAD, GLASS PAD, MORPH PAD, EVOLVER by name (lrate: the LFO's RATE + 1, ~0.2 Hz at 26;
+ * lwave: its WAVE + 1, 1 SIN 2 TRI 5 S&H) */
 static const preset_t WAVE_PRESETS[] = {
-    /* a short filtered stab for chords into the delay (dub techno) */
-    {"DUB CHORD", {0, 60, 0, 12, 52, 30, 0, 0}, {0, 62, 0, 55}, 34, 0, FX(0, 20, 60, 50)},
-    {"SCAN PAD", {0, 40, 0, 18, 80, 10, 0, 0}, {80, 90, 115, 95}, 10, 0, FX(0, 50, 25, 70)},
-    {"TABLE SYNC", {1, 70, 40, 0, 100, 20, 30, 0}, {2, 70, 100, 40}, 20, 1, FX(0, 10, 40, 25)},
-    {"RESO BASS", {2, 48, 0, 0, 62, 45, 40, 0}, {0, 60, 60, 25}, 40, 1, FX(10, 0, 10, 5)},
-    {"VOX PAD", {3, 64, 0, 10, 90, 10, 0, 0}, {70, 90, 115, 90}, 0, 0, FX(0, 50, 20, 65)},
-    {"TABLE BELL", {4, 90, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45)},
-    {"DIGI KEYS", {4, 50, 0, 4, 96, 15, 0, 18}, {0, 80, 40, 55}, 20, 0, FX(0, 20, 30, 35)},
-    {"BIT LEAD", {6, 80, 0, 0, 110, 10, 20, 40}, {0, 70, 100, 30}, 0, 1, FX(0, 0, 40, 20)},
-    /* (Blue Hare, the IDM review) warm pads: slow, detuned, dark, plenty of chorus and reverb */
     {"WARM PAD", {0, 20, 0, 24, 60, 10, 0, 0}, {90, 90, 115, 100}, 10, 0, FX(0, 70, 20, 75)},
-    {"STRING PAD", {0, 50, 0, 30, 72, 5, 0, 0}, {100, 90, 120, 105}, 8, 0, FX(0, 90, 20, 80)},
-    {"GLASS PAD", {4, 30, 0, 16, 100, 10, 0, 0}, {80, 100, 110, 110}, 0, 0, FX(0, 60, 35, 85)},
-    {"CHOIR PAD", {3, 90, 0, 20, 85, 10, 0, 0}, {90, 90, 120, 100}, 0, 0, FX(0, 80, 20, 80)},
-    /* basses, an arpeggio's pluck */
-    {"SUB BASS", {0, 0, 0, 0, 50, 10, 20, 0}, {0, 50, 100, 20}, 10, 1, FX(10, 0, 0, 5)},
-    {"SYNC BASS", {1, 50, 60, 0, 70, 30, 40, 0}, {0, 60, 70, 20}, 30, 1, FX(15, 0, 10, 5)},
-    {"BIT ARP", {6, 40, 0, 0, 110, 0, 0, 60}, {0, 40, 0, 30}, 0, 0, FX(0, 0, 50, 20)},
-    /* (Blue Hare) the table moving: an LFO scanning it (the frames morphing), or each note's envelope (lrate: the
-     * LFO's RATE + 1, ~0.2 Hz at 26; lwave: its WAVE + 1, 1 SIN 2 TRI 5 S&H) */
-    {"MORPH PAD", {0, 50, 0, 16, 85, 10, 0, 0}, {80, 90, 115, 95}, 0, 0, FX(0, 60, 25, 75), .lshp = 50, .lrate = 26},
-    {"VOX MORPH", {3, 64, 0, 12, 90, 10, 0, 0}, {70, 90, 120, 95}, 0, 0, FX(0, 60, 25, 70), .lshp = 63, .lrate = 31,
+    {"SCAN PAD", {0, 40, 0, 18, 80, 10, 0, 0}, {80, 90, 115, 95}, 10, 0, FX(0, 50, 25, 70)},
+    {"VOX MORPH", {3, 64, 0, 12, 58, 20, 0, 0}, {70, 90, 120, 95}, 6, 0, FX(0, 60, 25, 70), .lshp = 63, .lrate = 31,
      .lwave = 2},
-    {"SWEEP LEAD", {1, 15, 0, 6, 100, 15, 20, 0}, {0, 70, 100, 30}, 0, 1, FX(0, 10, 40, 25), .eshp = 60},
-    {"SCAN BASS", {0, 15, 0, 0, 100, 30, 30, 0}, {0, 70, 40, 20}, 20, 1, FX(10, 0, 10, 5), .eshp = 63},
-    {"BELL SCAN", {4, 10, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45), .eshp = 63},
-    {"WOBBLE", {0, 64, 0, 4, 80, 25, 40, 0}, {0, 0, 127, 20}, 0, 1, FX(15, 0, 10, 5), .lshp = 55, .lrate = 68, .lwave = 1},
-    {"DIGI STEPS", {4, 64, 0, 0, 100, 10, 0, 20}, {0, 0, 127, 30}, 0, 0, FX(0, 10, 40, 30), .lshp = 63, .lrate = 58,
-     .lwave = 5},
-    {"EVOLVER", {0, 30, 30, 20, 90, 15, 10, 0}, {90, 90, 120, 100}, 0, 0, FX(0, 70, 30, 80), .eshp = 30, .lshp = 35,
-     .lrate = 22},
-    {"SYNC SCAN", {1, 20, 70, 0, 100, 10, 30, 0}, {0, 60, 90, 30}, 0, 1, FX(0, 10, 40, 25), .lshp = 45, .lrate = 40},
+    /* pads: a slow LFO through the table, detuned, the filter's envelope a breath */
+    {"STRING PAD", {0, 52, 0, 26, 68, 8, 0, 0}, {85, 90, 118, 100}, 8, 0, FX(0, 90, 15, 80), .lshp = 12, .lrate = 18},
+    {"CHOIR PAD", {3, 70, 0, 18, 72, 12, 0, 0}, {95, 90, 120, 105}, 0, 0, FX(0, 70, 20, 85), .lshp = 25, .lrate = 14,
+     .lwave = 2},
+    {"GLASS PAD", {4, 30, 0, 12, 82, 10, 0, 0}, {75, 95, 110, 105}, 6, 0, FX(0, 50, 35, 85), .lshp = 35, .lrate = 20},
+    {"MORPH PAD", {5, 20, 0, 16, 74, 12, 0, 0}, {80, 90, 115, 100}, 6, 0, FX(0, 60, 25, 80), .lshp = 50, .lrate = 24},
+    {"EVOLVER", {1, 25, 25, 18, 80, 18, 8, 0}, {90, 95, 118, 105}, 10, 0, FX(0, 70, 30, 85), .eshp = 30, .lshp = 30,
+     .lrate = 20},
+    /* the envelope through the table: a note that changes as it sounds */
+    {"PPG SWEEP", {5, 0, 0, 10, 88, 22, 0, 0}, {30, 100, 90, 80}, 20, 0, FX(0, 40, 30, 60), .eshp = 63},
+    {"SUB BASS", {0, 6, 0, 0, 55, 15, 25, 0}, {0, 55, 90, 18}, 18, 1, FX(10, 0, 0, 5), .eshp = 8},
+    {"RESO LEAD", {2, 10, 0, 6, 95, 20, 20, 0}, {0, 70, 100, 30}, 0, 1, FX(0, 10, 40, 30), .eshp = 55},
+    {"PPG KEYS", {11, 30, 0, 4, 96, 10, 0, 0}, {0, 75, 60, 45}, 16, 0, FX(0, 20, 25, 40), .eshp = 40},
 };
 
 static const engine_t ENG_WAVE = {
     .name = "WAVE",
     .id = EID_WAVE,
     .cc = 0x56,
-    .cats = "KPLBPUKLPPPPBBUPPLBUBKPL",
+    .cats = "PPPPPPPPPBLK",
     .page_title = {"WAVE", "TONE"},
     .edit = {
         {"TBL", F_ENUM, 0, 2 * WT_NBANK - 1, 0, N_WT_BANK, 0},

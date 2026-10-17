@@ -1,6 +1,7 @@
 # Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
 # TEST SUBSET: the host tests' build without some engines (tests/os/engines_test.c), never an image: HARE FM1 without
-# BLISS and STRINGS, so the substitutes, the protocol's left-out ids and the stores' fallbacks are tested; and (2026-10-17)
+# VOSIM (2026-10-17: BLISS and STRINGS archived), so the substitutes, the protocol's left-out ids and the stores'
+# fallbacks are tested; and (2026-10-17)
 # without the PLATE component (firmware/components.txt): its type gone from the list, a song's PLATE playing HALL
 FX AMB
 FX EQ
@@ -8,5 +9,4 @@ TRACKS 4
 PALETTE ICE
 SID
 WAVE
-VOSIM
 MODAL

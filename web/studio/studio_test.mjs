@@ -73,7 +73,7 @@ async function device(sectors) {
 const d = await device({});
 const P = d.one("stu_pcount"), G = d.one("stu_gcount"), X = d.one("stu_xcount"), PE0 = d.one("stu_pe0"), NE = d.one("stu_nengines");
 const names = [...Array(NE).keys()].map((e) => d.str("stu_engine_name", e));
-check(`the engines: ${names.join(" ")}`, ["SID", "WAVE", "VOSIM", "BLISS", "MODAL", "STRINGS"].every((n) => names.includes(n)));
+check(`the engines: ${names.join(" ")}`, ["SID", "WAVE", "VOSIM", "MODAL"].every((n) => names.includes(n)));
 check("every engine has presets, each named", names.every((_, e) => {
   const n = d.one("stu_npresets", e);
   return n > 0 && [...Array(n).keys()].every((k) => d.str("stu_preset_name", e, k).length > 0);
@@ -254,11 +254,11 @@ check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)
 // GEN: started and stopped as ARP does, its state; a preset picked loads its sounds and tempo (ui.c gen_poll)
 {
   const G_GPRE = 12, G_BPM = 0;
-  d.one("stu_set", 1, G_GPRE, 3, 0);                 /* AFTERNOON: WAVE, WAVE (SUB BASS), BLISS, MODAL; 84 BPM */
+  d.one("stu_set", 1, G_GPRE, 3, 0);                 /* AFTERNOON: WAVE, WAVE (SUB BASS), MODAL (CHIMES), MODAL; 84 BPM */
   d.render(100);
   const eng = [0, 1, 2, 3].map((t) => names[d.one("stu_track_engine", t)]);
   check(`a GEN piece picked (AFTERNOON) loads its four sounds and tempo: ${eng.join(" ")}, ${d.one("stu_get", 1, G_BPM)} BPM`,
-    eng.join() === "WAVE,WAVE,BLISS,MODAL" && d.one("stu_get", 1, G_BPM) === 84);
+    eng.join() === "WAVE,WAVE,MODAL,MODAL" && d.one("stu_get", 1, G_BPM) === 84);
   d.one("stu_gen", 1);
   d.render(6000);
   const st = d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0], chord = d.str("stu_gen_chord");

@@ -40,9 +40,7 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | SID | engine | a C64 sound-chip voice: pulse, saw, noise, ring, sync | `firmware/baseline/eng_sid.c` | Tristano Suriani |
 | WAVE | engine | wavetables, scanned and warped | `firmware/baseline/eng_wave.c` | Tristano Suriani |
 | VOSIM | engine | two formants of pulse trains: voices, reeds, brass | `firmware/baseline/eng_vosim.c` | Tristano Suriani |
-| BLISS | engine | FM keys: electric pianos, bells, mallets | `firmware/baseline/eng_bliss.c` | Tristano Suriani |
 | MODAL | engine | struck, plucked and bowed resonators | `firmware/baseline/eng_modal.c`, `firmware/baseline/shared/phys_dsp.c` | Tristano Suriani; its resonators DaisySP's (MIT) |
-| STRINGS | engine | a string ensemble, its ensemble chorus | `firmware/baseline/eng_strings.c` | Tristano Suriani |
 | PLATE | fx | REVERB TYPE PLATE: Dattorro's plate, in float | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani |
 | AMB | fx | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1); ported by Tristano Suriani |
 | EQ | fx | the patch's EQ: four bands, in float | `firmware/baseline/fx.c`, `firmware/baseline/fastmath.h` | Tristano Suriani |

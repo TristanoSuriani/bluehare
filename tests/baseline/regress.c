@@ -220,8 +220,7 @@ static void job_song(const job_t *j)
     host_tracks_init();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, BLUEHARE_ENG_BLISS ? (uint32_t)ENGI_BLISS : 0u, 0);   /* (BLISS's E.PIANO; VOSIM's FORMANT PAD until
-                                                    * the engines were archived) */
+    host_preset(t2, ENGI_WAVE, 0);                 /* (WAVE's WARM PAD; BLISS's E.PIANO until it was archived) */
     host_preset(t3, ENGI_SID, 0);
     host_drums(td);
     for (i = 0; i < 16u; i++) {
@@ -404,7 +403,7 @@ static void midi_pkt(uint32_t st, uint32_t d1, uint32_t d2)   /* as usb.c: the q
  * fades within its one block), the VOICE part at most 4; then all off: every voice free */
 static int chk_budget(char *msg, uint32_t n)
 {
-    static const uint8_t E[NPART][2] = {{ENGI_SID, 1}, {ENGI_BLISS, 1}, {ENGI_MODAL, 1}, {ENGI_WAVE, 0}};
+    static const uint8_t E[NPART][2] = {{ENGI_SID, 1}, {ENGI_VOSIM, 1}, {ENGI_MODAL, 1}, {ENGI_WAVE, 0}};
     uint8_t held[NPART][128] = {{0}};
     uint32_t p, k, worst = 0, vworst = 0, fading = 0, kills0 = voice_kills;
     host_tracks_init();
@@ -496,7 +495,7 @@ static int chk_retrigger_budget(char *msg, uint32_t n)
         host_tracks_init();
         for (p = 0; p < NPART; p++) {
             memset(trk[p].v, 0, sizeof trk[p].v);
-            host_preset(&trk[p], p == 0 && round ? 5u : 0u, 0);
+            host_preset(&trk[p], p == 0 && round ? (uint32_t)ENGI_MODAL : 0u, 0);   /* (round 2: a capped engine, MODAL) */
             trk[p].p[P_VOICE] = p >= 2u ? V_MONO : V_POLY;
             trk[p].p[P_SUS] = 127;
         }
@@ -751,7 +750,7 @@ static int chk_keep(char *msg, uint32_t n, uint32_t mode)
     trk[0].p[P_VOICE] = (int16_t)mode;
     trk[0].p[P_SUS] = 100;
     for (k = 1; k < NPART; k++) {
-        host_preset(&trk[k], ENGI_BLISS, 1);
+        host_preset(&trk[k], ENGI_WAVE, 1);
         trk[k].p[P_VOICE] = V_POLY;
         trk[k].p[P_SUS] = 100;
     }
@@ -1071,7 +1070,7 @@ checks_done:
         j->e = 0xFF;
         j = add(J_CPU, "cpu/mix/3parts_full_drums");
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
-        cpu_parts[ncpu][0][0] = ENGI_BLISS, cpu_parts[ncpu][0][1] = 0, cpu_parts[ncpu][0][2] = 8;
+        cpu_parts[ncpu][0][0] = ENGI_VOSIM, cpu_parts[ncpu][0][1] = 0, cpu_parts[ncpu][0][2] = 8;
         cpu_parts[ncpu][1][0] = ENGI_SID, cpu_parts[ncpu][1][1] = 0, cpu_parts[ncpu][1][2] = 8;
         cpu_parts[ncpu][2][0] = ENGI_WAVE, cpu_parts[ncpu][2][1] = 0, cpu_parts[ncpu][2][2] = 4;
         cpu_parts[ncpu][3][0] = ENGI_MODAL, cpu_parts[ncpu][3][1] = 7, cpu_parts[ncpu][3][2] = DRUM_HITS;

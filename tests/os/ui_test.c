@@ -155,9 +155,9 @@ static int check(const char *what, int ok)
 /* (Blue Hare) the sounds these tests power on with: the layout they were written against (a bass on track 1, the
  * keys on 2, a lead on 3, the drums on 4: MODAL's WOOD DRUM since the kits were archived; 5..8 a chord, a pluck, a bell,
  * strings), every pan centred. The device's own power-on (engines.c TRK_DEF, TRK_PAN) is engines_test.c's to check */
-static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(BLISS, 0), TRK_PICK(SID, 2), TRK_PICK(MODAL, 7)
+static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(WAVE, 0), TRK_PICK(SID, 2), TRK_PICK(MODAL, 7)
 #if NPART == 8
-                                         , TRK_PICK(WAVE, 0), TRK_PICK(VOSIM, 14), TRK_PICK(MODAL, 2), TRK_PICK(STRINGS, 0)
+                                         , TRK_PICK(WAVE, 0), TRK_PICK(VOSIM, 14), TRK_PICK(MODAL, 2), TRK_PICK(WAVE, 3)
 #endif
 };
 /* main.c bluehare_init, with these tests' sounds (UT_DEF) */
@@ -1824,7 +1824,7 @@ static int test_product_ux(void)
     int bad = 0, ok = 1;
     uint32_t i, p, b;
     for (i = 0; i < NPAGES; i++) {
-        ui_power_on(); set_engine_of(TSEL, ENGI_BLISS);
+        ui_power_on(); set_engine_of(TSEL, ENGI_WAVE);
         ui.home = 0; ui.page = (uint8_t)i; page_entered();
         if (!page_visible(i))
             continue;
@@ -3168,10 +3168,11 @@ static int test_retired_engines(void)
 {
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
-        {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_BLISS, EID_BLISS, "BLISS"},
-        {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_STRINGS, EID_STRINGS, "STRINGS"}};
-    static const uint8_t ARCH[6] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM, EID_ECHOES, EID_CANYON};   /* (archived, 2026-10-16 .. 17; VOSIM, STRINGS back since) */
-    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "BLISS", "MODAL", "STRINGS"};
+        {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"},
+        {ENGI_MODAL, EID_MODAL, "MODAL"}};
+    static const uint8_t ARCH[10] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM, EID_ECHOES, EID_CANYON, EID_WEST,
+                                     EID_SH101, EID_BLISS, EID_STRINGS};   /* (archived, 2026-10-16 .. 17) */
+    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "MODAL"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3189,8 +3190,8 @@ static int test_retired_engines(void)
     for (i = 0, ok = 1; i < NELEM(ARCH); i++)
         ok &= EID_RETIRED(ARCH[i]) && eng_of_id(ARCH[i]) == ENG_NO && eng_load_id(ARCH[i], &sub) == ENG_NO &&
               eng_by_id(ARCH[i]) == &ENG_NONE && str_eq(N_ENGNAME[ARCH[i]], "-");
-    ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_STRINGS) && !EID_RETIRED(EID_VOSIM);
-    bad += check("archived engines (HOOVER KIT WASP SANDSTORM ECHOES CANYON ..): retired as those, their ids kept; the kept ones not", ok);
+    ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_MODAL) && !EID_RETIRED(EID_VOSIM);
+    bad += check("archived engines (HOOVER KIT WASP SANDSTORM ECHOES CANYON WEST SH101 BLISS STRINGS ..): retired as those, their ids kept; the kept ones not", ok);
     for (i = 0; i < NENGINES; i++)
         all |= (uint32_t)eng_ok(i) << i;
     /* (a project naming one is refused: tests/os/robust_test.c, which crafts the stored stream) */
@@ -3202,14 +3203,14 @@ static int test_retired_engines(void)
         for (k = 0; k < P_COUNT; k++)
             up_set_value(&rec, k, TSEL->p[k]);
         *up_rec(9) = rec;
-        set_engine_of(TSEL, ENGI_BLISS);
+        set_engine_of(TSEL, ENGI_MODAL);
         bad += check("  a user preset of one: the slot shows empty, a load does nothing", !up_used(9) && up_load(9) == 1 &&
-                     TSEL->eng_req == ENGI_BLISS);
+                     TSEL->eng_req == ENGI_MODAL);
         memset(up_rec(9), 0, sizeof rec);
     }
     ui_power_on();
-    bad += check("power-on: track 2 is BLISS E.PIANO (these tests' UT_DEF)", trk[1].eng_req == ENGI_BLISS &&
-                 str_eq(ENGINES[ENGI_BLISS]->presets[trk[1].preset].name, "E.PIANO"));
+    bad += check("power-on: track 2 is WAVE WARM PAD (these tests' UT_DEF)", trk[1].eng_req == ENGI_WAVE &&
+                 str_eq(ENGINES[ENGI_WAVE]->presets[trk[1].preset].name, "WARM PAD"));
     preset_all_pos(&total);
     for (i = 0, seen = 0; i < total; i++) {
         e = preset_all_at(i, &k);
@@ -3225,7 +3226,7 @@ static int test_retired_engines(void)
     }
     bad += check("PRESETS KNOB 2: the engines in order, back to the first",
                  seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_WAVE && eng_step(ENGI_WAVE, 1) == ENGI_VOSIM &&
-                 eng_step(ENGI_WAVE, -1) == 0u && eng_step(0, -1) == ENGI_STRINGS);
+                 eng_step(ENGI_WAVE, -1) == 0u && eng_step(0, -1) == ENGI_MODAL);
     /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
     ok = NENG_SHOWN == NELEM(ORDER);
     for (i = 0; ok && i < NENG_SHOWN; i++)
@@ -3239,7 +3240,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID WAVE VOSIM BLISS MODAL STRINGS (ENGINES[]); PRESETS lists them so",
+    bad += check("engines shown SID WAVE VOSIM MODAL (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;
