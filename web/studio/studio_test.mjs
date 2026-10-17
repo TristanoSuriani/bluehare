@@ -87,7 +87,7 @@ for (let i = 0; i < lay.length && lay[i];) {
   groups.push(g);
 }
 check(`the layout: ${groups.map((g) => g.key).join("")} (${groups.reduce((n, g) => n + g.items.length, 0)} parameters)`,
-  groups.map((g) => g.key).join("") === "EANLDMVZFSXWJUYRCPQKGH");
+  groups.map((g) => g.key).join("") === "EANLDMVZFSXWJOUYRCPQKGH");
 const descOk = groups.every((g) => g.items.every(([s, id]) => {
   const [fmt, min, max, def] = d.call([{ fn: "stu_desc", args: [s, id], ret: ["i32", 5] }])[0];
   return id < [P, G, X][s] && min <= def && def <= max && d.str("stu_desc_label", s, id) !== "" && fmt >= 0;

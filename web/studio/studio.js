@@ -100,7 +100,7 @@ async function loadDescs(items) {
 
 // ------------------------------------------------------------------ the page's words for the parameters
 // the tabs, and the groups each shows (STU_LAYOUT's keys)
-const TABS = [["layer", "LAYER", "ZFJ"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "XYRCUPQ"],
+const TABS = [["layer", "LAYER", "ZFJ"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "OXYRCUPQ"],
               ["gen", "GENERATIVE", "GHK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
@@ -124,6 +124,8 @@ const GROUPS = {
        note: "CLEAN: low-passed repeats · TAPE, WORN: wow, flutter, a saturated loop · PING: ping-pong · DUAL: two lines · AMB: amb-1's 5.3 s tape echo with two wandering heads (GEN's MOTION) and a 160 ms Echoplex, its echoes fed into the reverb" },
   R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true,
        note: "ROOM: combs · SPRING: a dispersive spring · HALL: an 8-line FDN · GATED: HALL cut off · CONCERT: 16 lines · PLATE: amb-1's Dattorro plate, in float. The native app adds CAVERN and SHIMMER." },
+  O: { title: "FX preset", names: ["Preset", "Wet"], fx: true, wide: true,
+       note: "A preset sets the delay, the reverb, the chorus and the EQ at once (the layers' sends stay the sounds'): DRY ROOM PLATE HALL VAULT TAPE DUB DRIFT WIDE GATED LOFI SPACE. Changed below, the FM-1 shows the preset with a * (with EXPERT off it shows only this). WET turns every layer's chorus, delay and reverb sends down together: 100 % as the sounds set them." },
   U: { title: "EQ", names: ["Low", "Low mid", "High mid", "High"], fx: true,
        note: "The patch's four bands on the mix, before the compressor: shelves at 100 Hz and 8 kHz, peaks at 400 Hz and 2.5 kHz, ±12 dB." },
   C: { title: "Chorus", names: ["Rate", "Depth"], fx: true },

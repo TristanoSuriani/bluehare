@@ -1098,7 +1098,8 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     int32_t gla = 4096 - (pa > 0 ? pa * 64 : 0), gra = 4096 + (pa < 0 ? pa * 64 : 0);
     int32_t glb = 4096 - (pb > 0 ? pb * 64 : 0), grb = 4096 + (pb < 0 ? pb * 64 : 0);
     int32_t glm = (gla + glb) >> 1, grm = (gra + grb) >> 1, gld = (gla - glb) >> 1, grd = (gra - grb) >> 1;
-    int32_t c = t->p[P_CHOR] * 258, dl = t->p[P_DLY] * 258, r = t->p[P_REV] * 258, pk = t->peak;
+    int32_t ws = 258 * song.g[G_WET] / 127;           /* (2026-10-17) WET: every layer's sends at once */
+    int32_t c = t->p[P_CHOR] * ws, dl = t->p[P_DLY] * ws, r = t->p[P_REV] * ws, pk = t->peak;
     int32_t xmax = c > dl ? c : dl;
     xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);
     for (i = 0; i < n; i++)
@@ -1195,7 +1196,8 @@ static void mix_part(track_t *t, uint32_t n)
         if (lay_wg[(uint32_t)(t - trk) % NTRK] < 32767)   /* (the layers' crossfade on WHEEL: seq.c lay_wheel) */
             lvl = (lvl * lay_wg[(uint32_t)(t - trk) % NTRK]) >> 15;
         int32_t gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
-        int32_t c = t->p[P_CHOR] * 258, d = t->p[P_DLY] * 258, r = t->p[P_REV] * 258, pk = t->peak;
+        int32_t ws = 258 * song.g[G_WET] / 127;       /* (2026-10-17) WET: every layer's sends at once */
+        int32_t c = t->p[P_CHOR] * ws, d = t->p[P_DLY] * ws, r = t->p[P_REV] * ws, pk = t->peak;
         int32_t xmax = c > d ? c : d;
         xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);   /* sends: loud chords at a high LEVEL */
         uint32_t k = (uint32_t)(t - trk) % NTRK;

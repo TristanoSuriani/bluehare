@@ -164,6 +164,9 @@ enum {                          /* global parameters */
                                       * HIGH MID 2.5 kHz, HIGH shelf 8 kHz, -12 .. +12 dB each (projects of format 11) */
     G_GDPAD, G_GDBASS, G_GDBELL, G_GDTEX,   /* (2026-10-17) GEN's density a role (gen.c): PAD BASS BELLS, PULSE or
                                              * WAVES; 64 the piece's own, 0 the role silent, 127 about twice as busy */
+    G_FXPRE, G_WET,             /* (2026-10-17, Milestone 1) the FX preset (params.c FX_PRESETS: picked, it sets the
+                                 * delay, reverb, chorus and EQ) and WET, every layer's chorus, delay and reverb sends
+                                 * at once (127 as the sounds set them, 0 dry) (projects of format 13) */
     G_COUNT
 };
 

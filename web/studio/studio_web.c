@@ -254,6 +254,7 @@ STU_EXPORT int32_t stu_set(uint32_t scope, uint32_t id, int32_t v, uint32_t tag)
         if (scope == 0u)
             edit_undo_take(TSEL, tag ? tag : 1u + id);
         *vp = (int16_t)clamp(v, d->min, d->max);
+        page_turned(vp);                               /* (an FX preset: its delay, reverb, chorus, EQ) */
         if (scope == 0u)
             edit_undo_done(TSEL);
         if (scope == 2u)
@@ -340,6 +341,7 @@ static const uint8_t STU_LAYOUT[] = {
     'X', X2(SX_PROC), 0xFF,                                           /* Blue Hare's processing or amb-1's */
     'W', X2(SX_LMODE), 0xFF,                                          /* the patch's play mode */
     'J', X2(SX_XSRC), X2(SX_XPOS), X2(SX_XVAL), 0xFF,                 /* the crossfade: the patch's, the layer's place */
+    'O', G1(G_FXPRE), G1(G_WET), 0xFF,                                /* (2026-10-17) the FX preset, WET */
     'U', G1(G_EQLO), G1(G_EQLM), G1(G_EQHM), G1(G_EQHI), 0xFF,        /* the patch's EQ */
     'Y', G1(G_DTYPE), G1(G_DTIME), G1(G_DFDBK), G1(G_DCOLOR), G1(G_DMIX), 0xFF,
     'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RDAMP), 0xFF,

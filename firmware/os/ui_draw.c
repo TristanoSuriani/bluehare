@@ -802,6 +802,8 @@ static void draw_columns(void)
             continue;
         }
         param_format(d, *vp, val, &unit);
+        if (vp == &song.g[G_FXPRE] && fx_preset_edited())   /* (2026-10-17) the FX not the preset's any more */
+            unit = "*";
         if (vp == &TSEL->p[P_LRATE] && TSEL->p[P_LSYNC]) {   /* LFO 2 SYNC on: RATE does nothing, DIM (1.2) */
             draw_column(c, d->label, val, unit, T_DIM, RATIO(d, *vp), param_icon(d, *vp));
             continue;

@@ -333,6 +333,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
                 ed_load_after(&b);
             } else if (d->max > d->min) {
                 *vp = (int16_t)clamp(ed_rv(a + 2), d->min, d->max);
+                page_turned(vp);                            /* (an FX preset: its values; a macro's) */
                 if (a[0] == 0)
                     load_extend(TSEL);                      /* (ui.c undo: an audition's values after G_ENGSEL) */
             }

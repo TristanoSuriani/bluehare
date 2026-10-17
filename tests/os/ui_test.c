@@ -176,6 +176,8 @@ static void ui_power_on(void)
     proj_name[0] = 0;
     proj_cur = PROJ_NO_SLOT;
     memset(&favorites, 0, sizeof favorites);
+    ui_prefs2 |= (uint8_t)(PREF_EXPERT >> 16);    /* (2026-10-17) EXPERT ON: every page, the layout these tests were
+                                                   * written against; the plain pages' tests turn it off */
     memset(&undo, 0, sizeof undo);
     memset(proj_ram_len, 0, sizeof proj_ram_len);       /* (the song store: empty, RAM in these builds) */
     memset(&proj_good, 0, sizeof proj_good);
@@ -1998,7 +2000,7 @@ static int test_layer(void)
     bad += check("FX tap: nothing on press, the FX page when let go", ok && !ui.home && cur_page()->fam == FAM_FX);
     frames(320);                                       /* (not a double tap: #83) */
     press(B_FX);
-    bad += check("  a second tap: the next page of the family (DLY)", str_eq(cur_page()->title, "DLY"));
+    bad += check("  a second tap: the next page of the family (FX PRESET, then FX: EXPERT)", str_eq(cur_page()->title, "FX"));
     ui_power_on();
     btn_down(B_FX);
     for (flash = 0, i = 0; i < 22u; i++) { frame(); flash |= ui.layer; }      /* 0.35 s */
@@ -2548,6 +2550,52 @@ static int test_edit_cycle(void)
               page_desc(cur_page(), 2, &vp) == track_desc(TSEL, P_E4) && page_desc(cur_page(), 3, &vp) == track_desc(TSEL, P_E6);
         bad += check("  the plain pages: SID's quick knobs; VOSIM VOCAL: VOWEL (writes F1 F2, reads them back) SIZE SWEEP BRTH; MODAL", ok);
     }
+    {   /* (2026-10-17, Milestone 1) FX with EXPERT OFF: FX PRESET only (a second tap stays); a preset picked sets the
+         * delay, reverb, chorus and EQ, HALL the power-on FX; a value changed: the "*" (edited); WET 0: no sends */
+        int16_t *vp;
+        const param_desc_t *d;
+        static int32_t host_mix[2 * CTL];
+        int32_t pk[2];
+        uint32_t w;
+        ui_power_on();
+        menu_put(MI_EXPERT, 0);
+        go_home(); frame();
+        press(B_FX); frames(320);
+        ok = str_eq(cur_page()->title, "FX PRESET");
+        press(B_FX); frames(320);
+        ok &= str_eq(cur_page()->title, "FX PRESET") && song.g[G_FXPRE] == 3 && !fx_preset_edited();
+        d = page_desc(cur_page(), 0, &vp);
+        ok &= d == &GP[G_FXPRE] && vp == &song.g[G_FXPRE] && page_desc(cur_page(), 1, &vp) == &GP[G_WET];
+        turn(EN_K1, 2);                                 /* HALL -> TAPE (VAULT between) */
+        ok &= song.g[G_FXPRE] == 5 && str_eq(N_FXPRE[5], "TAPE") && song.g[G_DTYPE] == 1 && song.g[G_RTYPE] == 1 &&
+              song.g[G_DFDBK] == 70 && song.g[G_EQHI] == -3 && !fx_preset_edited();
+        song.g[G_RSIZE] = 20;
+        ok &= fx_preset_edited();
+        bad += check("FX (EXPERT OFF): FX PRESET only; HALL at power-on; TAPE sets the delay, reverb, EQ; an edit: the *", ok);
+        for (w = 0; w < 2u; w++) {                      /* WET: 127 the sends as set, 0 none (the reverb's return) */
+            uint32_t b;
+            ui_power_on();
+            fx_preset_apply(3);
+            song.master_q12 = 4096;
+            song.g[G_WET] = (int16_t)(w ? 0 : 127);
+            TSEL->p[P_REV] = 127;
+            TSEL->p[P_DLY] = TSEL->p[P_CHOR] = 0;
+            TSEL->p[P_REL] = 0;                         /* (the note itself gone at once: the tail is the reverb's) */
+            song.g[G_DMIX] = 0;
+            trk_note_on(TSEL, 60, 120);
+            for (b = 0; b < 40u; b++) mix_block(host_mix, CTL);
+            trk_note_off(TSEL, 60);
+            for (b = 0; b < 20u; b++) mix_block(host_mix, CTL);    /* (the note gone at once: then the reverb's tail) */
+            pk[w] = 0;
+            for (b = 0; b < 40u; b++) {
+                uint32_t j;
+                mix_block(host_mix, CTL);
+                for (j = 0; j < 2u * CTL; j++)
+                    pk[w] = host_mix[j] > pk[w] ? host_mix[j] : -host_mix[j] > pk[w] ? -host_mix[j] : pk[w];
+            }
+        }
+        bad += check("  WET: 127 the sends as the sounds set them, 0 dry (no reverb tail)", pk[0] > 50 && pk[1] < pk[0] / 20 + 2);
+    }
     return bad;
 }
 
@@ -2576,7 +2624,7 @@ static int test_quick_layers(void)
         for (flash = 0, k = 0; k < 20u; k++) { frame(); flash |= ui.layer; }      /* 0.32 s */
         btn_up(LB[i]); frame();
         ok &= !flash && !ui.home && (LB[i] == B_GLO ? cur_page()->graph == GR_TODO :
-                                     LB[i] == B_SCL ? cur_page()->fam == FAM_SCL : str_eq(cur_page()->title, "SOUND"));
+                                     LB[i] == B_SCL ? cur_page()->fam == FAM_SCL : str_eq(cur_page()->title, "EDIT 1"));
         hint &= msg_is(HINT[i]);
         go_home(); frame();
         btn_down(LB[i]); frames(368);
