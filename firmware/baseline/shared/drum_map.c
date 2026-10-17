@@ -45,16 +45,16 @@ static uint32_t drum_lane(uint32_t note)
 /* the lane's name (5 characters at most) */
 static const char *drum_lane_name(const track_t *t, uint32_t l)
 {
-    static const char *const N[NLANE] = {"KICK", "SNARE", "CLAP", "HATCL", "HATOP", "TOM", "RIM", "BELL"};
+    static const char *const N[DV_NLANE] = {"KICK", "SNARE", "CLAP", "HATCL", "HATOP", "TOM", "RIM", "BELL"};
     (void)t;
-    return N[l & (NLANE - 1u)];
+    return N[l & (DV_NLANE - 1u)];
 }
 /* .. in two letters, the drum machine way (the EDIT layer's lane MUTE keys) */
 static const char *drum_lane_abbr(const track_t *t, uint32_t l)
 {
-    static const char *const N[NLANE] = {"BD", "SD", "CP", "CH", "OH", "TM", "RS", "CB"};
+    static const char *const N[DV_NLANE] = {"BD", "SD", "CP", "CH", "OH", "TM", "RS", "CB"};
     (void)t;
-    return N[l & (NLANE - 1u)];
+    return N[l & (DV_NLANE - 1u)];
 }
 
 /* the GM drum map, the first C (key 7) is the kick (C2, 36) */

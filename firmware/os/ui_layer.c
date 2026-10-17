@@ -825,7 +825,7 @@ static void layer_edit(void)                            /* the engines from F3, 
         int32_t x = LC_X(i % 4u), y = 4 + (int32_t)(h + 4u) * (int32_t)(i / 4u);
         const engine_t *en = ENGINES[eng_vis(i) % NENGINES];
         if (i < n)
-            lcell(x, y, (int32_t)h, 0, engine_icon(en->name), 0, h > 24u ? en->name : eng_abbr(en->name),
+            lcell(x, y, (int32_t)h, 0, engine_icon(en->name), 0, h > 24u && str_len(en->name) <= 7u ? en->name : eng_abbr(en->name),   /* (DUBSIREN: DUB) */
                   eng_vis(i) == TSEL->eng_req % NENGINES ? LS_SEL
                   : eng_for_track(TSEL, eng_vis(i) % NENGINES) != eng_vis(i) % NENGINES ? LS_DIM : LS_OFF, 0);   /* (DUBSIREN
                                                                  * off the last track: dimmed, it loads DUBSIREN8) */

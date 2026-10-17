@@ -47,14 +47,14 @@ int main(void)
           eng_by_id(EID_VOSIM) == &ENG_NONE && EID_RETIRED(EID_BLISS) && EID_RETIRED(EID_STRINGS);
     for (i = 0; i <= 13u; i++)                          /* (retired: Felucca's own and 1.5's) */
         ok &= EID_RETIRED(i) && eng_of_id(i) == ENG_NO && str_eq(N_ENGNAME[i], "-");
-    ok &= EID_RETIRED(EID_HOOVER) && EID_RETIRED(EID_KIT) && eng_of_id(EID_HOOVER) == ENG_NO;   /* (archived) */
+    ok &= EID_RETIRED(EID_SPEECH) && EID_RETIRED(EID_FMPERC) && eng_of_id(EID_SPEECH) == ENG_NO;   /* (archived) */
     bad += check("engines: TEST SUBSET, 3 in its order from 0, the ids both ways; VOSIM none; 0 .. 13 and the "
                  "archived retired", ok);
     ok = eng_load_id(EID_VOSIM, &sub) == ENGI_WAVE && sub && eng_load_id(EID_BLISS, &sub) == ENG_NO &&
          eng_load_id(EID_STRINGS, &sub) == ENG_NO &&
          eng_load_id(EID_CANYON, &sub) == ENG_NO && eng_load_id(EID_ECHOES, &sub) == ENG_NO && eng_load_id(EID_MODAL, &sub) == ENGI_MODAL && !sub &&
          eng_load_id(EID_WEST, &sub) == ENG_NO && eng_load_id(EID_SH101, &sub) == ENG_NO && eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub &&
-         eng_load_id(EID_HOOVER, &sub) == ENG_NO && eng_load_id(EID_KIT, &sub) == ENG_NO &&
+         eng_load_id(EID_SPEECH, &sub) == ENG_NO && eng_load_id(EID_FMPERC, &sub) == ENG_NO &&
          eng_load_id(0, &sub) == ENG_NO && eng_load_id(12, &sub) == ENG_NO && eng_load_id(13, &sub) == ENG_NO &&
          eng_load_id(27, &sub) == ENG_NO;
     bad += check("  substitutes: VOSIM -> WAVE; retired (0 .. 13, 27) and archived (ECHOES CANYON WEST SH101 BLISS STRINGS): none",

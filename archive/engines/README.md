@@ -198,3 +198,6 @@ What they were (from the README of before; the distributions as they were then):
   MODAL's. Id 26 retired with it
 - **STRINGS** *(1.5, WAREHOUSE; back 2026-10-17, archived again the same day)*: a string ensemble, 16', 8', 4' through
   its ensemble chorus. MODAL's BOWED STRING (a friction bow) does strings better. Id 55 retired with it
+- (2026-10-18) **HOOVER, DUBSIREN, KIT and BREAKS are back in the build** (firmware/baseline): the user's direction, a
+  performance instrument for bangers. FMPERC's drum voice moved to firmware/baseline/shared/fmp_dsp.c (FMPERC itself
+  stays here), the General MIDI drum map to shared/drum_map.c.

@@ -50,7 +50,7 @@ async function editorMock() {
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   {   /* the primary distribution's engines by id (HARE FM1), "-" for the rest: retired (0 .. 13, 27), archived, left out */
-    const HARE = { 14: "WAVE", 21: "VOSIM", 24: "SID", 34: "MODAL", 62: "OBIE" };
+    const HARE = { 14: "WAVE", 17: "HOOVER", 21: "VOSIM", 24: "SID", 25: "DUBSIREN", 28: "KIT", 29: "BREAKS", 34: "MODAL", 62: "OBIE" };
     ok(info.nengines === 63 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
@@ -140,14 +140,15 @@ async function editorMock() {
   ok(!prefs.favorites[info.nengines][31] && !E.devicePresetRows(info, names, prefs).some((r) => r.user), "editor: erased slot disappears and loses star");
   {   /* the lists in the device's order (engines.c ENGINE_ORDER): SID first, WAVE second, MODAL last, "-" never; the ids stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]), o = E.engineOrder(info.engines);
-    ok(shown.join() === "SID,WAVE,VOSIM,OBIE,MODAL" && o[0] === 24 && o[1] === 14 && o[2] === 21 && o[3] === 62 && o[4] === 34,
-       "editor: engines listed SID first, MODAL last (ids kept)");
+    ok(shown.join() === "SID,WAVE,VOSIM,OBIE,HOOVER,DUBSIREN,MODAL,KIT,BREAKS" && o[0] === 24 && o[1] === 14 && o[2] === 21 &&
+       o[3] === 62 && o[4] === 17 && o[5] === 25 && o[6] === 34 && o[7] === 28 && o[8] === 29,
+       "editor: engines listed SID first, BREAKS last (ids kept)");
     ok(E.engineOrder(["SID", "X", "-", "MODAL", "WAVE"]).join() === "0,4,3,1", "editor: an unknown engine follows the known ones");
     m.state.favorites[34][0] = m.state.favorites[14][0] = true;
     await rq(E.req.uiSet(3, 0));
     prefs = await E.readDevicePreferences(rq, info, names, prefs);
     const rows = E.devicePresetRows(info, names, prefs).filter((r) => !r.user), eng = [...new Set(rows.map((r) => r.engine))];
-    ok(eng[0] === 24 && eng[1] === 14 && eng[eng.length - 1] === 34, "editor: device presets in the device's engine order");
+    ok(eng[0] === 24 && eng[1] === 14 && eng[eng.length - 1] === 29, "editor: device presets in the device's engine order");
   }
   const none = await E.readDevicePreferences(() => { throw new Error("unexpected request"); }, { uiCaps: 0 }, []);
   ok(none === null, "editor: old firmware receives no unsupported preference requests");

@@ -139,8 +139,8 @@ static void kit_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
     L->env = env - env / tau - (env > 0);
     if ((drum_mute[pt] >> lane) & 1u)
         return;                                       /* (a muted lane rings on unheard) */
-    lv = clamp(p[P_LN0 + lane], 0, 127);
-    gl = lv >= 127 ? 32767 : lv * lv * 2 + (lv * lv >> 6);   /* the lane's LEVEL, square law (as DRUM) */
+    (void)lv;                                         /* (2026-10-18: the lanes' LEVELs went with their page: every lane */
+    gl = 32767;                                       /* at full level) */
     for (i = 0; i < n; i++) {
         int32_t g = env + (((L->env - env) * (int32_t)i) >> CTL_LOG2);   /* (the envelope ramped over the block) */
         out[i] += voice_amp((((y[i] * g) >> 15) * gl) >> 15, m, i) << 1;

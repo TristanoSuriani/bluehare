@@ -817,12 +817,12 @@ static int test_categories(void)
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
                  ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_MODAL, 7) == CAT_DRUM && preset_cat(ENGI_WAVE, 1) == CAT_PAD &&
                  preset_cat(ENGI_SID, 12) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
-    {   /* (2026-10-17) archived engines' favourites refused: WEST (16) and SH101 (61) with HOOVER (17) and BYTE (15) */
+    {   /* (2026-10-17) archived engines' favourites refused: WEST (16) and SH101 (61) with SPEECH (18) and BYTE (15) */
         favorites_t before = favorites;
         ok = !favorite_set(EID_WEST, 0, 1) && !favorite_has(EID_WEST, 0) && !favorite_set(EID_SH101, 0, 1) &&
-             !favorite_set(EID_HOOVER, 2, 1) && !favorite_has(EID_HOOVER, 2) && !favorite_set(EID_BYTE, 0, 1) &&
+             !favorite_set(EID_SPEECH, 2, 1) && !favorite_has(EID_SPEECH, 2) && !favorite_set(EID_BYTE, 0, 1) &&
              !favorite_set(EID_COUNT + 1u, 0, 1) && !memcmp(&before, &favorites, sizeof favorites);
-        bad += check("  archived engines' favourites (WEST, SH101, HOOVER, BYTE) refused, nothing else touched", ok);
+        bad += check("  archived engines' favourites (WEST, SH101, SPEECH, BYTE) refused, nothing else touched", ok);
         memset(&favorites, 0, sizeof favorites);
     }
     go_page(GR_BROWSE);
@@ -2765,7 +2765,8 @@ static int test_quick_layers(void)
     btn_down(B_EDIT); frames(480);
     for (i = 0; i < LY_INIT; i++) {
         key_down(white(i)); key_up(white(i)); frame();
-        a += i < NENG_SHOWN ? TSEL->eng_req == eng_vis(i) : 0u;
+        a += i < NENG_SHOWN ? TSEL->eng_req == eng_for_track(TSEL, eng_vis(i)) : 0u;   /* (DUBSIREN: the last patch's
+                                                                                * only, its substitute elsewhere) */
         ok &= eng_ok(TSEL->eng_req);
     }
     btn_up(B_EDIT); frame();
@@ -3169,10 +3170,11 @@ static int test_retired_engines(void)
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
         {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"},
-        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_MODAL, EID_MODAL, "MODAL"}};
-    static const uint8_t ARCH[10] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM, EID_ECHOES, EID_CANYON, EID_WEST,
+        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"},
+        {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_KIT, EID_KIT, "KIT"}, {ENGI_BREAKS, EID_BREAKS, "BREAKS"}};
+    static const uint8_t ARCH[10] = {EID_SPEECH, EID_FMPERC, EID_WASP, EID_SANDSTORM, EID_ECHOES, EID_CANYON, EID_WEST,
                                      EID_SH101, EID_BLISS, EID_STRINGS};   /* (archived, 2026-10-16 .. 17) */
-    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "OBIE", "MODAL"};
+    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "OBIE", "HOOVER", "DUBSIREN", "MODAL", "KIT", "BREAKS"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3191,7 +3193,7 @@ static int test_retired_engines(void)
         ok &= EID_RETIRED(ARCH[i]) && eng_of_id(ARCH[i]) == ENG_NO && eng_load_id(ARCH[i], &sub) == ENG_NO &&
               eng_by_id(ARCH[i]) == &ENG_NONE && str_eq(N_ENGNAME[ARCH[i]], "-");
     ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_MODAL) && !EID_RETIRED(EID_VOSIM);
-    bad += check("archived engines (HOOVER KIT WASP SANDSTORM ECHOES CANYON WEST SH101 BLISS STRINGS ..): retired as those, their ids kept; the kept ones not", ok);
+    bad += check("archived engines (SPEECH FMPERC WASP SANDSTORM ECHOES CANYON WEST SH101 BLISS STRINGS ..): retired as those, their ids kept; the kept ones not", ok);
     for (i = 0; i < NENGINES; i++)
         all |= (uint32_t)eng_ok(i) << i;
     /* (a project naming one is refused: tests/os/robust_test.c, which crafts the stored stream) */
@@ -3220,13 +3222,15 @@ static int test_retired_engines(void)
     bad += check("PRESETS: the list holds every engine's presets, none of a retired one", seen == all);
     go_page(GR_BROWSE);
     set_engine_of(TSEL, 0);
+    song.sel = NTRK - 1u;                               /* (the last patch: every engine, DUBSIREN too) */
+    set_engine_of(TSEL, 0);
     for (i = 0, seen = 0; i < NENG_SHOWN; i++) {
         turn(EN_K2, 1);
         seen |= 1u << TSEL->eng_req;
     }
     bad += check("PRESETS KNOB 2: the engines in order, back to the first",
                  seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_WAVE && eng_step(ENGI_WAVE, 1) == ENGI_VOSIM &&
-                 eng_step(ENGI_WAVE, -1) == 0u && eng_step(0, -1) == ENGI_MODAL);
+                 eng_step(ENGI_WAVE, -1) == 0u && eng_step(0, -1) == ENGI_BREAKS);
     /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
     ok = NENG_SHOWN == NELEM(ORDER);
     for (i = 0; ok && i < NENG_SHOWN; i++)
@@ -3240,7 +3244,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID WAVE VOSIM OBIE MODAL (ENGINES[]); PRESETS lists them so",
+    bad += check("engines shown SID WAVE VOSIM OBIE HOOVER DUBSIREN MODAL KIT BREAKS (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;

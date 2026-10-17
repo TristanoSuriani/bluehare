@@ -5,6 +5,8 @@
  * power-on. */
 #include "dsp.c"
 #include "shared/phys_dsp.c"   /* the resonators MODAL plays (PHYS's, DaisySP's: MIT) */
+#include "shared/drum_map.c"   /* (2026-10-18) the drums' lanes and General MIDI map (KIT's) */
+#include "shared/fmp_dsp.c"    /* (2026-10-18) FMPERC's drum voice (KIT's, BREAKS') */
 /* (Blue Hare) the engines' own memory of a track (a cavern, a ring, a voice's grains), one block a track that every
  * such engine borrows: a track plays one engine at a time (voice.c: the old one's voices fade and go before the new one
  * takes the track), so the block is as big as the largest of this build's engines needs, not their sum. An engine
@@ -16,6 +18,10 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
+#include "eng_hoover.c"         /* HOOVER: the rave lead (back 2026-10-18) */
+#include "eng_dubsiren.c"       /* DUBSIREN: the dub siren (back 2026-10-18) */
+#include "eng_kit.c"            /* KIT: a drum kit (back 2026-10-18) */
+#include "eng_breaks.c"         /* BREAKS: synthesized breakbeats (back 2026-10-18) */
 #include "eng_obie.c"           /* OBIE: an analog polysynth after the OB-Xa (2026-10-17) */
 #include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
 
