@@ -54,7 +54,7 @@ static void fm1_audio_init(int32_t *buf, uint32_t words, void (*isr)(void), uint
 { (void)buf; (void)words; (void)isr; (void)prio; }
 static void fm1_audio_stop(void) {}
 void isr_alnk0(void) {}
-#include "../../firmware/src/audio.c"
+#include "../../firmware/fm1/audio.c"
 
 /* ------------------------------------------------------------ the panel --- */
 #define FM1_NCOL 11u
@@ -157,16 +157,16 @@ static void lcd_power(uint32_t s)              /* MENU > SCREEN OFF (lcd.c): off
 static void lcd_wake_now(void) {}
 static void lcd_init(void) {}
 
-#include "../../firmware/src/gfx.c"
-#include "../../firmware/src/panel.c"
-#include "../../firmware/src/ui.c"
-#include "../../firmware/src/menu_items.c"
-#include "../../firmware/src/icons.c"
-#include "../../firmware/src/ui_graph.c"
-#include "../../firmware/src/ui_draw.c"
-#include "../../firmware/src/ui_menu.c"
-#include "../../firmware/src/ui_input.c"
-#include "../../firmware/src/ui_layer.c"
+#include "../../firmware/os/gfx.c"
+#include "../../firmware/os/panel.c"
+#include "../../firmware/os/ui.c"
+#include "../../firmware/os/menu_items.c"
+#include "../../firmware/os/icons.c"
+#include "../../firmware/os/ui_graph.c"
+#include "../../firmware/os/ui_draw.c"
+#include "../../firmware/os/ui_menu.c"
+#include "../../firmware/os/ui_input.c"
+#include "../../firmware/os/ui_layer.c"
 
 /* ------------------------------------------------------------ the flash --- */
 static uint32_t web_flash_writes;
@@ -202,9 +202,9 @@ static void irq_restore(uint32_t f) { (void)f; }
 static uint32_t fl_jedec_ram(void) { return 0x856014u; }             /* the FM-1's part (project.c) */
 static void fl_plain_window_init(void) {}
 #define FL_FAR(fn) (fn)
-#include "../../firmware/src/storage.c"
-#include "../../firmware/src/upreset.c"
-#include "../../firmware/src/project.c"
+#include "../../firmware/os/storage.c"
+#include "../../firmware/os/upreset.c"
+#include "../../firmware/os/project.c"
 
 /* ------------------------------------------------- main.c and its HAL --- */
 typedef struct { uint32_t magic, count, vec, pc, emu, dbg, rets; } fm1_crash_t;
@@ -239,8 +239,8 @@ static void cdc_task(void) {}
 #define usb_start() ((void)0)
 #define usb_retry(ms) ((void)(ms))
 #define usb_detach() ((void)0)
-#include "../../firmware/src/master.c"
-#include "../../firmware/src/main.c"
+#include "../../firmware/os/master.c"
+#include "../../firmware/os/main.c"
 #undef usb_poll
 #undef usb_start
 #undef usb_retry

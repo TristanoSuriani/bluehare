@@ -38,7 +38,7 @@
 #define BLUEHARE_UAC 1
 static void fm1_delay_ms(uint32_t ms) { (void)ms; }
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"   /* SIE register macros (never touched here) */
-#include "../firmware/src/usb.c"
+#include "../firmware/fm1/usb.c"
 
 static int fails;
 static int check(const char *what, int ok)

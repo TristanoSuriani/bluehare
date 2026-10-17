@@ -348,6 +348,7 @@ static const uint8_t STU_LAYOUT[] = {
     'Q', X2(SX_SPKEQ), X2(SX_MASTER), 0xFF,
     'K', 0, P_ROOT, 0, P_SCALE, 0, P_QUANT, 0, P_TRANS, 0, P_CHRD, 0, P_VOIC, 0xFF,
     'G', G1(G_GPRE), G1(G_GSCL), G1(G_GROOT), G1(G_GMOT), G1(G_BPM), 0xFF,   /* GEN (gen.c), the tempo */
+    'H', G1(G_GDPAD), G1(G_GDBASS), G1(G_GDBELL), G1(G_GDTEX), 0xFF,   /* GEN's densities, a role each */
     0,
 };
 #undef G1

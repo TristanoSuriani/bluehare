@@ -69,17 +69,8 @@ static int midi_note_held(const track_t *t, uint32_t note)
     return mchord_held(id, note);
 }
 
-/* a key held on track t sounds note (the key's own note, or a tone of its chord) */
-static int midi_local_held(const track_t *t, uint32_t note)
-{
-    uint32_t k, i;
-    for (k = 0; k < 27u; k++)
-        if (kb_chn[k] && kb_trk[k] == trk_index(t))
-            for (i = 0; i < kb_chn[k]; i++)
-                if (kb_chord[k][i] == note)
-                    return 1;
-    return 0;
-}
+/* a key held on track t sounds note (the key's own note, or a tone of its chord): the instrument's (keyboard.c) */
+static int midi_local_held(const track_t *t, uint32_t note) { return os_keys_hold_note(trk_index(t), note); }
 
 static void midi_release(uint32_t ch, uint32_t note)
 {
@@ -200,13 +191,9 @@ static void midi_silence_track(uint32_t track)
 
 static int midi_track_held(uint32_t track)
 {
-    uint32_t k;
     if (midi_owners[track])
         return 1;
-    for (k = 0; k < 27u; k++)
-        if ((fm1_in.notes & (1u << k)) && kb_trk[k] == track)
-            return 1;
-    return 0;
+    return os_keys_hold_track(track);               /* (a key of the instrument's: keyboard.c) */
 }
 
 /* The standard CC map (#103): always on, these CCs only, on the track the channel plays (ROUT as notes). A CC

@@ -119,13 +119,15 @@ static const preset_t SH101_PRESETS[] = {
     {"NOISE HAT", {0, 0, 0, 0, 0, 127, 120, 30}, {0, 12, 0, 8}, 0, 0, FX(0, 0, 10, 10)},
     {"ZAP", {0, 0, 110, 0, 0, 0, 40, 110}, {0, 20, 0, 15}, 63, 0, FX(0, 0, 30, 20)},
     {"WIND", {0, 0, 0, 0, 0, 127, 50, 115}, {90, 0, 127, 100}, 0, 0, FX(0, 40, 30, 70), .lrate = 20},
+    /* (2026-10-17) GEN's WAVES: noise swelling in with its filter opening, then falling back (the surf) */
+    {"SURF", {0, 0, 0, 0, 0, 127, 30, 60}, {96, 100, 90, 104}, 48, 0, FX(0, 30, 10, 95)},
 };
 
 static const engine_t ENG_SH101 = {
     .name = "SH101",
     .id = EID_SH101,
     .cc = 0x78,                  /* CC74 CUT, CC71 RES */
-    .cats = "BBBBBBBLLLLUKPKDDFF",
+    .cats = "BBBBBBBLLLLUKPKDDFFF",
     .page_title = {"VCO", "VCF"},
     .edit = {
         {"PW", F_PCT, 0, 127, 0, 0, 0},

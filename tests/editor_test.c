@@ -39,13 +39,13 @@ static void lcd_power(uint32_t s) { (void)s; }   /* (MENU > SCREEN OFF: lcd.c) *
 static void lcd_wake_now(void) {}
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 { (void)x; (void)y; (void)w; (void)h; (void)p; }
-#include "../firmware/src/gfx.c"
-#include "../firmware/src/panel.c"
-#include "../firmware/src/ui.c"
-#include "../firmware/src/menu_items.c"
+#include "../firmware/os/gfx.c"
+#include "../firmware/os/panel.c"
+#include "../firmware/os/ui.c"
+#include "../firmware/os/menu_items.c"
 static void panel_setup(void) {}
-#include "../firmware/src/upreset.c"
-#include "../firmware/src/project.c"
+#include "../firmware/os/upreset.c"
+#include "../firmware/os/project.c"
 
 static uint32_t flash_ok = 1;
 static void audio_silence(void) {}
@@ -62,8 +62,8 @@ static int fl_write(uint32_t off, const void *p, uint32_t n)
 static int st_read(uint32_t off, void *p, uint32_t n) { (void)off; (void)p; (void)n; return -1; }
 static int st_prog(uint32_t off, const void *p, uint32_t n) { (void)off; (void)p; (void)n; return -1; }
 static int st_erase(uint32_t off) { (void)off; return -1; }
-#include "../firmware/src/storage.c"
-#include "../firmware/src/editor.c"
+#include "../firmware/os/storage.c"
+#include "../firmware/os/editor.c"
 
 static int check(const char *what, int ok)
 {

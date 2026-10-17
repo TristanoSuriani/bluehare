@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Tristano Suriani (Blue Hare)
 # Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
-"""The WAVE engine's wavetables (firmware/src/eng_wave.c): Blue Hare's own, from formulas in this file.
+"""The WAVE engine's wavetables (firmware/baseline/eng_wave.c): Blue Hare's own, from formulas in this file.
 
 8 banks of 8 single-cycle frames; WAVE scans between a bank's frames (POS). Each frame is kept as 7 band-limited
 copies (mip levels) so high notes do not alias: level l is 512 >> l samples long and holds harmonics 1 .. 64 >> l

@@ -17,9 +17,9 @@ static void lcd_wake_now(void) {}
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 { (void)x; (void)y; (void)w; (void)h; (void)p; }
 #define BLUEHARE_FLASH 1
-#include "../firmware/src/gfx.c"
-#include "../firmware/src/panel.c"
-#include "../firmware/src/ui.c"
+#include "../firmware/os/gfx.c"
+#include "../firmware/os/panel.c"
+#include "../firmware/os/ui.c"
 static void panel_setup(void) {}
 
 static uint8_t nor[0x100000], flash_ok = 1;
@@ -33,9 +33,9 @@ static void irq_restore(uint32_t f) { (void)f; }
 static uint32_t fl_jedec_ram(void) { return 0; }
 static void fl_plain_window_init(void) {}
 #define FL_FAR(fn) (fn)
-#include "../firmware/src/storage.c"
-#include "../firmware/src/upreset.c"
-#include "../firmware/src/project.c"
+#include "../firmware/os/storage.c"
+#include "../firmware/os/upreset.c"
+#include "../firmware/os/project.c"
 
 enum { ED_BACKUP_LIST = 65, ED_BACKUP_GET, ED_BACKUP_PUT };
 static uint8_t rep[4096];
@@ -58,7 +58,7 @@ static uint32_t ed_unpack7(const uint8_t *a, uint32_t na, uint8_t *out, uint32_t
 static uint8_t ed_buf[512] __attribute__((aligned(4)));
 static void fm1_wdt_feed(void) {}
 static int ed_flash_stop(void) { return transport_busy(); }
-#include "../firmware/src/editor_backup.c"
+#include "../firmware/os/editor_backup.c"
 
 static int check(const char *what, int ok)
 {

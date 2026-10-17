@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* Host test of firmware/src/storage.c against a simulated NOR flash:
+/* Host test of firmware/os/storage.c against a simulated NOR flash:
  * erase -> 0xFF, program can only clear bits, page writes must not wrap. */
 #include <stdint.h>
 #include <stdio.h>
@@ -41,7 +41,7 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
     }
     return 0;
 }
-#include "../firmware/src/storage.c"
+#include "../firmware/os/storage.c"
 
 static int check(const char *what, int ok)
 {

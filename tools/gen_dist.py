@@ -5,14 +5,14 @@
 """The distributions (distributions/<name>.txt: the engines in display order, one a line, at most 16; and optionally a
 `TRACKS 4` or `TRACKS 8` line, the build's track count, 4 without one; a `PALETTE <name>` line, the palette a
 device starts with, tools/gen_ui_palettes.py's, GREY without one; and a `NATIVE` line: the native image's alone, which
-may list the engines firmware/src/engine_ids.h marks native, and no firmware or emulator builds) -> a header
-each, OUT_DIR/dist_<name>.h, that firmware/src/core.h includes for the one being built (BLUEHARE_DIST=<name>):
+may list the engines firmware/baseline/engine_ids.h marks native, and no firmware or emulator builds) -> a header
+each, OUT_DIR/dist_<name>.h, that firmware/baseline/core.h includes for the one being built (BLUEHARE_DIST=<name>):
   BLUEHARE_DIST_TAG         "" for one named "default", else " <NAME>", _ a space (the version string, the package name)
-  BLUEHARE_DIST_NATIVE      1 for a NATIVE one (firmware/src/core.h: only native/build.sh builds it), else 0
+  BLUEHARE_DIST_NATIVE      1 for a NATIVE one (firmware/baseline/core.h: only native/build.sh builds it), else 0
   BLUEHARE_DIST_PRIMARY     1 for distributions/BUILD's (what a plain build builds: the host tests' full set), else 0
-  BLUEHARE_ENG_<NAME>       1 for the engines in it, 0 for every other engine of firmware/src/engine_ids.h
+  BLUEHARE_ENG_<NAME>       1 for the engines in it, 0 for every other engine of firmware/baseline/engine_ids.h
   BLUEHARE_DIST_ENGINES(X)  X(NAME) for each, in order: the build's engine indices
-  BLUEHARE_TRACKS           its track count (4 or 8: firmware/src/core.h NTRK)
+  BLUEHARE_TRACKS           its track count (4 or 8: firmware/baseline/core.h NTRK)
   BLUEHARE_DIST_PALETTE     UI_PAL_<name> (or UI_GREY_INDEX): the palette until the settings hold one
   ENGI_<NAME> ENG_ABSENT   for every engine it leaves out
   gen_dist.py SRC_ROOT OUT_DIR"""
@@ -24,12 +24,12 @@ MAX = 16
 
 
 def registry(root):
-    text = (root / "firmware" / "src" / "engine_ids.h").read_text()
+    text = (root / "firmware" / "baseline" / "engine_ids.h").read_text()
     return [m.group(1) for m in re.finditer(r"^ENGINE\((\w+),\s*\d+,\s*\w+\)", text, re.M)]
 
 
 def native_engines(root):                            # (Blue Hare) ENGINE(...) /* native: ... */
-    text = (root / "firmware" / "src" / "engine_ids.h").read_text()
+    text = (root / "firmware" / "baseline" / "engine_ids.h").read_text()
     return {m.group(1) for m in re.finditer(r"^ENGINE\((\w+),[^)]*\)\s*/\*\s*native\b", text, re.M)}
 
 
@@ -61,7 +61,7 @@ def read(path, known, native_only):
             palette = words[1].replace("-", "_")
             continue
         if line not in known:
-            raise SystemExit(f"{path}:{n}: unknown engine {line} (firmware/src/engine_ids.h: {' '.join(known)})")
+            raise SystemExit(f"{path}:{n}: unknown engine {line} (firmware/baseline/engine_ids.h: {' '.join(known)})")
         if line in names:
             raise SystemExit(f"{path}:{n}: {line} twice")
         names.append(line)

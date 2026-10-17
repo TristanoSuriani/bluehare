@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
-/* Host test of the user preset record (firmware/src/upreset.c, -DUP_HOST part):
+/* Host test of the user preset record (firmware/os/upreset.c, -DUP_HOST part):
  * UP_PUT parsing, a bank round trip through storage.c on a simulated NOR,
  * bank / record version checks, map-by-count, pattern <-> steps,
  * drum grid records (version 3: UP_PUT's kind 1 and its high bits, a round trip). */
@@ -10,7 +10,7 @@
 #include <string.h>
 #define __attribute__(x)
 #define UP_HOST 1
-#include "../firmware/src/core.h"
+#include "../firmware/baseline/core.h"
 
 static uint8_t nor[0x100000];
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
@@ -23,8 +23,8 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
         nor[off + i] &= s[i];
     return 0;
 }
-#include "../firmware/src/storage.c"
-#include "../firmware/src/upreset.c"
+#include "../firmware/os/storage.c"
+#include "../firmware/os/upreset.c"
 
 static int check(const char *what, int ok)
 {

@@ -17,6 +17,24 @@ The build makes three files in `build/`:
 | `loader/ota.bin` | the update loader |
 | `bluehare.fwsc` | the installable package (app + loader) |
 
+## Source layout (2026-10-17)
+
+The code follows the architecture's layers (docs: "Blue Hare architecture"): the OS may use the baseline, never the
+reverse, and `tests/baseline_alone.c` builds the baseline with only its own directory on the include path to keep it
+so.
+
+| Directory | Layer | What |
+| --- | --- | --- |
+| `firmware/baseline/` | Blue Hare baseline | The sound: engines (`eng_*.c`, `engine_ids.h`), voices, modulation, effects (fixed point and float: `fx.c`, `fx_amb.c`, `fastmath.h`), GEN, note input and the layers (`seq.c`), MIDI's meaning (`midi_control.c`, `midi_clock.c`, the input ring `midi_in.c`), the parameters |
+| `firmware/os/` | Blue Hare OS | The instrument's system: the UI (`ui*.c`, `gfx.c`, GEN's ocean `ui_ocean.c`), the keys (`keyboard.c`), storage, presets, projects, the editor protocol, updates, the console |
+| `firmware/fm1/` | Blue Hare FM1 | The FM-1 port: the device's unity build `bluehare.c`, the audio interrupt (`audio.c`), the screen driver, USB, TRS MIDI; with `firmware/hal/` (registers) and `firmware/loader/` |
+| `distributions/` | HARE OS FM1 distro | What the FM-1 build is made of |
+| `native/` | Blue Hare Native | The desktop app (for now on the emulator: the device's view) |
+
+What the baseline asks of the instrument around it is three keyboard hooks (`os_keys_block`, `os_keys_hold_track`,
+`os_keys_hold_note`, defined in `firmware/os/keyboard.c`) and `midi_out_event` (USB); a port feeds MIDI in through
+`midi_enqueue`.
+
 ## Prerequisites (macOS)
 
 - Python 3 with Pillow and fontTools: `pip3 install Pillow fonttools` (the UI font and icons are
@@ -58,7 +76,7 @@ and the version string `v1.0`; the package is `build/bluehare-1.0.fwsc`, and
 (`bluehare-1.0-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
 `LICENSES/` (the package contains Apache-2.0 SDK files, so the licence texts travel with it).
 
-Build options (environment, `0` or `1`; defaults in `firmware/src/bluehare.c`, `core.h` and `icons.c`):
+Build options (environment, `0` or `1`; defaults in `firmware/fm1/bluehare.c`, `core.h` and `icons.c`):
 
 | Flag | Default | |
 | --- | --- | --- |
@@ -67,16 +85,16 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/bluehare.c`, `
 | `BLUEHARE_CDC` | 1 | USB serial console |
 | `BLUEHARE_CDC_DEFAULT` | 1 | `0`: the console is built in but left out of USB from boot (as MENU > USB SERIAL OFF) |
 | `BLUEHARE_UAC` | 1 | USB audio input (the master output, stereo, 44.1 or 48 kHz) |
-| `BLUEHARE_UAC_48K` | 1 | `0`: the USB audio input at 44.1 kHz only, as up to 1.0.5.2 (`firmware/src/usb.c`) |
+| `BLUEHARE_UAC_48K` | 1 | `0`: the USB audio input at 44.1 kHz only, as up to 1.0.5.2 (`firmware/fm1/usb.c`) |
 | `BLUEHARE_UART` | 1 | TRS MIDI IN |
 | `BLUEHARE_ICONS` | 1 | parameter icons on the knob cards |
 
 `BLUEHARE_USB_LAYOUT` (`0` to `3`, default `0`) picks other USB descriptor layouts for testing; see
-`firmware/src/usb.c`.
+`firmware/fm1/usb.c`.
 
 ## Distributions
 
-The tree holds every engine (`firmware/src/engine_ids.h`); a **distribution** is the set one build holds, at most 16,
+The tree holds every engine (`firmware/baseline/engine_ids.h`); a **distribution** is the set one build holds, at most 16,
 in the order the device lists them: `distributions/<name>.txt`, one engine a line, and optionally `TRACKS 4` or
 `TRACKS 8`, the build's track count (4 without the line), and `PALETTE <name>`, the palette a device starts with
 (tools/gen_ui_palettes.py; GREY without the line).
@@ -104,7 +122,7 @@ chunks; MIDI IN routes in blocks of 8 (CH1-8, SEL, CH9-16).
 
 Felucca's own engines (ANALOG FM6 PHASE LOFI VOICE TRIO WHEEL PHYS NOISE DRUM) and its default distribution are gone
 from Blue Hare: their ids are retired (`core.h` `EID_RETIRED`, which the archived engines' ids join); what other
-engines used of them lives in `firmware/src/shared/` (PHYS's resonators for MODAL).
+engines used of them lives in `firmware/baseline/shared/` (PHYS's resonators for MODAL).
 
 The engines a distribution leaves out are not linked. A build numbers its engines 0, 1, .. in the distribution's
 order (`core.h` `ENGI_*`, `engines.c` `ENGINES[]`), but everything stored and the editor protocol name an engine by its
@@ -204,14 +222,14 @@ trackpad over it; the computer keyboard as on the emulator page (Esc quits). Nee
 SDL2: `brew install sdl2` (Linux: libsdl2-dev). It is the base for what the device cannot hold: heavier engines and
 effects run on the computer's CPU and memory, not the FM-1's; a VST built on it is planned.
 
-It is built with `BLUEHARE_NATIVE` (`firmware/src/core.h`), which lifts the limits that were the device's. The
+It is built with `BLUEHARE_NATIVE` (`firmware/baseline/core.h`), which lifts the limits that were the device's. The
 device's engines stay exactly as they are (a sound plays as on the FM-1: 0 of their golden renders differ); what the
 native image adds is its own:
 
 | | FM-1 (and the browser emulator) | native image |
 |---|---|---|
 | voices | 12 shared by all the tracks (8 when the CPU is busy); a new note takes one from another track | 16 on every track, its own: nothing taken from another track |
-| reverb (FX > REVERB TYPE) | ROOM, SPRING, HALL (8 lines at half the rate), GATED | and CONCERT, CAVERN, SHIMMER (`firmware/src/fx_native.c`, below) |
+| reverb (FX > REVERB TYPE) | ROOM, SPRING, HALL (8 lines at half the rate), GATED | and CONCERT, CAVERN, SHIMMER (`firmware/baseline/fx_native.c`, below) |
 | delay line | 1.49 s (1/1, 2BAR, 4BAR cut short at most tempos) | 23.8 s: 4BAR down to 41 BPM; PING's right side 11.9 s |
 | engines | the distribution's | the same (CANYON, its native engine, archived with ECHOES 2026-10-17) |
 | MENU > INFO CPU | the device's audio interrupt | the computer's audio thread (the FIRMWARE line reads VERSION) |
@@ -245,7 +263,7 @@ CONCERT, CAVERN and SHIMMER as HALL, and a delay longer than 1.49 s cut short.
 
 The VST3 / AU / CLAP plugin is archived in [archive/plugin](archive/plugin/README.md) (2026-10: it is not clear it
 works properly). It is out of the build and the tests; its build notes are kept there. The firmware's host side
-(`firmware/src/target_host.c`: a DAW's transport and tempo, the tracks' own outputs) stays, shared with the native
+(`firmware/baseline/target_host.c`: a DAW's transport and tempo, the tracks' own outputs) stays, shared with the native
 image.
 
 ## Tests

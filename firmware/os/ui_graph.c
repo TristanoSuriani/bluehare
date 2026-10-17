@@ -84,6 +84,7 @@ static void graph_scale(const track_t *t, uint16_t c)
 /* CHORD (SCL 2): the chord's name ("Cm7": the last one the track played; before any, the one on its ROOT from
  * C4) over the keys from the C below its lowest note (two octaves, three for a wide one): its notes THEME, its
  * root's ACCENT, the others RAISE. OFF or a kit: what to do instead */
+#include "ui_ocean.c"                                 /* (Blue Hare, 2026-10-17) GEN's ocean */
 static void panel_note(const char *a, const char *b, const char *c);
 static void panel_alert(uint32_t id, const char *a);
 static void graph_chord(const track_t *t, uint16_t c)
@@ -290,8 +291,9 @@ static uint32_t graph_signature(void)
     }
     if (pg->graph == GR_MOD)
         h ^= (mod_ui_slot + 1u) * 40503u;
-    if (pg->graph == GR_GEN)                         /* (Blue Hare) GEN: its chord and bar */
-        h = (h ^ (gen.on + 2u * gen.s.nchord + 977u * gen.s.bar + 7919u * (uint32_t)song.g[G_GROOT])) * 16777619u;
+    if (pg->graph == GR_GEN)                         /* (Blue Hare) GEN: its chord and bar; playing, the ocean moves */
+        h = (h ^ (gen.on + 2u * gen.s.nchord + 977u * gen.s.bar + 7919u * (uint32_t)song.g[G_GROOT] +
+                  (gen.on ? 104729u * (ui.frame / 2u) : 0u))) * 16777619u;
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < 4u; i++)
             h ^= (uint32_t)graph_project_used(i) << (20u + i);
@@ -843,19 +845,15 @@ static void draw_graph(void)
             cv_oy = 0;
             panel_note("TURN TO PICK", "[OCT+] CONFIRM", 0);
             break;
-        case GR_GEN: {                                  /* (Blue Hare) GEN: playing or not, the chord, the bar */
-            char ch[8], b[20];
+        case GR_GEN:                                    /* (Blue Hare) GEN: stopped, or the ocean while it plays */
             cv_oy = 0;
             if (!gen.on) {
                 panel_note("GEN STOPPED", "[ARP] PLAY", "PAD BASS BELLS PULSE");
+                oc.ready = 0;                           /* (the next start: a fresh shoal) */
                 break;
             }
-            gen_chord_name(ch);
-            str_cpy(b, "BAR ", sizeof b);
-            fmt_int(b + 4, (int32_t)(gen.s.bar % 1000u) + 1);
-            panel_note(ch, b, "[ARP] STOP");
+            oc_frame();                                 /* (ui_ocean.c: its chord and bar on top) */
             break;
-        }
         default:
             if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WAVE) graph_wave(t, c);
             else { cv_oy = 0; graph_scope(c); }

@@ -22,8 +22,8 @@ modification GPL-3.0 section 5(a) asks for, and git history records the changes 
 
 | What | Licence | Where |
 | --- | --- | --- |
-| Engine ids and distributions | GPL-3.0-only | `firmware/src/engine_ids.h`, `tools/gen_dist.py`, `distributions/` |
-| The engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, DARK, HONKS, RAZOR, GUTS, SLAG, VENOM, WAR, CHOKE, RUST, DRILL, ANVIL, SCREAM, FLUIDS, SCRATCH, ABYSS, SHRED, KIT, BREAKS, RISERS, LINNKIT, STRINGS, FLOOR, NEBULA, CANYON, CHIPKIT, SANDSTORM; the native image's reverbs | GPL-3.0-only | `firmware/src/eng_*.c` (the list in AUTHORS.md), `firmware/src/fx_native.c`, `tools/gen_wavetables.py`, `tools/gen_speech.py`, `tools/speech/` |
+| Engine ids and distributions | GPL-3.0-only | `firmware/baseline/engine_ids.h`, `tools/gen_dist.py`, `distributions/` |
+| The engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, DARK, HONKS, RAZOR, GUTS, SLAG, VENOM, WAR, CHOKE, RUST, DRILL, ANVIL, SCREAM, FLUIDS, SCRATCH, ABYSS, SHRED, KIT, BREAKS, RISERS, LINNKIT, STRINGS, FLOOR, NEBULA, CANYON, CHIPKIT, SANDSTORM; the native image's reverbs | GPL-3.0-only | `firmware/baseline/eng_*.c` and `archive/engines/` (the list in AUTHORS.md), `firmware/baseline/fx_native.c`, `tools/gen_wavetables.py`, `tools/gen_speech.py`, `tools/speech/` |
 | Changes to Felucca's files | GPL-3.0-only (the files stay Leo Kuroshita's) | the files marked "Modified by Tristano Suriani" |
 
 Blue Hare's engines contain no third-party code. They are original implementations of published techniques; the
@@ -38,7 +38,7 @@ Every file in this tree that carries an `SPDX-License-Identifier: GPL-3.0-only` 
 - the web pages (installer, editor, the browser emulator `web/emu/`) and their tests: `web/` (not the Fukiai and DotGothic16 fonts, below)
 - the host tests: `tests/`
 
-One source file is a port and keeps the licence of its original: `firmware/src/shared/phys_dsp.c` (DaisySP, MIT).
+One source file is a port and keeps the licence of its original: `firmware/baseline/shared/phys_dsp.c` (DaisySP, MIT).
 The firmware built with it is GPL-3.0-only as a whole. (Blue Hare removed the engines PHYS and FM6, and with them
 the ports of Rings and msfa.)
 
@@ -61,7 +61,7 @@ All by Hügelton Instruments (Leo Kuroshita), in this tree:
 | What | Licence | Where |
 | --- | --- | --- |
 | Inter Tight font by The Inter Project Authors: the UI text, rasterised into the firmware at build time (`tools/gen_aa_font.py`; the generated tables are not offered as a font, and the font declares no Reserved Font Name) | SIL OFL 1.1 | `assets/fonts/InterTight[wght].ttf`, `LICENSES/OFL-InterTight.txt` (also `assets/fonts/OFL.txt`) |
-| DaisySP by Electrosmith, Corp and Emilie Gillet (<https://github.com/electro-smith/DaisySP>): the modal resonator (PHYS's, now MODAL's and ANVIL's), ported to fixed point | MIT | `firmware/src/shared/phys_dsp.c`, `LICENSES/MIT-DaisySP.txt` |
+| DaisySP by Electrosmith, Corp and Emilie Gillet (<https://github.com/electro-smith/DaisySP>): the modal resonator (PHYS's, now MODAL's and ANVIL's), ported to fixed point | MIT | `firmware/baseline/shared/phys_dsp.c`, `LICENSES/MIT-DaisySP.txt` |
 | X0X by charlesvestal (<https://github.com/charlesvestal/fm1-x0x>), a Felucca fork: the design of the browser emulator (the worklet, the device clock driven by its audio, the exports); its files credit it in their headers | GPL-3.0 | `web/emu/` |
 | DotGothic16 font by The DotGothic16 Project Authors (<https://github.com/fontworks-fonts/DotGothic16>): the browser emulator's knob labels, served with its page (cut to printable ASCII; the font declares no Reserved Font Name) | SIL OFL 1.1 | `web/emu/fonts/DotGothic16-subset.woff`, `LICENSES/OFL-DotGothic16.txt` (also `web/emu/fonts/OFL.txt`) |
 | DPF, the DISTRHO Plugin Framework, by Filipe Coelho (<https://github.com/DISTRHO/DPF>): the plugin's VST3, AU and CLAP wrappers, built into the plugin (archived; a git submodule, not copied into this tree) | ISC | `archive/plugin/dpf`, `LICENSES/ISC-DPF.txt` |

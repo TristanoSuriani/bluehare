@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* Host test of GEN, the generative engine (firmware/src/gen.c: amb1's composition), with the firmware's sources
+/* Host test of GEN, the generative engine (firmware/baseline/gen.c: amb1's composition), with the firmware's sources
  * (through hostsim.c):
  *   build/host/gen_test [DEMO_DIR]      (run_tests.sh builds and runs it; a demo WAV per piece in DEMO_DIR)
  * Stopped it plays nothing. Started (a fixed seed) every role plays (pad, bass, bells, pulse), each in its range, every
@@ -9,7 +9,9 @@
  * bells ring on quarter notes only; the chords drift (a few in two minutes, not every bar); the steps follow the
  * tempo; a key turned while it plays is the key of every note held soon after; MOTION 0 holds the arc still, 127 moves
  * it; the same seed plays the same notes at the same steps; a stop lets every note go (silence after the releases).
- * Then every piece plays 40 s: on its scale, in range, not silent, not clipping. */
+ * Then every piece plays 40 s: on its scale, in range, not silent, not clipping.
+ * (2026-10-17) WAVES: a piece with it swells on track 4 (long notes, gaps between), the pulse silent; DENSITY: 0 silences
+ * a role, 127 plays more of it than 64; PLAY ALONG: a key while it plays sounds on the bells' track in the scale. */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -148,6 +150,60 @@ int main(int argc, char **argv)
     peak = 0;
     blocks(blocks_for(500), 0);
     check("silence after the releases", peak < 64);
+
+    {   /* (2026-10-17) DENSITY: the roles at 0, at 64, at 127 */
+        uint32_t a[4], b[4], c[4], r;
+        for (r = 0; r < 3u; r++) {
+            uint32_t *x = r == 0 ? a : r == 1 ? b : c;
+            setup(0);
+            song.g[G_BPM] = 120;
+            song.g[G_GDPAD] = song.g[G_GDBASS] = song.g[G_GDBELL] = song.g[G_GDTEX] = (int16_t)(r == 0 ? 0 : r == 1 ? 64 : 127);
+            start();
+            blocks(blocks_for(90000), 0);
+            for (i = 0; i < 4u; i++)
+                x[i] = GS.played[i];
+            stop();
+        }
+        printf("gen: DENSITY 0 / 64 / 127: pad %u %u %u, bass %u %u %u, bells %u %u %u, pulse %u %u %u\n", a[0], b[0], c[0],
+               a[1], b[1], c[1], a[2], b[2], c[2], a[3], b[3], c[3]);
+        check("DENSITY 0: every role silent; 127: each busier than at 64",
+              !a[0] && !a[1] && !a[2] && !a[3] && c[0] > b[0] && c[1] > b[1] && c[2] > b[2] && c[3] > b[3]);
+    }
+    {   /* WAVES: DEPARTURES (piece 1) swells on track 4 */
+        uint32_t longest = 0, k;
+        setup(1);
+        start();
+        for (k = 0; k < blocks_for(90000) / 64u; k++) {
+            uint32_t j;
+            blocks(64, 0);
+            for (j = 0; j < GS.nheld[GR_PULSE]; j++)
+                longest = GS.left[GR_PULSE][j] > longest ? GS.left[GR_PULSE][j] : longest;
+        }
+        snprintf(path, sizeof path, "WAVES (DEPARTURES): %u swells in 90 s on track 4, up to %u steps long",
+                 GS.played[GR_PULSE], longest);
+        check(path, GEN_PRESETS[1].waves && GS.played[GR_PULSE] >= 8u && GS.played[GR_PULSE] <= 40u && longest >= 8u);
+        stop();
+    }
+    {   /* PLAY ALONG: C# in D dorian (GARDEN) is snapped to D or C, on the bells' track; let go, it ends */
+        uint32_t v0, v1, k, n = 0;
+        setup(0);
+        start();
+        blocks(blocks_for(500), 0);
+        v0 = 0;
+        for (k = 0; k < NVOICE; k++)
+            v0 += trk[GR_BELL].v[k].active && trk[GR_BELL].v[k].gate;
+        input_on(&trk[0], 61, 100);
+        blocks(2, 0);
+        v1 = 0;
+        for (k = 0; k < NVOICE; k++)
+            if (trk[GR_BELL].v[k].active && trk[GR_BELL].v[k].gate && (trk[GR_BELL].v[k].note == 62 || trk[GR_BELL].v[k].note == 60))
+                v1++, n = trk[GR_BELL].v[k].note;
+        input_off(&trk[0], 61);
+        blocks(2, 0);
+        snprintf(path, sizeof path, "PLAY ALONG: C# in D dorian sounds as %u on the bells' track; let go, it ends", n);
+        check(path, v1 >= 1u && (n == 60u || n == 62u) && !GS.kn[61]);
+        stop();
+    }
 
     setup(0);
     song.g[G_GMOT] = 0;

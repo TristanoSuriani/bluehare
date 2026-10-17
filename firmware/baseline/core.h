@@ -165,6 +165,8 @@ enum {                          /* global parameters */
                                  * part's reverb send) since 1.0; the ids and G_COUNT are fixed by the formats */
     G_EQLO, G_EQLM, G_EQHM, G_EQHI,  /* (2026-10-17) the patch's EQ (fx.c eq_block): LOW shelf 100 Hz, LOW MID 400 Hz,
                                       * HIGH MID 2.5 kHz, HIGH shelf 8 kHz, -12 .. +12 dB each (projects of format 11) */
+    G_GDPAD, G_GDBASS, G_GDBELL, G_GDTEX,   /* (2026-10-17) GEN's density a role (gen.c): PAD BASS BELLS, PULSE or
+                                             * WAVES; 64 the piece's own, 0 the role silent, 127 about twice as busy */
     G_COUNT
 };
 
@@ -405,6 +407,7 @@ static inline uint32_t swing_step_len(const track_t *t, uint32_t base, uint32_t 
 /* ----------------------------------------------------------- system --- */
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")   /* slot store before the index update */
 static volatile uint32_t fm1_ms;  /* milliseconds since boot (TIMER4-based, TIMER5 ISR in main.c) */
+#include "midi_in.c"              /* (Blue Hare, 2026-10-17) the baseline's MIDI input ring */
 /* boot-loop guard (main.c): two boots in a row that die in the first 30 s -> UBOOT */
 #define BOOTGUARD_MAGIC 0x42475244u
 struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".noinit")));

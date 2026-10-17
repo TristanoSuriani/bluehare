@@ -14,7 +14,7 @@ Why these numbers (tests/uac_test.c measures them on the C code):
   N = 24, FC = 22 kHz, beta 9: images that would fold below 20 kHz (input above 28.1 kHz at 7.056 MHz) are
   down 90 dB, the passband is flat within 0.06 dB to 18 kHz (-1.2 dB at 20 kHz); with Q30 taps the 1 kHz SNR
   sits at the 16-bit floor (~94 dB at -1 dBFS); Q15 taps would cap it near 87 dB.
-  tools/gen_uac_fir.py [OUT]   (default firmware/src/uac_fir.h); numpy only."""
+  tools/gen_uac_fir.py [OUT]   (default firmware/fm1/uac_fir.h); numpy only."""
 import sys
 from pathlib import Path
 
@@ -47,7 +47,7 @@ def table():
 
 
 def main():
-    out = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / "src" / "uac_fir.h")
+    out = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / "firmware" / "fm1" / "uac_fir.h")
     tab = table()
     lines = [
         "/* SPDX-License-Identifier: GPL-3.0-only",

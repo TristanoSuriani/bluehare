@@ -11,7 +11,7 @@ commands (68..71, 74..77: no reply), its INFO tags (`46`, `50`, `56`: not sent; 
 older firmware sends them) and the backup's FM6 objects (ids 8 and 9: always listed empty; a `BACKUP_PUT` of either is
 taken and ignored, rc 0, so an older archive still restores). The sections on FM6 below describe Felucca's firmware.
 
-The firmware side is `firmware/src/editor.c`. Commands 1-15, track selection, dumps, step reads
+The firmware side is `firmware/os/editor.c`. Commands 1-15, track selection, dumps, step reads
 and parameter writes (27, 29, 30, 31) were checked on hardware. `tests/editor_test.c` also exercises the real C
 handler, malformed transfers and stop timeouts against simulated flash. User-preset
 flash writes and live pushes (16-26, 32) have host coverage; that does not establish
@@ -114,7 +114,7 @@ lists no presets for it, and no track ever plays it:
 - **retired ids** (DIGITAL 1, SAMPLE 4, GRAIN 8, SLICE 13: removed in 1.5) are a clean break: `UP_PUT` of one answers
   rc 1 and a slot stored with one (an older firmware's bank) is listed empty (`UP_LOAD` rc 1); a project with a track on
   one is refused (`PROJECT` load: LOAD ERROR on the device); a song's instrument of one is dropped (none);
-- **an engine the build leaves out** plays its substitute (`firmware/src/engines.c` `EID_SUB`) with the substitute's
+- **an engine the build leaves out** plays its substitute (`firmware/baseline/engines.c` `EID_SUB`) with the substitute's
   first preset: a project's track (the rest of its sound as saved), a song's instrument (kept as it is: a build with
   the engine plays it again); a user preset of one is kept (`UP_LIST` / `UP_GET` / `UP_PUT` as any) but `UP_LOAD`
   answers rc 1;
@@ -154,7 +154,7 @@ The engine parameters are `P_E0..P_E7`: P_COUNT−8 .. P_COUNT−1 (96..103 sinc
 Their meaning, range and names depend on the current engine, so re-read `DESC` for them
 after an engine change.
 
-The modulation matrix (the MOD page, `firmware/src/mod.c`) is twelve track parameters at ids 49..60 (since
+The modulation matrix (the MOD page, `firmware/baseline/mod.c`) is twelve track parameters at ids 49..60 (since
 P_COUNT 69): slot k (1..4) is `SRCk`, `DSTk`, `AMTk` at ids 49 + 3 (k − 1) .. 51 + 3 (k − 1).
 
 | id | label | values |
@@ -183,7 +183,7 @@ nothing reads them; the ids and labels stay (the stored layouts, and library fil
 
 Descriptors are the same for every engine.
 
-The chord keys (SCL > CHORD on the device, `firmware/src/chord.c`) are two track parameters at ids 81, 82:
+The chord keys (SCL > CHORD on the device, `firmware/baseline/chord.c`) are two track parameters at ids 81, 82:
 
 | id | label | values |
 | --- | --- | --- |
@@ -270,7 +270,7 @@ at 1..3 and hides 6 5 8: what it sets still plays the right kit, and the device 
 unused mask bits in the last group must be zero. Oversized or incomplete transfers
 are rejected; BACKUP_PUT decodes at most 256 bytes.
 
-`fmt` values (`firmware/src/core.h`):
+`fmt` values (`firmware/baseline/core.h`):
 
 | Value | Name | Value | Name | Value | Name |
 | --- | --- | --- | --- | --- | --- |
@@ -331,7 +331,7 @@ OCT+ executes the selected action, OCT- goes back. SAVE over a used slot asks
 "OVERWRITE U07?" with OCT+ / OCT-. SAVE uses the automatic name. The PRESETS knob and the SAVE > PRESETS browser continue past the factory presets into the used user
 presets.
 
-**Flash** (`firmware/src/upreset.c`): two storage objects (`OBJ_UPRESET0/1`, A/B sector pairs at
+**Flash** (`firmware/os/upreset.c`): two storage objects (`OBJ_UPRESET0/1`, A/B sector pairs at
 0xDC000..0xDFFFF), 16 records of 192 bytes each, behind a bank header (magic "UPB1", record size,
 slot count; a mismatch reads as an empty bank). A record keeps its layout version (versions 1..5 are read; another: empty)
 and the P_COUNT it was stored with; another count is mapped by count (last 8 values = P_E0..P_E7, the

@@ -20,13 +20,13 @@ This includes:
   and the editor protocol.
 - **The engines ANALOG, FM6 (with its msfa port), PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM**, with their
   factory presets (Blue Hare removed them; what other engines use of PHYS and DRUM is kept in
-  `firmware/src/shared/`: `phys_dsp.c`, the resonators, and `drum_map.c`, the lanes and the General MIDI map).
+  `firmware/baseline/shared/`: `phys_dsp.c`, the resonators, and `drum_map.c`, the lanes and the General MIDI map).
 - **The tools, the web pages and the tests:** the web editor, the installer and the browser emulator.
 - **The name "Felucca"**, its documentation and its artwork.
 
 A file Leo Kuroshita wrote carries his copyright line. Where Blue Hare changed it, a second line follows:
 `Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md`. The file stays his, with Tristano Suriani's
-changes in it. A few upstream files never had a header (for example `firmware/src/settings_persist.c` and some
+changes in it. A few upstream files never had a header (for example `firmware/os/settings_persist.c` and some
 tests); git history shows the changes to those.
 
 ## Blue Hare: Tristano Suriani
@@ -37,24 +37,24 @@ These carry `Copyright (C) 2026 Tristano Suriani (Blue Hare)`.
 
 | What | Where |
 | --- | --- |
-| Stable engine ids, distributions, and builds of any set of up to 16 engines | `firmware/src/engine_ids.h`, `tools/gen_dist.py`, `distributions/` |
-| WAVE (wavetables) | `firmware/src/eng_wave.c`, `tools/gen_wavetables.py` |
+| Stable engine ids, distributions, and builds of any set of up to 16 engines | `firmware/baseline/engine_ids.h`, `tools/gen_dist.py`, `distributions/` |
+| WAVE (wavetables) | `firmware/baseline/eng_wave.c`, `tools/gen_wavetables.py` |
 | BYTE (bytebeat) | `firmware/src/eng_byte.c` |
-| WEST (west coast) | `firmware/src/eng_west.c` |
+| WEST (west coast) | `firmware/baseline/eng_west.c` |
 | HOOVER (rave lead) | `firmware/src/eng_hoover.c` |
 | SPEECH (LPC words in English) | `firmware/src/eng_speech.c`, `tools/gen_speech.py`, `tools/speech/` |
 | FMPERC (FM percussion) | `firmware/src/eng_fmperc.c` |
 | KARPLUS (plucked string) | `firmware/src/eng_karplus.c` |
-| VOSIM (formant pulse trains) | `firmware/src/eng_vosim.c` |
+| VOSIM (formant pulse trains) | `firmware/baseline/eng_vosim.c` |
 | PARTICLE (grain clouds) | `firmware/src/eng_particle.c` |
 | CHAOS (chaotic oscillators) | `firmware/src/eng_chaos.c` |
-| SID (a C64 sound-chip voice) | `firmware/src/eng_sid.c` |
+| SID (a C64 sound-chip voice) | `firmware/baseline/eng_sid.c` |
 | DUBSIREN (siren with tape echo) | `firmware/src/eng_dubsiren.c` |
 | DUBSIREN8, SIREN8 on the device (its 8-bit cousin) | `firmware/src/eng_dubsiren8.c` |
 | DUBCHORD (the dub-techno chord, a whole chord in one voice) | `firmware/src/eng_dubchord.c` |
-| BLISS (FM keyboards) | `firmware/src/eng_bliss.c` |
+| BLISS (FM keyboards) | `firmware/baseline/eng_bliss.c` |
 | WASP (two oscillators, a gritty multimode filter) | `firmware/src/eng_wasp.c` |
-| MODAL (a modal resonator; its resonators PHYS's, DaisySP's) | `firmware/src/eng_modal.c` |
+| MODAL (a modal resonator; its resonators PHYS's, DaisySP's) | `firmware/baseline/eng_modal.c` |
 | VECTOR (vector synthesis over WAVE's frames) | `firmware/src/eng_vector.c` |
 | ECHOES (a note and its repeats, each played anew) | `firmware/src/eng_echoes.c` |
 | GLITCH (a kit of micro-sounds) | `firmware/src/eng_glitch.c` |
@@ -63,13 +63,13 @@ These carry `Copyright (C) 2026 Tristano Suriani (Blue Hare)`.
 | BREAKS (synthesized breakbeat player) | `firmware/src/eng_breaks.c` |
 | RISERS (build-ups and landings) | `firmware/src/eng_risers.c` |
 | LINNKIT (the 80s sampled drum machine, after the LinnDrum; WAREHOUSE's) | `firmware/src/eng_linnkit.c` |
-| STRINGS (a string ensemble, after the Waldorf Streichfett; WAREHOUSE's) | `firmware/src/eng_strings.c` |
+| STRINGS (a string ensemble, after the Waldorf Streichfett; WAREHOUSE's) | `firmware/baseline/eng_strings.c` |
 | FLOOR (four-on-the-floor beats; WAREHOUSE's) | `firmware/src/eng_floor.c` |
 | NEBULA (PARTICLE's cloud whole; the native image's) | `firmware/src/eng_nebula.c` |
 | CANYON (ECHOES' repeats, all of them; the native image's) | `firmware/src/eng_canyon.c` |
 | CHIPKIT (the drums of the 8-bit consoles; CHIP's) | `firmware/src/eng_chipkit.c` |
 | SANDSTORM (the late-90s trance lead, named after Darude's track; WAREHOUSE's) | `firmware/src/eng_sandstorm.c` |
-| The native image's reverbs CONCERT, CAVERN, SHIMMER | `firmware/src/fx_native.c` |
+| The native image's reverbs CONCERT, CAVERN, SHIMMER | `firmware/baseline/fx_native.c` |
 | Tests for distributions and SPEECH | `tests/engines_test.c`, `archive/tests/speech_test.c` |
 
 *(2026-10-16)* The engines not in Blue Hare's one distribution, HARE FM1 (SID, SH101, WAVE, VOSIM, BLISS, WEST, MODAL, STRINGS since 2026-10-17;
@@ -105,12 +105,12 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
   patches) are removed; their ids retired; the host tests build IDM.
 - Blue Hare's groovebox parts are archived (2026-10-16): the SLICER (Felucca's), DUCK, and the FX layer's REPEAT,
   REVERSE and TAPE STOP (Felucca's); the FX layer has its own buffer instead of the SLICER's.
-- GEN (2026-10), the generative engine on ARP (`firmware/src/gen.c`, its page, `tests/gen_test.c`): its composition
+- GEN (2026-10), the generative engine on ARP (`firmware/baseline/gen.c`, its page, `tests/gen_test.c`): its composition
   (the pieces, the breathing pad, the bells' loops, the drift, the arc, the euclidean pulse) is **amb-1's, by Charles
   Vestal** (GPL-3.0; the excerpts in `docs/excerpt_amb1.c` and `docs/excerpt_fastmath_amb1.c`, the latter from his X0X),
   ported to fixed point and to Blue Hare's tracks and engines by Blue Hare.
-  amb-1's sound processing (`firmware/src/fx_amb.c`: the plate reverb, the tape echo and Echoplex, the master) is
-  his too, ported for the studio's comparison (EFFECTS > PROCESSING) and, since 2026-10-17, inside Blue Hare's chain on the device as REVERB TYPE PLATE and DELAY TYPE AMB; `firmware/src/fastmath.h` is his X0X's maths library, unchanged. GEN's amb-1 algorithm is kept for comparison
+  amb-1's sound processing (`firmware/baseline/fx_amb.c`: the plate reverb, the tape echo and Echoplex, the master) is
+  his too, ported for the studio's comparison (EFFECTS > PROCESSING) and, since 2026-10-17, inside Blue Hare's chain on the device as REVERB TYPE PLATE and DELAY TYPE AMB; `firmware/baseline/fastmath.h` is his X0X's maths library, unchanged. GEN's amb-1 algorithm is kept for comparison
   only, until Blue Hare's own generative algorithms replace it.
 - SH101 (2026-10) is Blue Hare's engine, its own design after the Roland SH-101 (no circuit modelled).
 - The sound design studio (`web/studio/`, 2026-10-16) is Blue Hare's: its page, its exports and its test. It runs on
@@ -122,7 +122,7 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
 These are Felucca's code, moved out of the files they used to live in. They keep Leo Kuroshita's copyright, with
 Blue Hare's modification line:
 
-- `tests/factory_patterns.h`, from `firmware/src/engines.c`
+- `tests/factory_patterns.h`, from `firmware/baseline/engines.c`
 - `tests/lfo2_test.c`, from `tests/fun10_test.c`
 
 ## AI assistance

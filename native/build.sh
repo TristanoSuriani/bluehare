@@ -16,7 +16,7 @@ DIST="${1:-$(grep -v '^#' distributions/BUILD | awk 'NF { print $1; exit }')}"
 [ -f build/gen/bluehare_tables.h ] || { echo "native: run ./build.sh once first (build/gen)"; exit 1; }
 [ -f "build/gen/dist_$DIST.h" ] || { echo "native: no distribution $DIST (distributions/$DIST.txt; ./build.sh once after adding it)"; exit 1; }
 command -v sdl2-config >/dev/null 2>&1 || { echo "native: no SDL2 (macOS: brew install sdl2)"; exit 1; }
-VERSION=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/src/bluehare.c)   # ("v0.10.0")
+VERSION=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/fm1/bluehare.c)   # ("v0.10.0")
 PLIST_VERSION=${VERSION#v}
 NAME=$(echo "$DIST" | tr 'a-z_' 'A-Z ')   # ("HARE NATIVE": the tag, gen_dist.py's)
 BUNDLE=$(echo "$DIST" | tr '_' '-')
@@ -30,7 +30,7 @@ Darwin)
 esac
 # shellcheck disable=SC2086
 ${CC:-cc} -O2 -ffp-contract=off -std=gnu99 -w "-DBLUEHARE_VERSION=\"$VERSION\"" "-DBLUEHARE_DIST=$DIST" \
-    -Ibuild/gen -Ifirmware/src $(sdl2-config --cflags) -o "$OUT/blue-hare-$DIST" native/bluehare_native.c $LIBS
+    -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 $(sdl2-config --cflags) -o "$OUT/blue-hare-$DIST" native/bluehare_native.c $LIBS
 echo "native: $OUT/blue-hare-$DIST ($VERSION $NAME)"
 if [ "$(uname -s)" = Darwin ]; then
     APP="$OUT/Blue Hare $NAME.app"

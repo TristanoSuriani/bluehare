@@ -10,7 +10,7 @@ set -e
 cd "$(dirname "$0")/../.."
 [ -f build/gen/bluehare_tables.h ] || { echo "studio: run ./build.sh once first (build/gen)"; exit 1; }
 command -v emcc >/dev/null 2>&1 || { echo "studio: no emcc (Emscripten)"; exit 1; }
-VERSION=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/src/bluehare.c)
+VERSION=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/fm1/bluehare.c)
 BUILD_DIST=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' distributions/BUILD | head -n 1 | tr -d ' ' | tr 'A-Z' 'a-z')
 DIST=$(printf '%s' "${BLUEHARE_DIST:-$BUILD_DIST}" | tr 'A-Z' 'a-z')
 [ -f "build/gen/dist_$DIST.h" ] || { echo "studio: no distribution $DIST"; exit 1; }
@@ -18,7 +18,7 @@ if [ "$DIST" = "$BUILD_DIST" ]; then OUTD=build/studio; else OUTD="build/studio-
 mkdir -p "$OUTD/fonts"
 # shellcheck disable=SC2086
 emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
-    "-DBLUEHARE_VERSION=\"$VERSION\"" "-DBLUEHARE_DIST=$DIST" -Ibuild/gen -Ifirmware/src \
+    "-DBLUEHARE_VERSION=\"$VERSION\"" "-DBLUEHARE_DIST=$DIST" -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 \
     --no-entry -sSTANDALONE_WASM -sSTACK_SIZE=1048576 -sINITIAL_MEMORY=33554432 -sFILESYSTEM=0 \
     -o "$OUTD/bluehare.wasm" web/studio/studio_web.c
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@DIST@/$DIST/g" web/studio/index.html > "$OUTD/index.html"

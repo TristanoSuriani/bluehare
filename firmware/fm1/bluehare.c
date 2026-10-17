@@ -71,6 +71,7 @@
 #include "midi_uart.c"
 #endif
 #include "seq.c"
+#include "keyboard.c"            /* (Blue Hare OS: the keys) */
 #include "audio.c"
 
 /* -------------------------------------------------------------- UI --- */

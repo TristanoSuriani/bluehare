@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
-/* Host test of the FX hold layer's effects (firmware/src/perform.c), same sources as the firmware (through
+/* Host test of the FX hold layer's effects (firmware/baseline/perform.c), same sources as the firmware (through
  * hostsim.c).   build/host/perform_test [DEMO_DIR]          (run_tests.sh: build/perform_demo)
  * 1. timing: every effect starts at once and ends when let go (the live signal back, bit for bit, after the 2.9 ms
  *    ramp).

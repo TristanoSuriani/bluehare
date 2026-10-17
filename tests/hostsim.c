@@ -24,21 +24,22 @@
 #define memcpy bluehare_memcpy
 #define memcmp bluehare_memcmp
 #include "bluehare_tables.h"
-#include "../firmware/src/libc.c"
+#include "../firmware/baseline/libc.c"
 #undef memset
 #undef memcpy
 #undef memcmp
 static struct { volatile uint32_t notes, buttons; } fm1_in;
-#include "../firmware/src/core.h"
-#include "../firmware/src/engines.c"
-#include "../firmware/src/params.c"
-#include "../firmware/src/mod.c"
-#include "../firmware/src/voice.c"
-#include "../firmware/src/fx.c"
+#include "../firmware/baseline/core.h"
+#include "../firmware/baseline/engines.c"
+#include "../firmware/baseline/params.c"
+#include "../firmware/baseline/mod.c"
+#include "../firmware/baseline/voice.c"
+#include "../firmware/baseline/fx.c"
 static void fm1_delay_ms(uint32_t ms) { (void)ms; }
-#include "../firmware/src/usb.c"
-#include "../firmware/src/midi_uart.c"                /* TRS MIDI IN: its parser (um_byte) feeds midi_in_q */
-#include "../firmware/src/seq.c"
+#include "../firmware/fm1/usb.c"
+#include "../firmware/fm1/midi_uart.c"                /* TRS MIDI IN: its parser (um_byte) feeds midi_in_q */
+#include "../firmware/baseline/seq.c"
+#include "../firmware/os/keyboard.c"
 #define inst (trk[0])                   /* the single-part renders below: part 1 */
 
 static void wav_hdr(FILE *f, uint32_t frames)

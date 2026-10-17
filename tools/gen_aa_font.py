@@ -12,7 +12,7 @@ Faces of the presets (S labels, M values/headers, L big numerals / titles):
               -2.5 % tracking: a stand-in for Inter Tight, for previews only.
   inter-tight assets/fonts/InterTight[wght].ttf (SIL OFL 1.1, Google Fonts) at weights 400 / 500 / 600.
 
-Output (a C header; the glyph / font types live in the renderer, firmware/src/gfx.c):
+Output (a C header; the glyph / font types live in the renderer, firmware/os/gfx.c):
   AF_<N>_DATA   4-bit alpha, trimmed to the ink box, rows back to back, each glyph a byte-aligned bit stream
                 (MSB first) of canonical Huffman codes (AF_<N>_HC); a symbol is a value and a repeat count:
                 a run of 1..16 zeros or 15s, or one value 1..14 (huff_pack; about 28 % less than 2 px per byte)

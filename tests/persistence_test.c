@@ -23,10 +23,10 @@ static void lcd_wake_now(void) {}
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 { (void)x; (void)y; (void)w; (void)h; (void)p; }
 #define BLUEHARE_FLASH 1
-#include "../firmware/src/gfx.c"
-#include "../firmware/src/panel.c"
-#include "../firmware/src/ui.c"
-#include "../firmware/src/menu_items.c"
+#include "../firmware/os/gfx.c"
+#include "../firmware/os/panel.c"
+#include "../firmware/os/ui.c"
+#include "../firmware/os/menu_items.c"
 static void panel_setup(void) {}
 
 static uint8_t nor[0x100000], flash_ok = 1;
@@ -55,9 +55,9 @@ static void irq_restore(uint32_t f) { (void)f; }
 static uint32_t fl_jedec_ram(void) { return 0; }
 static void fl_plain_window_init(void) {}
 #define FL_FAR(fn) (fn)
-#include "../firmware/src/storage.c"
-#include "../firmware/src/upreset.c"
-#include "../firmware/src/project.c"
+#include "../firmware/os/storage.c"
+#include "../firmware/os/upreset.c"
+#include "../firmware/os/project.c"
 
 enum { ED_UI_STATE = 34, ED_UI_SET, ED_UI_PALETTES, ED_FAV_GET, ED_FAV_SET };
 static uint8_t ed_rep[64];                        /* the reply's bytes (MENU_SET) */
@@ -66,8 +66,8 @@ static void ed_b(uint32_t n) { if (ed_repn < sizeof ed_rep) ed_rep[ed_repn++] = 
 static void ed_v(int32_t n) { ed_b((uint32_t)(n + 8192)); ed_b((uint32_t)(n + 8192) >> 7); }
 static int32_t ed_rv(const uint8_t *a) { return (int32_t)(a[0] | (uint32_t)a[1] << 7) - 8192; }
 static void ed_str(const char *s, uint32_t n) { (void)s; (void)n; }
-#include "../firmware/src/editor_preferences.c"
-#include "../firmware/src/editor_menu.c"
+#include "../firmware/os/editor_preferences.c"
+#include "../firmware/os/editor_menu.c"
 
 static int check(const char *what, int ok)
 {

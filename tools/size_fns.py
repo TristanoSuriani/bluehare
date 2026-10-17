@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
-SRC = _ROOT / "firmware" / "src" if (_ROOT / "firmware" / "src").is_dir() else _ROOT / "src"   # either layout
+DIRS = [_ROOT / "firmware" / d for d in ("baseline", "os", "fm1")]   # (2026-10-17: the layers' directories)
 # the UI, the stores, the editor and the console: main loop only, never called by sound code; and (1.1) every
 # other file without DSP: USB, MIDI, the sequencer, the drawing, the LCD, OTA, ... Of those, what an interrupt
 # reaches (ISR_ROOTS and everything they call or name, from the IR) keeps -Os (isr_reach)
@@ -23,7 +23,8 @@ SIZE_FILES = ["ui.c", "favorites.c", "menu_items.c", "icons.c", "ui_graph.c", "u
               "editor.c", "editor_preferences.c", "editor_backup.c", "editor_menu.c", "console.c",
               "usb.c", "midi_uart.c", "midi_control.c", "midi_clock.c", "seq.c", "chord.c",
               "panel.c", "lcd.c", "gfx.c", "ota.c", "ota_hw.c", "params.c",
-              "ui_layer.c", "ui_name.c", "main.c", "libc.c", "storage_hw.c", "engines.c"]
+              "ui_layer.c", "ui_name.c", "main.c", "libc.c", "storage_hw.c", "engines.c",
+              "keyboard.c", "midi_in.c", "ui_ocean.c"]   # (2026-10-17: out of seq.c, usb.c; GEN's ocean)
 ISR_ROOTS = ("fm1_alnk0_irq", "fm1_timer5_irq")      # hal/fm1_isr.S: the audio ISR, the key / LED scan (+ USB poll)
 DEF = re.compile(r"^(?:static|void|int|uint\w*|int\w*|const)\b[^;=(]*?\b([A-Za-z_]\w*)\s*\(", re.M)
 IR_DEF = re.compile(r"^(define [^\n]*?@\"?([\w.]+)\"?\([^\n]*\)(?: unnamed_addr| local_unnamed_addr)?)( #\d+[^\n]*\{)$",
@@ -50,7 +51,7 @@ def definitions(text):
 def size_names():
     names = set()
     for f in SIZE_FILES:
-        names.update(definitions((SRC / f).read_text()))
+        names.update(definitions(next(d / f for d in DIRS if (d / f).exists()).read_text()))
     return names
 
 

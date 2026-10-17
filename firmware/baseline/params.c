@@ -178,6 +178,11 @@ static const param_desc_t GP[G_COUNT] = {
      * 0, CLEAN) */
     [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
     [G_GMOT] = PD("MOTN", F_PCT, 0, 127, 64),
+    /* (2026-10-17) GEN's densities, a role each (the GEN MIX page, while it plays) */
+    [G_GDPAD] = PD("PAD", F_PCT, 0, 127, 64),
+    [G_GDBASS] = PD("BASS", F_PCT, 0, 127, 64),
+    [G_GDBELL] = PD("BELL", F_PCT, 0, 127, 64),
+    [G_GDTEX] = PD("PL/WV", F_PCT, 0, 127, 64),   /* (the PULSE, or WAVES in the pieces that have it) */
     /* (2026-10-17) the patch's EQ (fx.c eq_block) */
     [G_EQLO] = {"LOW", F_INT, -12, 12, 0, 0, "dB"},
     [G_EQLM] = {"LMID", F_INT, -12, 12, 0, 0, "dB"},
@@ -386,6 +391,8 @@ static const page_t PAGES[] = {
     {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},
     /* (Blue Hare, 2026-10) ARP: the generative engine (gen.c); ARP starts and stops it (ui_input.c page_tap) */
     {"GEN", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GPRE, G_GSCL, G_GROOT, G_GMOT}},
+    /* (2026-10-17) while GEN plays: how busy each role is (ARP starting it opens this page, stopping it GEN's) */
+    {"GEN MIX", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GDPAD, G_GDBASS, G_GDBELL, G_GDTEX}},
     /* (Blue Hare) the sequencer's placeholder: SEQ (and GLO, which opened the song) shows TODO */
     {"SEQ", FAM_SEQ, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5

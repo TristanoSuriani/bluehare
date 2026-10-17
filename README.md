@@ -21,6 +21,9 @@ What Blue Hare adds, all by Tristano Suriani:
   are archived; the design and the plan are in [docs/](docs/) (DesignPrinciples.md, Milestones.md, SoundAndDSP.md).
 - **GEN, the generative engine** *(2026-10)*: ARP plays the four tracks as an ambient ensemble (pad, bass, bells,
   pulse; amb1's composition), 8 pieces, on the FM-1, the native image, the emulator and the studio alike.
+  *(2026-10-17)* WAVES (swells of noise) in the pieces without a pulse; a density a role on KNOB 1–4 while it plays
+  (the GEN MIX page); keys played along snapped to its scale, on the bells; an ocean on its pages while it plays
+  (fish, a crowned king, starfish, bubbles), following the music.
 - **Layers** *(2026-10-16, Milestone 2's start)*: the four tracks are a patch's layers. A layer ON plays the notes
   its key and velocity ranges hold, transposed by its own TRANS (STACK), or one layer a note in turn (ROUND ROBIN);
   each has an insert (drive, a 12 dB filter, low cut). *(2026-10-17)* Layers crossfade by velocity, key or the mod
@@ -215,7 +218,7 @@ The pages by button:
 | LFO | LFO, LFO 2, LFO DEST, MOD | MOMENTARY (with a knob) |
 | EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
 | FX, SCL, ENV | their pages, as before | FX and SCL: their layers |
-| ARP | GEN starts or stops, its page shown (KNOB 1 the preset, 2 SCALE, 3 ROOT, 4 MOTION); ARP breathes while it plays | (as a tap) |
+| ARP | GEN starts (GEN MIX shown: KNOB 1–4 the density of the pad, bass, bells, pulse or waves) or stops (GEN shown: KNOB 1 the preset, 2 SCALE, 3 ROOT, 4 MOTION); ARP breathes while it plays | (as a tap) |
 | REC | nothing for now (no recording) | nothing |
 
 ## Sequencer

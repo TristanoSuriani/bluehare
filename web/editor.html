@@ -983,7 +983,7 @@ const mixer = {
 };
 
 /* ------------------------------------------------------------ mock device --- */
-/* Implements the protocol like firmware/src/editor.c, with tables copied from params.c
+/* Implements the protocol like firmware/os/editor.c, with tables copied from params.c
    and the engine sources (test_web.mjs checks them against the firmware's, tests/descdump.c). Used with ?mock=1 (add &legacy=1 for a firmware without cmds 16..26).
    opt: {legacy: no user bank / WATCH, v3: no TRACK_PARAM / TRACK_CHANGED (firmware 0.8),
          auto: false = no simulated knobs (tests drive sim.*),
@@ -1030,6 +1030,10 @@ function makeMockDevice(opt = {}) {
     D("LMID", F.INT, -12, 12, 0, null, "dB"),
     D("HMID", F.INT, -12, 12, 0, null, "dB"),
     D("HIGH", F.INT, -12, 12, 0, null, "dB"),
+    D("PAD", F.PCT, 0, 127, 64),                    /* G_GDPAD .. G_GDTEX (31 .. 34): GEN's densities (2026-10-17) */
+    D("BASS", F.PCT, 0, 127, 64),
+    D("BELL", F.PCT, 0, 127, 64),
+    D("PL/WV", F.PCT, 0, 127, 64),
   ];
   const NONE = D("-", F.INT, 0, 0, 0);
   /* a retired engine number (1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE: removed in 1.5; engines.c ENG_NONE) */
@@ -1339,7 +1343,8 @@ function makeMockDevice(opt = {}) {
         P("101 KICK", [0, 0, 0, 0, 0, 0, 30, 127], [0, 30, 0, 20], 0),
         P("NOISE HAT", [0, 0, 0, 0, 0, 127, 120, 30], [0, 12, 0, 8], 0),
         P("ZAP", [0, 0, 110, 0, 0, 0, 40, 110], [0, 20, 0, 15], 0),
-        P("WIND", [0, 0, 0, 0, 0, 127, 50, 115], [90, 0, 127, 100], 0)] },
+        P("WIND", [0, 0, 0, 0, 0, 127, 50, 115], [90, 0, 127, 100], 0),
+        P("SURF", [0, 0, 0, 0, 0, 127, 30, 60], [96, 100, 90, 104], 0)] },
   /*MOCK-ENG-END*/];
   const E_OF = (n) => ENG.findIndex((e) => e.name === n);
   /*MOCK-TRKDEF-BEGIN*/
@@ -1372,7 +1377,7 @@ function makeMockDevice(opt = {}) {
   TP.push(E("SYNC", ["OFF", "4BAR", "2BAR", "1/1", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0),   /* 1.2: LFO 2 (91..93) */
     E("TRIG", ["NOTE", "FREE"], 0), E("POL", ["BI", "UNI"], 0), E("QNTZ", ["OFF", "ON"], 1),   /* and QUANTIZE (94) */
     D("SPRD", F.PCT, 0, 127, 0));   /* SPREAD (95, #148) */
-  const P_COUNT = 104, G_COUNT = 31, NSTEP = 64, P_E0 = 96, G_ENGSEL = 20, P_SLCR = 45;
+  const P_COUNT = 104, G_COUNT = 35, NSTEP = 64, P_E0 = 96, G_ENGSEL = 20, P_SLCR = 45;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const enumOrig = (d, v) => d.fmt === F.ENUM && d.names ? aliasOf(d.names, v - d.min) + d.min : v;   /* params.c enum_orig */
   /* four tracks (firmware v3), four synth parts (1.0); engine / preset / p / step below are the selected track's */
@@ -2223,7 +2228,7 @@ function selfLoad(sound = false) {
 }
 const stepEdit = new Map(); /* index -> time of the last edit */
 
-/* parameter ids (firmware/src/core.h); used only when P_COUNT / G_COUNT match */
+/* parameter ids (firmware/baseline/core.h); used only when P_COUNT / G_COUNT match */
 const EXPECT = { pcount: 91, gcount: 27, pe0: 83 };
 /* the same layout without the chord keys (P_COUNT 89, P_E0 81), the FM operator ENVs too (69, 61) or the matrix
    (firmware 1.0: 57, 49) */

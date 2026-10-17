@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
-/* Host test of the UI (firmware/src/ui*.c with the sound sources of hostsim.c;
+/* Host test of the UI (firmware/os/ui*.c with the sound sources of hostsim.c;
  * the display and the HAL are stubs, the buttons and knobs are driven through them):
  *   SOUNDS     a sound load (PRESETS knob / page, TOOLS INIT, user preset) changes the sound only: SCL,
  *              the SLICER and the mix stay the track's.
@@ -131,18 +131,18 @@ static struct { uint32_t stage; } bluehare_dbg;
 #ifndef BLUEHARE_VERSION
 #define BLUEHARE_VERSION "TEST"
 #endif
-#include "../firmware/src/gfx.c"
-#include "../firmware/src/panel.c"
-#include "../firmware/src/ui.c"
-#include "../firmware/src/menu_items.c"
-#include "../firmware/src/icons.c"
-#include "../firmware/src/ui_graph.c"
-#include "../firmware/src/ui_draw.c"
-#include "../firmware/src/ui_menu.c"
-#include "../firmware/src/ui_input.c"
-#include "../firmware/src/ui_layer.c"
-#include "../firmware/src/upreset.c"
-#include "../firmware/src/project.c"
+#include "../firmware/os/gfx.c"
+#include "../firmware/os/panel.c"
+#include "../firmware/os/ui.c"
+#include "../firmware/os/menu_items.c"
+#include "../firmware/os/icons.c"
+#include "../firmware/os/ui_graph.c"
+#include "../firmware/os/ui_draw.c"
+#include "../firmware/os/ui_menu.c"
+#include "../firmware/os/ui_input.c"
+#include "../firmware/os/ui_layer.c"
+#include "../firmware/os/upreset.c"
+#include "../firmware/os/project.c"
 
 /* the bottom of track parameter id on the selected track (an EDIT value: its engine's) */
 #define TP_MIN_OF(id) ((id) >= P_E0 ? ENGINES[TSEL->eng_req]->edit[(id) - P_E0].min : TP[id].min)
@@ -2742,6 +2742,35 @@ static int test_quick_layers(void)
     ok &= gates() > 0 && !ui.layer;
     key_up(white(1)); btn_up(B_EDIT); frame();
     bad += check("GLO then EDIT: GLO's layer; EDIT ignored (no layer, no page, its keys notes)", ok && ui.home);
+    /* (2026-10-17) ARP: GEN starts, GEN MIX shown (the roles' densities), the ocean on it; a bell: bubbles rise; ARP
+     * again: GEN stops, GEN's page */
+    ui_power_on();
+    btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
+    {
+        static int32_t ab[2 * CTL];
+        uint32_t i, before = 0, after = 0, blue = 0;   /* (blue: the gradient's steps) */
+        for (i = 0; i < 64u; i++)                       /* (the audio side: GEN takes the start, plays its first steps) */
+            mix_block(ab, CTL);
+        frames(40);
+        const page_t *pg = cur_page();
+        ok = gen.on && pg->fam == FAM_ARP && pg->id[0] == G_GDPAD && pg->id[3] == G_GDTEX && oc.ready;
+        for (i = 0; i < OC_NBUB; i++)
+            before += oc.bub[i].live;
+        gen.s.played[GR_BELL]++;
+        frame();
+        frame();
+        for (i = 0; i < OC_NBUB; i++)
+            after += oc.bub[i].live;
+        cv_begin(240, 122, 0);                          /* (a frame of it alone: the deep's gradient, row to row, */
+        oc_frame();                                     /* whatever the palette: GREY makes it gray) */
+        for (i = 1; i < cv_h; i++)
+            blue += cv_px[i * cv_w + 2u] != cv_px[(i - 1u) * cv_w + 2u];
+        ok &= after > before && blue > 10u;
+        btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
+        mix_block(ab, CTL);
+        ok &= !gen.on && cur_page()->id[0] == G_GPRE;
+        bad += check("ARP: GEN plays, GEN MIX shown with the ocean (a bell lets bubbles rise); ARP again: stopped, GEN", ok);
+    }
     return bad;
 }
 

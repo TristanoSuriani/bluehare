@@ -32,7 +32,7 @@
 #define PROJ_CHUNKS 4u                         /* storage objects OBJ_PROJECT0 .. +3 */
 #endif
 #define PROJ_MAGIC 0x314B5254u                 /* "TRK1" */
-#define PROJ_VER 11u                           /* (Blue Hare) 11 (2026-10-17): the EQ (G_COUNT 31), the layers' crossfade; 8: no song (the sequencer is a placeholder); 9: no DUCK;
+#define PROJ_VER 12u                           /* (Blue Hare) 12 (2026-10-17): GEN's densities (G_COUNT 35); 11: the EQ, the layers' crossfade; 8: no song (the sequencer is a placeholder); 9: no DUCK;
                                                   * 10: the layers (core.h lay) */
 #define PROJ_HDR 16u
 #if !BLUEHARE_FLASH                             /* (RAM only: no storage.c; the song kept in RAM, proj_store_*) */

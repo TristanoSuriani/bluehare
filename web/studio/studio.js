@@ -101,7 +101,7 @@ async function loadDescs(items) {
 // ------------------------------------------------------------------ the page's words for the parameters
 // the tabs, and the groups each shows (STU_LAYOUT's keys)
 const TABS = [["layer", "LAYER", "ZFJ"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "XYRCUPQ"],
-              ["gen", "GENERATIVE", "GK"]];
+              ["gen", "GENERATIVE", "GHK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
   A: { title: "Amp envelope", names: ["Attack", "Decay", "Sustain", "Release", "Level", "Octave"] },
@@ -132,6 +132,8 @@ const GROUPS = {
   Q: { title: "Master", names: ["Speaker EQ", "Master"], fx: true },
   G: { title: "Generative", names: ["Piece", "Scale", "Root", "Motion", "Tempo"], wide: true,
        note: "Four tracks as an ensemble: track 1 a pad of four breathing voices, 2 the bass, 3 bells in four loops of 13, 17, 23 and 29 beats, 4 a euclidean pulse. The chords drift on their own. A piece loads the four sounds, the tempo and the effects; SCALE and ROOT change the key at once; MOTION how far the music swells and thins. On the FM-1: ARP starts and stops it." },
+  H: { title: "Density", names: ["Pad", "Bass", "Bells", "Pulse / waves"], wide: true,
+       note: "How busy each role is while GEN plays (KNOB 1 to 4 on the FM-1's GEN MIX page): 64 the piece as written, 0 the role silent, 127 about twice as busy. The pieces without a pulse play WAVES on track 4: swells of noise. Keys played while GEN runs are snapped to its scale and sound on the bells." },
   K: { title: "Keys", names: ["Root", "Scale", "Snap", "Transpose", "Chord", "Voicing"], track: true },
 };
 const ENGINE_WORDS = {

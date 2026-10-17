@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* Host test of firmware/src/ota.c: a fake M-UPGRADE serves a real .fwsc over
+/* Host test of firmware/os/ota.c: a fake M-UPGRADE serves a real .fwsc over
  * the SysEx protocol (pack7, cmd 0x30 reads, 0xE0000000 -> "success") and a
  * simulated NOR plays the flash.
  *   cc -o ota_test tests/ota_test.c && ./ota_test FILE.fwsc
@@ -112,7 +112,7 @@ static int ota_fread(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + of
 static void ota_show(uint32_t step, int32_t code) { if (step == 9) last_code = code; }
 static void ota_commit(const uint8_t *parm) { committed = 1; memcpy(committed_parm, parm, 112); }
 
-#include "../firmware/src/ota.c"
+#include "../firmware/os/ota.c"
 
 static uint32_t ota_body_off(void)                  /* ota.bin data + 0x20 in the logical image */
 {

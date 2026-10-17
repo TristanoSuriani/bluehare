@@ -6,7 +6,7 @@ plugin were removed and Milestone 1's first step ([Milestones.md](Milestones.md)
 engine but SID, SH101, WAVE, VOSIM, BLISS, WEST, MODAL and STRINGS (`archive/engines/`), the SLICER, DUCK and the FX layer's REPEAT,
 REVERSE and TAPE STOP (`archive/fx/`). One distribution is built, HARE FM1.
 
-Sources are named relative to `firmware/src/` unless a path says otherwise.
+Sources are named relative to `firmware/baseline/` (the sound; `firmware/os/` the instrument's system, `firmware/fm1/` the FM-1 port) unless a path says otherwise.
 
 ## 1. The frame: rates, blocks and numbers
 
@@ -202,4 +202,8 @@ block (`seq.c` `events_block`), its decisions once a 1/16, out of the sample loo
 | **Bass** (track 2) | The chord's root (C2..B2, BASS OCT), held; halfway to the next chord, FIFTH's chance of the fifth; at a change it may sit the chord out (EVOLVE, more when the arc is sparse). |
 | **Bells** (track 3) | Four loops of 13, 17, 23 and 29 quarter notes, each in its register (C5, G4, G5, D4 by ROOT; BELL OCT), phasing against each other. Each holds 0 to 5 notes (DENSITY, swelled and thinned by the arc): scale steps over the chord's degree, a chord tone 72 % (an octave up 30 % of those), else a passing 2nd, 4th or 6th. At the end of a pass: grown or pruned to the count; EVOLVE moves a note or changes it, and rests the next pass now and then. Sometimes a bell's octave with it, softer. |
 | **Pulse** (track 4) | Three euclidean patterns (Bjorklund), 16, 12 and 7 steps (HITS of 5, 7, 3), rotated 0, 2, 3: a thump on the chord's root (C2..B2), a tick on its fifth and a longer one on its root, high. Each bar EVOLVE may turn a pattern or move a hit (within one of its home), or rest the pulse 2 to 4 bars. Its velocity follows the arc. |
+| **Waves** (track 4, 2026-10-17) | In the pieces without a pulse (DEPARTURES, VOICES, SHORELINE: SH101's SURF): a swell of noise on the chord's root, 2 to 5 s, its filter opening as it rises (the sound's envelope); then a gap of 1 to 6 s; fewer as the arc thins. |
+| **Density** (2026-10-17) | A role each (G_GDPAD .. G_GDTEX, the GEN MIX page while it plays, the studio's Density group): 64 the piece as written. Lower: breaths skipped, bass notes resting, fewer bells, hits dropped, longer gaps, until 0 silences the role. Higher (to 127, about twice): shorter breaths, the bass restruck on the bar, fuller loops, ticks between the hits, shorter gaps. |
+| **Play along** (2026-10-17) | A key played while GEN runs (the keys, MIDI IN) is snapped to its scale on ROOT (the nearest step, the lower on a tie) and sounds on the bells' track; its release ends it. |
+| **The ocean** (2026-10-17, `ui_ocean.c`) | GEN's pages while it plays: the graph strip (240 x 122) as a sea, redrawn every other UI frame as HOME's scope: a gradient, three light rays, starfish, a shoal of eight fish, bubbles; a bell lets bubbles rise from the sand, a bass note sends the crowned king fish across, a breath of the pad brightens the rays, a hit or a swell flicks the tails. In the GREY and MONO palettes, in gray. The main loop only: the audio is untouched. |
 | **Pieces** | amb1's 8 (GARDEN, DEPARTURES, VOICES, AFTERNOON, NIGHT BUS, SHORELINE, GLASS, TIDES): each role's level (0: silent), DENSITY, EVOLVE, DRIFT, HITS, SWELL, MOTION, FIFTH, the tempo, ROOT, the scale, the octaves; here also the four tracks' sounds (an engine id and a preset name) and the delay, reverb and chorus. Picking one loads them; the first start since power-on loads the one shown. |

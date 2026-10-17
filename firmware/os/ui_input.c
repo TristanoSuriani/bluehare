@@ -543,11 +543,16 @@ static int page_tap(uint32_t b)
         name_rename();                                  /* SAVE > USER / PROJECT: EDIT renames the slot */
         return 1;
     }
-    if (b == B_ARP) {                                   /* (Blue Hare) ARP: GEN starts or stops, its page shown */
+    if (b == B_ARP) {                                   /* (Blue Hare) ARP: GEN starts or stops; starting it shows */
+        uint32_t i, mix = !gen.on;                      /* GEN MIX (the roles' densities), stopping it GEN */
         gen_toggle();
-        if (ui.home || cur_page()->fam != FAM_ARP)
-            open_family(FAM_ARP);
-        ui.force = 1;
+        for (i = 0; i < NPAGES; i++)
+            if (PAGES[i].fam == FAM_ARP && (PAGES[i].id[0] == G_GDPAD) == mix)
+                break;
+        ui.page = (uint8_t)(i < NPAGES ? i : page_first(FAM_ARP));
+        ui.fam_last[FAM_ARP] = ui.page;
+        ui.home = 0;
+        page_entered();
         return 0;
     }
     for (f = FAM_HOME + 1u; f < FAM_COUNT; f++)        /* (GLO SEQ SAVE ..: HOME is ui_input's, home_tap) */

@@ -160,31 +160,10 @@ static uint32_t sx_out_q[SXQ];
 static volatile uint32_t so_w, so_r;
 #endif
 
-/* MIDI rings: 4-byte USB-MIDI event packets */
-#define MQ 64u
-static uint32_t midi_in_q[MQ], midi_out_q[MQ];
-static uint32_t midi_in_ms[MQ];
-static uint8_t midi_in_source[MQ];                    /* 1 USB, 2 TRS */
-static volatile uint32_t fm1_ms;                    /* also declared by core.h; parser-only host tests */
-static volatile uint32_t mi_w, mi_r, mo_w, mo_r;
-static volatile uint8_t midi_in_overflow;               /* audio ISR discards a broken stream and releases notes */
-
-static int midi_enqueue(uint32_t pkt, uint32_t source)
-{
-    uint32_t at = mi_w % MQ;
-    if (midi_in_overflow)
-        return 0;
-    if (mi_w - mi_r >= MQ) {
-        midi_in_overflow = 1;
-        return 0;
-    }
-    midi_in_q[at] = pkt;
-    midi_in_ms[at] = fm1_ms;
-    midi_in_source[at] = (uint8_t)source;
-    RING_PUBLISH();
-    mi_w++;
-    return 1;
-}
+/* MIDI rings: 4-byte USB-MIDI event packets. In: the baseline's (midi_in.c); out: ours */
+#include "../baseline/midi_in.c"   /* (relative: the parser-only host tests build usb.c alone) */
+static uint32_t midi_out_q[MQ];
+static volatile uint32_t mo_w, mo_r;
 
 static void midi_out_event(uint32_t pkt)            /* from the audio ISR */
 {

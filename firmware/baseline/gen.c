@@ -18,6 +18,14 @@
  *   track 4 PULSE  three euclidean patterns, 16, 12 and 7 steps long (a thump on the chord's root, a tick and a longer
  *                  tick on its root and fifth high up), HITS their weight; a bar may turn a pattern or move a hit
  *                  (EVOLVE), or rest 2 to 4 bars
+ *        or WAVES  (2026-10-17, the pieces without a pulse: gen_preset_t.waves) the surf: a swell of noise on the chord's
+ *                  root (SH101's SURF: its filter opens as it rises), 2 .. 5 s long, the next after a gap of 1 .. 6 s;
+ *                  fewer as the arc thins
+ * DENSITY a role (2026-10-17, G_GDPAD .. G_GDTEX, the GEN MIX page while it plays): 64 the piece as written; down to 0
+ * fewer breaths, bass notes, bells, hits, swells, until the role rests; up to 127 about twice as busy (shorter breaths,
+ * the bass restruck on the bar, fuller loops, extra ticks, shorter gaps).
+ * PLAY ALONG (2026-10-17): a key played while GEN plays is snapped to its scale (the nearest step, the lower on a tie)
+ * and sounds on the bells' track (seq.c input_on, gen_play).
  * The harmony: SCALE on ROOT (G_GSCL, G_GROOT); a chord stacks the scale's thirds from a degree (four tones in a scale
  * of six or more, else three). It drifts: after DRIFT's time (x 0.7 .. 1.3) it moves on the next bar, to another degree
  * chosen by weight (in seven-note scales I 4, IV V vi 3, ii 2, iii 1, vii 0.4; else I 3, the others 1.5). The arc: a
@@ -45,6 +53,7 @@ typedef struct {
     uint8_t eng[GEN_ROLES];                   /* each track's engine (its id, EID_*) .. */
     const char *snd[GEN_ROLES];               /* .. and its preset, by name (ui.c gen_apply) */
     uint8_t fx[10];                           /* G_RTYPE G_RSIZE G_RDAMP G_DTYPE G_DTIME G_DFDBK G_DCOLOR G_DMIX G_CRATE G_CDEPTH */
+    uint8_t waves;                            /* (2026-10-17) track 4 plays WAVES, not the PULSE */
 } gen_preset_t;
 /* amb1's eight pieces (docs/excerpt_amb1.c PIECES; its modes as SCL's: Ionian 1 MAJ, Dorian 3 DOR, Phrygian 8, Lydian
  * 9, Mixolydian 4 MIX, Aeolian 2 MIN, pentatonic major 5 PEN, minor 6 MPEN; its echo time as DIV: 1/4. -> 1/4, 1/2 and
@@ -54,21 +63,21 @@ static const gen_preset_t GEN_PRESETS[] = {
     {"GARDEN",     3, 2, 72, {60, 45, 65, 40}, 40, 35, 35, 60, 50, 35, 39, 0, 0,
      {EID_WAVE, EID_SH101, EID_BLISS, EID_MODAL}, {"WARM PAD", "SUB BASS", "GLASS BELL", "WOOD DRUM"},
      {2, 102, 76, 3, 7, 55, 50, 57, 40, 60}},
-    {"DEPARTURES", 1, 1, 60, {35, 0, 75, 0}, 35, 30, 0, 55, 40, 25, 59, -1, 0,
-     {EID_WAVE, EID_SH101, EID_MODAL, EID_MODAL}, {"STRING PAD", "SUB BASS", "KALIMBA", "WOOD DRUM"},
-     {4, 108, 100, 3, 7, 55, 60, 38, 35, 60}},
-    {"VOICES",     2, 5, 56, {85, 25, 0, 0}, 30, 30, 0, 70, 55, 30, 77, 0, -1,
-     {EID_WAVE, EID_SH101, EID_BLISS, EID_MODAL}, {"CHOIR PAD", "SUB BASS", "CELESTA", "WOOD DRUM"},
-     {4, 114, 42, 1, 9, 50, 40, 25, 30, 70}},
+    {"DEPARTURES", 1, 1, 60, {35, 0, 75, 40}, 35, 30, 0, 55, 40, 25, 59, -1, 0,
+     {EID_WAVE, EID_SH101, EID_MODAL, EID_SH101}, {"STRING PAD", "SUB BASS", "KALIMBA", "SURF"},
+     {4, 108, 100, 3, 7, 55, 60, 38, 35, 60}, 1},
+    {"VOICES",     2, 5, 56, {85, 25, 0, 30}, 30, 30, 0, 70, 55, 30, 77, 0, -1,
+     {EID_WAVE, EID_SH101, EID_BLISS, EID_SH101}, {"CHOIR PAD", "SUB BASS", "CELESTA", "SURF"},
+     {4, 114, 42, 1, 9, 50, 40, 25, 30, 70}, 1},
     {"AFTERNOON",  9, 7, 84, {50, 35, 65, 25}, 55, 45, 30, 50, 55, 40, 34, 0, 0,
      {EID_WAVE, EID_SH101, EID_BLISS, EID_MODAL}, {"GLASS PAD", "SUB BASS", "FM BELLS", "WOOD DRUM"},
      {2, 95, 51, 3, 6, 55, 55, 64, 45, 55}},
     {"NIGHT BUS",  2, 9, 96, {45, 55, 55, 60}, 45, 50, 55, 40, 70, 45, 30, 0, 0,
      {EID_WAVE, EID_SH101, EID_BLISS, EID_MODAL}, {"MORPH PAD", "DEEP BASS", "SOFT EP", "WOOD DRUM"},
      {2, 89, 83, 1, 6, 60, 50, 70, 50, 50}},
-    {"SHORELINE",  5, 4, 64, {40, 30, 60, 0}, 30, 40, 0, 80, 85, 20, 59, 0, 0,
-     {EID_WAVE, EID_SH101, EID_MODAL, EID_MODAL}, {"WARM PAD", "SUB BASS", "GLOCKEN", "WOOD DRUM"},
-     {4, 121, 89, 1, 8, 65, 45, 108, 30, 65}},
+    {"SHORELINE",  5, 4, 64, {40, 30, 60, 55}, 30, 40, 0, 80, 85, 20, 59, 0, 0,
+     {EID_WAVE, EID_SH101, EID_MODAL, EID_SH101}, {"WARM PAD", "SUB BASS", "GLOCKEN", "SURF"},
+     {4, 121, 89, 1, 8, 65, 45, 108, 30, 65}, 1},
     {"GLASS",      6, 3, 76, {35, 30, 80, 20}, 60, 55, 25, 45, 50, 30, 39, 1, 1,
      {EID_WAVE, EID_SH101, EID_MODAL, EID_MODAL}, {"GLASS PAD", "SUB BASS", "GLASS", "WOOD DRUM"},
      {2, 102, 57, 3, 6, 50, 65, 57, 45, 50}},
@@ -111,6 +120,10 @@ typedef struct {
     /* the pulse */
     uint32_t dpat[GEN_NDRUM];
     uint8_t dpos[GEN_NDRUM], dk[GEN_NDRUM], dkb[GEN_NDRUM], drot[GEN_NDRUM], prest;
+    /* WAVES: steps to the next swell */
+    int32_t wleft;
+    /* PLAY ALONG: the note each key sounds on the bells' track (0 none) */
+    uint8_t kn[128];
 } gen_state_t;
 static struct {
     volatile uint8_t req;                     /* main: 1 start, 2 stop (gen_block takes it) */
@@ -136,6 +149,8 @@ static int32_t gen_secs(int32_t s)            /* seconds as steps at the tempo *
 {
     return s * clamp(song.g[G_BPM], 20, 300) / 15;
 }
+/* a role's DENSITY as a factor, x 1000 (64: 1000, the piece as written; 0: 0; 127: 1984) */
+static int32_t gen_dens(uint32_t role) { return clamp(song.g[G_GDPAD + role], 0, 127) * 1000 / 64; }
 
 /* ---------------------------------------------------------------- notes --- */
 static void gen_note_off(uint32_t role, uint32_t k)
@@ -254,20 +269,27 @@ static void gen_drift_reset(void)
 }
 static void gen_bass_to(uint32_t pc)
 {
+    int32_t f = gen_dens(GR_BASS);
     gen_off(GR_BASS);
-    if (!GS.bass_rest)
+    if (!GS.bass_rest && (f >= 1000 || gen_chance(f)))   /* (DENSITY under 64: some notes rest) */
         gen_on(GR_BASS, 36 + (int32_t)pc % 12 + 12 * gen_piece()->bassoct, 80, 0u);
 }
 /* a pad voice's new breath: its length (SWELL, x 0.85 .. 1.15), its note (the target), its strength */
 static void gen_breathe(uint32_t i)
 {
     int32_t secs10 = (40 + 12 * gen_piece()->swell / 10) * GEN_BREATH[i] / 1000;   /* (tenths of a second) */
+    int32_t f = gen_dens(GR_PAD);
     GS.plen[i] = gen_secs(secs10) * (850 + gen_pick(300u)) / 10000;
+    if (f > 1000)                              /* (DENSITY over 64: shorter breaths, more of them) */
+        GS.plen[i] = GS.plen[i] * 1000 / f;
     if (GS.plen[i] < 8)
         GS.plen[i] = 8;
     GS.ppos[i] = 0;
     if (GS.pnote[i])
         gen_off_note(GR_PAD, GS.pnote[i]);
+    GS.pnote[i] = 0;
+    if (f < 1000 && !gen_chance(f))            /* (under 64: this breath skipped, the voice silent its cycle) */
+        return;
     GS.pnote[i] = GS.ptarget[i];
     gen_on(GR_PAD, GS.pnote[i], 50 + 4 * (6 + gen_pick(5u)), 0u);   /* (amb1: 50 + 40 x 0.6 .. 1) */
 }
@@ -356,7 +378,7 @@ static uint32_t gen_loop_count(uint32_t l)
 }
 static uint32_t gen_loop_target(void)        /* 0..5 notes: DENSITY, swelled and thinned by the arc */
 {
-    int32_t d = gen_piece()->density * (1000 + 4 * GS.arcm / 5) / 20;   /* (x 1000: 0 .. 5000) */
+    int32_t d = gen_piece()->density * (1000 + 4 * GS.arcm / 5) / 20 * gen_dens(GR_BELL) / 1000;   /* (x 1000) */
     return (uint32_t)((clamp(d, 0, 5000) + gen_pick(1000u)) / 1000);
 }
 static void gen_loop_add(uint32_t l)
@@ -568,13 +590,31 @@ static __attribute__((noinline)) void gen_step(void)   /* (once a 1/16: out of t
         if (gen_chance(p->evolve * 25 / 10))
             gen_drums_evolve();
     }
+    if (p->waves) {                            /* (2026-10-17) WAVES: a swell, then a gap */
+        int32_t f = gen_dens(GR_PULSE), sw;
+        if (--GS.wleft <= 0) {
+            sw = gen_secs(2) + gen_pick((uint32_t)gen_secs(3));
+            if (f && gen_chance(clamp(700 + 3 * GS.arcm / 10, 250, 1000)))   /* (fewer as the arc thins) */
+                gen_on(GR_PULSE, 48 + GS.pcs[0] % 12 + 12 * gen_pick(2u), 55 + gen_pick(45u), (uint32_t)sw);
+            GS.wleft = sw + (gen_secs(1) + gen_pick((uint32_t)gen_secs(5))) * 1000 / (f ? f : 1000);
+        }
+    } else
     for (d = 0; d < GEN_NDRUM; d++) {
-        if (((GS.dpat[d] >> GS.dpos[d]) & 1u) && !GS.prest) {
+        int32_t f = gen_dens(GR_PULSE);
+        if (((GS.dpat[d] >> GS.dpos[d]) & 1u) && !GS.prest && (f >= 1000 || gen_chance(f))) {
             int32_t pa = clamp(1000 + 13 * GS.arcm / 10, 300, 1150);
             gen_drum(d, ((GS.dpos[d] == 0u ? 95 : 60) + gen_pick(25u)) * pa / 1000);
+        } else if (d == 1u && f > 1000 && !GS.prest && gen_chance((f - 1000) / 6)) {
+            gen_drum(d, 40 + gen_pick(20u));     /* (DENSITY over 64: a tick between) */
         }
         if (++GS.dpos[d] >= GEN_DRUM_N[d])
             GS.dpos[d] = 0;
+    }
+    if (GS.step == 0u && gen_dens(GR_BASS) > 1000 && GS.nheld[GR_BASS] &&
+        gen_chance((gen_dens(GR_BASS) - 1000) / 2)) {   /* (DENSITY over 64: the bass restruck on the bar) */
+        uint32_t b = GS.held[GR_BASS][0];
+        gen_off(GR_BASS);
+        gen_on(GR_BASS, (int32_t)b, 70, 0u);
     }
     /* the bells: the loops step in quarter notes */
     if (!(GS.six & 3u))
@@ -599,6 +639,8 @@ static __attribute__((noinline)) void gen_stop_now(void)
     uint32_t r;
     for (r = 0; r < GEN_ROLES && r < NTRK; r++)
         gen_off(r);
+    for (r = 0; r < 128u; r++)                 /* (the keys played along: let go) */
+        gen_play_off(r);
     gen.on = 0;
 }
 static __attribute__((noinline)) void gen_start(void)
@@ -646,6 +688,41 @@ static __attribute__((noinline)) void gen_block(uint32_t n)
         GS.pos -= len;
         gen_step();
     }
+}
+
+/* (2026-10-17) PLAY ALONG: a key while GEN plays (seq.c input_on): snapped to GEN's scale, on the bells' track; 1 taken */
+static int gen_play(uint32_t note, uint32_t vel)
+{
+    int32_t root = clamp(song.g[G_GROOT], 0, 11), pc, best = 0, bd = 99;
+    uint32_t i;
+    if (!gen.on || note > 127u || !GS.nsteps)
+        return 0;
+    pc = ((int32_t)note - root + 120) % 12;
+    for (i = 0; i < GS.nsteps; i++) {          /* the nearest step, the lower on a tie */
+        int32_t d = GS.steps[i] - pc, a;
+        if (d > 6)
+            d -= 12;
+        if (d < -6)
+            d += 12;
+        a = d < 0 ? -d * 2 + 1 : d * 2;
+        if (a < bd) {
+            bd = a;
+            best = d;
+        }
+    }
+    if (GS.kn[note])
+        trk_note_off(&trk[GR_BELL], GS.kn[note]);
+    GS.kn[note] = (uint8_t)clamp((int32_t)note + best, 1, 127);
+    trk_note_on(&trk[GR_BELL], GS.kn[note], vel);
+    return 1;
+}
+static int gen_play_off(uint32_t note)
+{
+    if (note > 127u || !GS.kn[note])
+        return 0;
+    trk_note_off(&trk[GR_BELL], GS.kn[note]);
+    GS.kn[note] = 0;
+    return 1;
 }
 
 /* the chord now, as a name ("FM7", "Dm7"; amb1 en_chord_name): b holds 8; "" stopped */

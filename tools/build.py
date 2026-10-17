@@ -51,7 +51,7 @@ SDK_SHA256 = {
 }
 
 PRODUCT = "FM-1_900"                # package identity; release builds are FM-1_9XY
-VERSION = None                      # BLUEHARE_VERSION for release builds (default: firmware/src/bluehare.c)
+VERSION = None                      # BLUEHARE_VERSION for release builds (default: firmware/fm1/bluehare.c)
 
 
 def toolchain():
@@ -149,7 +149,7 @@ def ldr_wrap(image):
 def build_loader():
     LDR.mkdir(parents=True, exist_ok=True)
     src = FW / "loader"
-    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src"]
+    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/baseline", "-Ifirmware/os", "-Ifirmware/fm1"]
     tc_all(("cc", "-c", src / "crt0_ldr.S", "-o", LDR / "crt0_ldr.o"),
            ("cc", *flags, "-c", src / "loader.c", "-o", LDR / "loader.o"))
     elf = LDR / "loader.elf"
@@ -196,17 +196,17 @@ def build_app():
     # (Blue Hare, 2026-10) -mfprev1: the FM-1's pi32v2 core has a single-precision FPU (X0X's and amb-1's builds,
     # by Charles Vestal, use it): float code compiles to FPU instructions instead of software float calls. No
     # device code uses float yet; with -ffp-contract=off a float sum rounds as the host's does (the golden renders)
-    flags = [*CFLAGS, "-mfprev1", "-ffp-contract=off", "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
+    flags = [*CFLAGS, "-mfprev1", "-ffp-contract=off", "-Ifirmware/hal", "-Ifirmware/baseline", "-Ifirmware/os", "-Ifirmware/fm1", "-Ibuild/gen"]
     for flag in ("BLUEHARE_FLASH", "BLUEHARE_OTA", "BLUEHARE_OTA_DRYRUN", "BLUEHARE_OTA_RAMONLY", "BLUEHARE_CDC",
                  "BLUEHARE_UART", "BLUEHARE_UAC", "BLUEHARE_UAC_TONE", "BLUEHARE_UAC_48K", "BLUEHARE_ICONS",
                  "BLUEHARE_CDC_DEFAULT"):
-        v = os.environ.get(flag)    # unset: the default in firmware/src/bluehare.c
+        v = os.environ.get(flag)    # unset: the default in firmware/fm1/bluehare.c
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
     flags.append(f"-DBLUEHARE_DIST={distribution()}")   # (core.h includes build/gen/dist_<name>.h)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "dist.txt").write_text(distribution() + "\n")   # (what build/bluehare.* is: tests/target_budget.py)
-    v = os.environ.get("BLUEHARE_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
+    v = os.environ.get("BLUEHARE_USB_LAYOUT")   # firmware/fm1/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DBLUEHARE_USB_LAYOUT={v}")
     flags.append(f'-DBLUEHARE_ID="{PRODUCT}"')
@@ -216,8 +216,8 @@ def build_app():
     # marked minsize (tools/size_fns.py), then the IR is compiled at -Os. BLUEHARE_SIZE=0: -Os everywhere
     size = os.environ.get("BLUEHARE_SIZE") != "0"
     cmain = (("cc", *flags, "-S", "-emit-llvm", "-Xclang", "-disable-llvm-optzns", "-c",
-              FW / "src" / "bluehare.c", "-o", OUT / "bluehare.ll") if size else
-             ("cc", *flags, "-c", FW / "src" / "bluehare.c", "-o", OUT / "bluehare.o"))
+              FW / "fm1" / "bluehare.c", "-o", OUT / "bluehare.ll") if size else
+             ("cc", *flags, "-c", FW / "fm1" / "bluehare.c", "-o", OUT / "bluehare.o"))
     tc_all(("cc", "-c", FW / "crt0.S", "-o", OUT / "crt0.o"),
            ("cc", "-c", FW / "hal" / "fm1_vec.S", "-o", OUT / "fm1_vec.o"),
            ("cc", "-c", FW / "hal" / "fm1_isr.S", "-o", OUT / "fm1_isr.o"),
@@ -325,7 +325,7 @@ def mmio_check():
             break
         regs |= more
     errors = []
-    for f in sorted([*(FW / "src").glob("*.[ch]"), *(FW / "loader").glob("*.c")]):
+    for f in sorted([*(FW / "baseline").glob("*.[ch]"), *(FW / "os").glob("*.[ch]"), *(FW / "fm1").glob("*.[ch]"), *(FW / "loader").glob("*.c")]):
         for no, ln in enumerate(strip(f.read_text()).splitlines(), 1):
             where = f"{f.relative_to(FW)}:{no}"
             for rx, what in ((MMIO_LIT, "register/window address"), (MMIO_CAST, "volatile pointer cast"),

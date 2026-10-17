@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Host test of the MIDI input parsers: the running-status parser in
- * firmware/src/midi_uart.c (um_byte) and the USB-MIDI SysEx path of firmware/src/usb.c
+ * firmware/fm1/midi_uart.c (um_byte) and the USB-MIDI SysEx path of firmware/fm1/usb.c
  * (sysex_byte frame assembly, ota_wire_send packetising). */
 #include <stdint.h>
 #include <stdio.h>
@@ -11,8 +11,8 @@
 #define BLUEHARE_CDC 0
 static void fm1_delay_ms(uint32_t ms) { (void)ms; }
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"   /* SIE register macros (never touched here) */
-#include "../firmware/src/usb.c"
-#include "../firmware/src/midi_uart.c"
+#include "../firmware/fm1/usb.c"
+#include "../firmware/fm1/midi_uart.c"
 
 static uint32_t now_ms;
 static uint32_t ota_now_ms(void) { return now_ms; }
