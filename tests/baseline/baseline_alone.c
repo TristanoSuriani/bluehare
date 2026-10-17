@@ -4,8 +4,8 @@
 /* (2026-10-17) The baseline on its own: the sound (firmware/baseline: engines, voices, modulation, effects, GEN, note
  * input and the layers, MIDI's meaning) built with only its own directory on the include path, nothing of Blue Hare OS
  * (firmware/os) or the FM-1 port (firmware/fm1), and run: a note on every engine, MIDI in through the baseline's ring,
- * GEN for a while. What the baseline asks of the instrument around it are the three keyboard hooks below (Blue Hare
- * OS: keyboard.c), here a host without keys. A build that fails here means a baseline file reached into a layer above
+ * a GEN piece loaded and played. What the baseline asks of the instrument around it are the hooks below (Blue Hare
+ * OS: keyboard.c's three, ui.c's os_load_sound), here a host without keys that loads at once. A build that fails here means a baseline file reached into a layer above
  *   cc -Ibuild/gen -Ifirmware/baseline tests/baseline/baseline_alone.c -lm   (run_tests.sh) */
 #include <stdio.h>
 #include <stdint.h>
@@ -31,6 +31,14 @@ static struct { volatile uint32_t notes, buttons; } fm1_in;   /* (the port's key
 static void os_keys_block(void) {}
 static int os_keys_hold_track(uint32_t t) { (void)t; return 0; }
 static int os_keys_hold_note(uint32_t t, uint32_t n) { (void)t; (void)n; return 0; }
+/* a sound loaded the host's way (the OS: undo, sync, the IRQ off): here at once (patch.c) */
+static void os_load_sound(uint32_t track, uint32_t engine, uint32_t preset)
+{
+    track_t *t = &trk[track % NTRK];
+    if (t->eng_req != engine)
+        patch_engine(t, engine);
+    patch_preset(t, preset);
+}
 
 static int bad;
 static void check(const char *what, int ok)
@@ -65,9 +73,7 @@ int main(void)
         memset(t->v, 0, sizeof t->v);
         for (i = 0; i < P_E0; i++)
             t->p[i] = TP[i].def;
-        t->eng_req = (uint8_t)e;                        /* (the engine and its first preset's values: the baseline */
-        for (i = 0; i < 8u; i++)                        /* has no preset loader of its own yet, ui.c has: the second */
-            t->p[P_E0 + i] = ENGINES[e]->npresets ? ENGINES[e]->presets[0].e[i] : ENGINES[e]->edit[i].def;   /* review) */
+        patch_engine(t, e);                             /* (the engine and its first preset: the baseline's loader) */
         run(64);                                        /* (the engine switch's fade) */
         input_on(t, 60, 100);
         loud += run(200) > 300;
@@ -81,10 +87,13 @@ int main(void)
     midi_enqueue(0x08u | 0x80u << 8 | 64u << 16, 1u);
     run(400);
     check("MIDI IN through the baseline's ring (midi_in.c) plays and releases", i > 300u && mi_r == mi_w);
+    gen_load_piece(0);                                  /* GARDEN: its sounds through os_load_sound */
     gen.seed = 7u;
     gen.req = 1;
     i = (uint32_t)run(3000);
-    check("GEN runs on the baseline alone", gen.on && i > 300u && gen.s.played[0] > 0u);
+    check("a GEN piece loaded (its sounds, key, tempo) and played on the baseline alone",
+          gen.on && i > 300u && gen.s.played[0] > 0u && song.g[G_BPM] == GEN_PRESETS[0].bpm &&
+          trk[1].eng_req == (BLUEHARE_ENG_SH101 ? ENGI_SH101 : trk[1].eng_req));
     printf(bad ? "baseline: %d FAILED\n" : "baseline: all passed\n", bad);
     return bad ? 1 : 0;
 }

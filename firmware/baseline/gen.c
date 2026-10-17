@@ -725,6 +725,30 @@ static int gen_play_off(uint32_t note)
     return 1;
 }
 
+/* (2026-10-17, the second review's A: out of os/ui.c) piece k: each of the first four tracks its sound (the preset of
+ * that name of its engine; a build without the engine: its substitute, its first preset), loaded the instrument's way
+ * (os_load_sound: the OS's undo and audio lock), and the scale, root, tempo, MOTION and the FX chain */
+static void os_load_sound(uint32_t track, uint32_t engine, uint32_t preset);
+static void gen_load_piece(uint32_t k)
+{
+    const gen_preset_t *p = &GEN_PRESETS[k % GEN_NPRESETS];
+    static const uint8_t FXID[10] = {G_RTYPE, G_RSIZE, G_RDAMP, G_DTYPE, G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX, G_CRATE, G_CDEPTH};
+    uint32_t r, i;
+    for (r = 0; r < GEN_ROLES && r < NTRK; r++) {
+        int sub;
+        uint32_t e = eng_load_id(p->eng[r], &sub);
+        if (e == ENG_NO)
+            continue;
+        os_load_sound(r, e, sub ? 0u : patch_find_preset(e, p->snd[r]));
+    }
+    song.g[G_GSCL] = p->scale;
+    song.g[G_GROOT] = p->root;
+    song.g[G_BPM] = p->bpm;
+    song.g[G_GMOT] = (int16_t)(p->motion * 127 / 100);
+    for (i = 0; i < 10u; i++)
+        song.g[FXID[i]] = (int16_t)param_fit(&GP[FXID[i]], p->fx[i]);
+}
+
 /* the chord now, as a name ("FM7", "Dm7"; amb1 en_chord_name): b holds 8; "" stopped */
 static void gen_chord_name(char *b)
 {

@@ -602,82 +602,38 @@ static void undo_swap(void)
     ui.force = 1;
 }
 
-/* the track's settings, not the sound's: what a sound load (factory or user preset, an engine jump,
- * TOOLS INIT) leaves alone. The mix (LEVEL, PAN, MUTE: the TRACKS faders), the scale and key map (SCL), the inert
- * ids (17 .. 24, the arpeggiator's until 2026-10; the old step sequencer's LEN DIV SWING GATE QUANTIZE, kept in the
- * stored formats; 33 .. 36, the SLICER's until 2026-10-16) */
-static int param_kept(uint32_t i)
-{
-    return i == P_LEVEL || i == P_PAN || i == P_MUTE || (i >= P_RSV17 && i <= P_SGATE) ||
-           (i >= P_RSV33 && i <= P_RSV36) || i == P_CHRD || i == P_VOIC || i == P_SQNT;
-}
+/* (param_kept, patch_preset, patch_engine: the baseline's, patch.c) */
 
 #define preset_shown(e) (ENGINES[e]->npresets)
 
 static void set_engine_of(track_t *t, uint32_t ei);
-/* preset pi of the engine the track asked for: the sound only (not the steps, not param_kept) */
+/* preset pi of the engine the track asked for: the sound (baseline patch.c), with the OS's own around it (the undo, the
+ * editor's sync) */
 static void apply_preset_to(track_t *t, uint32_t pi)
 {
-    const engine_t *e = ENGINES[t->eng_req % NENGINES];
-    uint32_t i;
     load_begin(t);
-    panic_req |= (uint8_t)(1u << trk_index(t));       /* MONO/POLY may change: release what sounds */
-    t->user = 0;
+    patch_preset(t, pi);
     if (t == TSEL)
         sync_reload = 1;
-    if (!e->npresets) {
-        load_end(t);
-        return;
-    }
-    pi %= e->npresets;
-    t->preset = (uint8_t)pi;
-    for (i = 0; i < P_E0; i++)                        /* the rest of the sound to its defaults: a preset */
-        if (!param_kept(i))                           /* sounds the same after any edit */
-            t->p[i] = TP[i].def;
-    for (i = 0; i < 8u; i++)
-        t->p[P_E0 + i] = (int16_t)e->presets[pi].e[i];
-    t->p[P_ATK] = e->presets[pi].env[0];
-    t->p[P_DEC] = e->presets[pi].env[1];
-    t->p[P_SUS] = e->presets[pi].env[2];
-    t->p[P_REL] = e->presets[pi].env[3];
-    t->p[P_ED_FLT] = e->presets[pi].fenv;
-    t->p[P_VOICE] = e->presets[pi].mono ? V_LEGATO : V_POLY;   /* mono presets keep the legato feel */
-    t->p[P_OCT] = e->presets[pi].oct;                 /* the sound's octave (FMPERC's kicks: 3 down) */
-    t->p[P_ED_SHP] = e->presets[pi].eshp;             /* (a moving shape: ENV and LFO -> SHAPE, the LFO's rate, wave) */
-    t->p[P_LD_SHP] = e->presets[pi].lshp;
-    if (e->presets[pi].lrate)
-        t->p[P_LRATE] = (int16_t)(e->presets[pi].lrate - 1u);
-    if (e->presets[pi].lwave)
-        t->p[P_LWAVE] = (int16_t)(e->presets[pi].lwave - 1u);
-    {   /* the sends */
-        static const uint8_t FX_DEF[4] = {0, 24, 28, 36};
-        const preset_t *pr = &e->presets[pi];
-        for (i = 0; i < 4u; i++)
-            t->p[P_DIST + i] = (int16_t)(pr->fx[i] ? pr->fx[i] - 1 : FX_DEF[i]);
-    }
     load_end(t);
 }
 
-/* the engine's defaults and its first preset. With the audio IRQ off: the ISR sees the old engine with
+/* the engine's defaults and its first preset (patch.c). With the audio IRQ off: the ISR sees the old engine with
  * its values or the new one with its own (voice.c engine_block), never one with the other's */
 static void set_engine_of(track_t *t, uint32_t ei)
 {
-    const engine_t *e;
-    uint32_t i;
     ei %= NENGINES;                                   /* (an index of this build: the stores map ids, engines.c) */
     if (eng_for_track(t, ei) != ei) {                 /* (DUBSIREN off the last track: DUBSIREN8) */
         if (t == TSEL)
             ui_say(ENGINES[ei]->name, ": LAST TRACK ONLY");
         ei = eng_for_track(t, ei);
     }
-    e = ENGINES[ei];
     load_begin(t);
     fm1_irq_off();
-    t->eng_req = (uint8_t)(ei % NENGINES);
-    for (i = 0; i < 8u; i++)
-        t->p[P_E0 + i] = e->edit[i].def;
-    apply_preset_to(t, 0);
+    patch_engine(t, ei);
     fm1_irq_on();
+    if (t == TSEL)
+        sync_reload = 1;
     load_end(t);
 }
 
@@ -691,35 +647,19 @@ static void track_defaults(track_t *t)
         t->p[i] = TP[i].def;
 }
 
-/* (Blue Hare, 2026-10) GEN (gen.c). Preset k: each of the first four tracks its sound (the preset of that name of its
- * engine; a build without the engine: its substitute, its first preset), the scale, root and tempo, the FX chain */
+/* (Blue Hare, 2026-10) GEN's piece k (gen.c gen_load_piece: the baseline picks the sounds, the key, the tempo, the FX;
+ * each sound through os_load_sound below, the OS's way: undo, sync, the IRQ off for an engine) */
+static void os_load_sound(uint32_t track, uint32_t engine, uint32_t preset)
+{
+    track_t *t = &trk[track % NTRK];
+    engine = eng_for_track(t, engine);
+    if (t->eng_req != engine)
+        set_engine_of(t, engine);
+    apply_preset_to(t, preset);
+}
 static void gen_apply(uint32_t k)
 {
-    const gen_preset_t *p = &GEN_PRESETS[k % GEN_NPRESETS];
-    static const uint8_t FXID[10] = {G_RTYPE, G_RSIZE, G_RDAMP, G_DTYPE, G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX, G_CRATE, G_CDEPTH};
-    uint32_t r, i;
-    for (r = 0; r < GEN_ROLES && r < NTRK; r++) {
-        int sub;
-        uint32_t e = eng_load_id(p->eng[r], &sub), pi = 0;
-        track_t *t = &trk[r];
-        if (e == ENG_NO)
-            continue;
-        e = eng_for_track(t, e);
-        for (i = 0; !sub && i < ENGINES[e]->npresets; i++)
-            if (str_eq(ENGINES[e]->presets[i].name, p->snd[r])) {
-                pi = i;
-                break;
-            }
-        if (t->eng_req != e)
-            set_engine_of(t, e);
-        apply_preset_to(t, pi);
-    }
-    song.g[G_GSCL] = p->scale;
-    song.g[G_GROOT] = p->root;
-    song.g[G_BPM] = p->bpm;
-    song.g[G_GMOT] = (int16_t)(p->motion * 127 / 100);
-    for (i = 0; i < 10u; i++)
-        song.g[FXID[i]] = (int16_t)param_fit(&GP[FXID[i]], p->fx[i]);
+    gen_load_piece(k);
     ui.force = 1;
 }
 /* the main loop: the preset knob (the GEN page, the editor, the studio) moved: its sounds. (Not at power-on: the
