@@ -12,8 +12,14 @@
  * is band-limited (a polyBLEP over the samples either side of it, its height the train's value at the cut: the output
  * runs a sample late, so both are corrected when the period starts), and each train starts where between samples its
  * period began.
+ * (2026-10-17) Played as a voice: the SHP routings (ENV / LFO DEST SHP, the matrix's) move both formants, up to two
+ * octaves either way (a wah, a talking LFO, a vowel per note); BRTH also makes each period a little different, its
+ * length wandering (up to ~1.5 %: the jitter of a voice) and its trains' level (up to ~6 %: the shimmer), so a held
+ * note breathes instead of buzzing (BRTH 0: every period the same, as before). The plain page (MENU > EXPERT OFF):
+ * VOWEL (one knob along U O A E I, setting F1 and F2) and SIZE (the same vowel from a child's to a giant's: both
+ * formants up or down), SWEEP, BRTH; F1 F2 BAL PULS DECAY KTRK on EXPERT's pages.
  * Voice state: ph[0] the period, ph[1] / ph[2] the formants' pulse phases, s[0] / s[1] their pulse amplitudes (Q15),
- * s[2] their pulses so far (F1 | F2 << 8), s[3] the sample not yet out (the polyBLEP's), s[4] the sweep (Q15, 1
+ * s[2] their pulses so far (F1 | F2 << 8) and the period's jitter (<< 16, Q15), s[3] the sample not yet out (the polyBLEP's), s[4] the sweep (Q15, 1
  * at the note), s[5] the DC blocker, s[6] its last input, s[7] the noise generator. */
 #define VS_TOP 1872              /* the formants' highest pitch, 1/16 semitone (note 117, ~7 kHz) */
 
@@ -38,10 +44,13 @@ static void vosim_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 {
     const int16_t *p = t->p;
     int32_t sw = v->s[4], sweep16, b = 16384 + p[P_E4] * 129, bal = p[P_E2], brth = p[P_E7], npul = p[P_E3];
-    int32_t a1 = v->s[0], a2 = v->s[1], c1 = v->s[2] & 255, c2 = v->s[2] >> 8, pe = v->s[3], dc = v->s[5], dc1 = v->s[6];
-    uint32_t i, f1, f2, nz = (uint32_t)v->s[7], inc = m->inc | 1u, ph0 = v->ph[0], ph1 = v->ph[1], ph2 = v->ph[2];
+    int32_t a1 = v->s[0], a2 = v->s[1], c1 = v->s[2] & 255, c2 = (v->s[2] >> 8) & 255, pe = v->s[3], dc = v->s[5];
+    int32_t dc1 = v->s[6], jit = (int16_t)(v->s[2] >> 16);
+    uint32_t i, f1, f2, nz = (uint32_t)v->s[7], inc0 = m->inc | 1u, ph0 = v->ph[0], ph1 = v->ph[1], ph2 = v->ph[2];
+    uint32_t inc = inc0 + (uint32_t)(((int64_t)inc0 * jit * brth) >> 28);   /* (this period's length: the jitter) */
     sw -= sw / 200 + (sw > 0);                        /* the sweep glides back (~200 ms) */
     sweep16 = (p[P_E6] * 12 * sw) >> 15;              /* SWEEP: +-48 semitones at most, 3/4 st a step */
+    sweep16 += (m->shape - (64 << 8)) * 3 >> 7;       /* (2026-10-17) SHP: +-24 semitones over its +-64 */
     f1 = vs_form(p[P_E0], m->pitch16, p[P_E5], sweep16);
     f2 = vs_form(p[P_E1], m->pitch16, p[P_E5], sweep16);
     for (i = 0; i < n; i++) {
@@ -57,6 +66,15 @@ static void vosim_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
             ph2 = (f2 >> 8) * w;
             a1 = a2 = 32767;
             c1 = c2 = 0;
+            if (brth) {                               /* (2026-10-17) a voice's period is never quite the last: its
+                                                       * length wanders (jit, low-passed per period), its level too */
+                nz ^= nz << 13;
+                nz ^= nz >> 17;
+                nz ^= nz << 5;
+                jit += ((int32_t)(int16_t)nz - jit) >> 2;
+                inc = inc0 + (uint32_t)(((int64_t)inc0 * jit * brth) >> 28);
+                a1 = a2 = 32767 - (int32_t)(((nz >> 17) * (uint32_t)brth) >> 11);
+            }
             /* the cut's polyBLEP: its height the trains' last value (pe), the sample after it raised by pe / 2 (1 - t)^2
              * and the one before (pe itself: the output runs a sample late) lowered by pe / 2 t^2, t the time since it */
             bl = (pe * (int32_t)((256u - w) * (256u - w) >> 1)) >> 16;
@@ -93,7 +111,7 @@ static void vosim_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     v->ph[2] = ph2;
     v->s[0] = a1;
     v->s[1] = a2;
-    v->s[2] = c1 | c2 << 8;
+    v->s[2] = c1 | c2 << 8 | (int32_t)((uint32_t)(uint16_t)jit << 16);
     v->s[3] = pe;
     v->s[4] = sw;
     v->s[5] = dc;
@@ -132,6 +150,64 @@ static const preset_t VOSIM_PRESETS[] = {
     {"SINGER", {54, 84, 42, 5, 104, 10, -4, 12}, {10, 0, 127, 50}, 0, 0, FX(0, 30, 30, 50)},
 };
 
+/* (2026-10-17) the plain page's VOWEL and SIZE. VOWEL walks U O A E I (F1 and F2 in the F knob's units, between the
+ * points straight lines); SIZE 64 as the vowel is, more a bigger body (both formants down, up to 16 steps: ~8
+ * semitones), less a smaller one. Turned: F1 and F2 written. Read: the point of the walk nearest F1 F2 (the formants
+ * set on EXPERT's pages: VOWEL shows the vowel they are closest to), the last turn's values while F1 F2 are still what
+ * it wrote (no step back from the rounding) */
+static const uint8_t VS_VOWEL[5][2] = {{30, 68}, {45, 66}, {61, 81}, {51, 98}, {30, 112}};   /* U O A E I */
+static const char *const N_VS_VOWEL[] = {"U", "O", "A", "E", "I", 0};
+static const param_desc_t VOSIM_MACRO[2] = {
+    {"VOWEL", F_INT, 0, 127, 64, N_VS_VOWEL, 0},
+    {"SIZE", F_BIPCT, -64, 63, 0, 0, 0},
+};
+static struct { int16_t f1, f2, vowel, size; } vs_last[NPART];
+/* (each vowel at the middle of its fifth of the knob, where the display names it: 13, 38, 64, 90, 115) */
+static void vs_vowel_at(int32_t vw, int32_t *f1, int32_t *f2)
+{
+    int32_t u = clamp(vw * 10 - 128, 0, 4 * 256), k = u >> 8, fr = u & 255;   /* (the segment, Q8 into it) */
+    if (k == 4) {
+        k = 3;
+        fr = 256;
+    }
+    *f1 = VS_VOWEL[k][0] + (((int32_t)VS_VOWEL[k + 1][0] - VS_VOWEL[k][0]) * fr + 128) / 256;
+    *f2 = VS_VOWEL[k][1] + (((int32_t)VS_VOWEL[k + 1][1] - VS_VOWEL[k][1]) * fr + 128) / 256;
+}
+static int32_t vosim_macro_get(const track_t *t, uint32_t k)
+{
+    uint32_t ti = (uint32_t)(t - trk) % NPART;
+    int32_t vw, best = 1 << 30, bv = 64, bs = 0;
+    if (vs_last[ti].f1 == t->p[P_E0] && vs_last[ti].f2 == t->p[P_E1])
+        return k ? vs_last[ti].size : vs_last[ti].vowel;
+    for (vw = 0; vw < 128; vw++) {
+        int32_t a, b, off, e;
+        vs_vowel_at(vw, &a, &b);
+        off = clamp((t->p[P_E0] - a + t->p[P_E1] - b) / 2, -16, 16);
+        e = t->p[P_E0] - a - off;
+        e = (e < 0 ? -e : e) + (t->p[P_E1] - b - off < 0 ? b + off - t->p[P_E1] : t->p[P_E1] - b - off);
+        e = e * 64 + (off < 0 ? -off : off);          /* (a tie: the least SIZE, the vowel as it is) */
+        if (e < best) {
+            best = e;
+            bv = vw;
+            bs = clamp(-off * 4, -64, 63);
+        }
+    }
+    return k ? bs : bv;
+}
+static void vosim_macro_set(track_t *t, uint32_t k, int32_t v)
+{
+    uint32_t ti = (uint32_t)(t - trk) % NPART;
+    int32_t vw = k ? vosim_macro_get(t, 0) : clamp(v, 0, 127), sz = k ? clamp(v, -64, 63) : vosim_macro_get(t, 1);
+    int32_t a, b, off = -sz / 4;
+    vs_vowel_at(vw, &a, &b);
+    t->p[P_E0] = (int16_t)clamp(a + off, 0, 127);
+    t->p[P_E1] = (int16_t)clamp(b + off, 0, 127);
+    vs_last[ti].f1 = t->p[P_E0];
+    vs_last[ti].f2 = t->p[P_E1];
+    vs_last[ti].vowel = (int16_t)vw;
+    vs_last[ti].size = (int16_t)sz;
+}
+
 static const engine_t ENG_VOSIM = {
     .name = "VOSIM",
     .id = EID_VOSIM,
@@ -153,4 +229,9 @@ static const engine_t ENG_VOSIM = {
     .note_on = vosim_note_on,
     .render = vosim_render,
     .knob = {P_E0, P_E1, P_E4, P_E6},
+    .plain_title = "VOCAL",          /* (not VOICE: the track's VOICE pages follow it in EDIT) */
+    .plain = {PX_MACRO + 0, PX_MACRO + 1, P_E6, P_E7},
+    .macro = VOSIM_MACRO,
+    .macro_get = vosim_macro_get,
+    .macro_set = vosim_macro_set,
 };

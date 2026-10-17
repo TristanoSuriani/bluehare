@@ -65,6 +65,9 @@ static uint32_t up_gen;                      /* bumped on every user bank change
 #define ui_prefs2 (favorites.factory[15][24])
 #define PREF_X 0xFF0000u                       /* (menu_items.c MENU_FLAGS: a bit of ui_prefs2, << 16) */
 #define PREF_SCOPE_MIX (0x01u << 16)
+#define PREF_EXPERT (0x08u << 16)                /* (2026-10-17) MENU > CONTROL > EXPERT ON: EDIT shows the engine's
+                                                * own pages (EDIT 1, EDIT 2), else its plain one (SOUND) */
+static int expert_on(void) { return (ui_prefs2 & (PREF_EXPERT >> 16)) != 0u; }
 /* 1.3 (Discussions #112, #134): MENU > DISPLAY > HOME, what the HOME page shows under its four cards: 0 SCOPE (the
  * oscilloscope, as before), 1 TRACKS (the four tracks as rows: ui_graph.c draw_home_tracks). A byte of its own no engine
  * uses, saved with the settings; 0 in older settings = SCOPE; an unknown value (a later firmware's view) reads as SCOPE
@@ -342,10 +345,11 @@ static int layer_locked(void);
 static uint32_t layer_leds(uint32_t *br);
 static uint32_t layer_btn(void);
 
-/* a page the selected track has (2026-10-16: every page, since the kits' LANES went; the hook stays for an engine's own) */
+/* a page shown (2026-10-17: EDIT's engine pages by MENU > EXPERT: OFF the plain SOUND, ON EDIT 1 and 2) */
 static int page_visible(uint32_t i)
 {
-    (void)i;
+    if (PAGES[i].fam == FAM_EDIT && PAGES[i].scope == SC_ENGINE)
+        return (PAGES[i].id[0] >= PX_PLAIN && PAGES[i].id[0] != 0xFFu) != expert_on();
     return 1;
 }
 
@@ -353,7 +357,7 @@ static uint32_t page_first(uint32_t fam)
 {
     uint32_t i;
     for (i = 0; i < NPAGES; i++)
-        if (PAGES[i].fam == fam)
+        if (PAGES[i].fam == fam && page_visible(i))
             return i;
     return 0;
 }

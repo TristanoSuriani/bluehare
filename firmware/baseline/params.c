@@ -375,6 +375,7 @@ enum { GR_NONE, GR_ADSR, GR_LFO, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, 
        GR_TODO,                    /* (GR_TODO: SEQ's placeholder, ui_draw.c draw_todo) */
        GR_GEN };                   /* (Blue Hare, 2026-10) the GEN page: playing or not, the chord, the bar */
 
+#define PX_PLAIN 0xF0u           /* (a page's column: the engine's plain[] column k is PX_PLAIN + k) */
 typedef struct {
     const char *title;
     uint8_t fam, scope, graph;
@@ -398,6 +399,8 @@ static const page_t PAGES[] = {
 #endif
     {"SCL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_TRANS}},
     {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, 0xFF, 0xFF}},   /* SCL again: the chord keys (chord.c) */
+    /* (2026-10-17) the plain page (MENU > EXPERT OFF; EDIT 1 and 2 with it ON): the engine's four (engine_t plain) */
+    {"SOUND", FAM_EDIT, SC_ENGINE, GR_NONE, {PX_PLAIN, PX_PLAIN + 1, PX_PLAIN + 2, PX_PLAIN + 3}},
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},
     {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E4, P_E5, P_E6, P_E7}},
     {"VOICE", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_GLIDE, P_GLMODE, P_PRIO}},
@@ -424,9 +427,41 @@ static const page_t PAGES[] = {
 #define NPAGES (sizeof(PAGES) / sizeof(PAGES[0]))
 static uint8_t mod_ui_slot;      /* the MOD page: the matrix slot (0..3) KNOB 2..4 edit */
 
+/* (2026-10-17) the plain page: what column k is for the selected track's engine (a parameter id, PX_MACRO + k, 0xFF) */
+static uint32_t plain_id(const track_t *t, uint32_t k)
+{
+    const engine_t *e = ENGINES[eng_idx(t->eng_req)];
+    return (e->plain[0] | e->plain[1] | e->plain[2] | e->plain[3]) ? e->plain[k & 3u] : e->knob[k & 3u];
+}
+static int16_t plain_mval;       /* a macro's value as page_desc read it (the knob turns this, then page_turned) */
+static uint8_t plain_mk;
+/* after a knob changed *vp: a macro's value goes to its parameters */
+static void page_turned(const int16_t *vp)
+{
+    if (vp == &plain_mval) {
+        const engine_t *e = ENGINES[eng_idx(TSEL->eng_req)];
+        if (e->macro_set)
+            e->macro_set(TSEL, plain_mk, plain_mval);
+    }
+}
+
 static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg->id[slot];
+    if (id >= PX_PLAIN && id != 0xFFu) {              /* the plain page: the engine's column */
+        const engine_t *e = ENGINES[eng_idx(TSEL->eng_req)];
+        id = plain_id(TSEL, id - PX_PLAIN);
+        if (id >= PX_MACRO && id != 0xFFu) {
+            if (!e->macro || !e->macro_get) {
+                *valp = 0;
+                return 0;
+            }
+            plain_mk = (uint8_t)(id - PX_MACRO);
+            plain_mval = (int16_t)e->macro_get(TSEL, plain_mk);
+            *valp = &plain_mval;
+            return &e->macro[plain_mk];
+        }
+    }
     if (id == 0xFFu) {
         *valp = 0;
         return 0;

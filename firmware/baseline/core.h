@@ -225,6 +225,7 @@ typedef struct {
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}
 
 struct track;
+#define PX_MACRO 0xE0u           /* (engine_t plain[]: macro k is PX_MACRO + k) */
 typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c files) */
     const char *name;            /* "ANALOG" (PRESETS, the editor) */
     uint8_t id;                  /* its id (EID_*: what the stores and the protocol name it by) */
@@ -236,6 +237,14 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
     const preset_t *presets;
     uint8_t npresets;
     uint8_t knob[4];             /* HOME: the four parameters on KNOB 1..4 */
+    /* (2026-10-17) the plain page (EDIT with MENU > EXPERT OFF: the sound in four knobs, EDIT 1 and 2 the expert's):
+     * its title (0: "SOUND") and columns, parameter ids or PX_MACRO + k (macro k: one knob moving several parameters,
+     * its value read back from them); plain all 0: knob[] */
+    const char *plain_title;
+    uint8_t plain[4];
+    const param_desc_t *macro;   /* the macros' descriptors */
+    int32_t (*macro_get)(const struct track *t, uint32_t k);
+    void (*macro_set)(struct track *t, uint32_t k, int32_t v);
     uint8_t poly;                /* voice cap for POLY and UNISON, 0 = NVOICE */
     uint8_t sampled;             /* 1 = plays recorded material (a position, not a phase): voice.c keeps
                                   * no phases over a retrigger, spreads none for UNISON, renders at SUS 0 */

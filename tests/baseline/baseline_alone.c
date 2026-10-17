@@ -139,6 +139,41 @@ int main(void)
               ENG_WAVE.edit[0].max == 2 * WT_NBANK - 1);
     }
 #endif
+#if BLUEHARE_ENG_VOSIM && BLUEHARE_ENG_MODAL
+    {   /* (2026-10-17) played: VOSIM's SHP raises the formants (brighter); MODAL struck
+         * harder rings brighter. Brightness: the first difference's energy over the signal's */
+        static int32_t o[2][2048];
+        double br[4];
+        uint32_t k, j;
+        track_t *t = &trk[0];
+        for (k = 0; k < 4u; k++) {
+            voice_t *v = &t->v[0];
+            vmod_t m = {0};
+            double e = 0, d = 0;
+            memset(t->v, 0, sizeof t->v);
+            patch_engine(t, k < 2u ? ENGI_VOSIM : ENGI_MODAL);
+            if (k < 2u)
+                t->p[P_E7] = 0;                         /* (VOSIM: no breath) */
+            m.inc = pitch_inc(48 * 16);
+            m.pitch16 = v->pitch16 = 48 * 16;
+            m.amp0 = m.amp1 = 32767;
+            m.shape = (k == 1u ? 96 : 64) << 8;         /* VOSIM: SHP up half its range */
+            v->vel = (uint8_t)(k == 3u ? 127 : 40);     /* MODAL: soft, then hard */
+            v->gate = v->active = 1;
+            ENGINES[t->eng_req]->note_on(t, v);
+            memset(o[k & 1u], 0, sizeof o[0]);
+            for (j = 0; j < 2048u; j += CTL)
+                ENGINES[t->eng_req]->render(t, v, o[k & 1u] + j, CTL, &m);
+            for (j = 1; j < 2048u; j++) {
+                e += (double)o[k & 1u][j] * o[k & 1u][j];
+                d += (double)(o[k & 1u][j] - o[k & 1u][j - 1u]) * (o[k & 1u][j] - o[k & 1u][j - 1u]);
+            }
+            br[k] = e > 0 ? d / e : 0;
+        }
+        check("VOSIM: SHP moves the formants up (brighter); MODAL: a hard strike rings brighter than a soft one",
+              br[1] > br[0] * 1.3 && br[3] > br[2] * 1.3);
+    }
+#endif
     midi_enqueue(0x09u | 0x90u << 8 | 64u << 16 | 100u << 24, 1u);   /* MIDI IN: the baseline's ring, channel 1 */
     i = (uint32_t)run(200);
     midi_enqueue(0x08u | 0x80u << 8 | 64u << 16, 1u);

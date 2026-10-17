@@ -11,6 +11,10 @@
  * how much sooner the high modes die; BRIGHT the exciter's hardness and the high modes' level; BEAT detunes the modes
  * a little each (the beating of a bell, a gamelan's shimmer). Modes past ~19 kHz are left out. The resonators'
  * coefficients cost divides: worked out when the pitch or a parameter moves, not every block.
+ * (2026-10-17) Played: velocity is the strike's hardness (BRIGHT moves with it, -60 .. +20 around a velocity of 100:
+ * a soft touch rings dark, a hard one bright, as a mallet does), and the SHP routings (ENV / LFO DEST SHP, the
+ * matrix's) move POS, the place struck (an LFO wandering over the bar). The plain page (MENU > EXPERT OFF): MATRL
+ * EXCIT DECAY BRIGHT; STRUCT POS DAMP BEAT on EXPERT's.
  * Voice state: the track's block (engines.c eng_slab, MD_POLY voices a track): the modes, the exciter. */
 #define MD_NM 12
 #define MD_POLY 4
@@ -71,12 +75,13 @@ static void modal_note_on(track_t *t, voice_t *v)
     d->key = 0;
 }
 
-/* the coefficients for the pitch inc and the track's parameters, the materials' table tbl (MODAL's, ANVIL's) */
-static void md_coef(md_voice_t *d, const int16_t *p, uint32_t inc, const uint16_t (*tbl)[MD_NM])
+/* the coefficients for the pitch inc and the track's parameters, the materials' table tbl; POS and BRIGHT as played
+ * (posk, br: the knobs with SHP and the velocity) */
+static void md_coef(md_voice_t *d, const int16_t *p, uint32_t inc, const uint16_t (*tbl)[MD_NM], int32_t posk, int32_t br)
 {
     const uint16_t *r = tbl[(uint32_t)p[P_E0] & 7u];
     uint32_t k, n = 0, tms = MD_DEC_MS[p[P_E4] & 127];
-    int32_t st = 128 + p[P_E2] * 2, pos = 40 + p[P_E3] * 3, damp = p[P_E5], br = p[P_E6], beat = p[P_E7];
+    int32_t st = 128 + p[P_E2] * 2, pos = 40 + posk * 3, damp = p[P_E5], beat = p[P_E7];
     for (k = 0; k < MD_NM; k++) {
         int32_t ratio = 256 + (((int32_t)r[k] - 256) * st >> 8), h = (int32_t)((k * 2654435761u) >> 24) - 128, a, w;
         uint64_t mf;
@@ -113,13 +118,15 @@ static void md_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vm
     md_voice_t *d = md_of(t, v);
     const int16_t *p = t->p;
     uint32_t key, i, k, ex = (uint32_t)p[P_E1] & 3u, w, rs, pinc;
-    int32_t x[CTL], br = p[P_E6], lp, kl;
+    int32_t x[CTL], lp, kl;
+    int32_t br = clamp(p[P_E6] + ((int32_t)v->vel - 100) * 3 / 4, 0, 127);    /* (the touch: harder, brighter) */
+    int32_t posk = clamp(p[P_E3] + ((m->shape - (64 << 8)) >> 8), 0, 127);   /* (SHP: the place struck) */
     if (!d || n > CTL)
         return;
-    key = m->inc ^ ((uint32_t)p[P_E0] << 24) ^ ((uint32_t)p[P_E2] << 17) ^ ((uint32_t)p[P_E3] << 10) ^
-          ((uint32_t)p[P_E4] << 3) ^ ((uint32_t)p[P_E5] * 2654435761u) ^ ((uint32_t)p[P_E6] * 40503u) ^ ((uint32_t)p[P_E7] << 20);
+    key = m->inc ^ ((uint32_t)p[P_E0] << 24) ^ ((uint32_t)p[P_E2] << 17) ^ ((uint32_t)posk << 10) ^
+          ((uint32_t)p[P_E4] << 3) ^ ((uint32_t)p[P_E5] * 2654435761u) ^ ((uint32_t)br * 40503u) ^ ((uint32_t)p[P_E7] << 20);
     if (key != d->key || !d->key) {
-        md_coef(d, p, m->inc, tbl);
+        md_coef(d, p, m->inc, tbl, posk, br);
         d->key = key | 1u;
     }
     /* the exciter, Q22 (1.0 = 2^22): MALLET a raised-cosine pulse (BRIGHT: 4 .. ~5 ms wide), PLUCK a noise burst
@@ -232,4 +239,5 @@ static const engine_t ENG_MODAL = {
     .note_on = modal_note_on,
     .render = modal_render,
     .knob = {P_E0, P_E4, P_E6, P_E3},
+    .plain = {P_E0, P_E1, P_E4, P_E6},
 };

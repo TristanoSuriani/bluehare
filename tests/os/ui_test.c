@@ -1028,10 +1028,10 @@ static int test_menu_tabs(void)
             }
     }
     ui_prefs = 0;
-    bad += check("MENU tabs: DISPLAY CONTROL AUDIO MIDI SYSTEM (8 5 5 1 5 rows), 1..8 each in a run, fit the page; tab gaps "
+    bad += check("MENU tabs: DISPLAY CONTROL AUDIO MIDI SYSTEM (8 6 5 1 5 rows), 1..8 each in a run, fit the page; tab gaps "
                  "constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 5u && mtab_rows(MTAB_AUDIO) == 5u &&
+                 mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 6u && MI_TAB[MI_EXPERT] == MTAB_CONTROL && mtab_rows(MTAB_AUDIO) == 5u &&
                  mtab_rows(MTAB_MIDI) == 1u && mtab_rows(MTAB_SYSTEM) == 5u && MI_TAB[MI_TUNE] == MTAB_AUDIO &&
                  MI_TAB[MI_MIDIIN] == MTAB_MIDI && MI_TAB[MI_INFO] == MTAB_SYSTEM && MI_INFO >= MI_VALUES);
 
@@ -2493,25 +2493,61 @@ static int engine_cycle(const char *const *want, uint32_t n)   /* EDIT tapped fr
 }
 static int test_edit_cycle(void)
 {
+    static const char *const CYC_P[] = {"SOUND", "VOICE", "VOICE 2", "VOICE 3", "SOUND"};
     static const char *const CYC_A[] = {"EDIT 1", "EDIT 2", "VOICE", "VOICE 2", "VOICE 3", "EDIT 1"};
-    static const char *const CYC_D[] = {"EDIT 1", "EDIT 2", "OP1 ENV", "OP2 ENV", "OP3 ENV", "OP4 ENV",
-                                        "OP LEVEL", "VOICE", "VOICE 2", "VOICE 3", "EDIT 1"};
     int bad = 0, ok;
     uint32_t i;
+    char ti[24];
     ui_power_on();
+    ui_prefs2 &= (uint8_t)~(PREF_EXPERT >> 16);
     btn_down(B_EDIT); frame();
     ok = ui.home;
     btn_up(B_EDIT); frame();
-    bad += check("EDIT opens EDIT 1, when let go (not on press)", ok && str_eq(cur_page()->title, "EDIT 1"));
+    bad += check("EDIT opens SOUND (EXPERT OFF, the default), when let go (not on press)", ok && str_eq(cur_page()->title, "SOUND"));
     for (i = 0; i < NPAGES; i++)
         ok &= !str_eq(PAGES[i].title, "ENGINE");
     bad += check("no ENGINE page (engines are the EDIT layer's)", ok);
     set_engine_of(TSEL, 0);
-    bad += check("EDIT cycle (SID): EDIT 1 EDIT 2 VOICE VOICE 2 VOICE 3 EDIT 1", engine_cycle(CYC_A, NELEM(CYC_A)));
-    (void)CYC_D;
+    bad += check("EDIT cycle (SID, EXPERT OFF): SOUND VOICE VOICE 2 VOICE 3 SOUND", engine_cycle(CYC_P, NELEM(CYC_P)));
+    menu_put(MI_EXPERT, 1);
+    bad += check("EDIT cycle (SID, EXPERT ON): EDIT 1 EDIT 2 VOICE VOICE 2 VOICE 3 EDIT 1", engine_cycle(CYC_A, NELEM(CYC_A)));
     go_title("EDIT 2"); ui.fam_last[FAM_EDIT] = ui.page;
     go_home(); press(B_EDIT);
     bad += check("EDIT remembers its last page (as every family)", str_eq(cur_page()->title, "EDIT 2"));
+    menu_put(MI_EXPERT, 0);
+    bad += check("  EXPERT OFF on EDIT 2: SOUND shown", str_eq(cur_page()->title, "SOUND"));
+    {   /* (2026-10-17) the plain pages: SID's quick knobs; VOSIM's VOWEL SIZE SWEEP BRTH, MODAL's MATRL EXCIT DECAY
+         * BRIGHT. VOWEL and SIZE write F1 F2 and read back from them; not momentary */
+        const param_desc_t *d;
+        int16_t *vp;
+        int32_t f1, f2;
+        go_title("SOUND");
+        d = page_desc(cur_page(), 0, &vp);
+        ok = d == track_desc(TSEL, ENGINES[0]->knob[0]) && vp == &TSEL->p[ENGINES[0]->knob[0]];
+        set_engine_of(TSEL, ENGI_VOSIM);
+        go_title("SOUND");
+        page_title(ti);
+        d = page_desc(cur_page(), 0, &vp);
+        ok &= !strncmp(ti, "VOCAL", 5) && str_eq(d->label, "VOWEL") && vp == &plain_mval &&
+              str_eq(page_desc(cur_page(), 1, &vp)->label, "SIZE") && page_desc(cur_page(), 2, &vp) == track_desc(TSEL, P_E6);
+        TSEL->p[P_E0] = 61; TSEL->p[P_E1] = 81;         /* (A, as VOWEL AH sets it) */
+        ok &= vosim_macro_get(TSEL, 0) * 5 / 128 == 2 && vosim_macro_get(TSEL, 1) == 0;   /* (A's fifth, SIZE 0) */
+        vosim_macro_set(TSEL, 0, 115);                  /* I */
+        vs_vowel_at(115, &f1, &f2);
+        ok &= TSEL->p[P_E0] == f1 && TSEL->p[P_E1] == f2 && vosim_macro_get(TSEL, 0) == 115;
+        vosim_macro_set(TSEL, 1, 40);                   /* a bigger body: both down by 10 */
+        ok &= TSEL->p[P_E0] == f1 - 10 && TSEL->p[P_E1] == f2 - 10 && vosim_macro_get(TSEL, 1) == 40 &&
+              vosim_macro_get(TSEL, 0) == 115;
+        go_title("SOUND");
+        i = (uint32_t)TSEL->p[P_E1];
+        turn(EN_K1, -40);                                /* KNOB 1: VOWEL down to U */
+        ok &= TSEL->p[P_E1] != (int16_t)i && vosim_macro_get(TSEL, 0) < 115;
+        set_engine_of(TSEL, ENGI_MODAL);
+        go_title("SOUND");
+        ok &= page_desc(cur_page(), 0, &vp) == track_desc(TSEL, P_E0) && page_desc(cur_page(), 1, &vp) == track_desc(TSEL, P_E1) &&
+              page_desc(cur_page(), 2, &vp) == track_desc(TSEL, P_E4) && page_desc(cur_page(), 3, &vp) == track_desc(TSEL, P_E6);
+        bad += check("  the plain pages: SID's quick knobs; VOSIM VOCAL: VOWEL (writes F1 F2, reads them back) SIZE SWEEP BRTH; MODAL", ok);
+    }
     return bad;
 }
 
@@ -2540,7 +2576,7 @@ static int test_quick_layers(void)
         for (flash = 0, k = 0; k < 20u; k++) { frame(); flash |= ui.layer; }      /* 0.32 s */
         btn_up(LB[i]); frame();
         ok &= !flash && !ui.home && (LB[i] == B_GLO ? cur_page()->graph == GR_TODO :
-                                     LB[i] == B_SCL ? cur_page()->fam == FAM_SCL : str_eq(cur_page()->title, "EDIT 1"));
+                                     LB[i] == B_SCL ? cur_page()->fam == FAM_SCL : str_eq(cur_page()->title, "SOUND"));
         hint &= msg_is(HINT[i]);
         go_home(); frame();
         btn_down(LB[i]); frames(368);

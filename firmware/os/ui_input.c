@@ -83,7 +83,7 @@ static int mom_turn(uint32_t k, int32_t s)
         d = page_desc(pg, k, &vp);
     }
     g = vp && vp >= song.g && vp < song.g + G_COUNT ? (uint32_t)(vp - song.g) : G_COUNT;
-    if (!d || !vp || d->max == d->min ||
+    if (!d || !vp || vp == &plain_mval || d->max == d->min ||   /* (a macro: no momentary value, a turn as ever) */
         !((vp >= TSEL->p && vp < TSEL->p + P_COUNT) || (g <= G_CDEPTH && g != G_CLOCK) || g == G_RTYPE || g == G_DTYPE))
         return 0;                                      /* (only the values a sound and the FX are: no CLK, no actions) */
     for (i = 0; i < mom.n && mom.vp[i] != vp; i++)
@@ -409,6 +409,7 @@ static void edit_param(uint32_t slot, int32_t steps)
         return;
     v = param_turn(d, *vp, accel(EN_K1 + slot, steps, d->fmt == F_ENUM ? 0 : d->max - d->min));
     *vp = (int16_t)v;
+    page_turned(vp);                                      /* (a macro: its parameters) */
 }
 
 /* OCT+ on an action page: the picked action. A load stays picked (browse and load again); the others
