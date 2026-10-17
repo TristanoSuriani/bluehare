@@ -717,11 +717,16 @@ static __attribute__((noinline)) void rev_concert(const int32_t *rev_in, int32_t
 static float pl_mem_native[AMB_PL_HALF];
 #endif
 #define PL_MEM pl_mem_native
-#define RT_LAST 7                                        /* (5 PLATE; 6 CAVERN, 7 SHIMMER: fx_native.c's 5, 6) */
+#define RT_LAST (5 + BLUEHARE_FX_CAVERN + BLUEHARE_FX_SHIMMER)   /* (5 PLATE; 6 CAVERN, 7 SHIMMER, components: fx_native.c's 5, 6) */
 #else
 #define RT_LAST (4 + BLUEHARE_FX_PLATE)                  /* (2026-10: the device's CONCERT; 10-17: PLATE, a component) */
 #endif
 #define RT_PLATE 5
+#ifdef BLUEHARE_NATIVE
+#define BLUEHARE_NATIVE_FX 1                             /* (CAVERN, SHIMMER: the native image's memory only) */
+#else
+#define BLUEHARE_NATIVE_FX 0
+#endif
 #define RN_OF(rt) ((rt) == 4 ? 4u : (uint32_t)(rt) - 1u)   /* (native: fx_native.c's numbering of CONCERT CAVERN SHIMMER) */
 
 /* (Blue Hare) GATED (G_RTYPE 3): HALL, dense, cut off sharply: a hit in the send opens the gate, it stays open for
@@ -992,8 +997,9 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     else if (fx.dtype)
         dly_tape(dly_in, wet, n, dl, fb, col, dmix);
     rt = song.g[G_RTYPE];
-    if (rt == RT_PLATE && !BLUEHARE_FX_PLATE)
-        rt = 2;                                       /* (PLATE not in this build: HALL) */
+    if ((rt == RT_PLATE && !BLUEHARE_FX_PLATE) || (rt == 6 && !(BLUEHARE_NATIVE_FX && BLUEHARE_FX_CAVERN)) ||
+        (rt == 7 && !(BLUEHARE_NATIVE_FX && BLUEHARE_FX_SHIMMER)))
+        rt = 2;                                       /* (a component not in this build: HALL) */
     rt = rt >= 1 && rt <= RT_LAST ? rt : 0;
     hl.side = 0;
     if (rt != fx.rtype)

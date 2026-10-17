@@ -32,7 +32,17 @@ static const char *const N_ROUTE[] = {"CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-1
 static const char *const N_NOTE[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const N_DASH[] = {"--"};
 #ifdef BLUEHARE_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE", "CAVERN", "SHIMMER"};
+#if (BLUEHARE_FX_SHIMMER && !BLUEHARE_FX_CAVERN) || (BLUEHARE_FX_CAVERN && !BLUEHARE_FX_PLATE)
+#error "REVERB TYPE's ids are fixed: a distribution with SHIMMER has CAVERN, one with CAVERN has PLATE"
+#endif
+static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE",   /* (2026-10-17: CAVERN, */
+#if BLUEHARE_FX_CAVERN                                                                    /* SHIMMER components) */
+                                      "CAVERN",
+#endif
+#if BLUEHARE_FX_SHIMMER
+                                      "SHIMMER",
+#endif
+};
 #else
 static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT",   /* (Blue Hare: GATED, every */
 #if BLUEHARE_FX_PLATE                                             /* build's; CONCERT the device's since 2026-10; */

@@ -19,7 +19,7 @@
  * written back with the send. Out: the even lines' signed sum left, the odd lines' right -> the mid to the wet bus, the
  * side to wside (as ROOM's). The levels: at SIZE 90 and DAMP 60, a burst of noise sends out what HALL does
  * (tests/native/native_test.c). Silence in ends in silence out (denormals flushed, the output rounded to integers). */
-#include <math.h>
+#include "fastmath.h"                      /* (2026-10-17: X0X's maths, not libm) */
 #define RN_NL 16u
 #define RN_LMAX 8192u                    /* a line's buffer (CAVERN's longest 7237 + the drift) */
 #define RN_ER 32768u                     /* the pre-delay and CAVERN's walls behind it (70 + 330 ms: 17640 samples) */
@@ -45,7 +45,7 @@ static struct {
     float sh[RN_SH];
     uint32_t w[RN_NL], apw[4], pw, shw;
     float lp[RN_NL], g[RN_NL], kd, hp, shp, shlp, shhp;
-    double ph;
+    float ph[RN_NL];                     /* (2026-10-17) the drift: a phase a line, in turns of 2 pi, wrapped */
     int32_t size, damp, made;            /* what g, kd were made for: SIZE, DAMP, the model + 1 (0: not yet; zero at
                                           * start, so all of this is .bss, nothing to load) */
 } rn;
@@ -63,18 +63,18 @@ static void rev_native_clear(void)
 
 static void rn_coefs(uint32_t m)
 {
-    float rt = RN_RT0[m] * powf(RN_RTK[m], song.g[G_RSIZE] / 127.0f);
-    float fc = RN_FC0[m] * powf(RN_FC1[m] / RN_FC0[m], song.g[G_RDAMP] / 127.0f);
+    float rt = RN_RT0[m] * fm_powf(RN_RTK[m], song.g[G_RSIZE] / 127.0f);
+    float fc = RN_FC0[m] * fm_powf(RN_FC1[m] / RN_FC0[m], song.g[G_RDAMP] / 127.0f);
     uint32_t k;
     for (k = 0; k < RN_NL; k++)
-        rn.g[k] = powf(10.0f, -3.0f * RN_LEN[m][k] / (rt * (float)FS));
-    rn.kd = 1.0f - expf(-2.0f * (float)M_PI * fc / (float)FS);
+        rn.g[k] = fm_powf(10.0f, -3.0f * RN_LEN[m][k] / (rt * (float)FS));
+    rn.kd = 1.0f - fm_expf(-2.0f * FM_PI * fc / (float)FS);
     rn.size = song.g[G_RSIZE];
     rn.damp = song.g[G_RDAMP];
     rn.made = (int32_t)m + 1;
 }
 
-static inline float rn_flush(float x) { return fabsf(x) < 1e-15f ? 0.0f : x; }
+static inline float rn_flush(float x) { return fm_fabsf(x) < 1e-15f ? 0.0f : x; }
 
 /* the line k's sample d (fractional) behind its write index */
 static inline float rn_tap(uint32_t k, float d)
@@ -91,18 +91,18 @@ static __attribute__((noinline)) void rev_native(uint32_t rt, const int32_t *rev
                                                  uint32_t n)
 {
     uint32_t m = rt - 4u, i, k;
-    float mod[RN_NL], kd, gout = RN_OUT[m] * 32768.0f, khp = 1.0f - expf(-2.0f * (float)M_PI * 100.0f / (float)FS);
-    float ksh = 1.0f - expf(-2.0f * (float)M_PI * 400.0f / (float)FS);
+    float mod[RN_NL], kd, gout = RN_OUT[m] * 32768.0f, khp = 1.0f - fm_expf(-2.0f * FM_PI * 100.0f / (float)FS);
+    float ksh = 1.0f - fm_expf(-2.0f * FM_PI * 400.0f / (float)FS);
     if (rn.made != (int32_t)m + 1 || rn.size != song.g[G_RSIZE] || rn.damp != song.g[G_RDAMP])
         rn_coefs(m);
     kd = rn.kd;
     for (k = 0; k < RN_NL; k++) {                     /* the drift, once a block (it moves < 0.02 samples in one) */
-        double hz = 0.1 + 0.8 * k / (RN_NL - 1u);
-        mod[k] = RN_LEN[m][k] - 2.0f - RN_MOD[m] * (1.0f + (float)sin(rn.ph * hz + k * 1.7));
+        float hz = 0.1f + 0.8f * (float)k / (float)(RN_NL - 1u);
+        mod[k] = RN_LEN[m][k] - 2.0f - RN_MOD[m] * (1.0f + fm_sin_turns(rn.ph[k] + (float)k * (1.7f / FM_TWO_PI)));
+        rn.ph[k] += hz * (float)n / (float)FS;        /* (each line its own phase, in turns, wrapped: exact for good) */
+        if (rn.ph[k] >= 1.0f)
+            rn.ph[k] -= 1.0f;
     }
-    rn.ph += 2.0 * M_PI * n / FS;
-    if (rn.ph > 2.0 * M_PI * 1000.0)
-        rn.ph -= 2.0 * M_PI * 1000.0;
     for (i = 0; i < n; i++) {
         float x = rev_in[i] / 32768.0f * 0.25f, y[RN_NL], l = 0, r = 0, el = 0, er = 0, fb = 0;
         uint32_t h, j;
@@ -142,7 +142,7 @@ static __attribute__((noinline)) void rev_native(uint32_t rt, const int32_t *rev
             p2 -= p2 >= 1.0f ? 1.0f : 0.0f;
             d1 = (1.0f - p) * RN_SHW + 2.0f, d2 = (1.0f - p2) * RN_SHW + 2.0f;
             a1 = (rn.shw - (uint32_t)d1) & (RN_SH - 1u), a2 = (rn.shw - (uint32_t)d2) & (RN_SH - 1u);
-            w1 = sinf((float)M_PI * p);
+            w1 = fm_sinf(FM_PI * p);
             w1 *= w1;
             s = rn.sh[a1] * w1 + rn.sh[a2] * (1.0f - w1);
             rn.shp += 1.0f / RN_SHW;                  /* (the heads gain a sample a sample: twice the speed) */
@@ -151,7 +151,7 @@ static __attribute__((noinline)) void rev_native(uint32_t rt, const int32_t *rev
             rn.shhp += (s - rn.shhp) * ksh;           /* low cut, the top as the lines' */
             s -= rn.shhp;
             rn.shlp = rn_flush(rn.shlp + (s - rn.shlp) * kd);
-            s = tanhf(rn.shlp * 2.0f) * 0.5f;         /* (soft: the climb cannot run away) */
+            s = fm_tanhf(rn.shlp * 2.0f) * 0.5f;         /* (soft: the climb cannot run away) */
             for (k = 0; k < RN_NL; k++)
                 y[k] += s * (k & 1u ? -0.33f : 0.33f) * rn.g[k];   /* (bounded: |s| <= 0.5, the lines' g < 1) */
         }

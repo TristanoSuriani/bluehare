@@ -171,6 +171,7 @@ int main(void)
 
     /* the reverbs only the native image has */
     host_tracks_init();
+#if BLUEHARE_FX_CAVERN && BLUEHARE_FX_SHIMMER                 /* (2026-10-17: components; Native's set has them) */
     ck("REVERB TYPE: ROOM SPRING HALL GATED CONCERT PLATE (the device's), then CAVERN SHIMMER",
        GP[G_RTYPE].max == 7 && !strcmp(N_RTYPE[3], "GATED") && !strcmp(N_RTYPE[4], "CONCERT") &&
        !strcmp(N_RTYPE[5], "PLATE") && !strcmp(N_RTYPE[6], "CAVERN") && !strcmp(N_RTYPE[7], "SHIMMER"));
@@ -183,6 +184,18 @@ int main(void)
                  "(HALL %.1f s)", RT[i], db, side * 100, hall_side * 100, end, hall_end);
         ck(msg, db > -4.0 && db < 4.0 && side > 0.15 && end > RT_TAIL[i] && end < 59.0);
     }
+#else
+    {   /* (a distribution without them, HARE FM1's set: the list ends at PLATE; a song's CAVERN or SHIMMER plays HALL) */
+        double e2, side, end, ok2 = 1;
+        rev_run(2, &hall, &hall_side, &hall_end);
+        for (i = 6; i <= 7u; i++) {
+            rev_run(i, &e2, &side, &end);
+            ok2 = ok2 && fabs(10 * log10(e2 / hall)) < 0.5 && fabs(end - hall_end) < 0.3;
+        }
+        ck("REVERB TYPE without CAVERN and SHIMMER (components left out): ends at PLATE; their ids play HALL",
+           GP[G_RTYPE].max == 5 && !strcmp(N_RTYPE[5], "PLATE") && ok2);
+    }
+#endif
 
     /* the delay: 2BAR at 120 BPM is 4 s (the device's line holds 1.49) */
     {
