@@ -27,6 +27,7 @@ static struct { volatile uint32_t notes, buttons; } fm1_in;   /* (the port's key
 #include "voice.c"
 #include "fx.c"
 #include "seq.c"
+#include "song.c"                                     /* (the song's format: the baseline's, 2026-10-17) */
 /* the instrument's keys (Blue Hare OS keyboard.c): a host without keys */
 static void os_keys_block(void) {}
 static int os_keys_hold_track(uint32_t t) { (void)t; return 0; }
@@ -38,6 +39,29 @@ static void os_load_sound(uint32_t track, uint32_t engine, uint32_t preset)
     if (t->eng_req != engine)
         patch_engine(t, engine);
     patch_preset(t, preset);
+}
+
+/* the song as one piece in RAM (the format's sink and source: a host's state, a file) */
+static uint8_t ram_song[8192];
+static uint32_t ram_w, ram_r;
+static void ram_sink(pw_t *w, const void *p, uint32_t n)
+{
+    if (ram_w + n > sizeof ram_song) {
+        w->err = 1;
+        return;
+    }
+    memcpy(ram_song + ram_w, p, n);
+    ram_w += n;
+}
+static void ram_src(pr_t *r, void *p, uint32_t n)
+{
+    if (ram_r + n > ram_w) {
+        r->err = 1;
+        memset(p, 0, n);
+        return;
+    }
+    memcpy(p, ram_song + ram_r, n);
+    ram_r += n;
 }
 
 static int bad;
@@ -94,6 +118,32 @@ int main(void)
     check("a GEN piece loaded (its sounds, key, tempo) and played on the baseline alone",
           gen.on && i > 300u && gen.s.played[0] > 0u && song.g[G_BPM] == GEN_PRESETS[0].bpm &&
           trk[1].eng_req == (BLUEHARE_ENG_SH101 ? ENGI_SH101 : trk[1].eng_req));
+    {   /* the song: written into RAM, the music changed, read back: as it was (song.c, nothing of the OS's store) */
+        pw_t w;
+        pr_t r;
+        char name[PROJ_NAME_LEN + 1u];
+        int16_t atk = trk[2].p[P_ATK], bpm;
+        uint32_t eng = trk[1].eng_req;
+        song.g[G_BPM] = 97;
+        lay.on[1] = 1;
+        lay.tr[1] = -12;
+        bpm = song.g[G_BPM];
+        memset(&w, 0, sizeof w);
+        w.h = 2166136261u;
+        w.sink = ram_sink;
+        song_write(&w, "RAM SONG");
+        song.g[G_BPM] = 140;
+        trk[2].p[P_ATK] = (int16_t)(atk + 7);
+        lay.on[1] = 0;
+        lay.tr[1] = 0;
+        memset(&r, 0, sizeof r);
+        r.h = 2166136261u;
+        r.src = ram_src;
+        ram_r = 0;
+        snprintf(msg, sizeof msg, "the song written and read back on the baseline alone (song.c, %u bytes in RAM)", ram_w);
+        check(msg, !w.err && song_read(&r, 1, name) == 0 && song.g[G_BPM] == bpm && trk[2].p[P_ATK] == atk &&
+              trk[1].eng_req == eng && lay.on[1] == 1 && lay.tr[1] == -12 && !strcmp(name, "RAM SONG"));
+    }
     printf(bad ? "baseline: %d FAILED\n" : "baseline: all passed\n", bad);
     return bad ? 1 : 0;
 }
