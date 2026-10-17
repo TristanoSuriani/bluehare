@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* WAVE (1.5): wavetables. Blue Hare's own design and tables (tools/gen_wavetables.py: 8 banks of 8 single-cycle
+/* WAVE (1.5): wavetables. Blue Hare's own design and tables (tools/gen_wavetables.py: 6 banks of 8 single-cycle
  * frames, in flash).
  *
  * TBL picks the bank, POS the place between its frames (the two neighbours crossfaded): the SHP routings move it
@@ -149,39 +149,41 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     v->s[4] = cnt;
 }
 
+/* (2026-10-17) TBL: 0 BASIC 1 SYNC 2 RESO 3 VOX 4 DIGI 5 PPG, 6 .. 11 the same stepped (the ADDTV presets moved to
+ * BASIC, the FM ones to DIGI, the BITS ones to BASIC stepped) */
 static const preset_t WAVE_PRESETS[] = {
     /* a short filtered stab for chords into the delay (dub techno) */
     {"DUB CHORD", {0, 60, 0, 12, 52, 30, 0, 0}, {0, 62, 0, 55}, 34, 0, FX(0, 20, 60, 50)},
-    {"SCAN PAD", {1, 40, 0, 18, 80, 10, 0, 0}, {80, 90, 115, 95}, 10, 0, FX(0, 50, 25, 70)},
-    {"TABLE SYNC", {2, 70, 40, 0, 100, 20, 30, 0}, {2, 70, 100, 40}, 20, 1, FX(0, 10, 40, 25)},
-    {"RESO BASS", {3, 48, 0, 0, 62, 45, 40, 0}, {0, 60, 60, 25}, 40, 1, FX(10, 0, 10, 5)},
-    {"VOX PAD", {4, 64, 0, 10, 90, 10, 0, 0}, {70, 90, 115, 90}, 0, 0, FX(0, 50, 20, 65)},
-    {"TABLE BELL", {5, 90, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45)},
-    {"DIGI KEYS", {6, 50, 0, 4, 96, 15, 0, 18}, {0, 80, 40, 55}, 20, 0, FX(0, 20, 30, 35)},
-    {"BIT LEAD", {7, 80, 0, 0, 110, 10, 20, 40}, {0, 70, 100, 30}, 0, 1, FX(0, 0, 40, 20)},
+    {"SCAN PAD", {0, 40, 0, 18, 80, 10, 0, 0}, {80, 90, 115, 95}, 10, 0, FX(0, 50, 25, 70)},
+    {"TABLE SYNC", {1, 70, 40, 0, 100, 20, 30, 0}, {2, 70, 100, 40}, 20, 1, FX(0, 10, 40, 25)},
+    {"RESO BASS", {2, 48, 0, 0, 62, 45, 40, 0}, {0, 60, 60, 25}, 40, 1, FX(10, 0, 10, 5)},
+    {"VOX PAD", {3, 64, 0, 10, 90, 10, 0, 0}, {70, 90, 115, 90}, 0, 0, FX(0, 50, 20, 65)},
+    {"TABLE BELL", {4, 90, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45)},
+    {"DIGI KEYS", {4, 50, 0, 4, 96, 15, 0, 18}, {0, 80, 40, 55}, 20, 0, FX(0, 20, 30, 35)},
+    {"BIT LEAD", {6, 80, 0, 0, 110, 10, 20, 40}, {0, 70, 100, 30}, 0, 1, FX(0, 0, 40, 20)},
     /* (Blue Hare, the IDM review) warm pads: slow, detuned, dark, plenty of chorus and reverb */
     {"WARM PAD", {0, 20, 0, 24, 60, 10, 0, 0}, {90, 90, 115, 100}, 10, 0, FX(0, 70, 20, 75)},
-    {"STRING PAD", {1, 50, 0, 30, 72, 5, 0, 0}, {100, 90, 120, 105}, 8, 0, FX(0, 90, 20, 80)},
-    {"GLASS PAD", {5, 30, 0, 16, 100, 10, 0, 0}, {80, 100, 110, 110}, 0, 0, FX(0, 60, 35, 85)},
-    {"CHOIR PAD", {4, 90, 0, 20, 85, 10, 0, 0}, {90, 90, 120, 100}, 0, 0, FX(0, 80, 20, 80)},
+    {"STRING PAD", {0, 50, 0, 30, 72, 5, 0, 0}, {100, 90, 120, 105}, 8, 0, FX(0, 90, 20, 80)},
+    {"GLASS PAD", {4, 30, 0, 16, 100, 10, 0, 0}, {80, 100, 110, 110}, 0, 0, FX(0, 60, 35, 85)},
+    {"CHOIR PAD", {3, 90, 0, 20, 85, 10, 0, 0}, {90, 90, 120, 100}, 0, 0, FX(0, 80, 20, 80)},
     /* basses, an arpeggio's pluck */
     {"SUB BASS", {0, 0, 0, 0, 50, 10, 20, 0}, {0, 50, 100, 20}, 10, 1, FX(10, 0, 0, 5)},
-    {"SYNC BASS", {2, 50, 60, 0, 70, 30, 40, 0}, {0, 60, 70, 20}, 30, 1, FX(15, 0, 10, 5)},
-    {"BIT ARP", {7, 40, 0, 0, 110, 0, 0, 60}, {0, 40, 0, 30}, 0, 0, FX(0, 0, 50, 20)},
+    {"SYNC BASS", {1, 50, 60, 0, 70, 30, 40, 0}, {0, 60, 70, 20}, 30, 1, FX(15, 0, 10, 5)},
+    {"BIT ARP", {6, 40, 0, 0, 110, 0, 0, 60}, {0, 40, 0, 30}, 0, 0, FX(0, 0, 50, 20)},
     /* (Blue Hare) the table moving: an LFO scanning it (the frames morphing), or each note's envelope (lrate: the
      * LFO's RATE + 1, ~0.2 Hz at 26; lwave: its WAVE + 1, 1 SIN 2 TRI 5 S&H) */
-    {"MORPH PAD", {1, 50, 0, 16, 85, 10, 0, 0}, {80, 90, 115, 95}, 0, 0, FX(0, 60, 25, 75), .lshp = 50, .lrate = 26},
-    {"VOX MORPH", {4, 64, 0, 12, 90, 10, 0, 0}, {70, 90, 120, 95}, 0, 0, FX(0, 60, 25, 70), .lshp = 63, .lrate = 31,
+    {"MORPH PAD", {0, 50, 0, 16, 85, 10, 0, 0}, {80, 90, 115, 95}, 0, 0, FX(0, 60, 25, 75), .lshp = 50, .lrate = 26},
+    {"VOX MORPH", {3, 64, 0, 12, 90, 10, 0, 0}, {70, 90, 120, 95}, 0, 0, FX(0, 60, 25, 70), .lshp = 63, .lrate = 31,
      .lwave = 2},
-    {"SWEEP LEAD", {2, 15, 0, 6, 100, 15, 20, 0}, {0, 70, 100, 30}, 0, 1, FX(0, 10, 40, 25), .eshp = 60},
+    {"SWEEP LEAD", {1, 15, 0, 6, 100, 15, 20, 0}, {0, 70, 100, 30}, 0, 1, FX(0, 10, 40, 25), .eshp = 60},
     {"SCAN BASS", {0, 15, 0, 0, 100, 30, 30, 0}, {0, 70, 40, 20}, 20, 1, FX(10, 0, 10, 5), .eshp = 63},
-    {"BELL SCAN", {5, 10, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45), .eshp = 63},
+    {"BELL SCAN", {4, 10, 0, 6, 110, 0, 0, 0}, {0, 95, 0, 85}, 0, 0, FX(0, 20, 40, 45), .eshp = 63},
     {"WOBBLE", {0, 64, 0, 4, 80, 25, 40, 0}, {0, 0, 127, 20}, 0, 1, FX(15, 0, 10, 5), .lshp = 55, .lrate = 68, .lwave = 1},
-    {"DIGI STEPS", {6, 64, 0, 0, 100, 10, 0, 20}, {0, 0, 127, 30}, 0, 0, FX(0, 10, 40, 30), .lshp = 63, .lrate = 58,
+    {"DIGI STEPS", {4, 64, 0, 0, 100, 10, 0, 20}, {0, 0, 127, 30}, 0, 0, FX(0, 10, 40, 30), .lshp = 63, .lrate = 58,
      .lwave = 5},
-    {"EVOLVER", {1, 30, 30, 20, 90, 15, 10, 0}, {90, 90, 120, 100}, 0, 0, FX(0, 70, 30, 80), .eshp = 30, .lshp = 35,
+    {"EVOLVER", {0, 30, 30, 20, 90, 15, 10, 0}, {90, 90, 120, 100}, 0, 0, FX(0, 70, 30, 80), .eshp = 30, .lshp = 35,
      .lrate = 22},
-    {"SYNC SCAN", {2, 20, 70, 0, 100, 10, 30, 0}, {0, 60, 90, 30}, 0, 1, FX(0, 10, 40, 25), .lshp = 45, .lrate = 40},
+    {"SYNC SCAN", {1, 20, 70, 0, 100, 10, 30, 0}, {0, 60, 90, 30}, 0, 1, FX(0, 10, 40, 25), .lshp = 45, .lrate = 40},
 };
 
 static const engine_t ENG_WAVE = {

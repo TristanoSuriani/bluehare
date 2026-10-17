@@ -4,7 +4,7 @@
 # Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 """The WAVE engine's wavetables (firmware/baseline/eng_wave.c): Blue Hare's own, from formulas in this file.
 
-8 banks of 8 single-cycle frames; WAVE scans between a bank's frames (POS). Each frame is kept as 8 band-limited
+6 banks of 8 single-cycle frames; WAVE scans between a bank's frames (POS). Each frame is kept as 8 band-limited
 copies (mip levels) so high notes do not alias: level l is 1024 >> l samples long and holds harmonics 1 .. 256 >> l
 (2026-10-17: was 512 samples / 64 harmonics at the top, so a note under ~413 Hz lost its highs: a 55 Hz bass stopped
 at 3.5 kHz, now at 14 kHz, every note above ~94 Hz full to 12 .. 24 kHz. 4 samples a harmonic: the linear
@@ -148,9 +148,10 @@ def bank_drive():               # (2026-10-17) a sine and its third harmonic, dr
             for f in range(FRAMES)]
 
 
-BANKS = [("BASIC", bank_basic), ("ADDTV", bank_addtv), ("SYNC", bank_sync), ("RESO", bank_reso),
-         ("VOX", bank_vox), ("FM", bank_fm), ("DIGI", bank_digi), ("BITS", bank_bits),
-         ("PPG", bank_ppg), ("DRIVE", bank_drive)]   # (appended: the stores' TBL values keep their banks)
+# (2026-10-17) fewer, nearer the Protein / PPG: ADDTV, FM (BLISS's), BITS (the stepped banks') and DRIVE (DRV's) gone;
+# their generators kept above, unused
+BANKS = [("BASIC", bank_basic), ("SYNC", bank_sync), ("RESO", bank_reso), ("VOX", bank_vox), ("DIGI", bank_digi),
+         ("PPG", bank_ppg)]
 
 
 def render(h, length, hmax, gain):
