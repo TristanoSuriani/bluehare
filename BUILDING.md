@@ -269,7 +269,7 @@ CONCERT, CAVERN and SHIMMER as HALL, and a delay longer than 1.49 s cut short.
 
 The VST3 / AU / CLAP plugin is archived in [archive/plugin](archive/plugin/README.md) (2026-10: it is not clear it
 works properly). It is out of the build and the tests; its build notes are kept there. The firmware's host side
-(`firmware/baseline/target_host.c`: a DAW's transport and tempo, the tracks' own outputs) stays, shared with the native
+(`native/target_host.c`: a DAW's transport and tempo, the tracks' own outputs) stays, shared with the native
 image.
 
 ## Tests

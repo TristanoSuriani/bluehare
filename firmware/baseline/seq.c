@@ -392,6 +392,5 @@ static void events_block(uint32_t n)
     tgt_block_end(n);
 }
 
-#ifdef BLUEHARE_NATIVE
-#include "target_host.c"                /* (Blue Hare) the host targets' side of target.h */
-#endif
+/* (the host targets' side of target.h: native/target_host.c, Native's, included after this file by the build that
+ * wants it: tests/lib/hostsim.c for BLUEHARE_NATIVE) */

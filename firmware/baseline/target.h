@@ -3,7 +3,8 @@
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* What differs between the targets, in one place (Blue Hare; the architecture's item 4). The FM-1 build gets the empty
  * versions below, inlined to nothing (the device's code and its renders as before); the host targets (BLUEHARE_NATIVE:
- * the native image and the plugin's cores) define theirs in target_host.c:
+ * the native image and the plugin's cores) define theirs in native/target_host.c (Native's: the baseline only
+ * declares them, 2026-10-17):
  *   TGT_NOW()                the audio load meter's clock (audio.c): the device's timer, or the computer's
  *   TGT_INFO_VERSION         MENU > INFO's first row: FIRMWARE, or VERSION (an application)
  *   tgt_beat_samples()       a host's tempo in samples a beat, over BPM and CLOCK (fx.c beat_samples); 0: none

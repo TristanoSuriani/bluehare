@@ -2,8 +2,9 @@
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The host targets' side of target.h (BLUEHARE_NATIVE: the native image, the plugin's cores, through the browser
- * emulator's layer): the host's transport and tempo, the tracks' own outputs. Included at the end of seq.c, so it sees
- * the transport's and the mix's own state; the device builds have target.h's empty versions instead. */
+ * emulator's layer): the host's transport and tempo, the tracks' own outputs. (2026-10-17: Native's, out of the
+ * baseline) Included right after seq.c (tests/lib/hostsim.c, which the native image includes through the emulator), so
+ * it sees the transport's and the mix's own state; the device builds have target.h's empty versions instead. */
 
 /* ---- the host's tempo (fx.c beat_samples) */
 static uint32_t host_beat_samples;                    /* the plugin's host's tempo, over the song's and CLOCK's (host_block);

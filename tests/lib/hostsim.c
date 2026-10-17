@@ -40,6 +40,9 @@ static void fm1_delay_ms(uint32_t ms) { (void)ms; }
 #include "../../firmware/fm1/midi_uart.c"                /* TRS MIDI IN: its parser (um_byte) feeds midi_in_q */
 #include "../../firmware/baseline/seq.c"
 #include "../../firmware/os/keyboard.c"
+#ifdef BLUEHARE_NATIVE
+#include "../../native/target_host.c"   /* (2026-10-17: Native's side of target.h, out of the baseline) */
+#endif
 #define inst (trk[0])                   /* the single-part renders below: part 1 */
 
 static void wav_hdr(FILE *f, uint32_t frames)
