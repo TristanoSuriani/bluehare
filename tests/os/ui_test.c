@@ -157,7 +157,7 @@ static int check(const char *what, int ok)
  * strings), every pan centred. The device's own power-on (engines.c TRK_DEF, TRK_PAN) is engines_test.c's to check */
 static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(BLISS, 0), TRK_PICK(SID, 2), TRK_PICK(MODAL, 7)
 #if NPART == 8
-                                         , TRK_PICK(WAVE, 0), TRK_PICK(WEST, 14), TRK_PICK(MODAL, 2), TRK_PICK(STRINGS, 0)
+                                         , TRK_PICK(WAVE, 0), TRK_PICK(VOSIM, 14), TRK_PICK(MODAL, 2), TRK_PICK(STRINGS, 0)
 #endif
 };
 /* main.c bluehare_init, with these tests' sounds (UT_DEF) */
@@ -813,22 +813,14 @@ static int test_categories(void)
             ok &= preset_cat(e, k) >= CAT_BASS && preset_cat(e, k) <= CAT_OTHER;
     }
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
-                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_WEST, 0) == CAT_DRUM && preset_cat(ENGI_WAVE, 1) == CAT_PAD &&
+                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_MODAL, 7) == CAT_DRUM && preset_cat(ENGI_WAVE, 1) == CAT_PAD &&
                  preset_cat(ENGI_SID, 12) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
-    {   /* engine 16 (WEST) has no row in the stored favourites: its presets 0 .. 7 star [15][8], 8 .. 63 the tail of
-         * row 12 (favorites.c FAV_ROW26), no other engine's or setting; an archived engine's (HOOVER 17, BYTE 15) none */
+    {   /* (2026-10-17) archived engines' favourites refused: WEST (16) and SH101 (61) with HOOVER (17) and BYTE (15) */
         favorites_t before = favorites;
-        for (k = 0, ok = 1; k < ENGINES[ENGI_WEST]->npresets; k++)
-            ok &= favorite_set(EID_WEST, k, 1) && favorite_has(EID_WEST, k);
-        ok &= !favorite_set(EID_HOOVER, 2, 1) && !favorite_has(EID_HOOVER, 2) && !favorite_set(EID_BYTE, 0, 1);
-        ok &= !favorite_set(EID_WEST, 64, 1) && !favorite_set(EID_COUNT + 1u, 0, 1) && favorites.factory[15][8] == 0xFFu &&
-              favorites.factory[12][25] == 0xFFu &&
-              favorites.factory[12][26] == (uint8_t)((1u << (ENGINES[ENGI_WEST]->npresets - 16u)) - 1u);
-        before.factory[15][8] = 0xFFu;
-        before.factory[12][25] = favorites.factory[12][25];
-        before.factory[12][26] = favorites.factory[12][26];   /* (WEST's 16 .. 21: its 22 presets) */
-        ok &= !memcmp(&before, &favorites, sizeof favorites);
-        bad += check("  WEST's favourites: its own bits, the settings bytes untouched; an archived engine's refused", ok);
+        ok = !favorite_set(EID_WEST, 0, 1) && !favorite_has(EID_WEST, 0) && !favorite_set(EID_SH101, 0, 1) &&
+             !favorite_set(EID_HOOVER, 2, 1) && !favorite_has(EID_HOOVER, 2) && !favorite_set(EID_BYTE, 0, 1) &&
+             !favorite_set(EID_COUNT + 1u, 0, 1) && !memcmp(&before, &favorites, sizeof favorites);
+        bad += check("  archived engines' favourites (WEST, SH101, HOOVER, BYTE) refused, nothing else touched", ok);
         memset(&favorites, 0, sizeof favorites);
     }
     go_page(GR_BROWSE);
@@ -915,13 +907,13 @@ static int test_categories(void)
         int16_t v0[P_COUNT], v1[P_COUNT];
         uint32_t c0;
         memset(r, 0, sizeof *r);
-        r->used = UP_USED; r->ver = 2; r->engine = EID_WEST; r->np = 72;
-        str_cpy(r->name, "OLD WEST", 12);
+        r->used = UP_USED; r->ver = 2; r->engine = EID_VOSIM; r->np = 72;
+        str_cpy(r->name, "OLD VOSIM", 12);
         for (i = 0; i < 72u; i++) r->p[i] = (int16_t)(i % 100u);
         up_bank[0].magic = UP_BANK_MAGIC; up_bank[0].rsize = sizeof(up_rec_t); up_bank[0].nslot = UP_PER_BANK;
         c0 = up_cat(9);
         up_values(r, v0);
-        ok = up_rename_cat(9, "OLD WEST", CAT_FX) != 1;
+        ok = up_rename_cat(9, "OLD VOSIM", CAT_FX) != 1;
         up_values(r, v1);
         bad += check("  a version 2 record: listed by its engine (OTHER); a rename with a category makes it version 4, same sound",
                      c0 == CAT_OTHER && ok && r->ver == UP_VER && up_cat(9) == CAT_FX && !memcmp(v0, v1, sizeof v0));
@@ -3092,10 +3084,10 @@ static int test_retired_engines(void)
 {
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
-        {ENGI_SID, EID_SID, "SID"}, {ENGI_SH101, EID_SH101, "SH101"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_BLISS, EID_BLISS, "BLISS"},
-        {ENGI_WEST, EID_WEST, "WEST"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_STRINGS, EID_STRINGS, "STRINGS"}};
+        {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_BLISS, EID_BLISS, "BLISS"},
+        {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_STRINGS, EID_STRINGS, "STRINGS"}};
     static const uint8_t ARCH[6] = {EID_HOOVER, EID_KIT, EID_WASP, EID_SANDSTORM, EID_ECHOES, EID_CANYON};   /* (archived, 2026-10-16 .. 17; VOSIM, STRINGS back since) */
-    static const char *const ORDER[] = {"SID", "SH101", "WAVE", "VOSIM", "BLISS", "WEST", "MODAL", "STRINGS"};
+    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "BLISS", "MODAL", "STRINGS"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3148,8 +3140,8 @@ static int test_retired_engines(void)
         seen |= 1u << TSEL->eng_req;
     }
     bad += check("PRESETS KNOB 2: the engines in order, back to the first",
-                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_SH101 && eng_step(ENGI_WAVE, 1) == ENGI_VOSIM &&
-                 eng_step(ENGI_SH101, -1) == 0u && eng_step(0, -1) == ENGI_STRINGS);
+                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_WAVE && eng_step(ENGI_WAVE, 1) == ENGI_VOSIM &&
+                 eng_step(ENGI_WAVE, -1) == 0u && eng_step(0, -1) == ENGI_STRINGS);
     /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
     ok = NENG_SHOWN == NELEM(ORDER);
     for (i = 0; ok && i < NENG_SHOWN; i++)
@@ -3163,7 +3155,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID SH101 WAVE VOSIM BLISS WEST MODAL STRINGS (ENGINES[]); PRESETS lists them so",
+    bad += check("engines shown SID WAVE VOSIM BLISS MODAL STRINGS (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;

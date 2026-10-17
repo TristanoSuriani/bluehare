@@ -456,13 +456,13 @@ EXPORT uint8_t *web_anim_levels(void)
 }
 
 /* for the test and the bench (web/emu/emu_test.mjs), a heavy song straight into the tracks (as hostsim's
- * renders set them, played by its host_seq: the sequencer is a placeholder): T1 WEST's FOLD PAD, T2 MODAL's BOWED GLASS,
+ * renders set them, played by its host_seq: the sequencer is a placeholder): T1 VOSIM's AIR PAD, T2 MODAL's BOWED GLASS,
  * T3 WAVE SCAN PAD (a build without one of them: its first engine), 4-note chords on all 16 steps, held; T4 hostsim's
  * drums (MODAL's WOOD DRUM). PLAY is the page's (or the test's) to press */
 EXPORT void web_test_heavy(void)
 {
 #define WEB_PICK(X, p) {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : 0u, BLUEHARE_ENG_##X ? (uint8_t)(p) : 0u}
-    static const uint8_t ENG[3][2] = {WEB_PICK(WEST, 8), WEB_PICK(MODAL, 12), WEB_PICK(WAVE, 1)};
+    static const uint8_t ENG[3][2] = {WEB_PICK(VOSIM, 15), WEB_PICK(MODAL, 12), WEB_PICK(WAVE, 1)};
 #undef WEB_PICK
     static const uint8_t CH[4][4] = {{48, 55, 60, 64}, {45, 52, 57, 60}, {41, 48, 53, 57}, {43, 50, 55, 59}};
     uint32_t p, i;

@@ -206,13 +206,17 @@ static const preset_t SID_PRESETS[] = {
     {"SID SNARE", {3, 64, 0, 0, 0, 3, 60, 40}, {0, 25, 0, 20}, 0, 0, FX(0, 0, 10, 15)},
     {"NOISE HAT", {3, 64, 0, 0, 0, 3, 110, 30}, {0, 15, 0, 10}, 0, 0, FX(0, 0, 10, 10)},
     {"HP SWEEP", {7, 50, 60, 0, 0, 3, 60, 100}, {30, 0, 127, 60}, -40, 0, FX(0, 40, 40, 50)},
+    /* (2026-10-17, from SH101, archived) noise through the resonant low-pass: the wind, LFO on the filter; GEN's WAVES'
+     * surf, swelling in with the filter opening, falling back */
+    {"WIND", {3, 64, 0, 0, 0, 1, 50, 115}, {90, 0, 127, 100}, 0, 0, FX(0, 40, 30, 70), .lrate = 20},
+    {"SURF", {3, 64, 0, 0, 0, 1, 30, 60}, {96, 100, 90, 104}, 48, 0, FX(0, 30, 10, 95)},
 };
 
 static const engine_t ENG_SID = {
     .name = "SID",
     .id = EID_SID,
     .cc = 0x78,                  /* CC74 CUT, CC71 RES */
-    .cats = "BLLLKFLPLLBBDDDF",
+    .cats = "BLLLKFLPLLBBDDDFFF",
     .page_title = {"OSC", "FILTER"},
     .edit = {
         {"WAVE", F_ENUM, 0, 7, 2, N_SID_WAVE, 0},

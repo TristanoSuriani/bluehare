@@ -442,7 +442,7 @@ static int live_sync(void)
                  TSEL->preset == 2 && !wire_frames(ED_RELOAD, 0) && wire_frames(ED_CHANGED, &x) == 1u &&
                  x[1] == P_LEVEL && !sync_pass());
     for (i = 0; i < 3u; i++) {                           /* any preset of any engine */
-        a[0] = (uint8_t)(i ? EID_WEST : EID_WAVE); a[1] = (uint8_t)i;
+        a[0] = (uint8_t)(i ? EID_VOSIM : EID_WAVE); a[1] = (uint8_t)i;
         request(ED_PRESET, a, 2);
         other += sync_pass() != 0;
     }

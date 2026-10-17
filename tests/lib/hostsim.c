@@ -497,7 +497,7 @@ static int xfade_test(const char *dir)
     /* switches: (a) in a release tail, (b) twice with a chord held, (c) with a note right after it */
     const uint32_t sw[4] = {11u * B, 23u * B, 29u * B + 7u * CTL, 33u * B};
     const uint32_t on[3] = {B, 15u * B, 25u * B}, sine[3] = {14u * B, 24u * B, 32u * B};
-    const uint8_t to[4] = {ENGI_WEST, 2, 3, ENGI_WAVE};
+    const uint8_t to[4] = {ENGI_VOSIM, 2, 3, ENGI_WAVE};
     char path[512];
     FILE *w;
     int32_t *L = calloc(frames + CTL, sizeof *L);               /* (the last block may run past frames) */
@@ -697,7 +697,7 @@ static int tracks_test(const char *dir)
                    e + 1u < NENGINES ? "," : "\n");
     {   /* FM6, PHASE, VOICE (their heaviest presets) and drums on part 4 at once: 3 + 3 + 2 notes and the hits in the
          * budget of 8 */
-        const uint8_t fm = ENGI_WEST;
+        const uint8_t fm = ENGI_BLISS;
         uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 3}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 2},
                                    {ENGI_MODAL, 7, DRUM_HITS}};
         uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 8}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 4},

@@ -14,9 +14,7 @@
 enum { SLAB_NONE, SLAB_MODAL, SLAB_STRINGS };
 static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
-#include "eng_west.c"           /* WEST: complex oscillator, folder, low-pass gate (1.5) */
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
-#include "eng_sh101.c"          /* SH101: VCO, sub, noise, a 24 dB ladder (2026-10, Milestone 1) */
 #include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
 #include "eng_bliss.c"         /* BLISS: FM electric pianos, bells, mallets (1.5) */
 #include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
@@ -138,21 +136,21 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 }
 
 /* the parts at power-on (engine index, preset). (Blue Hare, 2026-10-16: Milestone 1) a role a track: the pad (WAVE's
- * WARM PAD) and the bass (SH101's 101 BASS; SID BASS in a build without it), centred, the keys (BLISS's E.PIANO, left) and the bells (MODAL's KALIMBA, right);
- * with 8, a drone (WEST), strings (STRINGS' CINEMA), a bell (MODAL) and a lead (SID SYNC LEAD) after them. An engine the
+ * WARM PAD) and the bass (SID BASS), centred, the keys (BLISS's E.PIANO, left) and the bells (MODAL's KALIMBA, right);
+ * with 8, a choir (VOSIM's WARM CHOIR), strings (STRINGS' CINEMA), a bell (MODAL) and a lead (SID SYNC LEAD) after them. An engine the
  * build leaves out: the second pick, else its first engine, preset 0 */
 #define TRK_PICK(X, p) {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : 0u, BLUEHARE_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
     {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : BLUEHARE_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      BLUEHARE_ENG_##X ? (uint8_t)(p) : BLUEHARE_ENG_##Y ? (uint8_t)(q) : 0u}
 #if NPART == 8
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 8), TRK_PICK2(SH101, 0, SID, 0), TRK_PICK2(BLISS, 0, WAVE, 0),
-                                          TRK_PICK2(MODAL, 10, WEST, 0), TRK_PICK2(WEST, 6, WAVE, 0),
-                                          TRK_PICK2(STRINGS, 18, WAVE, 9), TRK_PICK2(MODAL, 2, WEST, 0), TRK_PICK(SID, 2)};
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 8), TRK_PICK(SID, 0), TRK_PICK2(BLISS, 0, WAVE, 0),
+                                          TRK_PICK2(MODAL, 10, BLISS, 0), TRK_PICK2(VOSIM, 14, WAVE, 0),
+                                          TRK_PICK2(STRINGS, 18, WAVE, 9), TRK_PICK2(MODAL, 2, BLISS, 0), TRK_PICK(SID, 2)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24, -16, 16, -8, 8};
 #else
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 8), TRK_PICK2(SH101, 0, SID, 0), TRK_PICK2(BLISS, 0, WAVE, 0),
-                                          TRK_PICK2(MODAL, 10, WEST, 0)};
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 8), TRK_PICK(SID, 0), TRK_PICK2(BLISS, 0, WAVE, 0),
+                                          TRK_PICK2(MODAL, 10, BLISS, 0)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24};
 #endif
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

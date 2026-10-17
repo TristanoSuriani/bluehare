@@ -33,7 +33,7 @@ static void stream_rehash(void)
 
 int main(void)
 {
-    static const char *const ORDER[] = {"SID", "WAVE", "WEST", "MODAL"};
+    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "MODAL"};
     uint8_t a[16] = {0};
     int bad = 0, ok = 1, sub;
     uint32_t i, e, off, k;
@@ -41,7 +41,7 @@ int main(void)
 
     /* the table */
     ok = NENGINES == NELEM(ORDER) && !BLUEHARE_ENG_BLISS && !BLUEHARE_ENG_STRINGS &&
-         BLUEHARE_ENG_SID && BLUEHARE_ENG_WAVE && BLUEHARE_ENG_WEST && BLUEHARE_ENG_MODAL;
+         BLUEHARE_ENG_SID && BLUEHARE_ENG_WAVE && BLUEHARE_ENG_VOSIM && BLUEHARE_ENG_MODAL;
     for (i = 0; ok && i < NENGINES; i++)
         ok &= str_eq(ENGINES[i]->name, ORDER[i]) && eng_of_id(eng_id(i)) == i;
     ok &= eng_of_id(EID_BLISS) == ENG_NO && eng_of_id(EID_STRINGS) == ENG_NO && ENGI_BLISS == ENG_ABSENT &&
@@ -53,21 +53,22 @@ int main(void)
                  "archived retired", ok);
     ok = eng_load_id(EID_BLISS, &sub) == ENGI_WAVE && sub && eng_load_id(EID_STRINGS, &sub) == ENGI_WAVE && sub &&
          eng_load_id(EID_CANYON, &sub) == ENG_NO && eng_load_id(EID_ECHOES, &sub) == ENG_NO && eng_load_id(EID_MODAL, &sub) == ENGI_MODAL && !sub &&
-         eng_load_id(EID_WEST, &sub) == ENGI_WEST && !sub && eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub &&
+         eng_load_id(EID_VOSIM, &sub) == ENGI_VOSIM && !sub &&
+         eng_load_id(EID_WEST, &sub) == ENG_NO && eng_load_id(EID_SH101, &sub) == ENG_NO && eng_load_id(EID_WAVE, &sub) == ENGI_WAVE && !sub &&
          eng_load_id(EID_HOOVER, &sub) == ENG_NO && eng_load_id(EID_KIT, &sub) == ENG_NO &&
          eng_load_id(0, &sub) == ENG_NO && eng_load_id(12, &sub) == ENG_NO && eng_load_id(13, &sub) == ENG_NO &&
          eng_load_id(27, &sub) == ENG_NO;
-    bad += check("  substitutes: BLISS, STRINGS -> WAVE; retired (0 .. 13, 27) and archived (ECHOES, CANYON): none",
+    bad += check("  substitutes: BLISS, STRINGS -> WAVE; retired (0 .. 13, 27) and archived (ECHOES, CANYON, WEST, SH101): none",
                  ok);
 
     /* power-on: the engines.c picks, the second where the first is left out */
     reset();
 #if NPART == 8
-    bad += check("power-on: WARM PAD, SID BASS (centred), WAVE for BLISS, KALIMBA, DRONE, STRING PAD for STRINGS, BELL, SYNC LEAD",
+    bad += check("power-on: WARM PAD, SID BASS (centred), WAVE for BLISS, KALIMBA, WARM CHOIR, STRING PAD for STRINGS, BELL, SYNC LEAD",
                  TRK_DEF[0][0] == ENGI_WAVE && str_eq(ENGINES[ENGI_WAVE]->presets[TRK_DEF[0][1]].name, "WARM PAD") &&
                  TRK_DEF[1][0] == ENGI_SID && TRK_DEF[1][1] == 0u && TRK_DEF[2][0] == ENGI_WAVE && TRK_DEF[2][1] == 0u &&
                  TRK_DEF[3][0] == ENGI_MODAL && str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[3][1]].name, "KALIMBA") &&
-                 TRK_DEF[4][0] == ENGI_WEST && str_eq(ENGINES[ENGI_WEST]->presets[TRK_DEF[4][1]].name, "DRONE") &&
+                 TRK_DEF[4][0] == ENGI_VOSIM && str_eq(ENGINES[ENGI_VOSIM]->presets[TRK_DEF[4][1]].name, "WARM CHOIR") &&
                  TRK_DEF[5][0] == ENGI_WAVE && str_eq(ENGINES[ENGI_WAVE]->presets[TRK_DEF[5][1]].name, "STRING PAD") && TRK_DEF[6][0] == ENGI_MODAL && TRK_DEF[7][0] == ENGI_SID &&
                  TRK_DEF[7][1] == 2u && !TRK_PAN[0] && !TRK_PAN[1] && TRK_PAN[2] < 0 && TRK_PAN[3] > 0 && TRK_PAN[4] < 0 &&
                  TRK_PAN[5] > 0 && TRK_PAN[6] < 0 && TRK_PAN[7] > 0);
@@ -230,7 +231,7 @@ int main(void)
         static const char V4[] = "build/host/song_4trk.bin";
         uint32_t k;
         reset();
-        set_engine_of(&trk[1], ENGI_WEST);
+        set_engine_of(&trk[1], ENGI_VOSIM);
         apply_preset_to(&trk[1], 3);
         trk[1].p[P_E1] = 77;
         trk[NTRK - 1u].p[P_ATK] = 21;
@@ -239,13 +240,13 @@ int main(void)
         set_engine_of(&trk[1], ENGI_SID);
         trk[NTRK - 1u].p[P_ATK] = 0;
         project_load(0);
-        ok &= trk[1].eng_req == ENGI_WEST && trk[1].p[P_E1] == 77 && trk[NTRK - 1u].p[P_ATK] == 21;
+        ok &= trk[1].eng_req == ENGI_VOSIM && trk[1].p[P_E1] == 77 && trk[NTRK - 1u].p[P_ATK] == 21;
         snprintf(dbg2, sizeof dbg2, "project: version %u at %u tracks, every track's sound kept", PROJ_VER, NTRK);
         bad += check(dbg2, ok);
         if (NTRK == 4) {                                /* a project of 8 tracks: refused, the music as it was */
             FILE *f;
             reset();
-            set_engine_of(&trk[1], ENGI_WEST);
+            set_engine_of(&trk[1], ENGI_VOSIM);
             trk[2].p[P_ATK] = 64;
             project_save(0);
             if ((f = fopen(V4, "wb"))) {                /* (for the 8-track run: a 4-track project) */
@@ -281,7 +282,7 @@ int main(void)
                 set_engine_of(&trk[5], ENGI_SID);       /* (track 6 before: back to its power-on sound) */
                 trk[5].p[P_E1] = 99;
                 project_load(0);
-                ok = trk[1].eng_req == ENGI_WEST && trk[2].p[P_ATK] == 64 &&
+                ok = trk[1].eng_req == ENGI_VOSIM && trk[2].p[P_ATK] == 64 &&
                      trk[5].eng_req == eng_for_track(&trk[5], TRK_DEF[5][0]) && trk[5].p[P_E1] != 99;
                 bad += check("  a 4-track project on 8 tracks: tracks 1 .. 4 as saved, 5 .. 8 as at power-on", ok);
             }

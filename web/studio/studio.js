@@ -138,11 +138,9 @@ const GROUPS = {
 };
 const ENGINE_WORDS = {
   SID: "The C64's chip voice: pulse, saw, noise, ring, sync",
-  SH101: "The little monosynth: saw, pulse, sub, 24 dB filter",
   WAVE: "Wavetables, scanned and warped",
   VOSIM: "Two formants of pulse trains: voices, reeds, brass",
   BLISS: "FM keys: electric pianos, bells, mallets",
-  WEST: "West coast: complex osc, folder, gate",
   MODAL: "Struck, plucked and bowed resonators",
   STRINGS: "A string ensemble: 16', 8', 4' and its chorus",
   CANYON: "Echoes' repeats, all of them",

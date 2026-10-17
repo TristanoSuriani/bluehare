@@ -188,3 +188,8 @@ What they were (from the README of before; the distributions as they were then):
   shifts it); FORM picks a formula of it (SAW, PWM, SIERP, XOR, OR, CHIRP, 42, MELO, OCTS, GLTCH, NOISE, MASK), A B C
   are its constants (A mostly the pitch, B how fast the pattern moves, C a mask or a melody); LOOP restarts the counter
   (1K .. 256K steps) so a pattern repeats while held; BITS and TONE shape the 8-bit output
+- **WEST** *(1.5; archived 2026-10-17: fewer engines, the kept ones better)*: west coast, a complex oscillator
+  (a modulator into the carrier), a wave folder and a low-pass gate. Id 16 retired with it
+- **SH101** *(Blue Hare, Milestone 1; archived 2026-10-17)*: the little monosynth after the Roland SH-101: saw, pulse
+  (PW), a sub (three types), noise, a 24 dB ladder. Its WIND and SURF live on in SID; GEN's basses are WAVE's SUB BASS
+  and SID BASS. Id 61 retired with it

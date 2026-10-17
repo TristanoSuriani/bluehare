@@ -24,6 +24,8 @@
  * Their ids stay theirs (core.h EID_RETIRED: a stored sound of one is refused): one comes back by moving its
  * eng_*.c back and turning its ARCHIVED line into an ENGINE line again */
 ARCHIVED(BYTE, 15)
+ARCHIVED(WEST, 16)            /* (2026-10-17, with SH101: fewer engines, the kept ones better) */
+ARCHIVED(SH101, 61)
 ARCHIVED(ECHOES, 36)          /* (2026-10-17: STRINGS took its place) */
 ARCHIVED(CANYON, 58)          /* (2026-10-17, with ECHOES: its repeats are ECHOES') */
 ARCHIVED(HOOVER, 17)

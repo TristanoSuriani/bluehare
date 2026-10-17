@@ -153,7 +153,7 @@ int main(void)
     i = (uint32_t)run(3000);
     check("a GEN piece loaded (its sounds, key, tempo) and played on the baseline alone",
           gen.on && i > 300u && gen.s.played[0] > 0u && song.g[G_BPM] == GEN_PRESETS[0].bpm &&
-          trk[1].eng_req == (BLUEHARE_ENG_SH101 ? ENGI_SH101 : trk[1].eng_req));
+          trk[1].eng_req == ENGI_WAVE);   /* (GARDEN's bass: WAVE's SUB BASS) */
     {   /* the song: written into RAM, the music changed, read back: as it was (song.c, nothing of the OS's store) */
         pw_t w;
         pr_t r;

@@ -662,8 +662,8 @@ static void setup(int s)
     case S_EDIT_BYTE_2: eng(ENGI_BLISS); go_title("EDIT 2"); break;
     case S_EDIT_WAVE: eng(ENGI_WAVE); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_BYTE: eng(ENGI_STRINGS); TSEL->p[P_E6] = 9; go_title("EDIT 2"); break;
-    case S_EDIT_WEST: eng(ENGI_WEST); TSEL->p[P_E0] = 13; TSEL->p[P_E3] = -20; go_title("EDIT 1"); break;
-    case S_EDIT_WEST_2: eng(ENGI_WEST); go_title("EDIT 2"); break;
+    case S_EDIT_WEST: eng(ENGI_VOSIM); TSEL->p[P_E6] = -20; go_title("EDIT 1"); break;   /* (WEST archived: VOSIM, a negative SWEEP) */
+    case S_EDIT_WEST_2: eng(ENGI_VOSIM); go_title("EDIT 2"); break;
     case S_EDIT_HOOVER: eng(ENGI_MODAL); go_title("EDIT 2"); break;
     case S_EDIT_HOOVER_2: eng(ENGI_SID); TSEL->p[P_E5] = -12; go_title("EDIT 2"); break;
     case S_EDIT_PHYS: eng(ENGI_MODAL); go_title("EDIT 1"); break;
@@ -750,7 +750,7 @@ static void setup(int s)
     case S_EDIT_PEEK: go_title("EDIT 1"); ui.layer = LAYER_EDIT; break;
     case S_EDIT_ACTIVE: eng(ENGI_BLISS); apply_preset_to(TSEL, 2); favorite_set(EID_BLISS, 2, 1); go_home(); ui.layer = LAYER_EDIT;
         ui.hot_col = 0; ui.hot_t = 30; break;
-    case S_EDIT_USER: song.playing = 0; eng(ENGI_WEST); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(EID_COUNT, 6, 1);
+    case S_EDIT_USER: song.playing = 0; eng(ENGI_VOSIM); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(EID_COUNT, 6, 1);
         go_home(); ui.layer = LAYER_EDIT; break;
     case S_LAYER_HINT: go_page(GR_TRK); ui.msg_t = 0; layer_tap(LAYER_GLO); break;
     /* #83: locked open by a double tap (the lock after the header's name): EDIT and FX */

@@ -37,8 +37,8 @@ FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER
 OPTIONAL = {"uac_tap48": 504}           # (absent from a BLUEHARE_UAC_48K=0 or BLUEHARE_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
 # the one build/bluehare.dis is: tools/build.py), skipped then
-ENGINE_OF = {"sid_render": "SID", "wave_render": "WAVE", "bliss_render": "BLISS", "west_render": "WEST",
-             "modal_render": "MODAL", "strings_render": "STRINGS", "sh101_render": "SH101", "vosim_render": "VOSIM"}
+ENGINE_OF = {"sid_render": "SID", "wave_render": "WAVE", "bliss_render": "BLISS",
+             "modal_render": "MODAL", "strings_render": "STRINGS", "vosim_render": "VOSIM"}
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...
