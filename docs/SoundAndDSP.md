@@ -179,7 +179,7 @@ bass (SH101), keys (BLISS) and bells (MODAL).
 ## Next
 
 2026-10-17: amb-1's plate and echoes as REVERB TYPE PLATE and DELAY TYPE AMB, the EQ, all in float with fast math
-(`tests/float_fx_test.c` checks fastmath against libm, the EQ's bands, PLATE's tail and level, AMB's echoes and its
+(`tests/baseline/float_fx_test.c` checks fastmath against libm, the EQ's bands, PLATE's tail and level, AMB's echoes and its
 switch). Milestone 1 has SH101 (above) and the sound design studio (`web/studio/`: every engine and every effect of section 3
 in the browser, the firmware itself in WebAssembly) and GEN (section 8). Next: FX
 presets (the FX screen chooses between presets of the chain in section 3). The 2x oversampling stays unused: SH101's

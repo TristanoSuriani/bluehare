@@ -93,7 +93,7 @@ These carry `Copyright (C) 2026 Tristano Suriani (Blue Hare)`.
 | CHIPKIT (the drums of the 8-bit consoles; CHIP's) | `firmware/src/eng_chipkit.c` |
 | SANDSTORM (the late-90s trance lead, named after Darude's track; WAREHOUSE's) | `firmware/src/eng_sandstorm.c` |
 | The native image's reverbs CONCERT, CAVERN, SHIMMER | `firmware/baseline/fx_native.c` |
-| Tests for distributions and SPEECH | `tests/engines_test.c`, `archive/tests/speech_test.c` |
+| Tests for distributions and SPEECH | `tests/os/engines_test.c`, `archive/tests/speech_test.c` |
 
 *(2026-10-16)* The engines not in Blue Hare's one distribution, HARE FM1 (SID, SH101, WAVE, VOSIM, BLISS, WEST, MODAL, STRINGS since 2026-10-17;
 ECHOES and CANYON archived then), are archived: their files are in `archive/engines/` (the paths above say `firmware/src/` for
@@ -128,7 +128,7 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
   patches) are removed; their ids retired; the host tests build IDM.
 - Blue Hare's groovebox parts are archived (2026-10-16): the SLICER (Felucca's), DUCK, and the FX layer's REPEAT,
   REVERSE and TAPE STOP (Felucca's); the FX layer has its own buffer instead of the SLICER's.
-- GEN (2026-10), the generative engine on ARP (`firmware/baseline/gen.c`, its page, `tests/gen_test.c`): its composition
+- GEN (2026-10), the generative engine on ARP (`firmware/baseline/gen.c`, its page, `tests/baseline/gen_test.c`): its composition
   (the pieces, the breathing pad, the bells' loops, the drift, the arc, the euclidean pulse) is **amb-1's, by Charles
   Vestal** (GPL-3.0; the excerpts in `docs/excerpt_amb1.c` and `docs/excerpt_fastmath_amb1.c`, the latter from his X0X),
   ported to fixed point and to Blue Hare's tracks and engines by Blue Hare.
@@ -145,8 +145,8 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
 These are Felucca's code, moved out of the files they used to live in. They keep Leo Kuroshita's copyright, with
 Blue Hare's modification line:
 
-- `tests/factory_patterns.h`, from `firmware/baseline/engines.c`
-- `tests/lfo2_test.c`, from `tests/fun10_test.c`
+- `tests/lib/factory_patterns.h`, from `firmware/baseline/engines.c`
+- `tests/os/lfo2_test.c`, from `tests/fun10_test.c`
 
 ## AI assistance
 
