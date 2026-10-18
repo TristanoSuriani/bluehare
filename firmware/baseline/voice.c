@@ -261,8 +261,6 @@ static void glide_set(track_t *t, voice_t *v, int glide)
 
 /* (2026-10-17, the layers: seq.c input_on) the next notes' crossfade level (Q15; 0xFFFF: none given, a legato note
  * keeps its voice's), and a chord's note on a MONO layer: its pitch taken without a new attack (voice_chord) */
-static uint16_t voice_xg = 0xFFFFu;
-static uint8_t voice_chord;
 static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int glide)
 {
     const engine_t *e = ENGINES[t->engine];
@@ -279,7 +277,6 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->pitch16 = (int32_t)note * 16;
     v->mvel = t->m_vel;                                 /* mod.c: the note's VEL and RAND */
     v->mrnd = t->m_rnd;
-    v->xg = voice_xg == 0xFFFFu ? 32767u : voice_xg;
     t->m_vi = (uint8_t)(v - t->v);
     glide_set(t, v, glide);
     if (!sounding) {
@@ -348,8 +345,6 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
             v->pitch16 = (int32_t)note * 16;
             v->mvel = t->m_vel;
             v->mrnd = t->m_rnd;
-            if (voice_xg != 0xFFFFu)
-                v->xg = voice_xg;
             if (vel > v->vel && nv == 1u)
                 v->vel = (uint8_t)vel;
             glide_set(t, v, glide);
@@ -423,9 +418,7 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
         want = mono_pick(t);
         if (sounding && want == t->mono_note)
             return;                                     /* LOW / HIGH priority: this key does not win */
-        if (voice_chord && sounding)                    /* (a chord's later note on a layer: the pitch only) */
-            mono_play(t, want, vel, 0, 0);
-        else if (mode == V_MONO)                        /* MONO: always retrigger, glide when GLIDE is set */
+        if (mode == V_MONO)                        /* MONO: always retrigger, glide when GLIDE is set */
             mono_play(t, want, vel, 1, t->p[P_GLIDE] != 0);
         else                                            /* LEGATO / UNISON: glide only between held notes */
             mono_play(t, want, vel, !sounding, sounding && t->p[P_GLIDE] != 0);
@@ -636,8 +629,6 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
             m.amp1 = e->ownenv ? env : mulq15(env, v->vel * 258);
-            if (v->xg < 32767u)                         /* (the layers' crossfade: VEL, KEY) */
-                m.amp1 = mulq15(m.amp1, v->xg);
             if (p[P_LD_AMP])
                 m.amp1 = mulq15(m.amp1, 32767 - mulq15(p[P_LPOL] ? lfo : (lfo + 32768) >> 1, p[P_LD_AMP] * 258));
             if (fade)                                   /* linear to 0 over the fade */

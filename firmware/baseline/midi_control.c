@@ -39,13 +39,6 @@ static uint32_t midi_targets(uint32_t ch)
 static void midi_expression(track_t *t, const midi_channel_t *c)
 {
     int32_t range = ((int32_t)c->semis * 100 + c->cents) * 256 / 100, b = (int32_t)c->bend * range / (c->bend < 0 ? 8192 : 8191);
-    uint32_t k;
-    if (layers_on()) {                              /* (Blue Hare) the layers: the bend is every ON layer's */
-        for (k = 0; k < NTRK; k++)
-            if (lay.on[k] && !drum_track(&trk[k]))
-                midi_bend_target[k] = b;
-        return;
-    }
     if (drum_track(t))
         return;
     midi_bend_target[trk_index(t)] = b;
@@ -317,19 +310,7 @@ static void __attribute__((noinline)) midi_route_block(void)
  * WHEEL too */
 static void __attribute__((noinline)) midi_ctl_layers(uint32_t st, uint32_t ch, uint32_t d1, uint32_t d2)
 {
-    uint32_t k;
-    if (st == 0xB0u && d1 == 1u)
-        lay.xval = (uint8_t)d2;
-    if (!layers_on()) {
-        mod_midi(midi_track(ch), st, d1, d2);
-        return;
-    }
-    for (k = 0; k < NTRK; k++)
-        if (lay.on[k]) {
-            mod_midi(&trk[k], st, d1, d2);
-            if (st == 0xB0u && d1 != 1u && d1 != 11u && d1 != 121u && midi_track(ch) != &trk[k])
-                midi_cc_map(&trk[k], d1, d2);           /* (the channel's own track: midi_control's) */
-        }
+    mod_midi(midi_track(ch), st, d1, d2);           /* (2026-10-18: the channel's patch; the layers deleted) */
 }
 static void __attribute__((noinline)) midi_event(uint32_t st, uint32_t ch, uint32_t d1, uint32_t d2)
 {

@@ -31,7 +31,7 @@
  * A project of more tracks than the build has is refused (SONG HAS 8 TRACKS), one of fewer fills its first tracks (the
  * rest as at power-on). */
 #define PROJ_NAME_LEN 12u                      /* the name: upper-case ASCII 32..126, 0-padded; "" = none */
-#define PROJ_VER 15u                           /* (Blue Hare) 15 (2026-10-18): the chorus's and EQ's presets (G_COUNT 38); 14 the reverb's MIX, the patches' delays; 13 the FX preset, WET; 12 (2026-10-17): GEN's densities (G_COUNT 35); 11: the EQ, the layers' crossfade; 8: no song (the sequencer is a placeholder); 9: no DUCK;
+#define PROJ_VER 16u                           /* (Blue Hare) 16 (2026-10-18): the layers deleted, the insert filters kept; 15 (2026-10-18): the chorus's and EQ's presets (G_COUNT 38); 14 the reverb's MIX, the patches' delays; 13 the FX preset, WET; 12 (2026-10-17): GEN's densities (G_COUNT 35); 11: the EQ, the layers' crossfade; 8: no song (the sequencer is a placeholder); 9: no DUCK;
                                                   * 10: the layers (core.h lay) */
 
 /* the stream's sink and source (2026-10-17): the format's hash and its fields here; where the bytes go, or come from,
@@ -124,26 +124,9 @@ static void song_write(pw_t *w, const char *name)
     }
     pw_bytes(w, trk_lowcut, NTRK);
     pw_bytes(w, trk_pmode, NTRK);
-    {                                                   /* the layers (version 10) */
-        uint8_t tr[NTRK];
-        uint32_t k;
-        for (k = 0; k < NTRK; k++)
-            tr[k] = (uint8_t)(lay.tr[k] + 64);
-        pw_u8(w, lay.mode);
-        pw_bytes(w, lay.on, NTRK);
-        pw_bytes(w, lay.klo, NTRK);
-        pw_bytes(w, lay.khi, NTRK);
-        pw_bytes(w, lay.vlo, NTRK);
-        pw_bytes(w, lay.vhi, NTRK);
-        pw_bytes(w, tr, NTRK);
-        pw_bytes(w, lay.ftype, NTRK);
-        pw_bytes(w, lay.fcut, NTRK);
-        pw_bytes(w, lay.fres, NTRK);
-        pw_u8(w, lay.xsrc);                             /* (version 11: the crossfade; a place + 1, 0 OFF) */
-        for (k = 0; k < NTRK; k++)
-            tr[k] = (uint8_t)(lay.xpos[k] + 1);
-        pw_bytes(w, tr, NTRK);
-    }
+    pw_bytes(w, pins.ftype, NTRK);                      /* (version 16: the patches' insert filters; the layers gone) */
+    pw_bytes(w, pins.fcut, NTRK);
+    pw_bytes(w, pins.fres, NTRK);
     {
         uint32_t h = w->h;
         uint8_t b[4] = {(uint8_t)h, (uint8_t)(h >> 8), (uint8_t)(h >> 16), (uint8_t)(h >> 24)};
@@ -242,34 +225,18 @@ static int song_read(pr_t *r, int apply, char *name)
             trk_pmode[k] = pm[k];
         }
     }
-    {                                               /* the layers (version 10): a value out of range refuses the song */
-        uint8_t mode = (uint8_t)pr_u8(r), v[10][8], xsrc;
+    {                                               /* the patches' insert filters (version 16): out of range refuses */
+        uint8_t v[3][8];
         uint32_t j;
-        for (j = 0; j < 9u; j++)
+        for (j = 0; j < 3u; j++)
             pr_bytes(r, v[j], ntr);
-        xsrc = (uint8_t)pr_u8(r);
-        pr_bytes(r, v[9], ntr);
-        if (mode >= LM_N || xsrc >= LX_N)
-            return 1;
         for (k = 0; k < ntr; k++)
-            if (v[0][k] > 1u || v[1][k] > 127u || v[2][k] > 127u || v[3][k] > 127u || v[4][k] > 127u ||
-                v[5][k] < 40u || v[5][k] > 88u || v[6][k] >= LF_N || v[7][k] > 127u || v[8][k] > 127u || v[9][k] > 128u)
+            if (v[0][k] >= LF_N || v[1][k] > 127u || v[2][k] > 127u)
                 return 1;
-        if (apply) {
-            lay.mode = mode;
-            lay.xsrc = xsrc;
-            for (k = 0; k < ntr; k++) {
-                lay.on[k] = v[0][k];
-                lay.klo[k] = v[1][k];
-                lay.khi[k] = v[2][k];
-                lay.vlo[k] = v[3][k];
-                lay.vhi[k] = v[4][k];
-                lay.tr[k] = (int8_t)(v[5][k] - 64);
-                lay.ftype[k] = v[6][k];
-                lay.fcut[k] = v[7][k];
-                lay.fres[k] = v[8][k];
-                lay.xpos[k] = (int8_t)(v[9][k] - 1);
-            }
+        for (k = 0; apply && k < ntr; k++) {
+            pins.ftype[k] = v[0][k];
+            pins.fcut[k] = v[1][k];
+            pins.fres[k] = v[2][k];
         }
     }
     {

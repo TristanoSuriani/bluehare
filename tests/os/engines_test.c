@@ -237,7 +237,7 @@ int main(void)
         trk[1].p[P_E2] = 77;                            /* (MODAL's STRUCT: 0 .. 127) */
         trk[NTRK - 1u].p[P_ATK] = 21;
         project_save(0);
-        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 15u;   /* (2026-10-18: the reverb MIX, the patches' delays) */
+        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 16u;   /* (2026-10-18: the reverb MIX, the patches' delays) */
         set_engine_of(&trk[1], ENGI_SID);
         trk[NTRK - 1u].p[P_ATK] = 0;
         project_load(0);

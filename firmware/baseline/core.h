@@ -203,7 +203,6 @@ typedef struct {
     uint32_t age;
     uint8_t mvel;                /* mod.c: the note-on velocity (before UNISON scaling) and RAND of the note */
     int16_t mrnd;
-    uint16_t xg;                 /* (2026-10-17) the layers' crossfade: the note's level on this layer, Q15 */
 } voice_t;
 
 typedef struct {                 /* per-voice control-rate modulation, computed in voice.c */
@@ -354,50 +353,23 @@ static inline int tw_wide(uint32_t k) { return k >= TW_FIRST && k < NTRK; }   /*
 #define TP_ALT 0u
 #define TP_RND 1u
 static uint8_t trk_pmode[NTRK];
-/* (Blue Hare, 2026-10-16: Milestone 2's layers) the tracks are the patch's layers. A layer ON is part of the patch: a
- * note played (the keys, MIDI in) sounds on every ON layer whose key and velocity ranges hold it (LM_STACK: a stack, a
- * key split, a velocity split, by the ranges), or on one of them in turn (LM_ROBIN: round-robin), each transposed by
- * its own TRANS; with no layer ON, on the selected one alone (as before layers). Each layer's insert after DIST and
- * LOW CUT: a 12 dB state-variable filter (lay.ftype OFF LP BP HP, its cutoff and resonance: fx.c track_filter).
- * Saved with the song (project.c version 10). seq.c layer_on / layer_off route the notes.
- * (2026-10-17) The crossfade: with XFADE on (lay.xsrc VEL, KEY or WHEEL) the layers given a place on it (lay.xpos 0 ..
- * 127; -1 OFF: not in it, always at full level) fade into each other along it, equal power, two neighbours at a time:
- * at a layer's place that layer alone, below the first place the first, above the last the last. VEL and KEY: each
- * note's own level on each layer (a layer at 0 for it does not play it); WHEEL: the layers' levels now (MIDI CC1, the
- * studio's MORPH: lay.xval), every voice at once (seq.c lay_xgain, voice.c, fx.c mix_part) */
-enum { LM_STACK, LM_ROBIN, LM_N };
-enum { LX_OFF, LX_VEL, LX_KEY, LX_WHEEL, LX_N };
+/* (2026-10-18) the patch's insert after DIST and LOW CUT: a 12 dB state-variable filter (pins.ftype OFF LP BP HP, its
+ * cutoff and resonance: fx.c track_filter). (The layers' stacking, ranges and crossfade, 2026-10-16 .. 18: deleted; the
+ * four are patches, a sound each on its own channel) */
 enum { LF_OFF, LF_LP, LF_BP, LF_HP, LF_N };
 static struct {
-    uint8_t mode;                         /* LM_* (the patch's) */
-    uint8_t on[NTRK], klo[NTRK], khi[NTRK], vlo[NTRK], vhi[NTRK];
-    int8_t tr[NTRK];                      /* semitones, -24 .. 24 */
     uint8_t ftype[NTRK], fcut[NTRK], fres[NTRK];   /* LF_*, 0 .. 127 (CUTOFF_HZ), 0 .. 127 */
-    uint8_t xsrc;                         /* LX_* (the patch's crossfade) */
-    int8_t xpos[NTRK];                    /* the layer's place on it, 0 .. 127; -1 OFF */
-    uint8_t xval;                         /* WHEEL's value now (not saved) */
-} lay;
-static int32_t lay_wg[NTRK], lay_wt[NTRK];   /* WHEEL: each layer's level now and where it goes (Q15; seq.c, fx.c) */
+} pins;
 static void trk_mix_defaults(void)
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++) {
         trk_lowcut[k] = (uint8_t)(tw_wide(k) ? TL_DEF : 0u);
         trk_pmode[k] = TP_ALT;
-        lay.on[k] = 0;
-        lay.klo[k] = 0;
-        lay.khi[k] = 127;
-        lay.vlo[k] = 1;
-        lay.vhi[k] = 127;
-        lay.tr[k] = 0;
-        lay.ftype[k] = LF_OFF;
-        lay.fcut[k] = 100;
-        lay.fres[k] = 20;
-        lay.xpos[k] = -1;
-        lay_wg[k] = lay_wt[k] = 32767;
+        pins.ftype[k] = LF_OFF;
+        pins.fcut[k] = 100;
+        pins.fres[k] = 20;
     }
-    lay.mode = LM_STACK;
-    lay.xsrc = LX_OFF;
 }
 
 /* SWING of a track's step clock (#31): CLOCK's SWING, at most 100 (the host tests' song player swings by it; the

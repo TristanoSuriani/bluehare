@@ -1,5 +1,9 @@
 # Layers: how Blue Hare builds a multilayer patch
 
+> **Superseded (2026-10-18).** The layer stacking (ON, key and velocity ranges, TRANS, the play modes, the crossfade)
+> was deleted: the four slots are patches, each its own sound on its own channel (docs/Identity.md). What stays is each
+> patch's insert (DRIVE, FILTER, LOW CUT, PAN MODE). This document is kept as the record of the design.
+
 Blue Hare is a multilayer synthesizer for live performance, not a groovebox. A **patch** is up to four **layers**, each a
 whole sound on its own engine, playing together through one shared effects chain. This page records the design and
 what is built (2026-10-16). It follows the Waldorf Blofeld's Multi mode and the Waldorf Protein's layers

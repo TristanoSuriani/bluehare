@@ -280,8 +280,8 @@ int main(void)
         int16_t atk = trk[2].p[P_ATK], bpm;
         uint32_t eng = trk[1].eng_req;
         song.g[G_BPM] = 97;
-        lay.on[1] = 1;
-        lay.tr[1] = -12;
+        pins.ftype[1] = LF_BP;                          /* (2026-10-18: a patch's insert filter, the layers deleted) */
+        pins.fcut[1] = 70;
         bpm = song.g[G_BPM];
         memset(&w, 0, sizeof w);
         w.h = 2166136261u;
@@ -289,15 +289,15 @@ int main(void)
         song_write(&w, "RAM SONG");
         song.g[G_BPM] = 140;
         trk[2].p[P_ATK] = (int16_t)(atk + 7);
-        lay.on[1] = 0;
-        lay.tr[1] = 0;
+        pins.ftype[1] = LF_OFF;
+        pins.fcut[1] = 100;
         memset(&r, 0, sizeof r);
         r.h = 2166136261u;
         r.src = ram_src;
         ram_r = 0;
         snprintf(msg, sizeof msg, "the song written and read back on the baseline alone (song.c, %u bytes in RAM)", ram_w);
         check(msg, !w.err && song_read(&r, 1, name) == 0 && song.g[G_BPM] == bpm && trk[2].p[P_ATK] == atk &&
-              trk[1].eng_req == eng && lay.on[1] == 1 && lay.tr[1] == -12 && !strcmp(name, "RAM SONG"));
+              trk[1].eng_req == eng && pins.ftype[1] == LF_BP && pins.fcut[1] == 70 && !strcmp(name, "RAM SONG"));
     }
     printf(bad ? "baseline: %d FAILED\n" : "baseline: all passed\n", bad);
     return bad ? 1 : 0;

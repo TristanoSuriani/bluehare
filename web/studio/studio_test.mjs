@@ -87,7 +87,7 @@ for (let i = 0; i < lay.length && lay[i];) {
   groups.push(g);
 }
 check(`the layout: ${groups.map((g) => g.key).join("")} (${groups.reduce((n, g) => n + g.items.length, 0)} parameters)`,
-  groups.map((g) => g.key).join("") === "EANLDMVZFSXWJUYRCPQKGH");
+  groups.map((g) => g.key).join("") === "EANLDMVFSXUYRCPQKGH");
 const descOk = groups.every((g) => g.items.every(([s, id]) => {
   const [fmt, min, max, def] = d.call([{ fn: "stu_desc", args: [s, id], ret: ["i32", 5] }])[0];
   return id < [P, G, X][s] && min <= def && def <= max && d.str("stu_desc_label", s, id) !== "" && fmt >= 0;
@@ -110,98 +110,17 @@ check("a global (the FX chain's) is set", d.one("stu_get", 1, 9) === 30);
 
 // the effects of scope 2 (docs/SoundAndDSP.md section 3): the track's inserts, the speaker EQ, the macros, MASTER
 const SX = Object.fromEntries([...Array(X).keys()].map((i) => [d.str("stu_desc_label", 2, i), i]));
-check(`scope 2: ${Object.keys(SX).join(" ")}`, ["LAYER", "KEY LO", "KEY HI", "VEL LO", "VEL HI", "TRANS", "LFILT", "LCUT", "LRES", "MODE", "XFADE", "XPOS", "MORPH", "LOWCUT", "PANMODE", "SPK EQ", "FILTER", "CRUSH", "THROW", "DEPTH", "MASTER"]
+check(`scope 2: ${Object.keys(SX).join(" ")}`, ["LFILT", "LCUT", "LRES", "LOWCUT", "PANMODE", "SPK EQ", "FILTER", "CRUSH", "THROW", "DEPTH", "MASTER"]
   .every((n) => n in SX));
 d.one("stu_set", 2, SX.LOWCUT, 3, 0);
 d.one("stu_set", 2, SX.PANMODE, 1, 0);
 d.one("stu_select", 1);
 const other = d.one("stu_get", 2, SX.LOWCUT);
 d.one("stu_select", 0);
-check(`LOW CUT ("${d.str("stu_format", 2, SX.LOWCUT, 3)}") and PAN MODE: the selected layer's (layer 2 keeps ${other})`,
+check(`LOW CUT ("${d.str("stu_format", 2, SX.LOWCUT, 3)}") and PAN MODE: the selected patch's (patch 2 keeps ${other})`,
   d.one("stu_get", 2, SX.LOWCUT) === 3 && d.one("stu_get", 2, SX.PANMODE) === 1 && other !== 3);
 d.one("stu_set", 2, SX.LOWCUT, 0, 0);
 d.one("stu_set", 2, SX.PANMODE, 0, 0);
-
-// the layers (core.h lay): ON layers play the notes their ranges hold; ROUND ROBIN one each in turn; none ON: the
-// selected one alone
-{
-  const voices = () => [0, 1, 2, 3].map((t) => d.one("stu_track_voices", t));
-  const hit = (note, vel) => { d.one("stu_note", note, vel); d.render(60); const v = voices(); d.one("stu_note", note, 0); d.render(3000); return v; };
-  d.one("stu_all_off");
-  d.render(3000);
-  d.one("stu_select", 0); d.one("stu_set", 2, SX.LAYER, 1, 0);
-  d.one("stu_select", 1); d.one("stu_set", 2, SX.LAYER, 1, 0); d.one("stu_set", 2, SX["KEY HI"], 59, 0);
-  d.one("stu_select", 0);
-  const low = hit(48, 100), high = hit(72, 100);
-  check(`a key split: C3 on layers 1 and 2 (${low.join(" ")}), C5 on layer 1 alone (${high.join(" ")}); "${d.str("stu_format", 2, SX["KEY HI"], 59)}"`,
-    low[0] > 0 && low[1] > 0 && !low[2] && !low[3] && high[0] > 0 && !high[1]);
-  d.one("stu_select", 1); d.one("stu_set", 2, SX["KEY HI"], 127, 0); d.one("stu_set", 2, SX["VEL LO"], 100, 0);
-  d.one("stu_select", 0);
-  const soft = hit(60, 60), hard = hit(60, 110);
-  check(`a velocity split: soft on layer 1 alone (${soft.join(" ")}), hard on both (${hard.join(" ")})`, soft[0] > 0 && !soft[1] && hard[0] > 0 && hard[1] > 0);
-  d.one("stu_select", 1); d.one("stu_set", 2, SX["VEL LO"], 1, 0);
-  d.one("stu_set", 2, SX.MODE, 1, 0);
-  const a = hit(60, 100), b = hit(62, 100), c = hit(64, 100);
-  check(`ROUND ROBIN: one layer a note, in turn (${a.join(" ")} / ${b.join(" ")} / ${c.join(" ")})`,
-    a[0] + a[1] === 1 && b[0] + b[1] === 1 && a[0] !== b[0] && c[0] === a[0]);
-  d.one("stu_set", 2, SX.MODE, 0, 0);
-  d.one("stu_set", 2, SX.LAYER, 0, 0); d.one("stu_select", 0); d.one("stu_set", 2, SX.LAYER, 0, 0);
-  d.one("stu_select", 2);
-  const sel = hit(60, 100);
-  check(`no layer ON: the selected layer alone (${sel.join(" ")})`, sel[2] > 0 && !sel[0] && !sel[1] && !sel[3]);
-  d.one("stu_select", 0);
-  const level = (ft) => { d.one("stu_set", 2, SX.LFILT, ft, 0); d.one("stu_set", 2, SX.LCUT, 10, 0); d.one("stu_note", 84, 110);
-    d.render(100); const p = d.render(300); d.one("stu_note", 84, 0); d.render(3000); return p; };
-  const open = level(0), lp = level(1);
-  d.one("stu_set", 2, SX.LFILT, 0, 0);
-  check(`the layer's filter: LP at its lowest cutoff takes a C6 from ${open.toFixed(3)} to ${lp.toFixed(3)}`, lp < open / 4);
-
-  // (2026-10-17) the crossfade: layers 1 and 2 placed at 20 and 100 along VELOCITY, then KEY, then the WHEEL
-  const xg = (note, vel) => { d.one("stu_note", note, vel); d.render(30); const g = [0, 1].map((t) => d.one("stu_track_xg", t));
-    d.one("stu_note", note, 0); d.render(2000); return g; };
-  d.one("stu_all_off"); d.render(2000);
-  d.one("stu_set", 2, SX.LAYER, 1, 0); d.one("stu_set", 2, SX.XPOS, 20, 0);
-  d.one("stu_select", 1); d.one("stu_set", 2, SX.LAYER, 1, 0); d.one("stu_set", 2, SX.XPOS, 100, 0);
-  d.one("stu_select", 0);
-  d.one("stu_set", 2, SX.XFADE, 1, 0);
-  const v1 = xg(60, 10), v2 = xg(60, 60), v3 = xg(60, 120);
-  check(`XFADE VELOCITY: soft layer 1 alone (${v1}), middle both at -3 dB (${v2}), hard layer 2 alone (${v3})`,
-    v1[0] === 32767 && v1[1] === 0 && Math.abs(v2[0] - 23170) < 400 && Math.abs(v2[1] - 23170) < 400 && v3[0] === 0 && v3[1] === 32767);
-  d.one("stu_set", 2, SX.XFADE, 2, 0);
-  const k1 = xg(12, 100), k2 = xg(110, 100);
-  check(`XFADE KEY: low layer 1 (${k1}), high layer 2 (${k2}); "${d.str("stu_format", 2, SX.XPOS, -1)}" for no place`,
-    k1[0] === 32767 && k1[1] === 0 && k2[0] === 0 && k2[1] === 32767 && d.str("stu_format", 2, SX.XPOS, -1) === "OFF");
-  d.one("stu_set", 2, SX.XFADE, 3, 0);
-  d.one("stu_set", 2, SX.MORPH, 0, 0); d.render(50);
-  const w0 = [0, 1].map((t) => d.one("stu_layer_wg", t));
-  d.one("stu_set", 2, SX.MORPH, 127, 0); d.render(50);
-  const w1 = [0, 1].map((t) => d.one("stu_layer_wg", t));
-  d.one("stu_select", 1); d.one("stu_set", 2, SX.XPOS, -1, 0); d.one("stu_select", 0); d.render(50);
-  const w2 = d.one("stu_layer_wg", 1);
-  check(`XFADE WHEEL: MORPH 0 layer 1 (${w0}), 127 layer 2 (${w1}); a layer with no place at full level (${w2})`,
-    w0[0] === 32767 && w0[1] === 0 && w1[0] === 0 && w1[1] === 32767 && w2 === 32767);
-  d.one("stu_set", 2, SX.XFADE, 0, 0); d.one("stu_set", 2, SX.MORPH, 0, 0); d.render(50);
-  check("XFADE OFF: every layer at full level", d.one("stu_layer_wg", 0) === 32767 && d.one("stu_layer_wg", 1) === 32767);
-
-  // a MONO layer under a POLY one: a chord's notes change its pitch, no new attack each (the stutter); a phrase retriggers
-  const VOICE = Object.fromEntries([...Array(P).keys()].map((i) => [d.str("stu_desc_label", 0, i), i]));
-  const VMODE = VOICE.VCE;
-  d.one("stu_set", 0, VMODE, 0, 0);                   /* (layer 1 POLY, layer 2 MONO) */
-  d.one("stu_select", 1); d.one("stu_set", 0, VMODE, 1, 0); d.one("stu_select", 0);
-  d.one("stu_note", 60, 100); d.render(10);
-  const c0 = d.one("stu_track_age", 1);
-  d.one("stu_note", 64, 100); d.one("stu_note", 67, 100); d.render(30);
-  const chord = [d.one("stu_track_age", 1), d.one("stu_track_note", 1), d.one("stu_track_voices", 0)];
-  for (const n of [60, 64, 67]) d.one("stu_note", n, 0);
-  d.render(2000);
-  d.one("stu_note", 60, 100); d.render(200); const a1 = d.one("stu_track_age", 1);
-  d.one("stu_note", 64, 100); d.render(30); const a2 = d.one("stu_track_age", 1);
-  d.one("stu_note", 60, 0); d.one("stu_note", 64, 0); d.render(2000);
-  check(`a MONO layer under a POLY one (${chord[2]} voices): a chord moves it to its last note (${chord[1]}) without a new attack (start ${c0} -> ${chord[0]}); a phrase retriggers (${a1} -> ${a2})`,
-    chord[1] === 67 && chord[0] === c0 && chord[2] === 3 && a2 > a1);
-  d.one("stu_select", 1); d.one("stu_set", 0, VMODE, 0, 0); d.one("stu_set", 2, SX.LAYER, 0, 0);
-  d.one("stu_select", 0); d.one("stu_set", 2, SX.LAYER, 0, 0); d.one("stu_set", 2, SX.XPOS, -1, 0);
-}
 
 // (2026-10-17) the patch's EQ; (2026-10-18) the global reverb (PLATE) and the patch's delay
 {

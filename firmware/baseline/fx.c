@@ -1038,8 +1038,6 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     int32_t *d = spread_buf;
     uint32_t i;
     int32_t lvl = LEVEL_Q12[t->p[P_LEVEL] & 127], pan = t->p[P_PAN], s = (t->p[P_SPRD] + 1) >> 1;
-    if (lay_wg[(uint32_t)(t - trk) % NTRK] < 32767)     /* (the layers' crossfade on WHEEL) */
-        lvl = (lvl * lay_wg[(uint32_t)(t - trk) % NTRK]) >> 15;
     if (!s)
         s = 32;                                         /* (PAN MODE RND at SPRD 0: half the width) */
     int32_t pa = clamp(pan - s, -64, 63), pb = clamp(pan + s, -64, 63);
@@ -1054,7 +1052,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     track_dist(t, b, n);
     if (trk_lowcut[(t - trk) % NTRK])
         track_lowcut((uint32_t)(t - trk) % NTRK, b, n);   /* (Blue Hare; the side d passes it, as it passes DIST) */
-    if (lay.ftype[(t - trk) % NTRK])
+    if (pins.ftype[(t - trk) % NTRK])
         track_filter((uint32_t)(t - trk) % NTRK, b, n);   /* (Blue Hare: the layer's filter; the side passes it too) */
     if ((pf.mute >> (t - trk)) & 1u)
         perf_mute_sd((uint32_t)(t - trk), b, d, n);
@@ -1100,15 +1098,15 @@ static __attribute__((noinline)) void track_lowcut(uint32_t k, int32_t *b, uint3
 
 /* ((Blue Hare) WIDTH, the Haas effect, removed 2026-10-16: inaudible) */
 
-/* (Blue Hare, 2026-10-16) the layer's filter (core.h lay.ftype): a 12 dB trapezoidal state-variable filter (dsp.c's,
- * tsvf), low-, band- or high-pass at lay.fcut (CUTOFF_HZ) with lay.fres, on the track's block after DIST and LOW CUT.
+/* (Blue Hare, 2026-10-16) the layer's filter (core.h pins.ftype): a 12 dB trapezoidal state-variable filter (dsp.c's,
+ * tsvf), low-, band- or high-pass at pins.fcut (CUTOFF_HZ) with pins.fres, on the track's block after DIST and LOW CUT.
  * The block can be several voices loud: it is filtered at a quarter of its size (the integrators held to +-150000) */
 static __attribute__((noinline)) void track_filter(uint32_t k, int32_t *b, uint32_t n)
 {
     tsvf_t c;
-    uint32_t i, ty = lay.ftype[k];
-    int32_t kk = 8192 - lay.fres[k] * 7600 / 127, f1 = tmix[k].f1, f2 = tmix[k].f2;
-    tsvf_coef_k(&c, lay.fcut[k] << 8, kk);
+    uint32_t i, ty = pins.ftype[k];
+    int32_t kk = 8192 - pins.fres[k] * 7600 / 127, f1 = tmix[k].f1, f2 = tmix[k].f2;
+    tsvf_coef_k(&c, pins.fcut[k] << 8, kk);
     for (i = 0; i < n; i++) {
         int32_t x = b[i] >> 2, v3 = x - f2, v1 = (c.a1 * f1 + c.a2 * v3) >> 13, v2 = f2 + ((c.a2 * f1 + c.a3 * v3) >> 13), y;
         f1 = clamp(2 * v1 - f1, -150000, 150000);
@@ -1140,8 +1138,6 @@ static void mix_part(track_t *t, uint32_t n)
         mix_spread(t, b, n);
     else {
         int32_t lvl = LEVEL_Q12[t->p[P_LEVEL] & 127], pan = t->p[P_PAN];
-        if (lay_wg[(uint32_t)(t - trk) % NTRK] < 32767)   /* (the layers' crossfade on WHEEL: seq.c lay_wheel) */
-            lvl = (lvl * lay_wg[(uint32_t)(t - trk) % NTRK]) >> 15;
         int32_t gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
         int32_t c = t->p[P_CHOR] * 258, d = t->p[P_DLY] * 258, r = song.g[G_RMIX] * 258, pk = t->peak;   /* (2026-10-18:
                                                        * the reverb global, every patch at its MIX; d the patch's delay) */
@@ -1151,7 +1147,7 @@ static void mix_part(track_t *t, uint32_t n)
         track_dist(t, b, n);
         if (trk_lowcut[k])
             track_lowcut(k, b, n);                      /* (Blue Hare) LOW CUT */
-        if (lay.ftype[k])
+        if (pins.ftype[k])
             track_filter(k, b, n);                      /* (Blue Hare) the layer's filter */
         if ((pf.mute >> (t - trk)) & 1u)
             perf_mute((uint32_t)(t - trk), b, n);       /* perform.c: a black key in the FX layer */

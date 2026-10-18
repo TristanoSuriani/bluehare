@@ -85,81 +85,6 @@ static uint32_t click_beat_len(void) { return 4u * div_samples(2); }   /* DIV 2:
 static int click_wanted(void) { return click_mode == CLICK_ON; }
 
 /* -------------------------------------------------------- note input --- */
-/* (Blue Hare, 2026-10-16) the layers (core.h lay): a note played goes to the ON layers its ranges reach (LM_STACK), or
- * to the next of them in turn (LM_ROBIN), each at the note plus its TRANS; with no layer ON, to the track it was played
- * on (the selected one; MIDI IN's channel's) as before. lay_tn[note][k]: the note layer k sounds for it (0xFF none),
- * so its release ends exactly what it started, whatever changed since */
-static uint8_t lay_tn[128][NTRK];
-static uint8_t lay_rr;                     /* LM_ROBIN: the layer that played last */
-static uint8_t lay_init;
-static int layers_on(void)
-{
-    uint32_t k;
-    for (k = 0; k < NTRK; k++)
-        if (lay.on[k])
-            return 1;
-    return 0;
-}
-static uint32_t layer_targets(uint32_t note, uint32_t vel)   /* the layers a note of vel reaches (a bit each) */
-{
-    uint32_t k, m = 0;
-    for (k = 0; k < NTRK; k++)
-        if (lay.on[k] && note >= lay.klo[k] && note <= lay.khi[k] && vel >= lay.vlo[k] && vel <= lay.vhi[k])
-            m |= 1u << k;
-    if (lay.mode == LM_ROBIN && m) {           /* the next one after the last that played */
-        for (k = 1; k <= NTRK; k++) {
-            uint32_t j = (lay_rr + k) % NTRK;
-            if ((m >> j) & 1u) {
-                lay_rr = (uint8_t)j;
-                return 1u << j;
-            }
-        }
-    }
-    return m;
-}
-/* (2026-10-17) the crossfade (core.h lay.xsrc): layer k's level (Q15) at s (0 .. 127) along it: equal power between
- * the two places around s (sine and cosine of a quarter turn), the ON layers with a place taking part; a layer without
- * one (or XFADE OFF) at full level */
-static int32_t lay_xgain(uint32_t k, int32_t s)
-{
-    int32_t p = lay.xpos[k], lo = -1, hi = 128, mn = 128, mx = -1, q;
-    uint32_t j;
-    if (lay.xsrc == LX_OFF || p < 0)
-        return 32767;
-    for (j = 0; j < NTRK; j++) {
-        if (!lay.on[j] || (q = lay.xpos[j]) < 0)
-            continue;
-        if (q <= s && q > lo)
-            lo = q;
-        if (q >= s && q < hi)
-            hi = q;
-        mn = q < mn ? q : mn;
-        mx = q > mx ? q : mx;
-    }
-    if (lo < 0)
-        return p == mn ? 32767 : 0;                     /* (below the first place: the first) */
-    if (hi > 127)
-        return p == mx ? 32767 : 0;                     /* (above the last: the last) */
-    if (lo == hi || (p != lo && p != hi))
-        return p == lo ? 32767 : 0;
-    {
-        uint32_t ph = (uint32_t)(s - lo) * (0x40000000u / (uint32_t)(hi - lo));   /* (the share of a quarter turn) */
-        int32_t g = sine_i(p == hi ? ph : 0x40000000u + ph);
-        return g < 0 ? 0 : g > 32767 ? 32767 : g;
-    }
-}
-/* once a block (events_block): WHEEL's levels, each gliding to its place's (~5 ms) */
-static void lay_wheel(void)
-{
-    uint32_t k;
-    for (k = 0; k < NTRK; k++) {
-        int32_t t = lay.xsrc == LX_WHEEL && lay.on[k] ? lay_xgain(k, lay.xval) : 32767, d = t - lay_wg[k];
-        lay_wt[k] = t;
-        lay_wg[k] += d > 4096 ? 4096 : d < -4096 ? -4096 : d;
-    }
-}
-#define LAY_CHORD 1323u                    /* MONO layers: notes this close (30 ms) are a chord's, not a phrase's */
-static uint32_t lay_clk, lay_last[NTRK];   /* (samples: events_block) the last note each layer took */
 static int player_key_on(uint32_t note, uint32_t vel);   /* (player.c: a player's keys, GEN's PLAY ALONG) */
 static int player_key_off(uint32_t note);
 /* (2026-10-17) what the baseline asks of the instrument around it (Blue Hare OS: keyboard.c; a host without keys: none):
@@ -168,61 +93,23 @@ static int player_key_off(uint32_t note);
 static void os_keys_block(void);
 static int os_keys_hold_track(uint32_t track);
 static int os_keys_hold_note(uint32_t track, uint32_t note);   /* (a key held on track sounds note) */
-static void input_on(track_t *t, uint32_t note, uint32_t vel)
+static void input_on(track_t *t, uint32_t note, uint32_t vel)   /* (2026-10-18: the patch played; no layers) */
 {
-    uint32_t k, m;
     last_note = (uint8_t)note;
-    if (player_key_on(note, vel))                  /* (2026-10-17) a player playing (GEN): the key its way */
+    if (player_key_on(note, vel))                  /* (2026-10-17) a player playing (TECHNO): the key its way */
         return;
-    if (!lay_init) {
-        memset(lay_tn, 0xFF, sizeof lay_tn);
-        lay_init = 1;
-    }
-    if (!layers_on() || note > 127u) {
-        trk_note_on(t, note, vel);
-        return;
-    }
-    m = layer_targets(note, vel);
-    for (k = 0; k < NTRK; k++) {
-        if (lay_tn[note][k] != 0xFFu) {            /* (played again before its release: that one ends first) */
-            trk_note_off(&trk[k], lay_tn[note][k]);
-            lay_tn[note][k] = 0xFF;
-        }
-        if ((m >> k) & 1u) {
-            uint32_t n2 = (uint32_t)clamp((int32_t)note + lay.tr[k], 0, 127);
-            int32_t g = lay.xsrc == LX_VEL ? lay_xgain(k, (int32_t)vel) : lay.xsrc == LX_KEY ? lay_xgain(k, (int32_t)note)
-                                                                                           : 32767;
-            if (!g)
-                continue;                                /* (faded out for this note: not played) */
-            voice_xg = (uint16_t)g;
-            voice_chord = trk_vmode(&trk[k]) != V_POLY && lay_clk - lay_last[k] < LAY_CHORD;   /* (a MONO layer: a */
-            trk_note_on(&trk[k], n2, vel);                                                     /* chord, no stutter) */
-            voice_xg = 0xFFFFu;
-            voice_chord = 0;
-            lay_last[k] = lay_clk;
-            lay_tn[note][k] = (uint8_t)n2;
-        }
-    }
+    trk_note_on(t, note, vel);
 }
 
 static int midi_note_held(const track_t *t, uint32_t note);
 static int midi_local_held(const track_t *t, uint32_t note);
 static void input_off(track_t *t, uint32_t note)
 {
-    uint32_t k, any = 0;
     if (midi_note_held(t, note))
         return;
     if (player_key_off(note))
         return;
-    if (lay_init && note < 128u)
-        for (k = 0; k < NTRK; k++)
-            if (lay_tn[note][k] != 0xFFu) {        /* the layers it sounds on */
-                trk_note_off(&trk[k], lay_tn[note][k]);
-                lay_tn[note][k] = 0xFF;
-                any = 1;
-            }
-    if (!any)
-        trk_note_off(t, note);
+    trk_note_off(t, note);
 }
 
 
@@ -305,8 +192,6 @@ static void events_block(uint32_t n)
     uint32_t i, pr, seq_n = n;
     uint32_t clock_mode = (uint32_t)song.g[G_CLOCK];
     seq_n = tgt_seq_block(n, &clock_mode);         /* (target.h: the plugin's host's transport over CLOCK) */
-    lay_clk += n;                                  /* (the layers: the chord window, WHEEL's levels) */
-    lay_wheel();
     if (midi_clock.mode != clock_mode) {
         seq_stop();
         memset(&midi_clock, 0, sizeof midi_clock);
