@@ -143,10 +143,61 @@ STU_EXPORT uint32_t stu_track_voices(uint32_t t)
 }
 STU_EXPORT uint32_t stu_xcount(void) { return SX_COUNT; }
 
+/* ------------------------------------------------------------------ the device's pages (2026-10-18) --- */
+/* the studio shows the FM-1's structure: its pages (params.c PAGES), their families (the panel's buttons), the ones
+ * MENU > EXPERT shows (ui.c page_visible: the studio's switch is the device's setting), and each column as (scope << 8
+ * | id) for the calls above, -1 none (an action, a list, the MOD page's slot, the MIXER's tracks) */
+STU_EXPORT uint32_t stu_pg_count(void) { return NPAGES; }
+STU_EXPORT uint32_t stu_pg_fam(uint32_t i) { return PAGES[i % NPAGES].fam; }
+STU_EXPORT uint32_t stu_pg_graph(uint32_t i) { return PAGES[i % NPAGES].graph; }
+STU_EXPORT uint32_t stu_pg_visible(uint32_t i) { return (uint32_t)page_visible(i % NPAGES); }
+STU_EXPORT void stu_set_expert(uint32_t on) { menu_put(MI_EXPERT, on ? 1u : 0u); }
+STU_EXPORT uint32_t stu_expert(void) { return (uint32_t)expert_on(); }
+STU_EXPORT char *stu_pg_title(uint32_t i)            /* as the device titles it (EDIT's: the engine's, the plain one's) */
+{
+    const page_t *pg = &PAGES[i % NPAGES];
+    const engine_t *e = ENGINES[eng_idx(TSEL->eng_req)];
+    if (pg->scope == SC_ENGINE)
+        return stu_say(pg->id[0] >= PX_PLAIN ? (e->plain_title ? e->plain_title : "SOUND") : e->page_title[pg->id[0] != P_E0]);
+    return stu_say(pg->title);
+}
+STU_EXPORT int32_t stu_pg_item(uint32_t i, uint32_t k)
+{
+    const page_t *pg = &PAGES[i % NPAGES];
+    uint32_t id = pg->id[k & 3u];
+    if (id == 0xFFu || pg->scope == SC_TRK || pg->graph == GR_BROWSE || pg->graph == GR_USER || pg->graph == GR_SLOTS ||
+        pg->graph == GR_TOOLS || pg->graph == GR_TODO || (pg->graph == GR_MOD))
+        return -1;
+    if (pg->scope == SC_GLOBAL)
+        return (int32_t)(1u << 8 | id);
+    if (pg->scope == SC_TRACK && id >= PX_GLOBAL && id < PX_MACRO)
+        return (int32_t)(1u << 8 | (id - PX_GLOBAL));
+    if (id >= PX_PLAIN) {
+        id = plain_id(TSEL, id - PX_PLAIN);
+        if (id == 0xFFu)
+            return -1;
+        return id >= PX_MACRO ? (int32_t)(3u << 8 | (id - PX_MACRO)) : (int32_t)id;
+    }
+    return (int32_t)id;
+}
+
 /* scope 0: the selected track's p[id] (P_E0..P_E7 described by its engine, mode-dependent labels included: ui.c
- * track_desc); scope 1: song.g[id], the FX chain's and the clock's (params.c GP); scope 2: the effects above (SX) */
+ * track_desc); scope 1: song.g[id], the FX chain's and the clock's (params.c GP); scope 2: the effects above (SX);
+ * (2026-10-18) scope 3: the selected engine's macro id (engine_t macro: VOSIM's VOWEL, SIZE; read from and written
+ * into its parameters) */
+static int16_t stu_mv;
 static const param_desc_t *stu_d(uint32_t scope, uint32_t id, int16_t **vp)
 {
+    if (scope == 3u) {
+        const engine_t *e = ENGINES[eng_idx(TSEL->eng_req)];
+        if (!e->macro || !e->macro_get || id > 1u) {
+            *vp = 0;
+            return 0;
+        }
+        stu_mv = (int16_t)e->macro_get(TSEL, id);
+        *vp = &stu_mv;
+        return &e->macro[id];
+    }
     if (scope == 2u && id < SX_COUNT) {
         stu_xv = (int16_t)stu_x(id);
         *vp = &stu_xv;
@@ -210,6 +261,8 @@ STU_EXPORT int32_t stu_set(uint32_t scope, uint32_t id, int32_t v, uint32_t tag)
             edit_undo_done(TSEL);
         if (scope == 2u)
             stu_x_put(id, *vp);
+        if (scope == 3u && ENGINES[eng_idx(TSEL->eng_req)]->macro_set)
+            ENGINES[eng_idx(TSEL->eng_req)]->macro_set(TSEL, id, *vp);
     }
     ui.force = 1;
     return *vp;

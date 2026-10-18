@@ -19,7 +19,7 @@
 :root {
   --bg: #081018; --panel: #142434; --panel2: #1b2e42; --edge: #2a4560; --ink: #e4f0f8; --dim: #8fa8bc;
   --faint: #56718a; --accent: #50b8ec; --accent2: #ff8c64; --ok: #6fdc9a; --warn: #ffcc66; --bad: #ff6a6a;
-  --knob: #0e1a26; --radius: 9px; color-scheme: dark;
+  --knob: #0e1a26; --radius: 12px; color-scheme: dark;
 }
 :root[data-theme="light"] {
   --bg: #eef3f7; --panel: #ffffff; --panel2: #f3f7fa; --edge: #c9d6e1; --ink: #0d1c28; --dim: #44607a;
@@ -37,14 +37,17 @@ button { cursor: pointer; }
 
 /* ---- one screen: the bar, the three columns, the keys */
 .app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; }
-header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid var(--edge); flex-wrap: wrap; }
+header { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid color-mix(in srgb, var(--edge) 60%, transparent); flex-wrap: wrap;
+         background: color-mix(in srgb, var(--panel) 55%, var(--bg)); }
 .brand { display: flex; align-items: baseline; gap: 8px; }
 .brand h1 { margin: 0; font: 400 21px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; }
 .brand h1 b { font-weight: 400; color: var(--accent); }
 .brand span { font: 11px/1 ui-monospace, Menlo, monospace; color: var(--dim); letter-spacing: .1em; }
 #tracks { display: flex; gap: 6px; margin: 0 0 0 auto; }
-#patch-mode { margin-right: auto; }
-#patch-mode .choice { flex-direction: row; align-items: center; padding: 0 0 0 8px; }
+/* (2026-10-18) NORMAL / EXPERT: the device's own setting */
+.seg.mode { margin-right: auto; border-radius: 999px; }
+.seg.mode button { padding: 5px 14px; font: 600 11px/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .12em; }
+.seg.mode button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
 .trk { display: flex; gap: 6px; align-items: baseline; padding: 4px 10px; background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; }
 .trk small { color: var(--dim); font-size: 11px; }
 .trk b { font-weight: 600; font-size: 12.5px; }
@@ -61,7 +64,8 @@ header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; borde
 
 .layout { display: grid; grid-template-columns: 236px minmax(0, 1fr) 272px; gap: 10px; padding: 10px 14px; min-height: 0; }
 .col { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
-.card { background: var(--panel); border: 1px solid var(--edge); border-radius: var(--radius); padding: 9px 10px; }
+.card { background: var(--panel); border: 1px solid color-mix(in srgb, var(--edge) 60%, transparent); border-radius: var(--radius); padding: 11px 12px;
+        box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 4%, transparent) inset; }
 .card h2 { margin: 0 0 7px; font: 600 11px/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .14em;
            text-transform: uppercase; color: var(--dim); display: flex; align-items: center; gap: 6px; }
 .card h2 .grow { flex: 1; }
@@ -97,12 +101,12 @@ header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; borde
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--edge); }
 .tab { border: 1px solid transparent; border-bottom: 0; background: transparent; padding: 6px 14px; border-radius: 8px 8px 0 0;
        font: 400 14px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .08em; color: var(--dim); margin-bottom: -1px; }
-.tab[aria-selected="true"] { color: var(--ink); background: var(--panel); border-color: var(--edge); }
+.tab[aria-selected="true"] { color: var(--ink); background: transparent; border-color: transparent; box-shadow: inset 0 -2px 0 var(--accent); }
 .tab .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-left: 6px; vertical-align: 2px; }
 .tabacts { margin-left: auto; display: flex; gap: 5px; align-items: center; padding-bottom: 3px; }
 .tabbody { flex: 1; min-height: 0; overflow: auto; }
-.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 8px; align-content: start; }
-.group { background: var(--panel); border: 1px solid var(--edge); border-radius: var(--radius); padding: 7px 9px 2px; }
+.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-content: start; padding-top: 4px; }
+.group { background: var(--panel); border: 1px solid color-mix(in srgb, var(--edge) 60%, transparent); border-radius: var(--radius); padding: 10px 12px 4px; }
 .group.wide { grid-column: 1 / -1; }
 .group h3 { margin: 0 0 4px; font: 600 11px/1 -apple-system, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--dim);
             display: flex; gap: 8px; align-items: center; }
@@ -233,7 +237,9 @@ header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; borde
   <header>
     <div class="brand"><h1>BLUE <b>HARE</b></h1><span>STUDIO · @VERSION@</span></div>
     <nav id="tracks" aria-label="Patches"></nav>
-    <span id="patch-mode"></span>
+    <span class="seg mode" role="group" aria-label="Mode" title="NORMAL: the FM-1's plain pages; EXPERT: every parameter (the device's MENU > EXPERT)">
+      <button type="button" id="normal" aria-pressed="true">NORMAL</button><button type="button" id="expert" aria-pressed="false">EXPERT</button>
+    </span>
     <button class="btn" id="undo" title="Undo (Ctrl/⌘ Z)" disabled>↶ Undo</button>
     <button class="btn" id="redo" title="Redo (Ctrl/⌘ ⇧ Z)" disabled>↷ Redo</button>
     <button class="btn" id="rec" title="Record what plays to a WAV file">● Record</button>

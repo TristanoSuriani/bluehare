@@ -37,9 +37,9 @@ const str = async (fn, ...args) => (await call([{ fn, args, ret: "str" }]))[0];
 
 // what the firmware told: constants, the engines, the layout, the descriptions; then the values (polled)
 const fw = { P: 0, G: 0, X: 0, PE0: 0, ntrk: 4, engines: [], cats: [], slots: 32, ENG_NO: 255, layout: [] };
-const S = { p: [], g: [], x: [], engine: 0, preset: 0, user: 0, sel: 0, tracks: [] };
-const desc = { 0: [], 1: [], 2: [] };    // desc[scope][id] (scope 0 the track, 1 the song, 2 the other effects) = {fmt, min, max, def, names: [..] | null, label}
-const ctl = { 0: new Map(), 1: new Map(), 2: new Map() };   // controls by id: {set(v), refresh()}
+const S = { p: [], g: [], x: [], m: [], engine: 0, preset: 0, user: 0, sel: 0, tracks: [] };
+const desc = { 0: [], 1: [], 2: [], 3: [] };    // desc[scope][id] (scope 0 the track, 1 the song, 2 the other effects; 3 the engine's macros) = {fmt, min, max, def, names: [..] | null, label}
+const ctl = { 0: new Map(), 1: new Map(), 2: new Map(), 3: new Map() };   // controls by id: {set(v), refresh()}
 
 async function loadConstants() {
   const [P, G, PE0, ntrk, ne, nc, slots, ENG_NO, lsz, X] = await call(
@@ -102,8 +102,30 @@ async function loadDescs(items) {
 // the tabs, and the groups each shows (STU_LAYOUT's keys)
 // (2026-10-18) the four are patches, not layers: the PATCH tab holds the patch's insert; the stacking (Z: in the patch,
 // key / velocity ranges; J: the crossfade) stays in the firmware, off the screen
-const TABS = [["layer", "PATCH", "F"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "RYXCUPQ"],
-              ["gen", "TECHNO", "GHK"]];
+// (2026-10-18) the tabs are the FM-1's panel: each holds the device's pages of its families (stu_pg_*: titles, the
+// columns, the ones MENU > EXPERT shows), then a few groups of the studio's own (layout keys: the patch insert, the
+// matrix, the processing, the performance holds, the master). The families (params.c FAM_*): 1 ENV, 2 LFO, 3 FX,
+// 4 SCL, 5 EDIT, 8 ARP, 10 the TRK pages (CLOCK)
+const FAM = { ENV: 1, LFO: 2, FX: 3, SCL: 4, EDIT: 5, ARP: 8, TRK: 10 };
+const GR = { ADSR: 1, MOD: 9, TRK: 8, GEN: 13 };
+const TABS = [["sound", "SOUND", [FAM.EDIT], "F"], ["env", "ENV", [FAM.ENV], ""], ["lfo", "LFO", [FAM.LFO], "M"],
+              ["keys", "KEYS", [FAM.SCL], ""], ["fx", "FX", [FAM.FX], "XPQ"], ["gen", "TECHNO", [FAM.ARP, FAM.TRK], ""]];
+let expert = pref("bluehare-studio-expert") === "1";
+fw.pages = [];
+async function loadPages() {             // the device's pages as they are now (the engine's titles, its plain page's columns)
+  const n = await one("stu_pg_count");
+  const q = [];
+  for (let i = 0; i < n; i++)
+    q.push({ fn: "stu_pg_fam", args: [i] }, { fn: "stu_pg_graph", args: [i] }, { fn: "stu_pg_visible", args: [i] },
+           { fn: "stu_pg_title", args: [i], ret: "str" }, ...[0, 1, 2, 3].map((k) => ({ fn: "stu_pg_item", args: [i, k] })));
+  const r = await call(q);
+  fw.pages = [];
+  for (let i = 0; i < n; i++) {
+    const [fam, graph, vis, title, ...it] = r.slice(i * 8, i * 8 + 8);
+    const items = it.filter((v) => v >= 0).map((v) => ({ scope: v >> 8, id: v & 255 }));
+    fw.pages.push({ i, fam, graph, vis: !!vis, title, items });
+  }
+}
 const GROUPS = {
   E: { title: "Engine", wide: true },
   A: { title: "Amp envelope", names: ["Attack", "Decay", "Sustain", "Release", "Level", "Octave"] },
@@ -140,7 +162,11 @@ const ENGINE_WORDS = {
   WAVE: "Wavetables, scanned and warped",
   VOSIM: "Two formants of pulse trains: voices, reeds, brass",
   MODAL: "Struck, plucked and bowed resonators",
-  CANYON: "Echoes' repeats, all of them",
+  OBIE: "An eight-voice analog poly: two oscillators, slop",
+  HOOVER: "The rave lead: detuned saws, the dive",
+  DUBSIREN: "The dub siren and its echo (patch 4)",
+  KIT: "A drum kit on the General MIDI notes",
+  BREAKS: "Breakbeats: a key starts a looping bar",
 };
 
 // ------------------------------------------------------------------ history (every change can be taken back)
@@ -297,7 +323,7 @@ function control(scope, id, name) {
   return el;
 }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const vals = (scope) => (scope === 2 ? S.x : scope ? S.g : S.p);
+const vals = (scope) => (scope === 3 ? S.m : scope === 2 ? S.x : scope ? S.g : S.p);
 const cur = (scope, id) => vals(scope)[id] ?? 0;
 
 // a value changed on the page: into the firmware (the latest only, one call in flight per parameter), then its text
@@ -413,6 +439,7 @@ async function meterPoll() {
   const [[c, l], on] = await call([{ fn: "stu_meters", ret: ["i32", 2] }, { fn: "stu_perf_on" }]);
   for (const [id, g] of [["gr-comp", c], ["gr-lim", l]]) {
     const db = 20 * Math.log10(Math.max(1, g) / 32768);
+    if (!$(id) || !$(id + "-v")) continue;   // (the groups rebuilt meanwhile: a page or mode change)
     $(id).style.width = clamp(-db / 12 * 100, 0, 100) + "%";
     $(id + "-v").textContent = (db > -0.05 ? "0.0" : db.toFixed(1)) + " dB";
   }
@@ -432,27 +459,42 @@ async function buildGroups() {
   const root = $("groups"), tabs = $("tabs");
   root.textContent = "";
   tabs.textContent = "";
-  ctl[0].clear();
-  ctl[1].clear();
-  ctl[2].clear();
-  const items = fw.layout.flatMap((g) => g.items);
-  await loadDescs(items);
-  for (const [id, title, keys] of TABS) {
+  for (const k of [0, 1, 2, 3]) ctl[k].clear();
+  await one("stu_set_expert", expert ? 1 : 0);
+  await loadPages();
+  const extra = (keys) => fw.layout.filter((g) => keys.includes(g.key));
+  await loadDescs([...fw.pages.filter((pg) => pg.vis).flatMap((pg) => pg.items), ...fw.layout.flatMap((g) => g.items)]);
+  for (const [id, title, fams, keys] of TABS) {
     const b = h("button", { class: "tab", role: "tab", type: "button", "data-tab": id, onclick: () => showTab(id) }, title,
       id === "gen" ? h("span", { class: "live", id: "gen-live", hidden: true }) : null);
     tabs.append(b);
     const panel = h("div", { class: "groups", role: "tabpanel", "data-tab": id });
-    for (const key of keys) {
-      const g = fw.layout.find((x) => x.key === key);
-      if (g) panel.append(groupBox(g));
+    let genDone = false;
+    for (const pg of fw.pages) {
+      if (!pg.vis || !fams.includes(pg.fam) || !pg.items.length || pg.graph === GR.MOD) continue;
+      if (pg.fam === FAM.TRK && pg.graph === GR.TRK) continue;   // (the MIXER: the patches' strip shows them)
+      const g = { key: "pg" + pg.i, items: pg.items, page: pg, gen: pg.graph === GR.GEN && !genDone };
+      if (g.gen) genDone = true;
+      panel.append(groupBox(g));
     }
+    for (const g of extra(keys)) panel.append(groupBox(g));
     root.append(panel);
   }
   tabs.append(fxActions());
   showTab(tabNow);
+  $("expert").setAttribute("aria-pressed", String(expert));
+  $("normal").setAttribute("aria-pressed", String(!expert));
+}
+const pageItems = () => [...fw.pages.filter((pg) => pg.vis).flatMap((pg) => pg.items), ...fw.layout.flatMap((x) => x.items)];
+async function setExpert(on) {
+  expert = !!on;
+  pref("bluehare-studio-expert", expert ? "1" : "0");
+  await buildGroups();
+  await poll(true);
 }
 function groupBox(g) {
-  const G = GROUPS[g.key] || { title: g.key };
+  const G = g.page ? { title: g.page.title, track: g.items.some((it) => it.scope === 0 || it.scope === 3) }
+                   : GROUPS[g.key] || { title: g.key };
   const box = h("section", { class: "group" + (G.wide ? " wide" : ""), "data-group": g.key });
   const info = G.note && g.key !== "G" && !G.show ? h("button", { class: "info", type: "button", title: G.note, "aria-label": "About " + G.title,
     onclick: () => { const n = box.querySelector(".gnote"); if (n) n.hidden = !n.hidden; } }, "ⓘ") : null;
@@ -465,13 +507,13 @@ function groupBox(g) {
   } else if (g.key === "M") {
     ctrls.append(matrix(g.items));
   } else {
-    if (g.key === "G") ctrls.append(genBar());
+    if (g.gen) ctrls.append(genBar());
     if (g.key === "P") ctrls.append(perfButtons());
-    if (g.key === "A") {
+    if (g.page && g.page.graph === GR.ADSR) {
       envCanvas = h("canvas", { id: "env-graph", width: 300, height: 112 });
       ctrls.append(envCanvas);
     }
-    g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, G.names?.[i])));
+    g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, g.page ? undefined : G.names?.[i])));
     if (g.key === "Q") ctrls.append(masterStages());
     if (G.note) ctrls.append(h("p", { class: "gnote", hidden: !G.show && g.key !== "G" }, G.note));   /* (the others: ⓘ) */
   }
@@ -494,7 +536,7 @@ function genBar() {
   } }, "▶ Play");
   return h("div", { class: "genbar" }, play, h("span", { class: "chord", id: "gen-chord" }, "—"),
     h("span", { class: "where", id: "gen-where" }, "stopped"),
-    h("span", { class: "roles" }, ["PAD", "BASS", "BELLS", "PULSE"].map((n, i) => h("span", { class: "role", id: "gen-r" + i }, n))));
+    h("span", { class: "roles" }, ["DRUMS", "BASS", "STAB", "LEAD"].map((n, i) => h("span", { class: "role", id: "gen-r" + i }, n))));
 }
 async function genPoll() {
   if (!node || !$("gen-play")) return;
@@ -503,7 +545,7 @@ async function genPoll() {
   $("gen-play").textContent = genOn ? "■ Stop" : "▶ Play";
   $("gen-play").classList.toggle("on", genOn);
   $("gen-chord").textContent = genOn ? chord || "—" : "—";
-  $("gen-where").textContent = genOn ? `bar ${st[1] + 1} · step ${st[2] + 1}` : "stopped";
+  $("gen-where").textContent = genOn ? `bar ${st[1] + 1} · step ${st[2] + 1}` : "stopped";   // (the chord line: TECHNO's section)
   $("gen-live").hidden = !genOn;
   for (let r = 0; r < 4; r++) {
     $("gen-r" + r).classList.toggle("hit", genOn && st[4 + r] !== genPlayed[r]);
@@ -523,15 +565,14 @@ async function refreshEngineLabels() {   // an engine's labels follow its mode (
   if (engLabelsBusy) return;
   engLabelsBusy = true;
   try {
-    engItems = fw.layout.find((g) => g.key === "E").items;
+    engItems = [...Array(8).keys()].map((k) => ({ scope: 0, id: fw.PE0 + k }));
     const before = engItems.map((it) => JSON.stringify(desc[0][it.id]));
     await loadDescs(engItems);
     const after = engItems.map((it) => JSON.stringify(desc[0][it.id]));
-    const box = $("engine-group")?.querySelector(".ctrls");
     relabelMatrix();
-    if (box && before.join() !== after.join()) {
-      engineGroup(box, engItems);
-      await showValues(engItems);
+    if (before.join() !== after.join()) {    // (a mode moved a label: the pages again, as the device shows them)
+      await buildGroups();
+      await showValues(pageItems());
     }
   } finally { engLabelsBusy = false; }
 }
@@ -600,18 +641,21 @@ async function poll(force = false) {
     for (let i = 0; i < fw.X; i++) if (force || x[i] !== S.x[i]) if (!inflight.has("2." + i)) { S.x[i] = x[i]; changed.push({ scope: 2, id: i }); }
     const selMoved = sel !== S.sel;
     Object.assign(S, { engine, preset, user, sel });
-    if (selMoved && ctl[0].size) await buildGroups();   // (the groups name the track: "track 2")
+    if (selMoved && ctl[0].size && !engineMoved) await buildGroups();   // (the groups name the patch: "patch 2")
     if (engineMoved || force) {
       renderEngines();
       renderPresets();
       await refreshTracks();
+      await buildGroups();                  // (the engine's pages: its titles, its plain page, its macros)
       await refreshEngineLabels();
-      const box = $("engine-group")?.querySelector(".ctrls");
-      if (box) engineGroup(box, fw.layout.find((x) => x.key === "E").items);
     }
     if (selMoved) await nameFromDevice();
     const shown = changed.filter(({ scope, id }) => ctl[scope].has(id));
-    if (engineMoved || force) await showValues(fw.layout.flatMap((x) => x.items));
+    if (ctl[3].size) {                      // (the macros: read back from the parameters they move)
+      const ids = [...ctl[3].keys()], mv = await call(ids.map((id) => ({ fn: "stu_get", args: [3, id] })));
+      ids.forEach((id, j) => { if (force || engineMoved || mv[j] !== S.m[id]) { S.m[id] = mv[j]; if (!inflight.has("3." + id)) shown.push({ scope: 3, id }); } });
+    }
+    if (engineMoved || force) await showValues(pageItems());
     else if (shown.length) await showValues(shown);
     renderPresetMark();
   } finally { polling = false; }
@@ -1203,6 +1247,8 @@ async function switchOn() {
 }
 
 // ------------------------------------------------------------------ the page's buttons
+$("normal").onclick = () => setExpert(false);   // (2026-10-18: the device's MENU > EXPERT)
+$("expert").onclick = () => setExpert(true);
 $("go").addEventListener("click", switchOn);
 for (const [b, pane] of [["lt-presets", "pane-presets"], ["lt-users", "pane-users"]])
   $(b).addEventListener("click", () => {
