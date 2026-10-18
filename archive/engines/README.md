@@ -201,3 +201,7 @@ What they were (from the README of before; the distributions as they were then):
 - (2026-10-18) **HOOVER, DUBSIREN, KIT and BREAKS are back in the build** (firmware/baseline): the user's direction, a
   performance instrument for bangers. FMPERC's drum voice moved to firmware/baseline/shared/fmp_dsp.c (FMPERC itself
   stays here), the General MIDI drum map to shared/drum_map.c.
+- (2026-10-18) **SANDSTORM, SPEECH, DUBSIREN8, WAR and CHIPKIT are back in the build** (firmware/baseline): they fit the
+  bangers identity and the device (image 466 KB of 581 KB, pool headroom 18 KB; SANDSTORM the costliest engine, ~1.2x
+  MODAL). SPEECH's generator and vocabularies are in tools/ again, its test in tests/baseline. DUBSIREN's substitute is
+  DUBSIREN8: off the last patch a DUBSIREN sound plays as the 8-bit siren with its own echo (OBIE before).

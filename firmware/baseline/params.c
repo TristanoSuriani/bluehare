@@ -59,11 +59,14 @@ static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN",
 static const char *const N_ENGNAME[EID_COUNT] = {   /* by id (G_ENGSEL); "-": a retired id or an engine left out */
     [0] = "-", [1] = "-", [2] = "-", [3] = "-", [4] = "-", [5] = "-", [6] = "-", [7] = "-", [8] = "-", [9] = "-",
     [10] = "-", [11] = "-", [12] = "-", [13] = "-", [27] = "-",   /* (retired: core.h EID_RETIRED) */
-#define ENGINE(N, id, sub) [EID_##N] = BLUEHARE_ENG_##N ? #N : "-",
+#define ENG_NAME8(N) (sizeof #N > 9u ? (EID_##N == EID_DUBSIREN8 ? "SIREN8" : "SANDSTRM") : #N)   /* (2026-10-18: the device's
+                                                     * names, 8 letters at most, as the engines' own .name) */
+#define ENGINE(N, id, sub) [EID_##N] = BLUEHARE_ENG_##N ? ENG_NAME8(N) : "-",
 #define ARCHIVED(N, id) [id] = "-",
 #include "engine_ids.h"
 #undef ARCHIVED
 #undef ENGINE
+#undef ENG_NAME8
 };   /* (engines.c ENGINES[]; "-": not built, or archived) */
 
 #define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}

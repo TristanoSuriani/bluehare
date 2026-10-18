@@ -320,7 +320,8 @@ static uint32_t graph_signature(void)
 static const char *eng_short(const char *name)
 {
     static const char *const A[][2] = {{"DUBSIREN", "SIREN"}, {"DUBCHORD", "DCHORD"}, {"PARTICLE", "PARTCL"},
-                                       {"SCRATCH", "SCRTCH"}, {"KARPLUS", "KARPLS"}};
+                                       {"SCRATCH", "SCRTCH"}, {"KARPLUS", "KARPLS"},
+                                       {"SANDSTRM", "SANDST"}, {"CHIPKIT", "CHIPKT"}};   /* (SIREN8 fits) */
     uint32_t i;
     for (i = 0; i < sizeof A / sizeof A[0]; i++)
         if (str_eq(name, A[i][0]))

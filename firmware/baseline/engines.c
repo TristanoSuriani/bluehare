@@ -13,13 +13,18 @@
  * asks for it with its key (eng_slab, after the engines): the first ask of a key the block was not lent to clears it
  * (as at power-on), so a sound starts on silence. 0: the
  * track is no part, or the engine needs more than the block (a build without it): it plays nothing */
-enum { SLAB_NONE, SLAB_MODAL, SLAB_STRINGS };
+enum { SLAB_NONE, SLAB_MODAL, SLAB_STRINGS, SLAB_SIREN8, SLAB_SANDSTORM };
 static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
 #include "eng_hoover.c"         /* HOOVER: the rave lead (back 2026-10-18) */
 #include "eng_dubsiren.c"       /* DUBSIREN: the dub siren (back 2026-10-18) */
+#include "eng_dubsiren8.c"      /* DUBSIREN8: its 8-bit cousin, every patch (back 2026-10-18) */
+#include "eng_sandstorm.c"      /* SANDSTORM: the late-90s trance lead (back 2026-10-18) */
+#include "eng_speech.c"         /* SPEECH: LPC words (back 2026-10-18; tools/gen_speech.py) */
+#include "eng_war.c"            /* WAR: an industrial kit (back 2026-10-18) */
+#include "eng_chipkit.c"        /* CHIPKIT: the drums of the 8-bit consoles (back 2026-10-18) */
 #include "eng_kit.c"            /* KIT: a drum kit (back 2026-10-18) */
 #include "eng_breaks.c"         /* BREAKS: synthesized breakbeats (back 2026-10-18) */
 #include "eng_obie.c"           /* OBIE: an analog polysynth after the OB-Xa (2026-10-17) */
@@ -29,7 +34,9 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #define SLAB_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define SLAB_IF(on, sz) ((on) ? (uint32_t)(sz) : 0u)
 #define ENG_SLAB_BYTES                                                                                                  \
-    SLAB_IF(BLUEHARE_ENG_MODAL, sizeof(md_voice_t) * MD_POLY)   /* (STRINGS' ensemble archived with it, 2026-10-17) */
+    SLAB_MAX(SLAB_IF(BLUEHARE_ENG_MODAL, sizeof(md_voice_t) * MD_POLY),   /* (STRINGS' ensemble archived, 2026-10-17) */ \
+             SLAB_MAX(SLAB_IF(BLUEHARE_ENG_DUBSIREN8, sizeof(ds8_echo_t)),                                              \
+                      SLAB_IF(BLUEHARE_ENG_SANDSTORM, sizeof(ss_voice_t) * SS_POLY)))
 #define ENG_SLAB_WORDS ((ENG_SLAB_BYTES + 3u) / 4u + 1u)
 static uint32_t eng_slab_mem[NPART][ENG_SLAB_WORDS] __attribute__((section(".pool")));
 static uint8_t eng_slab_key[NPART];

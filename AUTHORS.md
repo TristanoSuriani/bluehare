@@ -42,10 +42,15 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | VOSIM | engine | two formants of pulse trains: voices, reeds, brass | `firmware/baseline/eng_vosim.c` | Tristano Suriani |
 | OBIE | engine | an eight-voice analog polysynth after the OB-Xa: two oscillators, 12 / 24 dB, slop | `firmware/baseline/eng_obie.c` | Tristano Suriani |
 | HOOVER | engine | the early-90s rave lead: detuned saws, PWM, the hoover's dive | `firmware/baseline/eng_hoover.c` | Tristano Suriani |
-| DUBSIREN | engine | the dub siren: a swept oscillator, its echoes | `firmware/baseline/eng_dubsiren.c` | Tristano Suriani |
+| SANDSTORM | engine | the late-90s trance lead: five saws, the pluck, the gate's repeat, the dive | `firmware/baseline/eng_sandstorm.c` | Tristano Suriani |
+| SPEECH | engine | words, as the LPC speech chips spoke them: a lattice filter, no recordings | `firmware/baseline/eng_speech.c` | Tristano Suriani |
+| DUBSIREN | engine | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | `firmware/baseline/eng_dubsiren.c` | Tristano Suriani |
+| DUBSIREN8 | engine | the dub siren in 8 bits, its own gritty echo, on every patch | `firmware/baseline/eng_dubsiren8.c` | Tristano Suriani |
 | MODAL | engine | struck, plucked and bowed resonators | `firmware/baseline/eng_modal.c`, `firmware/baseline/shared/phys_dsp.c` | Tristano Suriani; its resonators DaisySP's (MIT) |
 | KIT | engine | a drum kit on one patch: 8 lanes on the General MIDI notes | `firmware/baseline/eng_kit.c`, `firmware/baseline/shared/drum_map.c`, `firmware/baseline/shared/fmp_dsp.c` | Tristano Suriani |
 | BREAKS | engine | breakbeats, synthesized: a key starts a looping bar | `firmware/baseline/eng_breaks.c`, `firmware/baseline/shared/fmp_dsp.c` | Tristano Suriani |
+| WAR | engine | an industrial kit: FM drums through a folder into clipping | `firmware/baseline/eng_war.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
+| CHIPKIT | engine | the drums of the 8-bit consoles: NES, Game Boy, Master System, C64 | `firmware/baseline/eng_chipkit.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | PLATE | fx | REVERB TYPE PLATE: Dattorro's plate, in float | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani |
 | AMB | fx | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1); ported by Tristano Suriani |
 | EQ | fx | the patch's EQ: four bands, in float | `firmware/baseline/fx.c`, `firmware/baseline/fastmath.h` | Tristano Suriani |

@@ -14,10 +14,15 @@ ENGINE  WAVE     baseline  eng_wave.c                         14  MODAL   | wave
 ENGINE  VOSIM    baseline  eng_vosim.c                        21  WAVE    | two formants of pulse trains: voices, reeds, brass            | Tristano Suriani
 ENGINE  OBIE     baseline  eng_obie.c                         62  WAVE    | an eight-voice analog polysynth after the OB-Xa: two oscillators, 12 / 24 dB, slop | Tristano Suriani
 ENGINE  HOOVER   baseline  eng_hoover.c                       17  OBIE    | the early-90s rave lead: detuned saws, PWM, the hoover's dive | Tristano Suriani
-ENGINE  DUBSIREN baseline  eng_dubsiren.c                     25  OBIE    | the dub siren: a swept oscillator, its echoes                  | Tristano Suriani
+ENGINE  SANDSTORM baseline eng_sandstorm.c                    60  HOOVER  | the late-90s trance lead: five saws, the pluck, the gate's repeat, the dive | Tristano Suriani
+ENGINE  SPEECH   baseline  eng_speech.c                       18  VOSIM   | words, as the LPC speech chips spoke them: a lattice filter, no recordings | Tristano Suriani
+ENGINE  DUBSIREN baseline  eng_dubsiren.c                     25  DUBSIREN8 | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | Tristano Suriani
+ENGINE  DUBSIREN8 baseline eng_dubsiren8.c                    31  OBIE    | the dub siren in 8 bits, its own gritty echo, on every patch  | Tristano Suriani
 ENGINE  MODAL    baseline  eng_modal.c,shared/phys_dsp.c      34  WAVE    | struck, plucked and bowed resonators                      | Tristano Suriani; its resonators DaisySP's (MIT)
 ENGINE  KIT      baseline  eng_kit.c,shared/drum_map.c,shared/fmp_dsp.c 28  MODAL | a drum kit on one patch: 8 lanes on the General MIDI notes | Tristano Suriani
 ENGINE  BREAKS   baseline  eng_breaks.c,shared/fmp_dsp.c      29  KIT     | breakbeats, synthesized: a key starts a looping bar        | Tristano Suriani
+ENGINE  WAR      baseline  eng_war.c,shared/drum_map.c        44  KIT     | an industrial kit: FM drums through a folder into clipping | Tristano Suriani
+ENGINE  CHIPKIT  baseline  eng_chipkit.c,shared/drum_map.c    59  KIT     | the drums of the 8-bit consoles: NES, Game Boy, Master System, C64 | Tristano Suriani
 FX      PLATE    baseline  fx_amb.c,fastmath.h                -   -       | REVERB TYPE PLATE: Dattorro's plate, in float                 | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani
 FX      AMB      baseline  fx_amb.c,fastmath.h                -   -       | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | Charles Vestal (amb-1); ported by Tristano Suriani
 FX      EQ       baseline  fx.c,fastmath.h                    -   -       | the patch's EQ: four bands, in float                          | Tristano Suriani

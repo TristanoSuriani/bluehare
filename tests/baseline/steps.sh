@@ -35,6 +35,9 @@ slow run "sound items: matrix S&H / SLEW / DEPTH, SPREAD (bit for bit at 0, L / 
     "$OUT/sound14_test" build/sound14_demo
 compile $CC -O2 -w $I -o "$OUT/swing_test" tests/baseline/swing_test.c -lm
 run "SWING: track + global at most 100, the song player's step lengths, the SWG display" "$OUT/swing_test"
+slow compile $CC -O2 -w $I -o "$OUT/speech_test" tests/baseline/speech_test.c -lm
+mkdir -p build/speech_demo
+slow run "SPEECH (back 2026-10-18): every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo
 compile $CC -O2 -w $I -o "$OUT/patchfx_test" tests/baseline/patchfx_test.c -lm
 run "the patches' delays (2026-10-18): the echo at TIME, FEED's next quieter, panned as the patch, one line each, asleep when silent, FEED 120 bounded" "$OUT/patchfx_test"
 compile $CC -O1 -w $I -Itests/lib -o "$OUT/monolows_test" tests/baseline/monolows_test.c -lm
