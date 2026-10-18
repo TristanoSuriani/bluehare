@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
  * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
-/* User presets (editor protocol v2, cmds 16-21; the SAVE > USER page): 32
- * slots in two storage.c objects (OBJ_UPRESET0/1, A/B sectors at
- * 0xDC000..0xDFFFF), 16 records each, mirrored in RAM so browsing never
+/* User presets (editor protocol v2, cmds 16-21; the SAVE > USER page): 80
+ * slots (32 until 2026-10-18) in five storage.c objects (OBJ_UPRESET0/1, A/B sectors at 0xDC000..0xDFFFF; OBJ_UPRESET2
+ * .. +2 at 0xD6000..0xDBFFF), 16 records each, mirrored in RAM so browsing never
  * reads flash. A record: engine, name, the instrument parameters, a 16-step
  * pattern (the old step sequencer's; 1.5 stores an empty one and never plays one, but keeps a stored one and
  * UP_GET / UP_PUT still carry it). An FM6 sound's patch is kept beside the record (up_fm6.c, since 1.0.3:
@@ -52,6 +52,8 @@ typedef struct {
 _Static_assert(sizeof(up_rec_t) == 192, "user preset record layout");
 _Static_assert(P_COUNT <= UP_PMAX * 2u && P_COUNT < 128, "user preset record: P_COUNT");
 static up_bank_t up_bank[UP_SLOTS / UP_PER_BANK];
+_Static_assert(UP_SLOTS % UP_PER_BANK == 0 && UP_SLOTS / UP_PER_BANK <= 5u, "user presets: whole banks, five at most");
+#define up_obj(b) ((b) < 2u ? OBJ_UPRESET0 + (b) : OBJ_UPRESET2 + (b) - 2u)   /* bank b's object (storage.c, where built) */
 
 static up_rec_t *up_rec(uint32_t k) { return &up_bank[k / UP_PER_BANK].r[k % UP_PER_BANK]; }
 
@@ -242,7 +244,7 @@ static void up_boot(void)                      /* persist_boot: the banks from f
 #if BLUEHARE_FLASH
     uint32_t b;
     for (b = 0; b < UP_SLOTS / UP_PER_BANK; b++)
-        up_bank_check(b, flash_ok ? st_load(OBJ_UPRESET0 + b, &up_bank[b], sizeof up_bank[b]) : -1);
+        up_bank_check(b, flash_ok ? st_load(up_obj(b), &up_bank[b], sizeof up_bank[b]) : -1);
 #endif
 #ifdef BLUEHARE_FAVORITES
     for (uint32_t k = 0; k < UP_SLOTS; k++)
@@ -281,7 +283,7 @@ static int up_put(uint32_t k, const up_rec_t *r)
     else
         memset(up_rec(k), 0, sizeof(up_rec_t));
 #if BLUEHARE_FLASH
-    if (flash_ok && st_save(OBJ_UPRESET0 + k / UP_PER_BANK, bk, sizeof *bk)) {
+    if (flash_ok && st_save(up_obj(k / UP_PER_BANK), bk, sizeof *bk)) {
         *up_rec(k) = old;
         bk->magic = magic;
         bk->rsize = rsize;

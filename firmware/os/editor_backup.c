@@ -7,16 +7,25 @@
  * Id 8 (the FM6 patch bank of 1.0..1.0.2) is listed empty since 1.0.3; a PUT of it from an older archive moves its
  * patches into the user presets restored before it (ids 6, 7), as the first boot after the update does (up_fm6.c).
  * Id 9 is the user presets' FM6 patches (up_fm6.c), appended in 1.0.3.
+ * Ids 22..24 (2026-10-18) are the user presets' banks 2..4 (slots 33..80), as 6 and 7 banks 0 and 1.
  * 1.5 (the tracker): id 0, the music in RAM, is listed empty (a song is up to four storage objects: project.c); ids
  * 2..5 (and with 8 tracks 10..21: the song's chunks 4..15, Blue Hare) are the stored song's chunks as they are on the flash (project.c proj_good: the complete save's copies; a chunk
  * past its count, none stored: empty). A PUT of them writes each with a new generation, the same for the chunks of one
  * restore (ed_bk_rgen), so the restored song is the newest complete one; a project of 1.4 is refused.
  */
 #if NTRK == 8                                   /* (Blue Hare, TRACKS 8) ids 10 .. 21: the song's chunks 4 .. 15 */
-static const uint8_t ED_BK_IDS[25] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 32, 33, 34};
+static const uint8_t ED_BK_IDS[28] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                      24, 32, 33, 34};
 #else
-static const uint8_t ED_BK_IDS[13] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34};
+static const uint8_t ED_BK_IDS[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 22, 23, 24, 32, 33, 34};
 #endif
+/* (2026-10-18) the user presets' bank an id is: 6, 7 banks 0, 1; 22 .. 24 banks 2 .. 4 (80 slots); -1 none */
+static int ed_bk_upb(uint32_t id)
+{
+    if (id == 6u || id == 7u)
+        return (int)id - 6;
+    return id >= 22u && id < 20u + UP_SLOTS / UP_PER_BANK ? (int)id - 20 : -1;
+}
 /* the song's chunk an id is (2 .. 5: 0 .. 3; with 8 tracks 10 .. 21: 4 .. 15), -1 none */
 static int ed_bk_song(uint32_t id)
 {
@@ -71,9 +80,9 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
 #endif
         return ED_BK_RAW;
     }
-    if (id == 6u || id == 7u) {
-        if (up_bank[id - 6u].magic == UP_BANK_MAGIC) *len = sizeof up_bank[0];
-        return (const uint8_t *)&up_bank[id - 6u];
+    if (ed_bk_upb(id) >= 0) {
+        if (up_bank[ed_bk_upb(id)].magic == UP_BANK_MAGIC) *len = sizeof up_bank[0];
+        return (const uint8_t *)&up_bank[ed_bk_upb(id)];
     }
     if (id == 8u || id == 9u)                       /* Felucca's FM6 patch banks (FM6 removed): always empty */
         return ED_BK_RAW;
@@ -153,12 +162,12 @@ static uint32_t ed_bk_commit(void)
         if (ed_bk_len != sizeof *p || p->magic != PERSIST_MAGIC || !palette_stored_ok(p->palette) ||
             p->lowcut > 2u || !leds_stored_ok(p->zoom) || !hold_stored_ok(p->bold) || p->favorites.filter > 1u || !ed_bk_panel_valid(&p->panel)) return 2;
         obj = OBJ_SETTINGS;
-    } else if (ed_bk_id == 6u || ed_bk_id == 7u) {
+    } else if (ed_bk_upb(ed_bk_id) >= 0) {
         const up_bank_t *p = (const up_bank_t *)raw;
         if (ed_bk_len && (ed_bk_len != sizeof *p || p->magic != UP_BANK_MAGIC ||
             p->rsize != sizeof(up_rec_t) || p->nslot != UP_PER_BANK)) return 2;
         /* Unknown record versions remain inert bytes, preserving future/older bank data. */
-        obj = OBJ_UPRESET0 + ed_bk_id - 6u;
+        obj = up_obj((uint32_t)ed_bk_upb(ed_bk_id));
     } else if (ed_bk_id == 8u || ed_bk_id == 9u) {  /* Felucca's FM6 patch banks: FM6 is gone, nothing to restore */
         return 0;
     } else return 1;
@@ -175,7 +184,7 @@ static uint32_t ed_bk_commit(void)
         persist_saved = ed_bk_settings; persist_pending = 0;
 #endif
     } else {
-        uint32_t b = ed_bk_id - 6u;
+        uint32_t b = (uint32_t)ed_bk_upb(ed_bk_id);
         memset(&up_bank[b], 0, sizeof up_bank[b]);
         if (ed_bk_len) memcpy(&up_bank[b], raw, ed_bk_len);
         up_bank_check(b, (int)ed_bk_len); up_gen++;
@@ -188,14 +197,14 @@ static int proj_store_len(uint32_t len) { return !len || (len >= PROJ_HDR && len
 static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
 {
     /* the arguments first: a malformed request never stops the transport */
-    if (n < 2u || a[0] > 3u || a[1] > 9u) return 1;
+    if (n < 2u || a[0] > 3u || (a[1] > 9u && ed_bk_upb(a[1]) < 0)) return 1;
     if (a[0] == 0u) {
         if (n != 12u || a[6] > 15u || a[11] > 15u) return 1;
         uint32_t len = ed_bk_r32(a + 2);
         if (len > ED_BK_MAX || (a[1] == 0u && len) ||
             (a[1] == 1u && len != sizeof(persist_t)) ||
             (ed_bk_song(a[1]) >= 0 && len && !proj_store_len(len)) ||
-            ((a[1] == 6u || a[1] == 7u) && len && len != sizeof(up_bank_t))) return 1;
+            (ed_bk_upb(a[1]) >= 0 && len && len != sizeof(up_bank_t))) return 1;
         /* (8, 9: Felucca's FM6 objects, gone: taken and ignored, so an older archive restores) */
         if (ed_flash_stop()) return 3;
         ed_bk_valid = 0; ed_bk_put = 1; ed_bk_id = a[1]; ed_bk_len = len; ed_bk_gen = ++proj_wire_gen;

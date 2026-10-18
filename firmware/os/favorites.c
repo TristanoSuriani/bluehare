@@ -6,8 +6,10 @@
 typedef struct {
     uint8_t factory[16][32]; /* engine id 0..15, preset 0..255 (the stored layout: [15][10..31] hold settings) */
     uint32_t user, filter;
+    uint32_t user_hi[2];     /* (2026-10-18, 80 user slots) slots 32 .. 63, 64 .. 95: settings PER5 */
 } favorites_t;
 static favorites_t favorites;
+static uint32_t *fav_user_word(uint32_t k) { return k < 32u ? &favorites.user : &favorites.user_hi[(k - 32u) / 32u]; }
 /* ids 16 and 17 (1.5: WEST, HOOVER) have no row of their own in the stored layout: their presets 0..7 star bits of a
  * byte BYTE's presets never reach (BYTE has 6; [15][8] id 16, [15][9] 17; [15][10..31] are settings,
  * settings_persist.c). Ids 18 .. 21 take the rows of the retired ids 1, 4, 8, 13 (whose old stars an import clears
@@ -52,7 +54,7 @@ static int favorite_has(uint32_t engine, uint32_t preset)
 {
     const uint8_t *b;
     if (engine == EID_COUNT)
-        return preset < UP_SLOTS && ((favorites.user >> preset) & 1u);
+        return preset < UP_SLOTS && ((*fav_user_word(preset) >> (preset % 32u)) & 1u);
     b = favorite_byte(engine, preset);
     return b && ((*b >> (preset % 8u)) & 1u);
 }
@@ -63,8 +65,8 @@ static int favorite_set(uint32_t engine, uint32_t preset, int on)
         return 0;
     if (favorite_has(engine, preset) == !!on) return 0;
     if (engine == EID_COUNT) {
-        if (on) favorites.user |= 1u << preset;
-        else favorites.user &= ~(1u << preset);
+        if (on) *fav_user_word(preset) |= 1u << (preset % 32u);
+        else *fav_user_word(preset) &= ~(1u << (preset % 32u));
     } else {
         if (on) *b |= (uint8_t)(1u << (preset % 8u));
         else *b &= (uint8_t)~(1u << (preset % 8u));

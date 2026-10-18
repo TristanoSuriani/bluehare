@@ -83,8 +83,8 @@ int main(void)
         bad += check("short optional tail rejected", up_parse(a, n + 1u, &r, &slot) == 1 &&
                                                        !memcmp(&r, &keep, sizeof r));
     }
-    n = put_frame(a, 32, EID_SID, "X", 0);
-    bad += check("UP_PUT slot 32 -> args", up_parse(a, n, &r, &slot) == 1);
+    n = put_frame(a, UP_SLOTS, EID_SID, "X", 0);
+    bad += check("UP_PUT slot 80 (past the last, U80 the 79th) -> args", up_parse(a, n, &r, &slot) == 1);
     n = put_frame(a, 0, EID_COUNT, "X", 0);
     bad += check("UP_PUT bad engine -> args", up_parse(a, n, &r, &slot) == 1);
     {

@@ -36,7 +36,7 @@ const one = async (fn, ...args) => (await call([{ fn, args }]))[0];
 const str = async (fn, ...args) => (await call([{ fn, args, ret: "str" }]))[0];
 
 // what the firmware told: constants, the engines, the layout, the descriptions; then the values (polled)
-const fw = { P: 0, G: 0, X: 0, PE0: 0, ntrk: 4, engines: [], cats: [], slots: 32, ENG_NO: 255, layout: [] };
+const fw = { P: 0, G: 0, X: 0, PE0: 0, ntrk: 4, engines: [], cats: [], slots: 80, ENG_NO: 255, layout: [] };
 const S = { p: [], g: [], x: [], m: [], engine: 0, preset: 0, user: 0, sel: 0, tracks: [] };
 const desc = { 0: [], 1: [], 2: [], 3: [] };    // desc[scope][id] (scope 0 the track, 1 the song, 2 the other effects; 3 the engine's macros) = {fmt, min, max, def, names: [..] | null, label}
 const ctl = { 0: new Map(), 1: new Map(), 2: new Map(), 3: new Map() };   // controls by id: {set(v), refresh()}

@@ -6,7 +6,7 @@
 #define __attribute__(x)
 #define EID_COUNT 19u
 #define EID_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 13u)
-#define UP_SLOTS 32u
+#define UP_SLOTS 80u                     /* (core.h: 80 since 2026-10-18) */
 static uint8_t fx_lowcut;
 static void fm1_led_key(unsigned k, int on) { (void)k; (void)on; }
 static int fm1_enc_take(unsigned k) { (void)k; return 0; }
@@ -71,6 +71,21 @@ int main(void)
     assert(!p.lowcut && p.bold == 1 && p.favorites.user == (1u << 31));   /* bold: kept as saved */
     assert(p.favorites.factory[9][0] == 1 && p.favorites.filter == 1);
     assert(p.panel.enc[0] == 3); /* saving one feature preserves the other */
+    {   /* (2026-10-18) PER5: the stars of the user slots 33 .. 80 (U80: user_hi[1] bit 15); a PER4 imports with none of
+         * them and its first 32 kept */
+        persist_t q = original;
+        q.favorites.user_hi[0] = 1u << 3; q.favorites.user_hi[1] = 1u << 15;
+        assert(settings_import(&q, sizeof q) == 1);
+#ifdef BLUEHARE_FAVORITES
+        assert(favorite_has(EID_COUNT, 35) && favorite_has(EID_COUNT, 79) && !favorite_has(EID_COUNT, 80) &&
+               favorite_has(EID_COUNT, 31));
+        assert(favorite_set(EID_COUNT, 50, 1) && favorite_has(EID_COUNT, 50) && !favorite_set(EID_COUNT, 80, 1));
+#endif
+        q = original; q.magic = 0x50455234u; q.favorites.user_hi[0] = 0xFFFFFFFFu;
+        assert(settings_import(&q, sizeof q - sizeof q.favorites.user_hi) == 2 && !q.favorites.user_hi[0] &&
+               q.favorites.user == (1u << 31));
+        p = original; assert(settings_import(&p, sizeof p) == 1);
+    }
     p = original; p.magic = 0x50455233u;
     assert(settings_import(&p, sizeof p - sizeof p.favorites) == 2);
     assert(p.bold == 1 && !p.favorites.user && !p.favorites.filter);

@@ -418,8 +418,8 @@ async function editorLibrarian() {
   ok(keys[6] === "PIT" && keys[13] === "PIT#2" && keys[info.pe0] === "E0" && new Set(keys).size === keys.length, "librarian: parameter keys unique (label#n, E0..E7)");
 
   const b = await E.bank.list(rq);
-  ok(b.total === 32 && b.slots.length === 32 && b.slots[1].used && b.slots[1].name === "TINE KEYS" && !b.slots[3].used
-    && b.slots[31].slot === 31, "librarian: UP_LIST, 32 slots in 2 frames");
+  ok(b.total === 80 && b.slots.length === 80 && b.slots[1].used && b.slots[1].name === "TINE KEYS" && !b.slots[3].used
+    && b.slots[79].slot === 79, "librarian: UP_LIST, 80 slots in 5 frames");
 
   const cap = (await E.capturePatch(rq, info, "acid test")).patch;
   ok(cap.engine === 24 && cap.p.length === info.pcount && cap.pattern && cap.pattern[0][0] === 45 && cap.pattern[0][1] === 1,
@@ -428,7 +428,7 @@ async function editorLibrarian() {
   const g = await E.bank.get(rq, info, 10);
   ok(rc === 0 && g.used && g.name === "acid test" && g.engine === 24 && eq(g.p, cap.p) && js(g.pattern) === js(cap.pattern),
     "librarian: UP_PUT -> UP_GET round trip");
-  const bad = E.parse[C.UP_PUT](await rq(E.req.upPut(60, cap), { timeout: 2500, retries: 0 }));
+  const bad = E.parse[C.UP_PUT](await rq(E.req.upPut(80, cap), { timeout: 2500, retries: 0 }));
   ok(bad.rc === 1, "librarian: UP_PUT to a slot past the bank -> rc 1");
   ok(E.upName("") === "PATCH" && E.upName("abcdefghijklmnop") === "abcdefghijkl" && E.upName("Bäss") === "Bss", "librarian: device names (ASCII, 1..12)");
 

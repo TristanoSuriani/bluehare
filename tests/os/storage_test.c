@@ -127,18 +127,21 @@ int main(void)
     {   /* (Blue Hare) the song's chunks 4 .. 15 (8 tracks): A/B pairs from 0xA0000 to 0xB7FFF; the autosave's chunks
          * 1 .. 15: from 0xB8000 to 0xD5FFF; each sector its own (no other object's, none of each other's), past every
          * object of before */
-        uint32_t o, c, o2, c2, ok = OBJ_AUTO1 == OBJ_PROJECT4 + 12u && OBJ_COUNT == OBJ_AUTO1 + 15u &&
-                                    OBJ_PROJECT4 == OBJ_AUTOSAVE + 1u;
+        uint32_t o, c, o2, c2, ok = OBJ_AUTO1 == OBJ_PROJECT4 + 12u && OBJ_UPRESET2 == OBJ_AUTO1 + 15u &&
+                                    OBJ_COUNT == OBJ_UPRESET2 + 3u && OBJ_PROJECT4 == OBJ_AUTOSAVE + 1u;
         for (o = OBJ_PROJECT4; o < OBJ_COUNT; o++)
             for (c = 0; c < 2u; c++) {
                 uint32_t a0 = st_sector(o, c);
-                ok &= o < OBJ_AUTO1 ? a0 >= 0xA0000u && a0 + 4096u <= 0xB8000u : a0 >= 0xB8000u && a0 + 4096u <= 0xD6000u;
+                ok &= o < OBJ_AUTO1 ? a0 >= 0xA0000u && a0 + 4096u <= 0xB8000u
+                      : o < OBJ_UPRESET2 ? a0 >= 0xB8000u && a0 + 4096u <= 0xD6000u
+                                         : a0 >= 0xD6000u && a0 + 4096u <= 0xDC000u;   /* (user preset banks 2 .. 4) */
                 for (o2 = 0; o2 < OBJ_COUNT; o2++)
                     for (c2 = 0; c2 < 2u; c2++)
                         if ((o2 != o || c2 != c) && !((o2 == OBJ_FM6BANK && o == OBJ_UPFM6) || (o == OBJ_FM6BANK && o2 == OBJ_UPFM6)))
                             ok &= st_sector(o2, c2) != a0;
             }
-        bad += check("the song's chunks 4 .. 15 in 0xA0000 .. 0xB7FFF, the autosave's 1 .. 15 in 0xB8000 .. 0xD5FFF, every sector their own", ok);
+        bad += check("the song's chunks 4 .. 15 in 0xA0000 .. 0xB7FFF, the autosave's 1 .. 15 in 0xB8000 .. 0xD5FFF, the user "
+                     "presets' banks 2 .. 4 in 0xD6000 .. 0xDBFFF (2026-10-18), every sector their own", ok);
     }
     {
         static uint8_t bank[3472], back[3728], tab[3728];

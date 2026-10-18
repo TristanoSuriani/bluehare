@@ -91,7 +91,7 @@ typedef char eng_count_ok[NENGINES > 0 && NENGINES <= 16 ? 1 : -1];
 /* engine index e is engine X (a uint8_t compared without the warning that an engine left out would raise: still false,
  * folded away) */
 #define ENG_IS(e, X) ((uint32_t)(e) == (uint32_t)ENGI_##X)
-#define UP_SLOTS 32u             /* user presets (upreset.c) */
+#define UP_SLOTS 80u             /* user presets (upreset.c; 32 until 2026-10-18: five banks, U01 .. U80) */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 
 /* ------------------------------------------------------- parameters --- */

@@ -174,8 +174,8 @@ int main(void)
 
     reset();
     trk[0].p[P_ATK] = 60;
-    bad += check("LIST: 13 objects (ids 8, 9 empty: FM6 gone); id 0, the music in RAM, empty (1.5: a song)",
-                 list(0, &len, &crc) == 0 && rep[2] == 13u && len == 0u);
+    bad += check("LIST: 16 objects (ids 8, 9 empty: FM6 gone; 22 .. 24 the user presets' banks 2 .. 4); id 0, the music "
+                 "in RAM, empty (1.5: a song)", list(0, &len, &crc) == 0 && rep[2] == 16u && len == 0u);
     bad += check("no song stored: its chunks (ids 2..5) list as length 0", list(2, &len, &crc) == 0 && len == 0 &&
                  list(3, &len, &crc) == 0 && len == 0);
     project_save(0);

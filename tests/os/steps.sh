@@ -35,7 +35,7 @@ if python3 -c "import PIL" 2>/dev/null; then
         python3 tests/os/text_spacing_test.py build/gen/ui_fonts.h
 fi
 compile $CC -O1 -w -Ibuild/gen -o "$OUT/settings_test" tests/os/settings_test.c
-run "settings: PER1..PER4 migration, palette ids and preference preservation" "$OUT/settings_test"
+run "settings: PER1..PER5 migration (PER5: the stars of 80 user slots), palette ids and preference preservation" "$OUT/settings_test"
 compile $CC -w $I -o "$OUT/ui_test" tests/os/ui_test.c -lm
 run "UI: sounds, undo, MIDI overflow, pending saves, panel recovery, SEQ's placeholder, GREY gray, MONO neutral, retired engines, GEN's STROBE" "$OUT/ui_test"
 FV=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/fm1/bluehare.c)   # (the splash, ABOUT: the real version)

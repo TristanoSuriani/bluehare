@@ -19,7 +19,8 @@
 #define ST_PAYLOAD_MAX (ST_SECTOR - ST_PAYLOAD_OFF)
 
 /* flash map (FL_DATA 0x97000..0xDFFFF, FL_GLOB 0xFC000.., FL_AUTO 0xE5000..0xE6FFF, FL_VBANK 0xE7000): settings 0xFC000, projects
- * 0x97000..0x9EFFF, free 0xA0000..0xDBFFF (the user sample slots until 1.5), user preset banks 0xDC000..0xDFFFF (upreset.c),
+ * 0x97000..0x9EFFF, free 0xA0000..0xDBFFF (the user sample slots until 1.5), user preset banks 0xDC000..0xDFFFF (upreset.c;
+ * banks 2 .. 4 0xD6000..0xDBFFF since 2026-10-18),
  * the user presets' FM6 patches (up_fm6.c, since 1.0.3): copy A 0x9F000, copy B 0xFE000; the autosave (project.c,
  * 1.2): A 0xE5000, B 0xE6000, above the OTA staging (0xE0000..0xE4FFF), in the margin the stock firmware's own update
  * stages into (only ever while the stock firmware runs: a later Blue Hare finds no valid copy and starts as without one).
@@ -30,7 +31,9 @@
  * The FM6 voice bank (1.4.1, fm6_vbank.c): 0xE7000, the sector above the autosave, with a commit record of the same
  * kind (type OBJ_FM6VB, not an st_load object); a new bank is first staged in the autosave's older copy (fm6_vbank.c). */
 enum { OBJ_SETTINGS, OBJ_PROJECT0, OBJ_UPRESET0 = OBJ_PROJECT0 + 4, OBJ_FM6BANK = OBJ_UPRESET0 + 2, OBJ_UPFM6,
-       OBJ_AUTOSAVE, OBJ_PROJECT4, OBJ_AUTO1 = OBJ_PROJECT4 + 12, OBJ_COUNT = OBJ_AUTO1 + 15 };
+       OBJ_AUTOSAVE, OBJ_PROJECT4, OBJ_AUTO1 = OBJ_PROJECT4 + 12, OBJ_UPRESET2 = OBJ_AUTO1 + 15, OBJ_COUNT = OBJ_UPRESET2 + 3 };
+/* (2026-10-18) OBJ_UPRESET2 .. +2: the user presets' banks 2 .. 4 (slots 33 .. 80), A/B pairs at 0xD6000 .. 0xDBFFF,
+ * the free sectors between the autosave's last chunk and banks 0 and 1: no build used them */
 /* (Blue Hare, 8 tracks) OBJ_PROJECT4 .. +11: the song's chunks 4 .. 15 (project.c proj_obj), A/B pairs from 0xA0000
  * (0xA0000 .. 0xB7FFF of the free space above): after every object of before, which keep their ids and sectors.
  * OBJ_AUTO1 .. +14: the autosave's chunks 1 .. 15 (its chunk 0 is OBJ_AUTOSAVE, written last), 0xB8000 .. 0xD5FFF */
@@ -73,6 +76,8 @@ static uint32_t st_sector(uint32_t obj, uint32_t copy)  /* flash offset of copy 
         return copy ? 0xFE000u : 0x9F000u;
     if (obj == OBJ_AUTOSAVE)
         return 0xE5000u + copy * ST_SECTOR;
+    if (obj >= OBJ_UPRESET2)                             /* the user presets' banks 2 .. 4 (2026-10-18) */
+        return 0xD6000u + (obj - OBJ_UPRESET2) * 2u * ST_SECTOR + copy * ST_SECTOR;
     if (obj >= OBJ_AUTO1)                                /* the autosave's chunks 1 .. 15 */
         return 0xB8000u + (obj - OBJ_AUTO1) * 2u * ST_SECTOR + copy * ST_SECTOR;
     if (obj >= OBJ_PROJECT4)                             /* the song's chunks 4 .. 15 */
