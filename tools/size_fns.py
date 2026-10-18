@@ -24,7 +24,7 @@ SIZE_FILES = ["ui.c", "favorites.c", "menu_items.c", "icons.c", "ui_graph.c", "u
               "usb.c", "midi_uart.c", "midi_control.c", "midi_clock.c", "seq.c", "chord.c",
               "panel.c", "lcd.c", "gfx.c", "ota.c", "ota_hw.c", "params.c",
               "ui_layer.c", "ui_name.c", "main.c", "libc.c", "storage_hw.c", "engines.c",
-              "keyboard.c", "midi_in.c", "ui_ocean.c",
+              "keyboard.c", "midi_in.c", "ui_strobe.c",
               "song.c", "patch.c"]   # (2026-10-17: out of project.c, ui.c)   # (2026-10-17: out of seq.c, usb.c; GEN's ocean)
 ISR_ROOTS = ("fm1_alnk0_irq", "fm1_timer5_irq")      # hal/fm1_isr.S: the audio ISR, the key / LED scan (+ USB poll)
 DEF = re.compile(r"^(?:static|void|int|uint\w*|int\w*|const)\b[^;=(]*?\b([A-Za-z_]\w*)\s*\(", re.M)

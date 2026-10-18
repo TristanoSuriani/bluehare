@@ -37,7 +37,7 @@ fi
 compile $CC -O1 -w -Ibuild/gen -o "$OUT/settings_test" tests/os/settings_test.c
 run "settings: PER1..PER4 migration, palette ids and preference preservation" "$OUT/settings_test"
 compile $CC -w $I -o "$OUT/ui_test" tests/os/ui_test.c -lm
-run "UI: sounds, undo, MIDI overflow, pending saves, panel recovery, SEQ's placeholder, GREY gray, MONO neutral, retired engines, GEN's ocean" "$OUT/ui_test"
+run "UI: sounds, undo, MIDI overflow, pending saves, panel recovery, SEQ's placeholder, GREY gray, MONO neutral, retired engines, GEN's STROBE" "$OUT/ui_test"
 FV=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/fm1/bluehare.c)   # (the splash, ABOUT: the real version)
 slow compile $CC -O1 -w "-DBLUEHARE_VERSION=\"$FV\"" $I -Itests/os -o "$OUT/ui_render" tests/os/ui_render.c -lm
 mkdir -p build/ui_new/ppm build/ui_slot

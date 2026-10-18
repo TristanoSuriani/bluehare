@@ -50,7 +50,7 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | AMB | fx | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1); ported by Tristano Suriani |
 | EQ | fx | the patch's EQ: four bands, in float | `firmware/baseline/fx.c`, `firmware/baseline/fastmath.h` | Tristano Suriani |
 | GEN | plugin | the generative ensemble on ARP: pad, bass, bells, pulse or waves | `firmware/baseline/gen.c`, `firmware/baseline/player.c` | Charles Vestal (amb-1's composition); Tristano Suriani |
-| OCEAN | ui | the ocean on GEN's pages while it plays | `firmware/os/ui_ocean.c` | Tristano Suriani, after his generative proof of concept |
+| STROBE | ui | the player's visuals: a neon floor, strobes, bars, glitches | `firmware/os/ui_strobe.c` | Tristano Suriani |
 <!-- COMPONENTS-END -->
 
 ## Blue Hare: Tristano Suriani

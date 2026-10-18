@@ -84,7 +84,7 @@ static void graph_scale(const track_t *t, uint16_t c)
 /* CHORD (SCL 2): the chord's name ("Cm7": the last one the track played; before any, the one on its ROOT from
  * C4) over the keys from the C below its lowest note (two octaves, three for a wide one): its notes THEME, its
  * root's ACCENT, the others RAISE. OFF or a kit: what to do instead */
-#include "ui_ocean.c"                                 /* (Blue Hare, 2026-10-17) GEN's ocean */
+#include "ui_strobe.c"                                /* (Blue Hare, 2026-10-18) the player's visuals (the ocean archived) */
 static void panel_note(const char *a, const char *b, const char *c);
 static void panel_alert(uint32_t id, const char *a);
 static void graph_chord(const track_t *t, uint16_t c)
@@ -864,11 +864,11 @@ static void draw_graph(void)
             cv_oy = 0;
             if (!player_playing()) {
                 panel_note("GEN STOPPED", "[ARP] PLAY", "PAD BASS BELLS PULSE");
-                oc.ready = 0;                           /* (the next start: a fresh shoal) */
+                st.ready = 0;                           /* (the next start: a fresh floor) */
                 break;
             }
-#if BLUEHARE_UI_OCEAN
-            oc_frame();                                 /* (ui_ocean.c: its status lines on top) */
+#if BLUEHARE_UI_STROBE
+            st_frame();                                 /* (ui_strobe.c: its status lines on top) */
 #else
             {                                           /* (no ocean in this build: the status lines) */
                 char a[8], b[8];

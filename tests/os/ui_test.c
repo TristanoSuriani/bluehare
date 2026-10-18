@@ -2790,34 +2790,33 @@ static int test_quick_layers(void)
     ok &= gates() > 0 && !ui.layer;
     key_up(white(1)); btn_up(B_EDIT); frame();
     bad += check("GLO then EDIT: GLO's layer; EDIT ignored (no layer, no page, its keys notes)", ok && ui.home);
-    /* (2026-10-17) ARP: GEN starts, GEN MIX shown (the roles' densities), the ocean on it; a bell: bubbles rise; ARP
-     * again: GEN stops, GEN's page */
+    /* (2026-10-17) ARP: GEN starts, GEN MIX shown (the roles' densities), STROBE on it (2026-10-18, the ocean's place):
+     * a bass note raises its bars, another role tears it; ARP again: GEN stops, GEN's page */
     ui_power_on();
     btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
     {
         static int32_t ab[2 * CTL];
-        uint32_t i, before = 0, after = 0, blue = 0;   /* (blue: the gradient's steps) */
+        uint32_t i, before = 0, after = 0, lit = 0;    /* (lit: the floor's pixels off the black) */
         for (i = 0; i < 64u; i++)                       /* (the audio side: GEN takes the start, plays its first steps) */
             mix_block(ab, CTL);
         frames(40);
         const page_t *pg = cur_page();
-        ok = gen.on && pg->fam == FAM_ARP && pg->id[0] == G_GDPAD && pg->id[3] == G_GDTEX && oc.ready;
-        for (i = 0; i < OC_NBUB; i++)
-            before += oc.bub[i].live;
+        ok = gen.on && pg->fam == FAM_ARP && pg->id[0] == G_GDPAD && pg->id[3] == G_GDTEX && st.ready;
+        for (i = 0; i < ST_NBAR; i++)
+            before += (uint32_t)st.bar[i];
+        gen.s.played[GR_BASS]++;
         gen.s.played[GR_BELL]++;
-        frame();
-        frame();
-        for (i = 0; i < OC_NBUB; i++)
-            after += oc.bub[i].live;
-        cv_begin(240, 122, 0);                          /* (a frame of it alone: the deep's gradient, row to row, */
-        oc_frame();                                     /* whatever the palette: GREY makes it gray) */
-        for (i = 1; i < cv_h; i++)
-            blue += cv_px[i * cv_w + 2u] != cv_px[(i - 1u) * cv_w + 2u];
-        ok &= after > before && blue > 10u;
+        cv_begin(240, 122, 0);                          /* (a frame of it alone: its bars up, the tear on) */
+        st_frame();
+        for (i = 0; i < ST_NBAR; i++)
+            after += (uint32_t)st.bar[i];
+        for (i = 0; i < cv_w * cv_h; i++)
+            lit += cv_px[i] != cv_px[0];
+        ok &= after > before && st.glitch > 0 && lit > 500u;
         btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
         mix_block(ab, CTL);
         ok &= !gen.on && cur_page()->id[0] == G_GPRE;
-        bad += check("ARP: GEN plays, GEN MIX shown with the ocean (a bell lets bubbles rise); ARP again: stopped, GEN", ok);
+        bad += check("ARP: GEN plays, GEN MIX shown with STROBE (a bass note raises its bars, a bell tears it); ARP again: stopped, GEN", ok);
     }
     return bad;
 }

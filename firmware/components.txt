@@ -22,4 +22,4 @@ FX      PLATE    baseline  fx_amb.c,fastmath.h                -   -       | REVE
 FX      AMB      baseline  fx_amb.c,fastmath.h                -   -       | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | Charles Vestal (amb-1); ported by Tristano Suriani
 FX      EQ       baseline  fx.c,fastmath.h                    -   -       | the patch's EQ: four bands, in float                          | Tristano Suriani
 PLUGIN  GEN      baseline  gen.c,player.c                     -   -       | the generative ensemble on ARP: pad, bass, bells, pulse or waves | Charles Vestal (amb-1's composition); Tristano Suriani
-UI      OCEAN    os        ui_ocean.c                         -   -       | the ocean on GEN's pages while it plays                       | Tristano Suriani, after his generative proof of concept
+UI      STROBE   os        ui_strobe.c                        -   -       | the player's visuals: a neon floor, strobes, bars, glitches | Tristano Suriani
