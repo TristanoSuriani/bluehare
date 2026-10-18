@@ -41,7 +41,7 @@ CODE = {0x2026: 0x85}                  # characters outside Latin-1 -> their one
 PHASES, PHASES_L = 4, 2                # horizontal phases per glyph (aa_raster.raster_font): S M, L
 # faces stored Huffman-coded (--huff): M and L. S, the most drawn and the least compressible (-15 %), stays
 # 2 px per byte, so the labels draw at full speed
-HUFF = [("M", "L")]
+HUFF = [("M", "L", "SM", "SL")]
 # L draws only "BLUE HARE", the UPDATE MODE countdown digit, the calibration's control names (panel.c
 # B_NAME / E_NAME) and MENU > LARGE's card values and page titles (ui_draw.c draw_column_tall, ui_graph.c
 # graph_title: # . / J W too; a value with another character is set in M): a sparse face of those glyphs, the
@@ -50,12 +50,32 @@ HUFF = [("M", "L")]
 L_CHARS = " #+-./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"   # (Z: 2026-10-18, the play views' names in L)
 
 
+def led_faces():
+    """(2026-10-18) MENU > STYLE LED's faces SS SM SL: Blue Hare's fourteen-segment font (tools/gen_seg_font.py, made
+    here, next to the header) at the sizes whose line, baseline and capitals are Inter Tight's S M L ones"""
+    import gen_seg_font
+    out, faces = FONTS.parent / "build" / "gen", []
+    out.mkdir(parents=True, exist_ok=True)
+    # each size its own metrics (font units): the ascent and descent round up to Inter's line (asc 12 / 15 / 28,
+    # desc 3 / 4 / 7), the capitals Inter's 9 / 11 / 21 rows
+    # (S: a narrower cell, its digits Inter's 7 px)
+    for name, px, asc, desc, cap, w, adv, rng, ex, ph in (
+            ("SS", 13, 920, 230, 700, 380, 520, (32, 126), EXTRAS, PHASES),
+            ("SM", 16, 935, 245, 690, None, None, (32, 126), EXTRAS, PHASES),
+            ("SL", 30, 930, 230, 740, None, None, (32, 32), [ord(c) for c in L_CHARS[1:]], PHASES_L)):
+        f = out / f"BlueHareLED-{name}.ttf"
+        gen_seg_font.main(str(f), asc, desc, cap, w, adv)
+        faces.append((name, str(f), px, rng, ex, 0.0, ph))
+    gen_seg_font.main(str(out / "BlueHareLED.ttf"))              # (the studio's and the emulator's: one for every size)
+    return faces
+
+
 def preset(name):
     if name == "inter-tight":
         v = str(FONTS.parent / "assets" / "fonts" / "InterTight[wght].ttf")   # SIL OFL 1.1, Google Fonts
         return [("S", v + "@400", 12, (32, 126), EXTRAS, 0.0, PHASES),
                 ("M", v + "@500", 15, (32, 126), EXTRAS, 0.0, PHASES),
-                ("L", v + "@600", 28, (32, 32), [ord(c) for c in L_CHARS[1:]], 0.0, PHASES_L)]
+                ("L", v + "@600", 28, (32, 32), [ord(c) for c in L_CHARS[1:]], 0.0, PHASES_L)] + led_faces()
     if name == "standin":
         if os.path.exists(LOCAL_INTER):
             reg, med, semi = LOCAL_INTER + "#0", LOCAL_INTER + "#10", LOCAL_INTER + "#12"

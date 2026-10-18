@@ -455,6 +455,8 @@ static void persist_boot(void)                    /* before settings_init / pane
         int n = st_load(OBJ_SETTINGS, &p, sizeof p);
         if (settings_import(&p, n))
             persist_saved = p;
+        else
+            ui_style = (uint8_t)BLUEHARE_DIST_STYLE;   /* (2026-10-18) no settings yet: the distribution's STYLE (LED) */
     }
     proj_find();                                   /* the stored song: its name for the PROJECT page */
     up_boot();                                     /* user presets */

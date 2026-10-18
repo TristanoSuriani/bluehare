@@ -7,6 +7,8 @@
 # allows). The other distributions are in archive/distributions/; the build still takes any number of them.
 TRACKS 4
 PALETTE IDM
+STYLE LED
+# STYLE: MENU > STYLE a device starts with (LED since 2026-10-18: the fourteen-segment face, the user's "everywhere")
 # its components besides the engines (firmware/components.txt; none of a kind listed would mean all of it)
 FX PLATE
 FX EQ

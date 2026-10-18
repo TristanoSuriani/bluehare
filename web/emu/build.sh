@@ -33,4 +33,5 @@ PAL=$(sed -n 's/^PALETTE[[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p' "distributions/$D
 sed -e "s/@VERSION@/$VERSION$TAG/g" -e "s/@PREVIEW@/$PREVIEW/g" -e "s/@DIST@/${PAL:-$DIST}/g" web/emu/index.html > "$OUTD/index.html"
 cp web/emu/worklet.js "$OUTD/"
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt "$OUTD/fonts/"
+cp build/gen/BlueHareLED.ttf "$OUTD/fonts/"                 # (2026-10-18: the LED face, tools/gen_seg_font.py)
 echo "emu: $OUTD ($(wc -c < "$OUTD/bluehare.wasm" | tr -d ' ') B wasm, $VERSION$TAG)"

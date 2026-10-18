@@ -807,33 +807,25 @@ static void draw(int s)
     }
     if (s == S_SPLASH) {                          /* the power-on splash (main.c, before the UI): its lines, the version
                                                    * shown BLUEHARE_VERSION (run_tests.sh: src/bluehare.c's) */
-        static const char WANT[] = "Blue Hare|" BLUEHARE_VERSION_DIST "|Tristano Suriani|after Felucca";   /* (with its distribution: "v0.10.0 IDM") */
+        static const char WANT[] = "BLUE HARE|" BLUEHARE_VERSION_DIST "|Tristano Suriani \xb7 after Felucca";   /* (2026-10-18:
+                                                         * Niglio's splash) */
         splash_seen[0] = 0;
         in_splash = 1;
         draw_splash();
         in_splash = 0;
-        {   /* the square whole on the screen (176 x 176 at 32,32, more than the canvas): its edges and square corners
-             * RAISE, BG just outside; its text's ink 16 px in from the left and the top (the bottom: AL_B, the hook) */
-            const int32_t q0 = 32, q1 = 32 + 176 - 1;
-            uint16_t bg = host_screen[0], ra = host_screen[(uint32_t)(q0 + 1) * 240u + (uint32_t)q0 + 1];
-            int32_t i, x, y, ix = 999, iy = 999, bad = ra == bg;
-            for (i = q0 - 1; i <= q1 + 1; i++) {
-                int32_t in = i >= q0 && i <= q1;
-                bad |= host_screen[(uint32_t)(q0 - 1) * 240u + (uint32_t)i] != bg || host_screen[(uint32_t)(q1 + 1) * 240u + (uint32_t)i] != bg
-                    || host_screen[(uint32_t)i * 240u + (uint32_t)(q0 - 1)] != bg || host_screen[(uint32_t)i * 240u + (uint32_t)(q1 + 1)] != bg;
-                if (in)
-                    bad |= host_screen[(uint32_t)q0 * 240u + (uint32_t)i] != ra || host_screen[(uint32_t)q1 * 240u + (uint32_t)i] != ra
-                        || host_screen[(uint32_t)i * 240u + (uint32_t)q0] != ra || host_screen[(uint32_t)i * 240u + (uint32_t)q1] != ra;
-            }
-            for (y = q0; y <= q1; y++)
-                for (x = q0; x <= q1; x++)
-                    if (host_screen[(uint32_t)y * 240u + (uint32_t)x] != ra) {
-                        if (x - q0 < ix) ix = x - q0;
-                        if (y - q0 < iy) iy = y - q0;
+        {   /* Niglio drawn (his box: many pixels off the ground), centred across, the ground round him */
+            uint16_t bg = host_screen[0];
+            int32_t x, y, n = 0, xl = 240, xr = -1;
+            for (y = 6; y < 6 + 152; y++)
+                for (x = 0; x < 240; x++)
+                    if (host_screen[(uint32_t)y * 240u + (uint32_t)x] != bg) {
+                        n++;
+                        if (x < xl) xl = x;
+                        if (x > xr) xr = x;
                     }
-            if (bad || ix != 16 || iy != 16) {
-                if (rep) fprintf(rep, "FIND %-26s the splash square not whole (edges %s) or its text not 16 px in (left %d, top %d)\n",
-                                 cur_name, bad ? "off" : "ok", (int)ix, (int)iy);
+            if (n < 6000 || xl < 44 || xr > 195 || (xl + xr) / 2 < 110 || (xl + xr) / 2 > 130) {
+                if (rep) fprintf(rep, "FIND %-26s Niglio not drawn whole and centred (%d pixels, x %d .. %d)\n", cur_name, (int)n,
+                                 (int)xl, (int)xr);
                 nfind++;
             }
         }
@@ -1315,6 +1307,28 @@ int main(int argc, char **argv)
         ui_style = ST_FLAT; style_apply();
         if (nruled < 100u) { fprintf(stderr, "ui_render: dividers on %u STYLE screens only\n", nruled); return 1; }
         fprintf(rep, "STYLE LINE (every palette): %u lint findings\n", nfind - n0);
+    }
+    {   /* (2026-10-18) STYLE LED: every screen in every palette in the fourteen-segment face, linted; IDM's as
+         * OUTDIR/ppm/LED_IDM_<screen>.ppm */
+        uint32_t n0 = nfind;
+        al_off = 1;                                     /* (the alignment by ink: Inter's; a segment character sits by
+                                                         * its cell, its ends short of the line) */
+        for (p = 0; p < NPALETTES; p++)
+            for (s = 0; s < S_COUNT; s++) {
+                char name[64];
+                snprintf(name, sizeof name, "LED_%s/%s", UI_PALETTES[p].name, S_NAME[s]);
+                cur_name = name;
+                setup((int)s);
+                pal(p);
+                ui_style = ST_LED; style_apply();
+                draw((int)s);
+                lint();
+                mono_check();
+                if (!strcmp(UI_PALETTES[p].name, "IDM")) write_ppm(out, "LED_IDM", S_NAME[s]);
+            }
+        ui_style = ST_FLAT; style_apply();
+        al_off = 0;
+        fprintf(rep, "STYLE LED (every palette): %u lint findings\n", nfind - n0);
     }
     {   /* MENU > LARGE (ui.c large_kind): every screen in every palette in FLAT and LINE, linted (GREY: gray, MONO:
          * neutral); GREY MONO in FLAT as OUTDIR/ppm/LARGE_<PALETTE>_<screen>.ppm (ui_render.py: sheet_LARGE_<PALETTE>.png),

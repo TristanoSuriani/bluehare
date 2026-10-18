@@ -24,6 +24,18 @@ typedef struct {
 typedef struct { const char *name; uint16_t bg, surf, text, theme, accent; } ui_pal_t;
 typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #include "ui_fonts.h"                   /* AF_S 12 px / 400, AF_M 15 px / 500, AF_L 28 px / 600 */
+/* (2026-10-18) MENU > STYLE LED: the screen's text in Blue Hare's fourteen-segment face (tools/gen_seg_font.py; AF_SS SM
+ * SL, the same lines and capitals as Inter Tight's S M L): every AF_S, AF_M, AF_L the face the style picks (af_led) */
+static const aafont_t *af_cur[3] = {&AF_S, &AF_M, &AF_L};
+static void af_led(int on)
+{
+    af_cur[0] = on ? &AF_SS : &AF_S;
+    af_cur[1] = on ? &AF_SM : &AF_M;
+    af_cur[2] = on ? &AF_SL : &AF_L;
+}
+#define AF_S (*af_cur[0])
+#define AF_M (*af_cur[1])
+#define AF_L (*af_cur[2])
 #include "ui_palettes.h"
 #include "ui_keycaps.h"                 /* KC_*: the keycaps / badges (tools/gen_aa_keycaps.py), KNOB_* arcs */
 #define ELLIPSIS '\x85'                 /* the ellipsis glyph of AF_S and AF_M */
@@ -93,6 +105,7 @@ static struct {
  * Selections, accents, keys and gauges keep their fills in every style */
 #define ST_FLAT 0u
 #define ST_LINE 1u
+#define ST_LED 3u                /* (2026-10-18) FLAT's shapes, the LED face (2: the retired PIXEL, read as LINE) */
 #define T_RULE ux.dim            /* LINE: the dividers (DIM: visible on NIGHT, GREY, MONO and PAPER, quieter than labels) */
 #define T_BG ux.bg               /* background */
 #define T_SURF ux.surf           /* dialogs, menu rows, mixer strips */

@@ -381,8 +381,10 @@ static void info_rows(void)                            /* (in screen rows: cv_oy
         if (k == 2u) {                                 /* CPU: the value and its unit, as HOLD's */
             GFX_HOOK_ALIGN(0, 0, 0, vy + AF_M.asc, AL_B, "info row unit on its value's baseline");
             cv_text_r(cv_text_r(MR_VR, vy + AF_M.asc - AF_S.asc, &AF_S, "%", T_MID, T_SURF) - 3, vy, &AF_M, cpu, T_THEME, T_SURF);
-        } else {
-            cv_text_r(MR_VR, vy, &AF_M, k ? USB_N[info_usb()] : BLUEHARE_VERSION_DIST, T_THEME, T_SURF);
+        } else {                                       /* (a value too wide beside its name: S, as LED's version) */
+            const char *v = k ? USB_N[info_usb()] : BLUEHARE_VERSION_DIST;
+            const aafont_t *f = text_w(&AF_M, v) > MR_VR - MR_LX - text_w(&AF_M, LBL[k]) - 10 ? &AF_S : &AF_M;
+            cv_text_r(MR_VR, f == &AF_M ? vy : vy + AF_M.asc - AF_S.asc, f, v, T_THEME, T_SURF);
         }
     }
 }

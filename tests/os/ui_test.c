@@ -5412,18 +5412,21 @@ static int test_style(void)
     hold(B_HOME); ui.menu_sel = MI_STYLE;
     ok &= ui.menu == 1u && str_eq(MI_NAME[MI_STYLE], "STYLE");
     turn(EN_K1, 1); ok &= ui_style == ST_LINE && ux.style == ST_LINE && ux.surf == ux.bg;
-    turn(EN_K1, 1); ok &= ui_style == ST_LINE;
+    turn(EN_K1, 1); frame();                            /* (2026-10-18) LED: FLAT's shapes, the fourteen-segment face */
+    ok &= ui_style == ST_LED && ux.style == ST_FLAT && ux.surf != ux.bg && &AF_S == &AF_SS && &AF_L == &AF_SL;
+    turn(EN_K1, 1); ok &= ui_style == ST_LED;
+    turn(EN_K1, -1); frame(); ok &= ui_style == ST_LINE && &AF_S != &AF_SS;
     turn(EN_K1, -1); ok &= ui_style == ST_FLAT;
     turn(EN_K1, -1); ok &= ui_style == ST_FLAT;
     press(B_OCTUP); ok &= ui_style == ST_LINE && ui.menu == 1u;
-    press(B_OCTUP); ok &= ui_style == ST_LINE;
-    press(B_OCTDN); ok &= ui_style == ST_FLAT && ux.style == ST_FLAT && ux.surf != ux.bg && ui.menu == 1u;
+    press(B_OCTUP); ok &= ui_style == ST_LED;
+    press(B_OCTDN); press(B_OCTDN); ok &= ui_style == ST_FLAT && ux.style == ST_FLAT && ux.surf != ux.bg && ui.menu == 1u;
     press(B_OCTUP); ok &= ui_style == ST_LINE;
     ok &= !(ui_prefs & 0xFFu) && settings_leds == LEDS_DIM;   /* (no other setting moved) */
     hold(B_HOME);
     go_title("ENV"); frame();
     ok &= !ui.menu && ux.style == ST_LINE && host_screen[rule] == swap16(T_RULE);
-    bad += check("MENU > STYLE: FLAT by default, KNOB 1 / OCT-+ FLAT / LINE, LINE drawn (rules, no SURF)", ok);
+    bad += check("MENU > STYLE: FLAT by default, KNOB 1 / OCT-+ FLAT / LINE / LED (its face), LINE drawn (rules, no SURF)", ok);
     {
         persist_t p, q;
         settings_export(&p);
@@ -5447,10 +5450,12 @@ static int test_style(void)
         settings_export(&p);
         memset(&p.favorites, 0, sizeof p.favorites);
         p.magic = 0x50455233u;                          /* settings from before STYLE (PER3) */
-        ok &= settings_import(&p, (int)(sizeof p - sizeof p.favorites)) == 2 && ui_style == ST_FLAT;
-        frame();
+        ok &= settings_import(&p, (int)(sizeof p - sizeof p.favorites)) == 2 && ui_style == BLUEHARE_DIST_STYLE;
+        frame();                                        /* (2026-10-18: older settings the distribution's STYLE, LED:
+                                                         * FLAT's shapes) */
         ok &= ux.style == ST_FLAT && ux.surf != ux.bg;
-        bad += check("  STYLE saved with the settings and read back; older settings and unknown values: FLAT, PIXEL: LINE (idempotent)", ok);
+        bad += check("  STYLE saved with the settings and read back; unknown values: FLAT, PIXEL: LINE (idempotent); older "
+                     "settings: the distribution's (LED)", ok);
     }
     ui_power_on(); frame();
     return bad;

@@ -116,6 +116,9 @@ static uint32_t leds_step(uint32_t m, int32_t s)
 #ifndef BLUEHARE_DIST_PALETTE                  /* (a build without a distribution's header: the tests') */
 #define BLUEHARE_DIST_PALETTE UI_GREY_INDEX
 #endif
+#ifndef BLUEHARE_DIST_STYLE                    /* (2026-10-18) its MENU > STYLE (gfx.c ST_*); none: FLAT */
+#define BLUEHARE_DIST_STYLE 0u
+#endif
 static void settings_init(void)
 {
     if (settings.magic == SETTINGS_MAGIC_OLD && settings.palette < 20u) {

@@ -13,6 +13,8 @@
 <style>
 /* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt), cut to printable ASCII, for the knob labels */
 @font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
+/* (2026-10-18) Blue Hare's LED face, fourteen segments (tools/gen_seg_font.py, the firmware's STYLE LED): the lettering */
+@font-face { font-family: "BlueHareLED"; src: url("fonts/BlueHareLED.ttf") format("truetype"); font-display: swap; }
 :root { --bg: #8e8e93; --fg: #111; --dim: #2c2c2e; --rule: #5a5a5e;
         --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
         --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
@@ -46,7 +48,7 @@ body.dist-idm::before { content: ""; position: fixed; inset: 0; pointer-events: 
 body[class^="dist-"] main { position: relative; z-index: 1; }
 body[class^="dist-"] a { color: var(--a2); }
 .brand { display: flex; align-items: baseline; justify-content: center; gap: 12px; margin: 0 0 14px; }
-.brand h1 { margin: 0; font: 400 30px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; color: var(--fg); }
+.brand h1 { margin: 0; font: 400 30px/1 "BlueHareLED", "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; color: var(--fg); }
 .brand h1 b { font-weight: 400; color: var(--a1, var(--fg)); }
 .brand span { font: 12px/1 ui-monospace, Menlo, monospace; color: var(--a2, var(--dim)); letter-spacing: .12em; }
 body[class^="dist-"] .full[aria-pressed="true"] { background: var(--a1); color: var(--bg); border-color: var(--a1); }
@@ -125,13 +127,13 @@ footer small { font-size: 11px; opacity: .8; }
    accent, their dot the text colour; the buttons dark glass whose LED lights them in the second accent (PLAY green,
    REC red); the keys' slits the same LED; the bezel the first accent. Everything else behind ABOUT */
 .bar { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin: 18px 0 0; }
-.chip { font: 400 13px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .12em; padding: 8px 14px; cursor: pointer;
+.chip { font: 400 13px/1 "BlueHareLED", "DotGothic16", ui-monospace, monospace; letter-spacing: .12em; padding: 8px 14px; cursor: pointer;
         background: transparent; color: var(--fg); border: 1px solid var(--rule); border-radius: 3px;
         transition: border-color .1s, box-shadow .1s, color .1s; }
 .chip:hover { border-color: var(--a2, var(--fg)); box-shadow: 0 0 10px -2px var(--a2, var(--fg)); }
 .chip[aria-pressed="true"] { color: var(--bg); background: var(--a2, var(--fg)); border-color: var(--a2, var(--fg));
                              box-shadow: 0 0 14px -2px var(--a2, var(--fg)); }
-.bar .midi { margin: 0 6px 0 0; display: inline-flex; align-items: center; gap: 6px; font: 400 12px "DotGothic16", monospace;
+.bar .midi { margin: 0 6px 0 0; display: inline-flex; align-items: center; gap: 6px; font: 400 12px "BlueHareLED", "DotGothic16", monospace;
              letter-spacing: .14em; color: var(--dim); }
 .bar .midi .dot { margin: 0; }
 .midi .dot.on { box-shadow: 0 0 8px var(--green); }
@@ -143,11 +145,11 @@ dialog#about { max-width: 640px; width: calc(100% - 32px); max-height: calc(100v
 dialog#about::backdrop { background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(3px); }
 #about header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px;
                 border-bottom: 1px solid var(--edge); }
-#about h2 { margin: 0; font: 400 22px/1 "DotGothic16", monospace; letter-spacing: .08em; }
+#about h2 { margin: 0; font: 400 22px/1 "BlueHareLED", "DotGothic16", monospace; letter-spacing: .08em; }
 #about h2 b { font-weight: 400; color: var(--a1, var(--fg)); }
 #about section { padding: 14px 20px 18px; border-bottom: 1px solid var(--edge); }
 #about section:last-child { border-bottom: 0; }
-#about h3 { margin: 0 0 10px; font: 400 12px/1 "DotGothic16", monospace; letter-spacing: .2em; color: var(--a2, var(--dim));
+#about h3 { margin: 0 0 10px; font: 400 12px/1 "BlueHareLED", "DotGothic16", monospace; letter-spacing: .2em; color: var(--a2, var(--dim));
             text-transform: uppercase; }
 #about p { margin: 0 0 8px; color: var(--dim); }
 #about .version { color: var(--fg); font: 12px ui-monospace, Menlo, monospace; letter-spacing: .1em; }
@@ -157,7 +159,7 @@ dialog#about::backdrop { background: color-mix(in srgb, var(--bg) 78%, transpare
 .keymap dt { white-space: nowrap; }
 .keymap dd { margin: 0; color: var(--dim); }
 body[class^="dist-"] .start { background: color-mix(in srgb, var(--bg) 70%, transparent); }
-body[class^="dist-"] .start button { font: 400 18px/1 "DotGothic16", monospace; letter-spacing: .14em; color: var(--bg);
+body[class^="dist-"] .start button { font: 400 18px/1 "BlueHareLED", "DotGothic16", monospace; letter-spacing: .14em; color: var(--bg);
     background: var(--a2); box-shadow: 0 0 24px -2px var(--a2); border-radius: 3px; padding: 14px 30px; }
 body[class^="dist-"] .start p { color: var(--fg); }
 /* the device */

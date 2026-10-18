@@ -24,4 +24,5 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@DIST@/$DIST/g" web/studio/index.html > "$OUTD/index.html"
 cp web/studio/studio.js web/studio/sysex.js web/emu/worklet.js "$OUTD/"
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt "$OUTD/fonts/"
+cp build/gen/BlueHareLED.ttf "$OUTD/fonts/"                 # (2026-10-18: the LED face, tools/gen_seg_font.py)
 echo "studio: $OUTD ($(wc -c < "$OUTD/bluehare.wasm" | tr -d ' ') B wasm, $VERSION)"

@@ -23,17 +23,19 @@ typedef struct {
     uint32_t bold;
     struct { uint8_t factory[16][32]; uint32_t user, filter, user_hi[2]; } favorites;
 } persist_t;
-#define PERSIST_MAGIC 0x50455235u
+#define PERSIST_MAGIC 0x50455236u              /* (PER6, 2026-10-18: PER5's layout; a PER5 takes the distribution's
+                                                * STYLE once, LED) */
 
 /* Normalize in place; 1 = current, 2 = migrated, 0 = invalid. */
 static int settings_import(persist_t *p, int n)
 {
     int current = n == (int)sizeof *p && p->magic == PERSIST_MAGIC;
+    int old5 = n == (int)sizeof *p && p->magic == 0x50455235u;
     int old4 = n == (int)(sizeof *p - sizeof p->favorites.user_hi) && p->magic == 0x50455234u;
     int old3 = n == (int)(sizeof *p - sizeof p->favorites) && p->magic == 0x50455233u;
     int old2 = n == (int)(sizeof *p - sizeof p->favorites - sizeof p->bold) && p->magic == 0x50455232u;
     int old1 = n == (int)(8u + sizeof(panel_t)) && p->magic == 0x50455231u;
-    if (!(current || old4 || old3 || old2 || old1)) return 0;
+    if (!(current || old5 || old4 || old3 || old2 || old1)) return 0;
     if (old1) {
         panel_t old;
         memcpy(&old, (uint8_t *)p + 8, sizeof old);
@@ -42,8 +44,11 @@ static int settings_import(persist_t *p, int n)
     }
     if (old1 || old2) p->bold = 0;
     if (old4) memset(p->favorites.user_hi, 0, sizeof p->favorites.user_hi);
-    else if (!current) memset(&p->favorites, 0, sizeof p->favorites);
-    if (p->favorites.factory[15][29] > 1u)        /* STYLE (ui.c ui_style): 2, the retired PIXEL = LINE; unknown = FLAT */
+    else if (!current && !old5) memset(&p->favorites, 0, sizeof p->favorites);
+    if (!current)                                  /* (2026-10-18) a setting of before PER6: the distribution's STYLE */
+        p->favorites.factory[15][29] = (uint8_t)BLUEHARE_DIST_STYLE;
+    if (p->favorites.factory[15][29] > 1u && p->favorites.factory[15][29] != 3u)   /* STYLE (ui.c ui_style): 2, the retired
+        PIXEL = LINE; 3 LED (2026-10-18); unknown = FLAT */
         p->favorites.factory[15][29] = p->favorites.factory[15][29] == 2u ? 1u : 0u;
     {   /* CLICK, CLICK LEVEL, (COUNT-IN until 1.4.1) (ui.c ui_rec_prefs): two bits each, 3 is no value: the default (0) */
         uint32_t b = p->favorites.factory[15][28], f;
@@ -57,7 +62,7 @@ static int settings_import(persist_t *p, int n)
     if (p->favorites.factory[15][11] > 8u)         /* PRESETS LIST's category (1.2, ui.c ui_lcat, CAT_*): unknown = none */
         p->favorites.factory[15][11] = 0;
     /* [15][26] HOME (1.3, ui.c ui_home_view): kept as saved; a value this firmware does not know draws SCOPE */
-    if (!current)                                  /* (2026-10-18) a setting of before PER5: the distribution's palette once
+    if (!current && !old5)                        /* (2026-10-18) a setting of before PER5: the distribution's palette once
                                                     * (IDM since then; ICE, the old default, saved with every setting) */
         p->palette = palette_to_stored(BLUEHARE_DIST_PALETTE);
     p->magic = PERSIST_MAGIC;

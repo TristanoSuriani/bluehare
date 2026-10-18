@@ -812,41 +812,50 @@ static void draw_columns(void)
 }
 
 
-/* The power-on splash (main.c fm1_main, web/emu bluehare_web.c; 1.1.5): a RAISE square centred on the screen, square
- * corners (in every style; LINE too: RAISE from the palette's SURF), in it in AF_M, the ink SPL_PAD in from the left:
- * at the top the name and the version, the first line's capitals' top SPL_PAD down; at the bottom the maker and
- * "with community", the last line's capitals' bottom (its baseline) SPL_PAD up from the square's bottom. Both
- * margins are measured to the capitals (the descender of "community" hangs into the bottom one, as off a baseline).
- * The square (176 x 176) is more than the canvas (CV_MAX, 240 x 124): it is filled straight on the screen and its
- * two text bands drawn on it as canvases, the top one from the square's top edge, the bottom one to its bottom edge.
- * In the saved palette (settings_init before it) */
-#define SPL_SQ 176                                  /* the square (even: centred exactly) */
-#define SPL_X0 ((240u - SPL_SQ) / 2u)               /* its top-left on the screen (x and y) */
-#define SPL_PAD 16                                  /* the text's inset: left (its ink), top and bottom (the capitals) */
-#define SPL_PITCH 20                                /* line to line */
-/* (Blue Hare) the name, the version; its developer, and what it grew from (the full credits: MENU > ABOUT) */
-static const char *const SPLASH_LINES[] = {"Blue Hare", BLUEHARE_VERSION_DIST, "Tristano Suriani", "after Felucca"};
-/* a band of two lines, h tall, at y on the screen: the first line's top at ly; the two lines' capitals declared
- * against al0..al1 (mode: AL_V the band centred there, AL_B the last baseline on al1) */
-static void splash_band(uint32_t y, uint32_t h, int32_t ly, const char *const *l, uint32_t mode, int32_t al0,
-                        int32_t al1, const char *tag)
+/* The power-on splash (main.c fm1_main, web/emu bluehare_web.c; 1.1.5; Niglio's since 2026-10-18): in the saved
+ * palette (settings_init before it) */
+#include "ui_niglio.h"                              /* (2026-10-18) Niglio, the mascot (tools/gen_niglio.py) */
+/* (Blue Hare) the name, the version; its developer and what it grew from (the full credits: MENU > ABOUT) */
+static const char *const SPLASH_LINES[] = {"BLUE HARE", BLUEHARE_VERSION_DIST, "Tristano Suriani \xb7 after Felucca"};
+/* (2026-10-18) the splash: Niglio, the mascot (tools/gen_niglio.py: 152 x 152, sixteen colours, index 0 the ground
+ * drawn in BG; GREY and MONO gray), BLUE HARE in L under him, the version and the credit in S, centred. Drawn in two
+ * canvases of 120 rows; nh, the screen's row Niglio starts at */
+#define NG_Y 6
+static void niglio_rows(int32_t band_y)               /* his rows inside the canvas (it starts at screen row band_y) */
 {
-    cv_begin(SPL_SQ, h, T_RAISE);
-    GFX_HOOK_ALIGN(0, al0, 0, al1, mode | AL_N(2), tag);
-    cv_text_on(SPL_PAD, ly, &AF_M, l[0], T_TEXT, T_RAISE);
-    cv_text_on(SPL_PAD, ly + SPL_PITCH, &AF_M, l[1], T_TEXT, T_RAISE);
-    cv_blit(SPL_X0, y);
+    int32_t x, y, x0 = (240 - NG_W) / 2;
+    for (y = 0; y < (int32_t)cv_h; y++) {
+        int32_t r = band_y + y - NG_Y;
+        if (r < 0 || r >= NG_H)
+            continue;
+        for (x = 0; x < NG_W; x++) {
+            uint32_t k = (uint32_t)r * NG_W + (uint32_t)x, i = (NG_PX[k >> 1] >> ((k & 1u) ? 0 : 4)) & 15u;
+            uint16_t c;
+            if (!i)
+                continue;
+            c = NG_PAL[i];
+            if (ux.mono || ux.bw)
+                c = ux_gray(ux_luma(c) * 31u / 255u);
+            cv_px[(uint32_t)y * cv_w + (uint32_t)(x0 + x)] = swap16(c);
+        }
+    }
 }
 static void draw_splash(void)
 {
-    int32_t h = SPL_PAD - AF_M_CAP_Y + SPL_PITCH + AF_M.h;     /* a band: its two lines, the descenders in */
-    int32_t lb = h - SPL_PAD - AF_M_CAP_H - AF_M_CAP_Y;         /* the bottom band's last line: its top */
-    lcd_fill(0, 0, 240, 240, T_BG);
-    lcd_fill(SPL_X0, SPL_X0, SPL_SQ, SPL_SQ, T_RAISE);
-    splash_band(SPL_X0, (uint32_t)h, SPL_PAD - AF_M_CAP_Y, SPLASH_LINES, AL_V, SPL_PAD,
-                SPL_PAD + SPL_PITCH + AF_M_CAP_H, "splash name + version SPL_PAD from the top");
-    splash_band(SPL_X0 + SPL_SQ - (uint32_t)h, (uint32_t)h, lb - SPL_PITCH, SPLASH_LINES + 2, AL_B, 0, h - SPL_PAD,
-                "splash maker's baseline SPL_PAD from the bottom");
+    int32_t y1 = NG_Y + NG_H + 6 - 120;                 /* (the second band: the name's line) */
+    cv_begin(240, 120, T_BG);
+    niglio_rows(0);
+    cv_blit(0, 0);
+    cv_begin(240, 120, T_BG);
+    niglio_rows(120);
+    cv_bg = T_BG;
+    GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "splash name centred");
+    cv_text_in(0, y1, 240, &AF_L, SPLASH_LINES[0], T_TEXT, T_BG);
+    GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "splash version centred");
+    cv_text_in(0, y1 + AF_L.h + 2, 240, &AF_S, SPLASH_LINES[1], T_THEME, T_BG);
+    GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "splash credit centred");
+    cv_text_in(0, y1 + AF_L.h + 2 + AF_S.h, 240, &AF_S, SPLASH_LINES[2], T_MID, T_BG);
+    cv_blit(0, 120);
     lcd_sync();
 }
 
@@ -948,10 +957,14 @@ static void draw_confirm(void)
 /* the stored STYLE (ui_style: the menu, a settings import, a restore) into gfx.c's copy: the tokens again, all redrawn */
 static void style_apply(void)
 {
-    if (ui_style > ST_LINE)                             /* 2, the retired PIXEL: LINE; unknown: FLAT */
+    uint8_t st, led;
+    if (ui_style > ST_LINE && ui_style != ST_LED)       /* 2, the retired PIXEL: LINE; unknown: FLAT */
         ui_style = ui_style == 2u ? ST_LINE : ST_FLAT;
-    if (ux.style != ui_style) {
-        ux.style = ui_style;
+    st = ui_style == ST_LED ? ST_FLAT : ui_style;       /* (LED: FLAT's shapes, the fourteen-segment face) */
+    led = ui_style == ST_LED;
+    if (ux.style != st || (af_cur[0] == &AF_SS) != led) {
+        ux.style = st;
+        af_led(led);
         palette_set(settings.palette);
         ui.force = 1;
     }

@@ -97,6 +97,10 @@ def credits(root, check=False):
     print(f"AUTHORS.md: {len(rows) - 2} components")
 
 
+STYLES = {}                                          # (2026-10-18) a distribution's STYLE line: its MENU > STYLE
+STYLE_ID = {"FLAT": 0, "LINE": 1, "LED": 3}          # (gfx.c ST_*)
+
+
 def read(path, known, comps):
     names, tracks, palette, voices = [], 4, None, 8
     picked = {k: [] for k in KINDS[1:]}
@@ -121,6 +125,12 @@ def read(path, known, comps):
             if len(words) != 2 or words[1] not in comps[words[0]]:
                 raise SystemExit(f"{path}:{n}: {words[0]} <NAME> ({' '.join(comps[words[0]])}: firmware/components.txt)")
             picked[words[0]].append(words[1])
+            continue
+        if line.startswith("STYLE"):                 # (2026-10-18) the STYLE a device starts with
+            words = line.split()
+            if len(words) != 2 or words[1] not in STYLE_ID:
+                raise SystemExit(f"{path}:{n}: STYLE {' / '.join(STYLE_ID)}")
+            STYLES[path.stem.lower()] = STYLE_ID[words[1]]
             continue
         if line.startswith("PALETTE"):               # (Blue Hare) the palette a device starts with
             words = line.split()
@@ -172,6 +182,7 @@ def main(root, out):
         lines.append(f"#define BLUEHARE_TRACKS {tracks}")
         lines.append(f"#define BLUEHARE_VOICE_BASE {voices}")
         lines.append(f"#define BLUEHARE_DIST_PALETTE {'UI_PAL_' + palette if palette else 'UI_GREY_INDEX'}")
+        lines.append(f"#define BLUEHARE_DIST_STYLE {STYLES.get(name, STYLES.get(first, 0) if name == 'all' else 0)}u")
         lines += [f"#define ENGI_{k} ENG_ABSENT" for k in known if k not in names]
         lines += [f"#define BLUEHARE_{kind}_{c} {int(c in picked[kind])}" for kind in comps for c in comps[kind]]
         (out / f"dist_{name}.h").write_text("\n".join(lines) + "\n")

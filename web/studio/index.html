@@ -15,6 +15,8 @@
 <style>
 /* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt): the device's lettering, for the titles */
 @font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
+/* (2026-10-18) Blue Hare's LED face, fourteen segments (tools/gen_seg_font.py, the firmware's STYLE LED): the lettering */
+@font-face { font-family: "BlueHareLED"; src: url("fonts/BlueHareLED.ttf") format("truetype"); font-display: swap; }
 /* the FM-1's IDM palette (tools/gen_ui_palettes.py; the device's since 2026-10-18): ground, panel, ink, accent, second
    accent: electric cyan values, hot magenta the active thing, on deep indigo */
 :root {
@@ -41,7 +43,7 @@ button { cursor: pointer; }
 header { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid color-mix(in srgb, var(--edge) 60%, transparent); flex-wrap: wrap;
          background: color-mix(in srgb, var(--panel) 55%, var(--bg)); }
 .brand { display: flex; align-items: baseline; gap: 8px; }
-.brand h1 { margin: 0; font: 400 21px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; }
+.brand h1 { margin: 0; font: 400 21px/1 "BlueHareLED", "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; }
 .brand h1 b { font-weight: 400; color: var(--accent); }
 .brand span { font: 11px/1 ui-monospace, Menlo, monospace; color: var(--dim); letter-spacing: .1em; }
 #tracks { display: flex; gap: 6px; margin: 0 0 0 auto; }
@@ -74,7 +76,7 @@ header { display: flex; align-items: center; gap: 10px; padding: 9px 16px; borde
 /* the left column: engines; presets and the saved sounds as tabs, the list filling the rest */
 #engines { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .eng { text-align: left; padding: 5px 7px; border-radius: 7px; background: var(--panel2); border: 1px solid var(--edge); }
-.eng b { display: block; font: 400 15px/1.15 "DotGothic16", ui-monospace, monospace; letter-spacing: .04em; }
+.eng b { display: block; font: 400 15px/1.15 "BlueHareLED", "DotGothic16", ui-monospace, monospace; letter-spacing: .04em; }
 .eng small { display: block; color: var(--dim); font-size: 10.5px; line-height: 1.25; }
 .eng[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--panel2)); }
 .browse { flex: 1; min-height: 160px; display: flex; flex-direction: column; }
@@ -96,12 +98,12 @@ header { display: flex; align-items: center; gap: 10px; padding: 9px 16px; borde
 /* the middle: the sound's name, its tabs, the groups of a tab */
 #editor { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 .soundbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.soundbar .title { font: 400 22px/1.1 "DotGothic16", ui-monospace, monospace; letter-spacing: .05em; }
+.soundbar .title { font: 400 22px/1.1 "BlueHareLED", "DotGothic16", ui-monospace, monospace; letter-spacing: .05em; }
 .soundbar .sub { color: var(--dim); }
 .soundbar .edited { color: var(--accent2); font-size: 12px; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--edge); }
 .tab { border: 1px solid transparent; border-bottom: 0; background: transparent; padding: 6px 14px; border-radius: 8px 8px 0 0;
-       font: 400 14px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .08em; color: var(--dim); margin-bottom: -1px; }
+       font: 400 14px/1 "BlueHareLED", "DotGothic16", ui-monospace, monospace; letter-spacing: .08em; color: var(--dim); margin-bottom: -1px; }
 .tab[aria-selected="true"] { color: var(--ink); background: transparent; border-color: transparent; box-shadow: inset 0 -2px 0 var(--accent); }
 .tab .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-left: 6px; vertical-align: 2px; }
 .tabacts { margin-left: auto; display: flex; gap: 5px; align-items: center; padding-bottom: 3px; }
@@ -165,7 +167,7 @@ header { display: flex; align-items: center; gap: 10px; padding: 9px 16px; borde
 /* GEN: its transport and its state */
 .genbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; flex-basis: 100%; margin: 2px 2px 8px; }
 .genbar .play { min-width: 110px; font-size: 14px; }
-.genbar .chord { font: 400 26px/1 "DotGothic16", ui-monospace, monospace; min-width: 90px; color: var(--accent); }
+.genbar .chord { font: 400 26px/1 "BlueHareLED", "DotGothic16", ui-monospace, monospace; min-width: 90px; color: var(--accent); }
 .genbar .where { font: 12px ui-monospace, Menlo, monospace; color: var(--dim); }
 .roles { display: flex; gap: 6px; }
 .role { font-size: 11px; color: var(--dim); border: 1px solid var(--edge); border-radius: 6px; padding: 2px 7px; transition: background .08s; }
@@ -214,7 +216,7 @@ header { display: flex; align-items: center; gap: 10px; padding: 9px 16px; borde
 
 #start { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 90%, transparent); }
 #start .box { max-width: 520px; padding: 28px; text-align: center; }
-#start h2 { font: 400 32px/1.1 "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; margin: 0 0 6px; }
+#start h2 { font: 400 32px/1.1 "BlueHareLED", "DotGothic16", ui-monospace, monospace; letter-spacing: .06em; margin: 0 0 6px; }
 #start h2 b { font-weight: 400; color: var(--accent); }
 #start p { color: var(--dim); font-size: 14px; }
 #start .btn { font-size: 17px; padding: 10px 26px; }
