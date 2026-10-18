@@ -112,18 +112,8 @@ footer { margin-top: 12px; font-size: 12px; }
 #stage:fullscreen, body.solo #stage { display: flex; align-items: center; justify-content: center; background: var(--bg);
                                       width: 100vw; height: 100vh; }
 body.solo #stage { position: fixed; inset: 0; z-index: 10; }
-#stage:fullscreen .device, body.solo .device { width: min(100vw, calc(100vh * 1000 / 624)); }
+#stage:fullscreen .device, body.solo .device { width: min(96vw, calc(88vh * 1000 / 760)); }   /* (the instrument and its front) */
 body.solo { overflow: hidden; }
-/* (Blue Hare) big screen: a large copy of the screen above a smaller panel (on the page and in full screen) */
-.toggles { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-.toggles .full { margin: 0; }
-.full[aria-pressed="true"] { background: var(--dim); color: var(--bg); }
-#big { display: none; image-rendering: crisp-edges; image-rendering: pixelated; background: #000; }
-body.big #big { display: block; width: min(100%, 58vh); aspect-ratio: 1; margin: 0 auto 12px; }
-body.big .device { width: min(100%, calc(36vh * 1000 / 624)); margin: 0 auto; }
-body.big #stage:fullscreen, body.big.solo #stage { flex-direction: column; }
-body.big #stage:fullscreen #big, body.big.solo #big { width: min(96vw, 60vh); margin: 0 0 1vh; }
-body.big #stage:fullscreen .device, body.big.solo .device { width: min(100vw, calc(36vh * 1000 / 624)); }
 .midi .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%;
              background: var(--rule); vertical-align: 0; transition: background .15s; }
 .midi .dot.on { background: var(--green); transition: none; }
@@ -199,6 +189,26 @@ body.hard .lit .sheen { opacity: .7; }
 body.hard .chip, body.hard dialog#about { border-radius: 0; }
 body.hard .chip { box-shadow: 0 3px 0 rgba(0, 0, 0, .55); }
 body.hard .chip:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, .55); }
+.case-front { display: none; }
+.device.r3d .case-front { display: block; }
+/* (2026-10-18) the instrument in 3D: tilted back under a perspective, its front face below it, its shadow on the page */
+#stage { perspective: 2200px; perspective-origin: 50% 0%; padding: 6px 0 48px; }
+.device.r3d { transform: rotateX(24deg); transform-origin: 50% 100%; transform-style: preserve-3d;
+              width: min(100%, calc((100vh - 240px) * 1.5)); margin: 0 auto; }   /* (it fits the window: its front, the bar) */
+.device.r3d .case-front { position: absolute; left: 0.4%; right: 0.4%; top: 99.4%; height: 16%; transform-origin: 50% 0;
+                          transform: rotateX(90deg); border-radius: 0 0 6px 6px;
+                          background: linear-gradient(180deg, color-mix(in srgb, var(--body) 80%, #fff 6%), color-mix(in srgb, var(--body) 60%, #000) 70%, #000);
+                          box-shadow: inset 0 1px 0 color-mix(in srgb, var(--a2, #fff) 55%, transparent); }
+.device.r3d::after { content: ""; position: absolute; left: 4%; right: 4%; top: 103%; height: 10%; pointer-events: none;
+                     background: radial-gradient(closest-side, rgba(0, 0, 0, .7), transparent); transform: translateZ(-60px); }
+body[class^="dist-"] .face.key.white { fill: #e8eaf2; stroke: #8a8ea6; stroke-width: 1; }
+body[class^="dist-"] .face.key.black { fill: #0c0b16; stroke: #2a2850; stroke-width: 1; }
+body[class^="dist-"] .held .face.key.white { fill: #c9ccdc; }
+body[class^="dist-"] .held .face.key.black { fill: #23224a; }
+body[class^="dist-"] .face.key.white ~ .slit { fill: #c4c6d4; }
+body[class^="dist-"] .dim .face.key.white ~ .slit { fill: color-mix(in srgb, var(--a2) 40%, #c4c6d4); }
+body[class^="dist-"] .mid .face.key.white ~ .slit { fill: color-mix(in srgb, var(--a2) 65%, #c4c6d4); }
+body[class^="dist-"] .lit .face.key ~ .slit { fill: var(--a2); filter: drop-shadow(0 0 4px var(--a2)); }
 @keyframes breath-neon { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 60%, var(--tray)); } }
 @keyframes breath-neon-lo { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 35%, var(--tray)); } }
 body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { animation-name: breath-neon; }
@@ -212,10 +222,10 @@ body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { ani
 <main>
 <header class="brand"><h1>BLUE <b>HARE</b></h1><span>@VERSION@</span></header>
 <div id="stage">
-<canvas id="big" width="240" height="240" role="img" aria-label="The screen, large"></canvas>
 <div class="device" id="device">
   <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
   <canvas id="screen" width="240" height="240" role="img" aria-label="The screen"></canvas>
+  <div class="case-front" aria-hidden="true"></div>
   <div class="start" id="start"><button id="go" type="button">Switch on</button><p id="status" hidden></p></div>
 </div>
 </div>
@@ -223,7 +233,6 @@ body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { ani
 <nav class="bar" aria-label="The emulator">
   <span class="midi" id="midi" title="MIDI in"><span class="dot" id="midi-dot"></span><span class="mlab">MIDI</span></span>
   <button class="chip" id="full" type="button">FULL SCREEN</button>
-  <button class="chip" id="bigb" type="button" aria-pressed="false">BIG SCREEN</button>
   <button class="chip" id="aboutb" type="button" aria-haspopup="dialog">ABOUT</button>
 </nav>
 
@@ -240,11 +249,10 @@ body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { ani
       <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>ALGORITHM</dd>
       <dt><kbd>Shift</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>SELECT</dd>
       <dt><kbd>\</kbd> <kbd>Q</kbd> <kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>Z</kbd> <kbd>C</kbd></dt><dd>notes, or KNOB 2 3 4</dd>
-      <dt><kbd>`</kbd> · <kbd>Shift</kbd> <kbd>`</kbd></dt><dd>full screen · big screen</dd>
+      <dt><kbd>`</kbd></dt><dd>full screen</dd>
       <dt><kbd>Shift</kbd>-click</dt><dd>holds a button</dd>
     </dl>
     <button class="chip" id="numb" type="button" aria-pressed="false">QE AD ZC: NOTES</button>
-    <button class="chip" id="shapeb" type="button" aria-pressed="true">SHAPE: HARD</button>
   </section>
   <section>
     <h3>MIDI</h3>
@@ -278,13 +286,17 @@ const STORE = "bluehare-emu-flash";
 // screen larger, the keys across the whole width). Rebuilt when the orientation changes; the state stays.
 const ROW1 = ["FX", "SCL", "ENV", "LFO", "EDIT", "GLO"], ROW2 = ["HOME", "SAVE", "ARP", "SEQ", "PLAY", "REC"];
 const KNOBS = ["MASTER", "SELECT", "PRESETS", "ALGORITHM", "KNOB 1", "KNOB 2", "KNOB 3", "KNOB 4"];
+// (2026-10-18) WIDE: a synthesizer seen from the front, slightly above (the user's: "a rendered 3d synthesiser ... a
+// piano keyboard on it", after a keyboard synth's layout): the panel at the back (the four left knobs, the screen in the
+// middle, a third of the width, KNOB 1 .. 4 and the twelve buttons right), the keyboard in front (OCT- / OCT+ left of it,
+// where a synth's wheels are). Drawn flat, tilted back in 3D by the page (.device.r3d: perspective, a front face)
 const LAYOUTS = {
   wide: {
-    w: 1000, h: 624, screen: [292, 44, 256],
-    knobs: [[105, 100, 24], [215, 100, 24], [105, 205, 24], [215, 205, 24], [610, 100, 22], [714, 100, 22], [818, 100, 22], [922, 100, 22]],
-    trays: [[50, 250, 220, 50], [568, 160, 400, 140]],
-    oct: [[60, 258, 90, 34], [170, 258, 90, 34]],
-    grid: [582, 174, 54, 48, 63, 62], keybed: [36, 332, 928, 256],
+    w: 1000, h: 700, screen: [330, 26, 340], r3d: true, cheek: 0,
+    knobs: [[95, 92, 30], [222, 92, 30], [95, 232, 30], [222, 232, 30], [737, 84, 24], [807, 84, 24], [877, 84, 24], [947, 84, 24]],
+    trays: [[692, 158, 296, 172]],
+    oct: [[48, 470, 120, 76], [48, 572, 120, 76]],
+    grid: [702, 170, 40, 62, 48, 86], keybed: [200, 418, 780, 262], logo: [48, 400],
   },
   tall: {
     w: 600, h: 1070, screen: [130, 104, 340],
@@ -318,14 +330,12 @@ const knobs = [], buttons = [], keys = [];
 const btnBy = new Map(), keyBy = new Map();                   // pointer / key code -> label bit or key
 const send = (m) => { if (node) node.port.postMessage(m); };
 
-// (2026-10-18, an experiment: "much less round and more 3d") SHAPE HARD: square corners, keycaps that stand off the
-// panel (a lit top, a dark skirt under them, pressed they sink), domed knobs, the trays recessed; SOFT: the rounded
-// shapes. ABOUT switches it, remembered in this browser
-let hard = (() => { try { return localStorage.getItem("bluehare-emu-shape") !== "soft"; } catch { return true; } })();
+const hard = true;   /* (2026-10-18: square and 3D; SOFT, the rounded shapes, gone) */
 function build(name) {
   const L = LAYOUTS[name];
-  const R = hard ? { shell: 10, tray: 3, bezel: 4, btn: 2, key: 3, slit: 1 } : { shell: 40, tray: 14, bezel: 18, btn: 8, key: 0, slit: 0 };
-  document.body.classList.toggle("hard", hard);
+  const R = { shell: 10, tray: 3, bezel: 4, btn: 2, key: 3, slit: 1 };
+  document.body.classList.add("hard");
+  device.classList.toggle("r3d", !!L.r3d);
   layout = name;
   svg.innerHTML = "";
   svg.setAttribute("viewBox", `0 0 ${L.w} ${L.h}`);
@@ -343,6 +353,7 @@ function build(name) {
   grad("sheen", [[0, "#fff", .22], [.45, "#fff", .04], [.55, "#000", 0], [1, "#000", .35]]);   // a keycap's light and shade
   grad("inset", [[0, "#000", .55], [.18, "#000", 0], [.9, "#fff", 0], [1, "#fff", .07]]);     // a recess: shade at the top
   grad("shellsheen", [[0, "#fff", .07], [.25, "#fff", 0], [1, "#000", .3]]);
+  grad("ivory", [[0, "#000", .12], [.06, "#fff", 0], [.85, "#000", 0], [1, "#000", .22]]);   // a white key's shade
   grad("dome", [[0, "#fff", .32], [.55, "#fff", .03], [1, "#000", .45]], { cx: .38, cy: .3, r: .75 }, "radialGradient");
   el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: R.shell, fill: "var(--body)", class: "shell" });
   if (hard) el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: R.shell, fill: "url(#shellsheen)", "pointer-events": "none" });
@@ -353,6 +364,13 @@ function build(name) {
   for (const [x, y, w, h] of L.trays) tray(x, y, w, h);
   const [sx, sy, ss] = L.screen;
   if (hard) tray(sx - 8, sy - 8, ss + 16, ss + 16);
+  if (L.logo) {                                                  // the wordmark, between the panel and the keys
+    const t = label(svg, L.logo[0], L.logo[1], "BLUE HARE", 17, DOT, "var(--label)");
+    t.setAttribute("text-anchor", "start");
+    t.setAttribute("letter-spacing", ".34em");
+    t.setAttribute("class", "logo");
+    el("line", { x1: L.logo[0], y1: L.logo[1] + 8, x2: L.w - 20, y2: L.logo[1] + 8, stroke: "var(--a2, var(--edge))", "stroke-width": 1, opacity: .5, class: "rule" });
+  }
   el("rect", { x: sx, y: sy, width: ss, height: ss, rx: R.bezel, fill: "#0b0b0c", class: "bezel" });
   const inset = ss / 32;                                         // the 240 x 240 panel inside its bezel
   Object.assign(canvas.style, { left: `${(sx + inset) / L.w * 100}%`, top: `${(sy + inset) / L.h * 100}%`,
@@ -389,19 +407,18 @@ function build(name) {
   }
   const [x0, y0, w, h] = L.keybed;
   tray(x0, y0, w, h);
-  // the keys: two rows of the same black keys, each with a slit down its middle that lights
-  const pitch = (w - 24) / 16, kw = pitch * 0.78, kh = h * 0.425, sw = Math.max(3, kw * 0.14);
-  const key = (cx, cy, k) => {
-    const g = el("g", {}), y = cy - kh / 2;
-    if (hard) el("rect", { x: cx - kw / 2, y: y + 5, width: kw, height: kh, rx: R.key, fill: "#000", opacity: .6, class: "skirt" }, g);
-    el("rect", { x: cx - kw / 2, y, width: kw, height: kh, rx: hard ? R.key : kw / 2, class: "face key" }, g);
-    if (hard) el("rect", { x: cx - kw / 2, y, width: kw, height: kh, rx: R.key, fill: "url(#sheen)", class: "sheen" }, g);
-    el("rect", { x: cx - sw / 2, y: y + kw * 0.4, width: sw, height: kh - kw * 0.8, rx: hard ? R.slit : sw / 2, class: "slit" }, g);
-    el("rect", { x: cx - pitch / 2, y: cy - h * 0.24, width: pitch, height: h * 0.48, fill: "transparent" }, g);   // its target
+  // the keys: a piano keyboard, 16 white and 11 black (F3 .. G5); each key's LED a strip at its back edge
+  const ww = (w - 16) / 16, bw = ww * 0.6, bh = (h - 16) * 0.6, top = y0 + 8, wh = h - 16;
+  const key = (x, kw, kh, k, black) => {
+    const g = el("g", {});
+    el("rect", { x, y: top + 4, width: kw, height: kh, rx: R.key, fill: "#000", opacity: black ? .7 : .45, class: "skirt" }, g);
+    el("rect", { x, y: top, width: kw, height: kh, rx: R.key, class: "face key " + (black ? "black" : "white") }, g);
+    el("rect", { x, y: top, width: kw, height: kh, rx: R.key, fill: black ? "url(#sheen)" : "url(#ivory)", class: "sheen" }, g);
+    el("rect", { x: x + kw * 0.2, y: top + 6, width: kw * 0.6, height: 4, rx: 1, class: "slit" }, g);   // its LED
     keys[k] = { g, name: keyName(k) };
   };
-  WHITE.forEach((k, i) => key(x0 + 12 + (i + 0.5) * pitch, y0 + h * 0.75, k));
-  BLACK_AFTER.forEach((a, j) => key(x0 + 12 + (a + 1) * pitch, y0 + h * 0.25, BLACK[j]));
+  WHITE.forEach((k, i) => key(x0 + 8 + i * ww + 1, ww - 2, wh, k, false));
+  BLACK_AFTER.forEach((a, j) => key(x0 + 8 + (a + 1) * ww - bw / 2, bw, bh, BLACK[j], true));
   // HTML targets over the drawing (pointer-events: none): touch-action and pointer capture work on them everywhere
   const hit = (c, cls, role) => {
     const b = c.g.getBBox(), d = document.createElement("div");
@@ -419,7 +436,8 @@ function build(name) {
   };
   knobs.forEach((k) => { hit(k, "knob", "slider"); bindKnob(k); drawKnob(k); });
   buttons.forEach((b) => { hit(b, "", "button"); bindButton(b); });
-  keys.forEach((k, i) => { hit(k, "", "button"); bindKey(k, i); });
+  for (const i of [...WHITE, ...BLACK]) { hit(keys[i], "", "button"); bindKey(keys[i], i); }   // (the black keys' targets over
+                                                                                              //  the white ones)
   syncButtons(true);
   syncKeys(true);
   drawLights(lastLeds);
@@ -552,7 +570,7 @@ function numToggle() {
   numSync();
 }
 addEventListener("keydown", (e) => {
-  if (e.code === "Backquote" && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { (e.shiftKey ? bigToggle : fullToggle)(); e.preventDefault(); return; }
+  if (e.code === "Backquote" && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { fullToggle(); e.preventDefault(); return; }
   if (e.code === "Backslash" && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { numToggle(); e.preventDefault(); return; }
   if (e.code === "Escape" && document.body.classList.contains("solo")) { fullToggle(); return; }
   if (!node || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.(".hit.knob")) return;
@@ -594,35 +612,13 @@ function fullToggle() {
   }
 }
 document.getElementById("full").addEventListener("click", fullToggle);
-{   /* (2026-10-18) SHAPE: HARD (square, 3D) or SOFT (rounded) */
-  const b = document.getElementById("shapeb");
-  const show = () => { b.textContent = hard ? "SHAPE: HARD" : "SHAPE: SOFT"; b.setAttribute("aria-pressed", String(hard)); };
-  show();
-  b.addEventListener("click", () => {
-    hard = !hard;
-    try { localStorage.setItem("bluehare-emu-shape", hard ? "hard" : "soft"); } catch {}
-    show();
-    build(layout);
-  });
-}
 {   /* (2026-10-18) ABOUT: the keys, MIDI, the credits */
   const dlg = document.getElementById("about");
   document.getElementById("aboutb").addEventListener("click", () => dlg.showModal());
   document.getElementById("aboutx").addEventListener("click", () => dlg.close());
   dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
 }
-// (Blue Hare) big screen: the screen copied large each frame (drawScreen), the panel smaller
-const big = document.getElementById("big"), bigCtx = big.getContext("2d");
-function bigSync() {
-  const on = pref("bluehare-bigscreen") === "1";
-  document.body.classList.toggle("big", on);
-  document.getElementById("bigb").setAttribute("aria-pressed", on);
-  if (on) bigCtx.drawImage(canvas, 0, 0);
-}
-function bigToggle() { pref("bluehare-bigscreen", document.body.classList.contains("big") ? "0" : "1"); bigSync(); }
-document.getElementById("bigb").addEventListener("click", bigToggle);
 document.getElementById("numb").addEventListener("click", numToggle);
-bigSync();
 numSync();
 
 // ------------------------------------------------------------------ screen and lights
@@ -638,8 +634,6 @@ function drawScreen(fb) {
     d[i * 4 + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
-  if (document.body.classList.contains("big"))
-    bigCtx.drawImage(canvas, 0, 0);                             // (big screen: the same frame, large)
 }
 // the power-on sweep (hal/fm1_led_anim.h): a level per LED, lit frames /64 (| 128: the glow under them), drawn as the
 // LED's share of lit between its dark (or glowing) colour and the lit one, mixed in linear light
