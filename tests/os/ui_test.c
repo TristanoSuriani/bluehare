@@ -2809,7 +2809,7 @@ static int test_quick_layers(void)
         cv_begin(240, 122, 0);                          /* (a frame of it alone: its bars up, the tear on) */
         st_frame();
         for (i = 0; i < ST_NBAR; i++)
-            after += (uint32_t)st.bar[i];
+            after += (uint32_t)st.bar[i] + (uint32_t)st.btgt[i];
         for (i = 0; i < cv_w * cv_h; i++)
             lit += cv_px[i] != cv_px[0];
         ok &= after > before && st.glitch > 0 && lit > 500u;
@@ -2817,6 +2817,44 @@ static int test_quick_layers(void)
         mix_block(ab, CTL);
         ok &= !tc.on && cur_page()->id[0] == G_GPRE;
         bad += check("ARP: TECHNO plays, TECHNO MIX shown with STROBE (a bass note raises its bars, a stab tears it); ARP again: stopped", ok);
+        {   /* (2026-10-18) safe to watch: drum hits every few frames for 2 s, every scene and scheme: the strip's mean
+             * brightness never jumps more than 6 % of white between two frames (no flash); every scene draws */
+            uint32_t sc, sch, f, k2, drawn = 0, worst = 0;
+            char dbg[200];
+            for (sc = 0; sc < ST_NSCENE; sc++)
+                for (sch = 0; sch < 6u; sch++) {
+                    uint32_t prev = 0, lit2 = 0;
+                    tc.on = 1;
+                    st.scene = (uint8_t)sc;
+                    st.scheme = (uint8_t)sch;
+                    for (f = 0; f < 66u; f++) {
+                        uint32_t sum = 0;
+                        if (f % 7u == 0u)
+                            tc.s.played[TR_DRUMS]++;
+                        if (f % 11u == 0u)
+                            tc.s.played[TR_BASS]++;
+                        cv_begin(240, 122, 0);
+                        st.part = 0;                    /* (the scene held: no part change mid-test) */
+                        st.scene = (uint8_t)sc;
+                        st.scheme = (uint8_t)sch;
+                        st_frame();
+                        for (k2 = 0; k2 < cv_w * cv_h; k2++) {
+                            uint16_t px = swap16(cv_px[k2]);
+                            sum += ux_luma(px);
+                            lit2 += f == 65u && cv_px[k2] != cv_px[0];
+                        }
+                        sum /= cv_w * cv_h;
+                        if (f && (sum > prev ? sum - prev : prev - sum) > worst)
+                            worst = sum > prev ? sum - prev : prev - sum;
+                        prev = sum;
+                    }
+                    drawn += lit2 > 200u;
+                }
+            tc.on = 0;
+            snprintf(dbg, sizeof dbg, "  safe to watch: every scene x scheme drawn (%u of %u), the brightness's largest step "
+                     "between frames %u of 255 (no flash)", drawn, ST_NSCENE * 6u, worst);
+            bad += check(dbg, drawn == ST_NSCENE * 6u && worst <= 15u);
+        }
     }
     return bad;
 }

@@ -22,6 +22,9 @@ typedef struct {
     const char *(*piece_name)(uint32_t piece);
     void (*status)(char *a, char *b);         /* two short lines (8 bytes each): GEN the chord, BAR n */
     uint32_t (*notes)(uint32_t role);         /* notes the role played since the start */
+    uint32_t (*part)(void);                   /* (2026-10-18) which part of the music: changes with its sections (the
+                                               * visuals' scene and colours follow it); 0 = none */
+    uint32_t (*step)(void);                   /* the 1/16 of the bar, 0 .. 15 (the visuals' STEPS scene) */
 } player_t;
 
 /* ---- TECHNO (techno.c) as a player (2026-10-18, in GEN's place) */
@@ -29,9 +32,11 @@ static void tc_p_request(int start) { tc.req = start ? 1u : 2u; }
 static int tc_p_playing(void) { return tc.on; }
 static const char *tc_p_piece_name(uint32_t k) { return TC_PIECES[k % TC_NPIECES].name; }
 static uint32_t tc_p_notes(uint32_t role) { return role < TC_ROLES ? tc.s.played[role] : 0u; }
+static uint32_t tc_p_part(void) { return tc.s.sect + 5u * (tc.s.bar / 32u); }   /* (the section, a new one each 32 bars) */
+static uint32_t tc_p_step(void) { return tc.s.step; }
 static const player_t TECHNO_PLAYER = {
     "TECHNO", TC_ROLES, TC_ROLE_NAMES, G_GPRE, TC_NPIECES, tc_block, tc_p_request, tc_p_playing, tc_key_on, tc_key_off,
-    tc_load_piece, tc_p_piece_name, tc_status, tc_p_notes,
+    tc_load_piece, tc_p_piece_name, tc_status, tc_p_notes, tc_p_part, tc_p_step,
 };
 
 /* the players this build has (the distribution's PLUGIN components); the first is ARP's */
