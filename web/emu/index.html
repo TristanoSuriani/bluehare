@@ -33,6 +33,11 @@ body.dist-idm { --bg: #08061a; --fg: #faf096; --dim: #b8b088; --rule: #2e3270; -
                 --body: #121030; --tray: #0a0820; --part: #1e1a4a; --edge: #3a3488; --label: #faf096;
                 --glow1: rgba(255, 46, 190, .22); --glow2: rgba(0, 229, 255, .16); color-scheme: dark; }
 html, body { background: var(--bg); }
+html:has(body.dist-idm) { background: #08061a; }      /* (the window below the page: the palette's ground too) */
+html:has(body.dist-foundry) { background: #0c0806; }
+html:has(body.dist-warehouse) { background: #0a0b0c; }
+html:has(body.dist-chip) { background: #0a1a0a; }
+body[class^="dist-"] { min-height: 100vh; }
 body[class^="dist-"] { background: radial-gradient(900px 520px at 12% -8%, var(--glow1), transparent 70%),
                        radial-gradient(900px 520px at 92% 18%, var(--glow2), transparent 70%), var(--bg);
                        background-attachment: fixed; }
@@ -124,6 +129,74 @@ body.big #stage:fullscreen .device, body.big.solo .device { width: min(100vw, ca
 .midi .dot.on { background: var(--green); transition: none; }
 footer nav a { margin: 0 6px; }
 footer small { font-size: 11px; opacity: .8; }
+
+/* ---- (2026-10-18) retro-futuristic, the user's: the page and the device in the palette's colours. Chips in DotGothic
+   with a neon edge; the shell a dark glass with the two accents round its edge; the knobs rimmed in the second
+   accent, their dot the text colour; the buttons dark glass whose LED lights them in the second accent (PLAY green,
+   REC red); the keys' slits the same LED; the bezel the first accent. Everything else behind ABOUT */
+.bar { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin: 18px 0 0; }
+.chip { font: 400 13px/1 "DotGothic16", ui-monospace, monospace; letter-spacing: .12em; padding: 8px 14px; cursor: pointer;
+        background: transparent; color: var(--fg); border: 1px solid var(--rule); border-radius: 3px;
+        transition: border-color .1s, box-shadow .1s, color .1s; }
+.chip:hover { border-color: var(--a2, var(--fg)); box-shadow: 0 0 10px -2px var(--a2, var(--fg)); }
+.chip[aria-pressed="true"] { color: var(--bg); background: var(--a2, var(--fg)); border-color: var(--a2, var(--fg));
+                             box-shadow: 0 0 14px -2px var(--a2, var(--fg)); }
+.bar .midi { margin: 0 6px 0 0; display: inline-flex; align-items: center; gap: 6px; font: 400 12px "DotGothic16", monospace;
+             letter-spacing: .14em; color: var(--dim); }
+.bar .midi .dot { margin: 0; }
+.midi .dot.on { box-shadow: 0 0 8px var(--green); }
+.brand h1 { text-shadow: 0 0 18px color-mix(in srgb, var(--a1, var(--fg)) 45%, transparent); }
+body[class^="dist-"] .brand h1 b { text-shadow: 0 0 14px var(--a1); }
+dialog#about { max-width: 640px; width: calc(100% - 32px); max-height: calc(100vh - 64px); overflow: auto; padding: 0;
+               background: var(--body); color: var(--fg); border: 1px solid var(--edge); border-radius: 10px;
+               box-shadow: 0 0 0 1px color-mix(in srgb, var(--a2, var(--edge)) 40%, transparent), 0 0 40px -8px var(--a1, #000); }
+dialog#about::backdrop { background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(3px); }
+#about header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px;
+                border-bottom: 1px solid var(--edge); }
+#about h2 { margin: 0; font: 400 22px/1 "DotGothic16", monospace; letter-spacing: .08em; }
+#about h2 b { font-weight: 400; color: var(--a1, var(--fg)); }
+#about section { padding: 14px 20px 18px; border-bottom: 1px solid var(--edge); }
+#about section:last-child { border-bottom: 0; }
+#about h3 { margin: 0 0 10px; font: 400 12px/1 "DotGothic16", monospace; letter-spacing: .2em; color: var(--a2, var(--dim));
+            text-transform: uppercase; }
+#about p { margin: 0 0 8px; color: var(--dim); }
+#about .version { color: var(--fg); font: 12px ui-monospace, Menlo, monospace; letter-spacing: .1em; }
+#about .small { font-size: 11px; opacity: .8; }
+#about nav a { margin: 0 12px 0 0; }
+.keymap { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 14px; align-items: baseline; }
+.keymap dt { white-space: nowrap; }
+.keymap dd { margin: 0; color: var(--dim); }
+body[class^="dist-"] .start { background: color-mix(in srgb, var(--bg) 70%, transparent); }
+body[class^="dist-"] .start button { font: 400 18px/1 "DotGothic16", monospace; letter-spacing: .14em; color: var(--bg);
+    background: var(--a2); box-shadow: 0 0 24px -2px var(--a2); border-radius: 3px; padding: 14px 30px; }
+body[class^="dist-"] .start p { color: var(--fg); }
+/* the device */
+body[class^="dist-"] .shell { stroke: url(#edge); stroke-width: 2; }
+body[class^="dist-"] .tray { stroke: color-mix(in srgb, var(--edge) 70%, transparent); stroke-width: 1; }
+body[class^="dist-"] .bezel { stroke: var(--a1); stroke-width: 1.5; filter: drop-shadow(0 0 7px color-mix(in srgb, var(--a1) 55%, transparent)); }
+body[class^="dist-"] .knob-well { fill: var(--tray); }
+body[class^="dist-"] .knob-face { fill: var(--tray); stroke: var(--a2); stroke-width: 1.6;
+                                  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--a2) 45%, transparent)); }
+body[class^="dist-"] .knob-ind { fill: var(--fg); stroke: var(--fg); filter: drop-shadow(0 0 3px var(--fg)); }
+body[class^="dist-"] .face.btn { fill: var(--tray); stroke: color-mix(in srgb, var(--a2) 35%, var(--edge)); stroke-width: 1.2; }
+body[class^="dist-"] .dim .face.btn { fill: color-mix(in srgb, var(--a2) 12%, var(--tray)); }
+body[class^="dist-"] .lit .face.btn { fill: var(--a2); stroke: var(--a2); filter: drop-shadow(0 0 8px var(--a2)); }
+body[class^="dist-"] .lit text { fill: var(--bg); }
+body[class^="dist-"] .green .face.btn { fill: var(--green); stroke: var(--green); filter: drop-shadow(0 0 8px var(--green)); }
+body[class^="dist-"] .face.key { fill: var(--tray); stroke: color-mix(in srgb, var(--a2) 22%, var(--edge)); stroke-width: 1.2; }
+body[class^="dist-"] .slit { fill: color-mix(in srgb, var(--a2) 10%, var(--tray)); }
+body[class^="dist-"] .dim .slit { fill: color-mix(in srgb, var(--a2) 30%, var(--tray)); }
+body[class^="dist-"] .mid .slit { fill: color-mix(in srgb, var(--a2) 55%, var(--tray)); }
+body[class^="dist-"] .lit .slit { fill: var(--a2); filter: drop-shadow(0 0 5px var(--a2)); }
+body[class^="dist-"] .held .face { stroke: var(--fg); stroke-width: 2.5; }
+body[class^="dist-"] .latched .face { stroke: var(--a1); stroke-width: 2.5; }
+@keyframes breath-neon { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 60%, var(--tray)); } }
+@keyframes breath-neon-lo { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 35%, var(--tray)); } }
+body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { animation-name: breath-neon; }
+.dimlo body[class^="dist-"] .breath .face.btn, .dimlo body[class^="dist-"] .breath .slit { animation-name: breath-neon-lo; }
+@media (prefers-reduced-motion: reduce) {
+  body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { animation: none; fill: color-mix(in srgb, var(--a2) 45%, var(--tray)); }
+}
 </style>
 </head>
 <body class="dist-@DIST@">
@@ -138,31 +211,44 @@ footer small { font-size: 11px; opacity: .8; }
 </div>
 </div>
 
-<p class="keys">
-  <span><kbd>Z</kbd>–<kbd>'</kbd> <kbd>Q</kbd>–<kbd>O</kbd> keys</span>
-  <span><kbd>1</kbd>–<kbd>=</kbd> FX … REC</span>
-  <span><kbd>[</kbd> <kbd>]</kbd> OCT</span>
-  <span><kbd>↑</kbd> <kbd>↓</kbd> KNOB 1</span>
-  <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
-  <span><kbd>Shift</kbd> <kbd>↑</kbd> <kbd>↓</kbd> SELECT</span>
-  <span><kbd>\</kbd> <kbd>Q</kbd> <kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>Z</kbd> <kbd>C</kbd>: notes or KNOB 2 3 4</span>
-  <span><kbd>`</kbd> full screen, <kbd>Shift</kbd> <kbd>`</kbd> big screen</span>
-  <span><kbd>Shift</kbd>-click holds a button</span>
-</p>
-<div class="toggles">
-  <button class="full" id="full" type="button">Full screen</button>
-  <button class="full" id="bigb" type="button" aria-pressed="false">Big screen</button>
-  <button class="full" id="numb" type="button" aria-pressed="false">QE AD ZC: notes</button>
-</div>
-<p class="midi" id="midi"><span class="dot" id="midi-dot"></span><span id="midi-text">MIDI in: connects when switched on</span></p>
+<nav class="bar" aria-label="The emulator">
+  <span class="midi" id="midi" title="MIDI in"><span class="dot" id="midi-dot"></span><span class="mlab">MIDI</span></span>
+  <button class="chip" id="full" type="button">FULL SCREEN</button>
+  <button class="chip" id="bigb" type="button" aria-pressed="false">BIG SCREEN</button>
+  <button class="chip" id="aboutb" type="button" aria-haspopup="dialog">ABOUT</button>
+</nav>
 
-<footer>
-  <small class="version">@VERSION@@PREVIEW@</small><br>
-  Blue Hare by Tristano Suriani · a fork of <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments, and the people who built it with him ·
-  <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · browser build after charlesvestal's <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
-  <nav><a href="../installer/">Install</a><a href="../editor/">Editor</a><a href="https://github.com/TristanoSuriani/fel-tracker">Source</a></nav>
-  <small>M-VAVE and FM-1 are trademarks of their respective owners. Blue Hare and Felucca are not affiliated with or endorsed by them.</small>
-</footer>
+<!-- (2026-10-18) everything else behind ABOUT: the user's "a wall of text that we can put under some About page" -->
+<dialog id="about" aria-labelledby="about-t">
+  <header><h2 id="about-t">BLUE <b>HARE</b></h2><button class="chip" id="aboutx" type="button" aria-label="Close">CLOSE</button></header>
+  <section>
+    <h3>Keys</h3>
+    <dl class="keymap">
+      <dt><kbd>Z</kbd>–<kbd>'</kbd> <kbd>Q</kbd>–<kbd>O</kbd></dt><dd>the keys</dd>
+      <dt><kbd>1</kbd>–<kbd>=</kbd></dt><dd>FX … REC</dd>
+      <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>OCT− OCT+</dd>
+      <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>KNOB 1</dd>
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>ALGORITHM</dd>
+      <dt><kbd>Shift</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>SELECT</dd>
+      <dt><kbd>\</kbd> <kbd>Q</kbd> <kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>Z</kbd> <kbd>C</kbd></dt><dd>notes, or KNOB 2 3 4</dd>
+      <dt><kbd>`</kbd> · <kbd>Shift</kbd> <kbd>`</kbd></dt><dd>full screen · big screen</dd>
+      <dt><kbd>Shift</kbd>-click</dt><dd>holds a button</dd>
+    </dl>
+    <button class="chip" id="numb" type="button" aria-pressed="false">QE AD ZC: NOTES</button>
+  </section>
+  <section>
+    <h3>MIDI</h3>
+    <p id="midi-text">MIDI in: connects when switched on</p>
+  </section>
+  <section class="credits">
+    <h3>About</h3>
+    <p class="version">@VERSION@@PREVIEW@</p>
+    <p>Blue Hare by Tristano Suriani · a fork of <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments, and the people who built it with him ·
+      <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · browser build after charlesvestal's <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a></p>
+    <nav><a href="../installer/">Install</a><a href="../editor/">Editor</a><a href="https://github.com/TristanoSuriani/fel-tracker">Source</a></nav>
+    <p class="small">M-VAVE and FM-1 are trademarks of their respective owners. Blue Hare and Felucca are not affiliated with or endorsed by them.</p>
+  </section>
+</dialog>
 </main>
 
 <script type="module">
@@ -230,18 +316,23 @@ function build(name) {
   device.style.aspectRatio = `${L.w} / ${L.h}`;
   for (const d of device.querySelectorAll(".hit")) d.remove();
   knobs.length = buttons.length = keys.length = 0;
-  el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: 40, fill: "var(--body)" });
-  for (const [x, y, w, h] of L.trays) el("rect", { x, y, width: w, height: h, rx: 14, fill: "var(--tray)" });
+  const defs = el("defs", {});                                   // (2026-10-18) the shell's neon edge: the palette's two
+  const lg = el("linearGradient", { id: "edge", x1: 0, y1: 0, x2: 1, y2: 1 }, defs);   // accents, corner to corner
+  el("stop", { offset: "0", "stop-color": "var(--a2, var(--edge))" }, lg);
+  el("stop", { offset: "1", "stop-color": "var(--a1, var(--edge))" }, lg);
+  el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: 40, fill: "var(--body)", class: "shell" });
+  for (const [x, y, w, h] of L.trays) el("rect", { x, y, width: w, height: h, rx: 14, fill: "var(--tray)", class: "tray" });
   const [sx, sy, ss] = L.screen;
-  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: 18, fill: "#0b0b0c" });
+  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: 18, fill: "#0b0b0c", class: "bezel" });
   const inset = ss / 32;                                         // the 240 x 240 panel inside its bezel
   Object.assign(canvas.style, { left: `${(sx + inset) / L.w * 100}%`, top: `${(sy + inset) / L.h * 100}%`,
                                 width: `${(ss - 2 * inset) / L.w * 100}%`, height: `${(ss - 2 * inset) / L.h * 100}%` });
   KNOBS.forEach((n, i) => {
     const [x, y, r] = L.knobs[i], g = el("g", {});
-    el("circle", { cx: x, cy: y, r: r + 5, fill: "var(--tray)" }, g);
-    el("circle", { cx: x, cy: y, r, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 2 }, g);
-    const ind = n === "MASTER" ? el("line", { x1: x, y1: y - r + 5, x2: x, y2: y - r + 14, stroke: "var(--label)", "stroke-width": 3, "stroke-linecap": "round" }, g) : null;
+    el("circle", { cx: x, cy: y, r: r + 5, fill: "var(--tray)", class: "knob-well" }, g);
+    el("circle", { cx: x, cy: y, r, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 2, class: "knob-face" }, g);
+    const ind = n === "MASTER" ? el("line", { x1: x, y1: y - r + 5, x2: x, y2: y - r + 14, stroke: "var(--label)", "stroke-width": 3, "stroke-linecap": "round", class: "knob-ind" }, g)
+              : el("circle", { cx: x, cy: y - r + 7, r: 2.6, fill: "var(--label)", class: "knob-ind" }, g);   // (an encoder: a dot that turns)
     label(g, x, y - r - 12, n, 16, DOT);
     el("circle", { cx: x, cy: y, r: r + 12, fill: "transparent" }, g);
     knobs.push({ g, ind, x, y, name: n, role: n === "MASTER" ? "master" : EN[n] });
@@ -250,8 +341,9 @@ function build(name) {
     const g = el("g", {});
     el("rect", { x, y, width: w, height: h, rx: 8, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 1.5, class: "face btn" }, g);
     const ink = n === "REC" ? "#ff453a" : undefined;
-    if (sub) { label(g, x + w / 2, y + h / 2 - 2, n, 10.8, SANS, ink); label(g, x + w / 2, y + h / 2 + 11, sub, 9.9); }
-    else label(g, x + w / 2, y + h / 2 + 4.5, n, 12.6, SANS, ink);
+    const F = document.body.className.startsWith("dist-") ? DOT : SANS;   // (2026-10-18: the dot face, as the knobs')
+    if (sub) { label(g, x + w / 2, y + h / 2 - 2, n, 11.5, F, ink); label(g, x + w / 2, y + h / 2 + 11, sub, 10.5, F); }
+    else label(g, x + w / 2, y + h / 2 + 5, n, 14, F, ink);
     buttons.push({ g, bit: B[n], name: sub ? `${n} / ${sub}` : n });
   };
   button(L.oct[0], "OCT-");
@@ -262,7 +354,7 @@ function build(name) {
     button([gx + i * dx, gy + dy, gw, gh], ROW2[i], ROW2[i] === "PLAY" ? "STOP" : "");
   }
   const [x0, y0, w, h] = L.keybed;
-  el("rect", { x: x0, y: y0, width: w, height: h, rx: 18, fill: "var(--tray)" });
+  el("rect", { x: x0, y: y0, width: w, height: h, rx: 18, fill: "var(--tray)", class: "tray" });
   // the keys: two rows of the same black keys, each with a slit down its middle that lights
   const pitch = (w - 24) / 16, kw = pitch * 0.78, kh = h * 0.425, sw = Math.max(3, kw * 0.14);
   const key = (cx, cy, k) => {
@@ -466,6 +558,12 @@ function fullToggle() {
   }
 }
 document.getElementById("full").addEventListener("click", fullToggle);
+{   /* (2026-10-18) ABOUT: the keys, MIDI, the credits */
+  const dlg = document.getElementById("about");
+  document.getElementById("aboutb").addEventListener("click", () => dlg.showModal());
+  document.getElementById("aboutx").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+}
 // (Blue Hare) big screen: the screen copied large each frame (drawScreen), the panel smaller
 const big = document.getElementById("big"), bigCtx = big.getContext("2d");
 function bigSync() {
