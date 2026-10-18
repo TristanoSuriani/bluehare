@@ -863,20 +863,7 @@ static void draw_graph(void)
             break;
         case GR_GEN:                                    /* (Blue Hare) the player (GEN): stopped, or the ocean */
             cv_oy = 0;
-            if (!player_playing()) {
-                panel_note("TECHNO STOPPED", "[ARP] PLAY", "DRUMS BASS STAB LEAD");
-                st.ready = 0;                           /* (the next start: a fresh floor) */
-                break;
-            }
-#if BLUEHARE_UI_STROBE
-            st_frame();                                 /* (ui_strobe.c: its status lines on top) */
-#else
-            {                                           /* (no ocean in this build: the status lines) */
-                char a[8], b[8];
-                player()->status(a, b);
-                panel_note(a, b, "[ARP] STOP");
-            }
-#endif
+            panel_note("TECHNO", "[ARP] PLAY", 0);      /* (2026-10-18: ui_play.c draws these pages, the whole screen) */
             break;
         default:
             if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WAVE) graph_wave(t, c);

@@ -1651,8 +1651,8 @@ static int test_soak_cards(void)
         if (song.playing || transport_req) events_block(FS * 16u / 1000u);
         ui_draw();
         quiet++;
-        if (ui.menu || ui.layer || ui.confirm || name_on() || ui.uboot)
-            continue;                                   /* (the cards are not drawn) */
+        if (ui.menu || ui.layer || ui.confirm || name_on() || ui.uboot || play_view() != PV_NONE)
+            continue;                                   /* (the cards are not drawn; the play views have none) */
         for (c = 0; c < 5u; c++)
             old += ui.roll[c].from[0] && (uint8_t)(ui.frame - ui.roll[c].t0) >= ROLL_FRAMES;
         if (quiet > 45u && !ui.hot_t && !ui.bpm_t && !ui.msg_t && SOAK_RND(8u) == 0u) {
@@ -2808,7 +2808,7 @@ static int test_quick_layers(void)
     btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
     {
         static int32_t ab[2 * CTL];
-        uint32_t i, before = 0, after = 0, lit = 0;    /* (lit: the floor's pixels off the black) */
+        uint32_t i, k2, before = 0, after = 0, lit = 0;   /* (lit: the floor's pixels off the black) */
         for (i = 0; i < 64u; i++)                       /* (the audio side: GEN takes the start, plays its first steps) */
             mix_block(ab, CTL);
         frames(40);
@@ -2818,13 +2818,15 @@ static int test_quick_layers(void)
             before += (uint32_t)st.bar[i];
         tc.s.played[TR_BASS]++;
         tc.s.played[TR_STAB]++;
-        cv_begin(240, 122, 0);                          /* (a frame of it alone: its bars up, the tear on) */
-        st_frame();
+        for (k2 = 0; k2 < 2u; k2++) {                  /* (a frame of it alone, both halves: its bars up, the tear on) */
+            cv_begin(240, ST_H / 2, 0);
+            st_frame_half(k2);
+            for (i = 0; i < cv_w * cv_h; i++)
+                lit += cv_px[i] != cv_px[0];
+        }
         for (i = 0; i < ST_NBAR; i++)
             after += (uint32_t)st.bar[i] + (uint32_t)st.btgt[i];
-        for (i = 0; i < cv_w * cv_h; i++)
-            lit += cv_px[i] != cv_px[0];
-        ok &= after > before && st.glitch > 0 && lit > 500u;
+        ok &= after > before && (st.glitch > 0 || st_gn) && lit > 500u;
         btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
         mix_block(ab, CTL);
         ok &= !tc.on && cur_page()->id[0] == G_GPRE;
@@ -2845,17 +2847,20 @@ static int test_quick_layers(void)
                             tc.s.played[TR_DRUMS]++;
                         if (f % 11u == 0u)
                             tc.s.played[TR_BASS]++;
-                        cv_begin(240, 122, 0);
+                        uint32_t hf;
                         st.part = 0;                    /* (the scene held: no part change mid-test) */
                         st.scene = (uint8_t)sc;
                         st.scheme = (uint8_t)sch;
-                        st_frame();
-                        for (k2 = 0; k2 < cv_w * cv_h; k2++) {
-                            uint16_t px = swap16(cv_px[k2]);
-                            sum += ux_luma(px);
-                            lit2 += f == 65u && cv_px[k2] != cv_px[0];
+                        for (hf = 0; hf < 2u; hf++) {   /* (the whole screen: its two halves) */
+                            cv_begin(240, ST_H / 2, 0);
+                            st_frame_half(hf);
+                            for (k2 = 0; k2 < cv_w * cv_h; k2++) {
+                                uint16_t px = swap16(cv_px[k2]);
+                                sum += ux_luma(px);
+                                lit2 += f == 65u && cv_px[k2] != cv_px[0];
+                            }
                         }
-                        sum /= cv_w * cv_h;
+                        sum /= 2u * cv_w * cv_h;
                         if (f && (sum > prev ? sum - prev : prev - sum) > worst)
                             worst = sum > prev ? sum - prev : prev - sum;
                         prev = sum;
@@ -5225,6 +5230,7 @@ static int test_large(void)
     static uint16_t off[240 * 240];
     ui_power_on();
     song.playing = 0;
+    go_title("ENV");                                    /* (2026-10-18: HOME is a play view, no cards: ENV's) */
     frame();
     ok = !(ui_prefs & PREF_LARGE) && large_kind() == LK_OFF && card_h() == CARD_H && graph_y() == Y_GRAPH;
     ok &= MI_LARGE == MI_STYLE + 1u && str_eq(MI_NAME[MI_LARGE], "LARGE") && menu_flag(MI_LARGE) &&
@@ -5242,16 +5248,17 @@ static int test_large(void)
     press(B_HOME);
     bad += check("#15 MENU > LARGE: OFF by default, under STYLE; KNOB 1 right / OCT+ ON, left / OCT- OFF", ok && !ui.menu);
 
-    /* HOME: tall cards (rows 28..132) and the strip (136..198); the footer as it was */
-    frame();
-    ok = ui.home && large_kind() == LK_TALL && card_h() == LG_CARD_H && graph_y() == LG_Y_GRAPH && strip_kind() == SK_SCOPE;
+    /* ENV: tall cards (rows 28..132) and the strip (136..198); the footer as it was */
+    go_title("ENV"); frame();
+    ok = !ui.home && large_kind() == LK_TALL && card_h() == LG_CARD_H && graph_y() == LG_Y_GRAPH && strip_kind() == SK_ADSR;
     ok &= lg_px(30, Y_SEP_END + 1) == T_SURF && off[(Y_SEP_END + 1) * 240 + 30] == swap16(T_BG);     /* a card where the gap was */
-    ok &= lg_px(30, LG_Y_GRAPH - 2) == T_BG && off[(LG_Y_GRAPH - 2) * 240 + 30] == swap16(T_SURF);   /* a gap in the panel */
+    ok &= lg_px(30, LG_Y_GRAPH - 2) == T_BG && off[(LG_Y_GRAPH - 2) * 240 + 6] == swap16(T_SURF);   /* a gap in the panel
+                                                                                                     * (ENV's: x 6, off its curve) */
     ok &= lg_px(30, LG_Y_GRAPH + 1) == T_SURF;
     for (c = 0; c < 4u; c++)                                      /* each column's K pill, over its knob */
         ok &= lg_px(CARD_X(c) + 8, Y_LABEL + LG_MY + LG_MH / 2) == T_KEY;
     ok &= !memcmp(off + Y_FOOT * 240, host_screen + Y_FOOT * 240, 240u * H_FOOT * sizeof *off);
-    bad += check("#15 LARGE ON: HOME's cards tall (a K1..K4 pill over each column), the scope a strip, the footer kept", ok);
+    bad += check("#15 LARGE ON: ENV's cards tall (a K1..K4 pill over each column), its ADSR a strip, the footer kept", ok);
 
     /* the value in L: CLOCK's BPM 124 stands about twice as tall as in M */
     go_title("CLOCK"); frame();
@@ -5384,6 +5391,7 @@ static int test_style(void)
     int bad = 0, ok;
     const uint32_t rule = 26u * 240u + 120u;           /* (the rule under the header: ui_draw.c draw_rules) */
     ui_power_on();
+    go_title("ENV");                                    /* (2026-10-18: HOME is a play view, no header, no rule) */
     frame();
     ok = ui_style == ST_FLAT && ux.style == ST_FLAT && ux.surf != ux.bg;
     ui.force = 1; frame();
@@ -5400,6 +5408,7 @@ static int test_style(void)
     press(B_OCTUP); ok &= ui_style == ST_LINE;
     ok &= !(ui_prefs & 0xFFu) && settings_leds == LEDS_DIM;   /* (no other setting moved) */
     hold(B_HOME);
+    go_title("ENV"); frame();
     ok &= !ui.menu && ux.style == ST_LINE && host_screen[rule] == swap16(T_RULE);
     bad += check("MENU > STYLE: FLAT by default, KNOB 1 / OCT-+ FLAT / LINE, LINE drawn (rules, no SURF)", ok);
     {

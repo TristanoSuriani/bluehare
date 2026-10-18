@@ -14,7 +14,9 @@
  * keep their screens gray (st_c). It follows the music by the player's roles' names: a drum hit (DRUMS, KICK, HATS)
  * jolts the floor and thickens the ring, a bass note (BASS) raises the bars and swells the waves, anything else (STAB,
  * LEAD, ...) shifts slices of the picture sideways for a few frames. Only the main loop draws it; the audio is
- * untouched. The player's two status lines ride on top */
+ * untouched. (2026-10-18, the user's "no information is needed, I just want a hypnotic demo") The whole screen, no text:
+ * a 240 x 240 picture drawn in two halves through the canvas (st_y0: the half's first row), its state stepped once a
+ * frame (st_step) and drawn twice (st_draw: what moves, moves on the second half only, st_last) */
 #define ST_NBAR 12u
 #define ST_NSTAR 48u
 #define ST_NSCENE 5u
@@ -37,6 +39,12 @@ static struct {
     uint32_t seen[8];                        /* the roles' notes counted at the last frame (player.c notes) */
 } st;
 
+#define ST_W 240                                    /* the picture: the whole screen */
+#define ST_H 240
+static int32_t st_y0;                               /* the canvas's first row in the picture */
+static uint8_t st_last;                             /* the last half: the state moves */
+static uint8_t st_gn;                               /* the frame's shifted slices: rows, height, offset */
+static int16_t st_gy[6], st_gt[6], st_go[6];
 static uint16_t st_c(uint16_t c) { return ux.mono || ux.bw ? ux_gray(ux_luma(c) * 31u / 255u) : c; }
 static uint32_t st_rand(uint32_t n)
 {
@@ -45,12 +53,14 @@ static uint32_t st_rand(uint32_t n)
 }
 static inline void st_px(int32_t x, int32_t y, uint16_t s)
 {
+    y -= st_y0;
     if ((uint32_t)x < cv_w && (uint32_t)y < cv_h)
         cv_px[(uint32_t)y * cv_w + (uint32_t)x] = s;
 }
 static void st_span(int32_t x0, int32_t x1, int32_t y, uint16_t s)
 {
     int32_t x;
+    y -= st_y0;
     if ((uint32_t)y >= cv_h)
         return;
     x0 = x0 < 0 ? 0 : x0;
@@ -142,9 +152,8 @@ static void st_part(void)
 }
 static void st_grid(uint16_t sn, uint16_t sd, uint16_t sh, int32_t hz, int32_t cx)
 {
-    uint32_t w = cv_w, h = cv_h, i;
-    int32_t k, j, bpm = song.g[G_BPM] > 20 ? song.g[G_BPM] : 120;
-    st.ph += (uint32_t)(bpm * 65536 / 60 / 33);        /* (a line a beat: bpm / 60 a second, the frame ~30 ms) */
+    uint32_t w = ST_W, h = ST_H, i;
+    int32_t k, j;
     for (k = 0; k < 8; k++) {
         int32_t z = ((k << 16) + (int32_t)(st.ph & 0xFFFF)) >> 8;   /* 0 .. 2048: far .. near */
         int32_t yy = hz + (int32_t)((uint32_t)z * (uint32_t)z / 2048u * (uint32_t)(h - (uint32_t)hz) / 2048u) + st.jolt;
@@ -170,11 +179,10 @@ static void st_grid(uint16_t sn, uint16_t sd, uint16_t sh, int32_t hz, int32_t c
 }
 static void st_tunnel(uint16_t sn, uint16_t sd, uint16_t sh, int32_t cx, int32_t cy)
 {
-    int32_t k, bpm = song.g[G_BPM] > 20 ? song.g[G_BPM] : 120;
-    st.ph += (uint32_t)(bpm * 65536 / 60 / 33);
+    int32_t k;
     for (k = 0; k < 7; k++) {
         int32_t z = ((k << 16) + (int32_t)(st.ph & 0xFFFF)) >> 8;   /* 0 .. 1792: small .. big */
-        int32_t hw = 4 + z * z / 14000, hh = hw * (int32_t)cv_h / (int32_t)cv_w + st.jolt;
+        int32_t hw = 4 + z * z / 14000, hh = hw * ST_H / ST_W + st.jolt;
         st_rect(cx - hw, cy - hh, cx + hw, cy + hh, k >= 5 ? sh : k >= 3 ? sn : sd);
     }
     st_rect(cx - 3 - st.thick, cy - 2 - st.thick, cx + 3 + st.thick, cy + 2 + st.thick, sh);
@@ -183,7 +191,7 @@ static void st_steps(uint16_t sn, uint16_t sd, uint16_t sh)
 {
     const player_t *p = player();
     uint32_t s = p && p->step ? p->step() % 16u : 0u, i, r;
-    int32_t cw = (int32_t)cv_w / 16, top = 22, rh = ((int32_t)cv_h - top - 6) / 4;
+    int32_t cw = ST_W / 16, top = 40, rh = (ST_H - 2 * top) / 4;
     for (i = 0; i < 16u; i++) {
         int32_t x0 = (int32_t)i * cw + 1, x1 = x0 + cw - 3;
         for (r = 0; r < 4u; r++) {
@@ -197,7 +205,8 @@ static void st_steps(uint16_t sn, uint16_t sd, uint16_t sh)
         if (i == s)                                      /* (the 1/16 playing: outlined, not lit) */
             st_rect(x0 - 1, top - 1, x1 + 1, top + 4 * rh - 2, sh);
     }
-    st.hits[0] |= (uint16_t)(s == 15u ? 0x8000u : 0u);
+    if (st_last)
+        st.hits[0] |= (uint16_t)(s == 15u ? 0x8000u : 0u);
 }
 static void st_warp(uint16_t sn, uint16_t sh, int32_t cx, int32_t cy)
 {
@@ -209,33 +218,34 @@ static void st_warp(uint16_t sn, uint16_t sh, int32_t cx, int32_t cy)
     for (i = 0; i < ST_NSTAR; i++) {
         int32_t d = st.sz[i], x = cx + st.sx[i] * d / 64, y = cy + st.sy[i] * d / 64;
         int32_t x2 = cx + st.sx[i] * (d + sp + 2) / 64, y2 = cy + st.sy[i] * (d + sp + 2) / 64;
-        if ((uint32_t)x >= cv_w || (uint32_t)y >= cv_h) {
-            st_star(i);
+        if ((uint32_t)x >= ST_W || (uint32_t)y >= ST_H) {
+            if (st_last)
+                st_star(i);
             continue;
         }
         st_line(x, y, x2, y2, d > 60 ? sh : sn);
-        st.sz[i] = (int16_t)(d + sp + d / 20);
+        if (st_last)
+            st.sz[i] = (int16_t)(d + sp + d / 20);
     }
 }
 static void st_waves(uint16_t sn, uint16_t sd, uint16_t sh)
 {
-    int32_t k, x, h = (int32_t)cv_h;
+    int32_t k, x, h = ST_H;
     for (k = 0; k < 4; k++) {
         int32_t y0 = 30 + k * (h - 40) / 4, amp = 4 + (k == 3 ? st.swell * 14 / 256 : st.energy * 10 / 256), py = y0;
         uint32_t f = k == 3 ? 3u : 6u + (uint32_t)k * 5u;
-        for (x = 0; x < (int32_t)cv_w; x += 2) {
+        for (x = 0; x < ST_W; x += 2) {
             int32_t y = y0 + (int32_t)sine_i((uint32_t)x * f * 2000000u + st.t * (40000000u + (uint32_t)k * 9000000u)) * amp / 32767;
             st_line(x - 2, py, x, y, k == 3 ? sh : k == 0 ? sd : sn);
             py = y;
         }
     }
 }
-/* one frame on the canvas (w x h), the status lines on top */
-static void st_frame(void)
+/* a frame's state, once a frame: the part, the music heard, the floor's phase, the slices, what decays */
+static void st_step(void)
 {
-    uint32_t w = cv_w, h = cv_h, y, i;
-    int32_t hz = (int32_t)h * 2 / 5, cx = (int32_t)w / 2, cy = (int32_t)h / 2 + 6, k;
-    uint16_t bg, neon, hot, dim;
+    uint32_t i, k;
+    int32_t bpm = song.g[G_BPM] > 20 ? song.g[G_BPM] : 120;
     if (!st.ready) {
         memset(&st, 0, sizeof st);
         st.rng = 0x5770Bu;
@@ -245,33 +255,15 @@ static void st_frame(void)
     st_part();
     st_listen();
     st.t++;
-    neon = st_c(ST_SCHEME[st.scheme][0]);
-    hot = st_c(ST_SCHEME[st.scheme][1]);
-    bg = st_c(RGB(0, 0, 0));
-    dim = ux_mix(bg, neon, 40);
-    for (y = 0; y < h; y++)
-        st_span(0, (int32_t)w, (int32_t)y, swap16(bg));
-    switch (st.scene) {
-    case SC_TUNNEL: st_tunnel(swap16(neon), swap16(dim), swap16(hot), cx, cy); break;
-    case SC_STEPS: st_steps(swap16(neon), swap16(dim), swap16(hot)); break;
-    case SC_WARP: st_warp(swap16(neon), swap16(hot), cx, cy); break;
-    case SC_WAVES: st_waves(swap16(neon), swap16(dim), swap16(hot)); break;
-    default: st_grid(swap16(neon), swap16(dim), swap16(hot), hz, cx); break;
-    }
+    st.ph += (uint32_t)(bpm * 65536 / 60 / 33);        /* (a line a beat: bpm / 60 a second, the frame ~30 ms) */
+    st_gn = 0;
     if (st.glitch) {                                     /* the shift: slices of rows moved sideways */
-        for (k = 0; k < 6; k++) {
-            int32_t y0 = (int32_t)st_rand(h - 8u), th = 2 + (int32_t)st_rand(6u), off = (int32_t)st_rand(41u) - 20, r;
-            for (r = y0; r < y0 + th && r < (int32_t)h; r++) {
-                uint16_t *row = &cv_px[(uint32_t)r * w];
-                int32_t x;
-                if (off > 0)                              /* (copied the way that never overwrites what it reads) */
-                    for (x = (int32_t)w - 1; x >= off; x--)
-                        row[x] = row[x - off];
-                else if (off < 0)
-                    for (x = 0; x < (int32_t)w + off; x++)
-                        row[x] = row[x - off];
-            }
+        for (k = 0; k < 6u; k++) {
+            st_gy[k] = (int16_t)st_rand(ST_H - 8u);
+            st_gt[k] = (int16_t)(2 + st_rand(6u));
+            st_go[k] = (int16_t)((int32_t)st_rand(41u) - 20);
         }
+        st_gn = 6;
         st.glitch--;
     }
     for (i = 0; i < ST_NBAR; i++) {                      /* the bars rise 3 px a frame to where a bass note sent them, then */
@@ -286,10 +278,50 @@ static void st_frame(void)
         st.thick--;
     st.swell -= st.swell / 10 + (st.swell > 0);
     st.energy -= st.energy / 16 + (st.energy > 0);
-    {                                                    /* the player's status lines, small, on top */
-        char a[8], b[8];
-        player()->status(a, b);
-        cv_bg = bg;
-        cv_text(cv_text(10, 4, &AF_S, a, st_c(ux.text)) + 10, 4, &AF_S, b, st_c(ux.mid));
+}
+/* the picture's rows st_y0 .. on the canvas */
+static void st_draw(void)
+{
+    uint32_t w = cv_w, h = cv_h, y, k;
+    int32_t hz = ST_H * 2 / 5, cx = ST_W / 2, cy = ST_H / 2;
+    uint16_t bg, neon, hot, dim;
+    neon = st_c(ST_SCHEME[st.scheme][0]);
+    hot = st_c(ST_SCHEME[st.scheme][1]);
+    bg = st_c(RGB(0, 0, 0));
+    dim = ux_mix(bg, neon, 40);
+    for (y = 0; y < h; y++)
+        st_span(0, (int32_t)w, (int32_t)y + st_y0, swap16(bg));
+    switch (st.scene) {
+    case SC_TUNNEL: st_tunnel(swap16(neon), swap16(dim), swap16(hot), cx, cy); break;
+    case SC_STEPS: st_steps(swap16(neon), swap16(dim), swap16(hot)); break;
+    case SC_WARP: st_warp(swap16(neon), swap16(hot), cx, cy); break;
+    case SC_WAVES: st_waves(swap16(neon), swap16(dim), swap16(hot)); break;
+    default: st_grid(swap16(neon), swap16(dim), swap16(hot), hz, cx); break;
     }
+    cv_bg = bg;
+    for (k = 0; k < st_gn; k++) {
+        int32_t r, off = st_go[k];
+        for (r = st_gy[k]; r < st_gy[k] + st_gt[k]; r++) {
+            uint16_t *row;
+            int32_t x, cr = r - st_y0;
+            if (cr < 0 || cr >= (int32_t)h)
+                continue;
+            row = &cv_px[(uint32_t)cr * w];
+            if (off > 0)                                  /* (copied the way that never overwrites what it reads) */
+                for (x = (int32_t)w - 1; x >= off; x--)
+                    row[x] = row[x - off];
+            else if (off < 0)
+                for (x = 0; x < (int32_t)w + off; x++)
+                    row[x] = row[x - off];
+        }
+    }
+}
+/* half 0 (the top, the frame's step first) or 1 (the bottom) of a frame on the canvas (240 x ST_H / 2) */
+static void st_frame_half(uint32_t half)
+{
+    if (!half)
+        st_step();
+    st_y0 = (int32_t)half * (ST_H / 2);
+    st_last = (uint8_t)(half == 1u);
+    st_draw();
 }

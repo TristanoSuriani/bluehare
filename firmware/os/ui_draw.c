@@ -969,6 +969,7 @@ static void draw_todo(void)
     draw_text_box(0, 102, 240, &AF_L, "TODO", T_THEME, 1);
 }
 
+#include "ui_play.c"                                    /* (Blue Hare, 2026-10-18) the play views: HOME, TECHNO */
 static void ui_draw_page(void);
 static void ui_draw(void)
 {
@@ -1025,7 +1026,10 @@ static void ui_draw_page(void)
         ui.page = (uint8_t)page_first(FAM_EDIT);
         page_entered();
     }
-    if (cur_page()->graph == GR_TODO) {                 /* SEQ's placeholder: no cards, no panel */
+    draw_play(play_view());                             /* (into or out of a play view: ui.force) */
+    if (play_view() != PV_NONE) {                       /* the play views: the whole screen, nothing else */
+        bluehare_dbg.stage = 5;
+    } else if (cur_page()->graph == GR_TODO) {          /* SEQ's placeholder: no cards, no panel */
         bluehare_dbg.stage = 3;
         draw_head();
         bluehare_dbg.stage = 5;
@@ -1050,6 +1054,7 @@ static void ui_draw_page(void)
     if (ui.hot_t)
         ui.hot_t--;
     bluehare_dbg.stage = 6;
-    draw_foot();
+    if (play_view() == PV_NONE)
+        draw_foot();
     ui.force = 0;
 }

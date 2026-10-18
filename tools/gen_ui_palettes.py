@@ -52,7 +52,8 @@ PALETTES = [
     # (Blue Hare) a distribution's own (distributions/*.txt PALETTE: what a device starts with). IDM: electric cyan
     # values, a hot magenta for the one active thing, on deep indigo; SIGNAL (the default distribution): signal
     # orange, cyan the active thing, on warm near-black
-    ("IDM",    (8, 6, 26),      (26, 20, 64),    (232, 236, 255), (0, 229, 255),   (255, 46, 190)),
+    # (2026-10-18) its text a soft yellow, the indigo's complement (the user's): it reads on the dark blue
+    ("IDM",    (8, 6, 26),      (26, 20, 64),    (250, 240, 150), (0, 229, 255),   (255, 46, 190)),
     ("SIGNAL", (14, 12, 10),    (40, 34, 28),    (242, 236, 228), (255, 128, 24),  (40, 220, 255)),
     # FOUNDRY: molten orange, a white-hot yellow for the one active thing, on scorched near-black
     ("FOUNDRY", (12, 8, 6),     (42, 26, 18),    (246, 232, 214), (255, 100, 20),  (255, 214, 70)),

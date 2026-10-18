@@ -28,7 +28,9 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
     --no-entry -sSTANDALONE_WASM -sSTACK_SIZE=1048576 -sINITIAL_MEMORY=33554432 -sFILESYSTEM=0 \
     -o "$OUTD/bluehare.wasm" web/emu/bluehare_web.c
 [ "${EMU_PREVIEW:-1}" = 0 ] && PREVIEW='' || PREVIEW=' (preview)'
-sed -e "s/@VERSION@/$VERSION$TAG/g" -e "s/@PREVIEW@/$PREVIEW/g" -e "s/@DIST@/$DIST/g" web/emu/index.html > "$OUTD/index.html"
+# (2026-10-18) the page wears the distribution's palette (its PALETTE line: HARE FM1's IDM), not its name's
+PAL=$(sed -n 's/^PALETTE[[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p' "distributions/$DIST.txt" 2>/dev/null | head -n 1 | tr 'A-Z' 'a-z')
+sed -e "s/@VERSION@/$VERSION$TAG/g" -e "s/@PREVIEW@/$PREVIEW/g" -e "s/@DIST@/${PAL:-$DIST}/g" web/emu/index.html > "$OUTD/index.html"
 cp web/emu/worklet.js "$OUTD/"
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt "$OUTD/fonts/"
 echo "emu: $OUTD ($(wc -c < "$OUTD/bluehare.wasm" | tr -d ' ') B wasm, $VERSION$TAG)"
