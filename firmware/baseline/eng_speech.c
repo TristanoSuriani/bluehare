@@ -213,40 +213,25 @@ static const param_desc_t *speech_desc(const track_t *t, uint32_t k)
  * 1 HOLD 2 LOOP */
 static const preset_t SPEECH_PRESETS[] = {
     {"COMPUTER", {1, 1, 0, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 30, 20)},
-    /* the keys are words: from ZERO; the syllables from PA; the planets; the feelings; the dark words */
-    {"COUNT", {0, 0, 1, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 25, 15)},
-    {"SYLLABLES", {8, 5, 1, 70, 70, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 30, 20)},
-    {"PLANETS", {0, 2, 1, 64, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 30, 30)},
+    /* the keys are words: the feelings (EUPHORIA, ECSTASY ..), the dark words */
     {"FEELINGS", {0, 3, 1, 64, 80, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 10, 30, 35)},
     {"DARK KEYS", {0, 4, 1, 56, 50, 110, -16, 0}, {0, 0, 127, 30}, 0, 0, FX(0, 20, 35, 50)},
     /* sung vowels, held while the key is */
     {"AA VOX", {0, 5, 0, 64, 40, 127, 0, 1}, {5, 0, 127, 40}, 0, 1, FX(0, 20, 30, 40)},
-    {"EE VOX", {1, 5, 0, 64, 40, 127, 0, 1}, {5, 0, 127, 40}, 0, 1, FX(0, 20, 30, 40)},
-    {"AY VOX", {2, 5, 0, 64, 40, 127, 0, 1}, {5, 0, 127, 40}, 0, 1, FX(0, 20, 30, 40)},
-    {"OH VOX", {3, 5, 0, 64, 40, 127, 0, 1}, {5, 0, 127, 40}, 0, 1, FX(0, 20, 30, 40)},
-    {"OOH VOX", {4, 5, 0, 64, 40, 127, -8, 1}, {5, 0, 127, 40}, 0, 1, FX(0, 30, 30, 50)},
-    /* syllables: PA, PARA, PA looped while held (a rhythm), DOO for backing lines */
-    {"PA", {8, 5, 0, 80, 64, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 30, 20)},
-    {"PARA", {9, 5, 0, 76, 90, 127, 0, 0}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 30, 20)},
+    /* PA looped while held: a rhythm */
     {"PA LOOP", {8, 5, 0, 110, 64, 127, 0, 2}, {0, 0, 127, 10}, 0, 1, FX(0, 0, 40, 15)},
-    {"DOO DOO", {24, 5, 0, 70, 80, 110, -10, 0}, {0, 0, 127, 25}, 0, 0, FX(0, 30, 30, 40)},
-    /* AA held under the chorus; OO, low and steady; SH, short: a hi-hat */
-    {"VOWEL PAD", {0, 6, 0, 64, 0, 127, 0, 1}, {60, 90, 120, 90}, 0, 0, FX(0, 60, 30, 60)},
+    /* OO, low and steady, under the chorus */
     {"VOX DRONE", {9, 6, 0, 64, 0, 100, -20, 1}, {80, 90, 127, 100}, 0, 0, FX(0, 80, 20, 70)},
-    {"SH HAT", {23, 6, 0, 127, 0, 127, 0, 0}, {0, 60, 0, 30}, 0, 0, FX(0, 0, 20, 10)},
-    /* screams: a vowel held, the formants pushed up, the intonation full, driven hard; SHRIEK and BANSHEE an octave up
-     * (BANSHEE half whispered, looping); HOWL low and long */
+    /* screams: a vowel held, the formants pushed up, the intonation full, driven hard; HOWL low and long */
     {"SCREAM", {0, 5, 0, 64, 127, 127, 30, 1}, {0, 0, 127, 50}, 0, 1, FX(70, 0, 30, 50)},
-    {"SHRIEK", {1, 5, 0, 64, 127, 127, 63, 1}, {0, 0, 127, 40}, 0, 1, FX(80, 0, 30, 40), .oct = 1},
     {"HOWL", {4, 5, 0, 48, 127, 127, -20, 1}, {20, 0, 127, 80}, 0, 1, FX(40, 20, 30, 70)},
-    {"BANSHEE", {6, 5, 0, 56, 127, 40, 40, 2}, {10, 0, 127, 80}, 0, 0, FX(30, 40, 40, 80), .oct = 1},
 };
 
 static const engine_t ENG_SPEECH = {
     .name = "SPEECH",
     .id = EID_SPEECH,
     .cc = 0x75,                  /* CC74 FORM, CC71 INTN */
-    .cats = "FFFFFFLLLLLFFFFPPDFFFF",
+    .cats = "FFFLFPFF",
     .page_title = {"WORD", "VOICE"},
     .edit = {
         {"WORD", F_ENUM, 0, SP_N_1 - 1, 0, SP_NAMES_1, 0},

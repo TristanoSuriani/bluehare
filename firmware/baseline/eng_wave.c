@@ -160,25 +160,16 @@ static const preset_t WAVE_PRESETS[] = {
     {"VOX MORPH", {3, 64, 0, 12, 58, 20, 0, 0}, {70, 90, 120, 95}, 6, 0, FX(0, 60, 25, 70), .lshp = 63, .lrate = 31,
      .lwave = 2},
     /* pads: a slow LFO through the table, detuned, the filter's envelope a breath */
-    {"STRING PAD", {0, 52, 0, 26, 68, 8, 0, 0}, {85, 90, 118, 100}, 8, 0, FX(0, 90, 15, 80), .lshp = 12, .lrate = 18},
-    {"CHOIR PAD", {3, 70, 0, 18, 72, 12, 0, 0}, {95, 90, 120, 105}, 0, 0, FX(0, 70, 20, 85), .lshp = 25, .lrate = 14,
-     .lwave = 2},
-    {"GLASS PAD", {4, 30, 0, 12, 82, 10, 0, 0}, {75, 95, 110, 105}, 6, 0, FX(0, 50, 35, 85), .lshp = 35, .lrate = 20},
-    {"MORPH PAD", {5, 20, 0, 16, 74, 12, 0, 0}, {80, 90, 115, 100}, 6, 0, FX(0, 60, 25, 80), .lshp = 50, .lrate = 24},
-    {"EVOLVER", {1, 25, 25, 18, 80, 18, 8, 0}, {90, 95, 118, 105}, 10, 0, FX(0, 70, 30, 85), .eshp = 30, .lshp = 30,
-     .lrate = 20},
     /* the envelope through the table: a note that changes as it sounds */
-    {"PPG SWEEP", {5, 0, 0, 10, 88, 22, 0, 0}, {30, 100, 90, 80}, 20, 0, FX(0, 40, 30, 60), .eshp = 63},
     {"SUB BASS", {0, 6, 0, 0, 55, 15, 25, 0}, {0, 55, 90, 18}, 18, 1, FX(10, 0, 0, 5), .eshp = 8},
     {"RESO LEAD", {2, 10, 0, 6, 95, 20, 20, 0}, {0, 70, 100, 30}, 0, 1, FX(0, 10, 40, 30), .eshp = 55},
-    {"PPG KEYS", {11, 30, 0, 4, 96, 10, 0, 0}, {0, 75, 60, 45}, 16, 0, FX(0, 20, 25, 40), .eshp = 40},
 };
 
 static const engine_t ENG_WAVE = {
     .name = "WAVE",
     .id = EID_WAVE,
     .cc = 0x56,
-    .cats = "PPPPPPPPPBLK",
+    .cats = "PPPBL",
     .page_title = {"WAVE", "TONE"},
     .edit = {
         {"TBL", F_ENUM, 0, 2 * WT_NBANK - 1, 0, N_WT_BANK, 0},

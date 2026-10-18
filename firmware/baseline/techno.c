@@ -29,15 +29,17 @@ typedef struct {
     const char *snd[TC_ROLES];                 /* their presets by name */
     uint8_t rtype, rmix;                       /* the reverb (G_RTYPE 0 DRY 1 SPRING 2 GATED 3 PLATE), its MIX */
 } tc_piece_t;
+/* (2026-10-18: the presets cut to the ones that make bangers; MINIMAL's CLICKS and STEEL BAR, DEEP's PPG KEYS and GLASS
+ * went: TIGHT FM, PLATE, OB KEYS, BOWED BELL) */
 static const tc_piece_t TC_PIECES[] = {
     {"WAREHOUSE", 128, 9, 2, 60, {EID_KIT, EID_OBIE, EID_OBIE, EID_VOSIM}, {"FM KIT", "POLY BASS", "FIFTHS STAB", "TALK LEAD"}, 3, 22},
     {"ACID", 132, 9, 8, 80, {EID_KIT, EID_SID, EID_OBIE, EID_WAVE}, {"TIGHT FM", "FILTER ACID", "BIG STAB", "RESO LEAD"}, 2, 18},
     {"RAVE", 140, 5, 2, 90, {EID_KIT, EID_HOOVER, EID_HOOVER, EID_VOSIM}, {"BOOM KIT", "REESE BASS", "RAVE STAB", "VOX LEAD"}, 3, 26},
     {"DUB", 122, 2, 2, 50, {EID_KIT, EID_WAVE, EID_OBIE, EID_DUBSIREN}, {"DUB KIT", "SUB BASS", "OB KEYS", "CLASSIC SIREN"}, 1, 40},
     {"INDUSTRIAL", 135, 4, 8, 75, {EID_KIT, EID_OBIE, EID_VOSIM, EID_HOOVER}, {"INDUSTRIAL", "RESO SWEEP", "GROWL", "MENTAL"}, 2, 30},
-    {"MINIMAL", 126, 0, 3, 40, {EID_KIT, EID_SID, EID_MODAL, EID_OBIE}, {"CLICKS", "SID BASS", "STEEL BAR", "SQUARE LEAD"}, 3, 20},
+    {"MINIMAL", 126, 0, 3, 40, {EID_KIT, EID_SID, EID_MODAL, EID_OBIE}, {"TIGHT FM", "SID BASS", "PLATE", "SQUARE LEAD"}, 3, 20},
     {"PEAK TIME", 134, 7, 7, 85, {EID_KIT, EID_OBIE, EID_OBIE, EID_OBIE}, {"HEAVY METAL", "POLY BASS", "OB BRASS", "SYNC LEAD"}, 3, 24},
-    {"DEEP", 124, 10, 3, 55, {EID_KIT, EID_WAVE, EID_WAVE, EID_MODAL}, {"DEEP KIT", "SUB BASS", "PPG KEYS", "GLASS"}, 3, 34},
+    {"DEEP", 124, 10, 3, 55, {EID_KIT, EID_WAVE, EID_OBIE, EID_MODAL}, {"DEEP KIT", "SUB BASS", "OB KEYS", "BOWED BELL"}, 3, 34},
 };
 #define TC_NPIECES (sizeof TC_PIECES / sizeof TC_PIECES[0])
 typedef char tc_names_fit[NELEM(N_TC_PIECE) == TC_NPIECES ? 1 : -1];   /* (params.c: the knob's names) */

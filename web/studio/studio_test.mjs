@@ -96,15 +96,15 @@ check("every parameter of the layout is described (label, range, default inside 
 
 // a preset, a parameter
 const WAVE = names.indexOf("WAVE");
-d.call([{ fn: "stu_set_engine", args: [WAVE] }, { fn: "stu_load_preset", args: [3] }]);
-check("an engine and a preset load on the selected track", d.one("stu_engine") === WAVE && d.one("stu_preset") === 3);
+d.call([{ fn: "stu_set_engine", args: [WAVE] }, { fn: "stu_load_preset", args: [4] }]);   // (RESO LEAD: bright enough for the LPF below)
+check("an engine and a preset load on the selected track", d.one("stu_engine") === WAVE && d.one("stu_preset") === 4);
 const ATK = 1;
 check("a set is clamped to the range", d.one("stu_set", 0, ATK, 500, 7) === 127 && d.one("stu_get", 0, ATK) === 127);
 d.one("stu_set", 0, ATK, 0, 7);
 check(`a value is shown as the device shows it (ATK 0: "${d.str("stu_format", 0, ATK, 0)}")`, /ms$/.test(d.str("stu_format", 0, ATK, 0)));
 const dump = d.call([{ fn: "stu_dump", ret: ["i16", P + G + 4] }])[0];
 check("the dump holds the track's values, then the engine, preset, slot, selection",
-  dump[ATK] === 0 && dump[P + G] === WAVE && dump[P + G + 1] === 3 && dump[P + G + 3] === 0);
+  dump[ATK] === 0 && dump[P + G] === WAVE && dump[P + G + 1] === 4 && dump[P + G + 3] === 0);
 d.one("stu_set", 1, 9, 30, 0);     // (G_RSIZE)
 check("a global (the FX chain's) is set", d.one("stu_get", 1, 9) === 30);
 

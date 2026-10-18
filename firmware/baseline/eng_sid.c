@@ -194,29 +194,17 @@ static const preset_t SID_PRESETS[] = {
     {"FAT PULSE", {2, 30, 50, 0, 0, 1, 90, 40}, {0, 60, 100, 30}, 10, 1, FX(0, 30, 20, 20)},
     {"SYNC LEAD", {1, 64, 0, 2, 19, 1, 110, 30}, {0, 40, 110, 30}, 0, 1, FX(0, 20, 30, 20)},
     {"SYNC SWEEP", {1, 64, 0, 2, 12, 1, 100, 40}, {0, 80, 90, 30}, 0, 1, FX(10, 20, 30, 20)},
-    {"RING BELL", {0, 64, 0, 1, 7, 0, 127, 0}, {0, 90, 0, 80}, 0, 0, FX(0, 20, 30, 40)},
-    {"RING ZAP", {0, 64, 0, 3, 31, 2, 80, 90}, {0, 30, 0, 20}, 40, 0, FX(0, 0, 30, 20)},
-    {"TRI FLUTE", {0, 64, 0, 0, 0, 0, 127, 0}, {10, 0, 127, 30}, 0, 1, FX(0, 20, 30, 40)},
-    {"PWM PAD", {2, 50, 30, 0, 0, 1, 70, 50}, {70, 0, 127, 80}, 10, 0, FX(0, 70, 30, 60)},
-    {"THIN LEAD", {6, 30, 20, 0, 0, 0, 127, 0}, {0, 0, 127, 20}, 0, 1, FX(0, 20, 40, 20)},
-    {"NASAL", {5, 70, 0, 0, 0, 2, 70, 70}, {0, 0, 127, 20}, 0, 1, FX(0, 20, 30, 20)},
     {"BUZZ BASS", {4, 64, 0, 0, 0, 1, 40, 100}, {0, 60, 60, 20}, 40, 1, FX(20, 0, 0, 5)},
     {"FILTER ACID", {1, 64, 0, 0, 0, 1, 30, 115}, {0, 40, 20, 20}, 60, 1, FX(30, 0, 20, 5)},
-    {"SID KICK", {0, 64, 0, 0, 0, 1, 40, 60}, {0, 30, 0, 20}, 40, 0, FX(10, 0, 0, 5)},
-    {"SID SNARE", {3, 64, 0, 0, 0, 3, 60, 40}, {0, 25, 0, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"NOISE HAT", {3, 64, 0, 0, 0, 3, 110, 30}, {0, 15, 0, 10}, 0, 0, FX(0, 0, 10, 10)},
-    {"HP SWEEP", {7, 50, 60, 0, 0, 3, 60, 100}, {30, 0, 127, 60}, -40, 0, FX(0, 40, 40, 50)},
-    /* (2026-10-17, from SH101, archived) noise through the resonant low-pass: the wind, LFO on the filter; GEN's WAVES'
-     * surf, swelling in with the filter opening, falling back */
+    /* (2026-10-17, from SH101, archived) noise through the resonant low-pass: the wind, LFO on the filter */
     {"WIND", {3, 64, 0, 0, 0, 1, 50, 115}, {90, 0, 127, 100}, 0, 0, FX(0, 40, 30, 70), .lrate = 20},
-    {"SURF", {3, 64, 0, 0, 0, 1, 30, 60}, {96, 100, 90, 104}, 48, 0, FX(0, 30, 10, 95)},
 };
 
 static const engine_t ENG_SID = {
     .name = "SID",
     .id = EID_SID,
     .cc = 0x78,                  /* CC74 CUT, CC71 RES */
-    .cats = "BLLLKFLPLLBBDDDFFF",
+    .cats = "BLLLBBF",
     .page_title = {"OSC", "FILTER"},
     .edit = {
         {"WAVE", F_ENUM, 0, 7, 2, N_SID_WAVE, 0},

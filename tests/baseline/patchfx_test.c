@@ -70,7 +70,7 @@ int main(void)
     check("  one patch's line none of another's: patch 2 silent while patch 1 echoes", pk1 == 0u);
     trk[0].p[P_DFDBK] = 0;
     run(0, (PDL_LEN * 2u + FS) / CTL + 4u, 0, 4096, 4096, L, R, 0);
-    check("  unfed and silent for a line's length: asleep (the block returns at once)", pdl[0].quiet > PDL_LEN);
+    check("  unfed and silent for a line's length: asleep (the block returns at once)", pdl[0].quiet > PDL_SLEEP);
     trk[0].p[P_DFDBK] = 120;
     trk[0].p[P_DTIME] = 2;
     {
@@ -88,6 +88,40 @@ int main(void)
         }
         snprintf(msg, sizeof msg, "  FEED 120 for a minute: bounded (peak %u: the line's 16 bits hold it)", pk);
         check(msg, pk < 140000u);
+    }
+    {   /* (2026-10-18) through the whole mix: a short note on a patch whose voice is over long before its echoes; the
+         * echoes after the release (the mixer used to return before the delay once the last voice ended: a short
+         * sound got none) */
+        int32_t o[2u * CTL];
+        uint32_t b, f, pk_on = 0, pk_after = 0, e = 0, k;
+        memset(pdl, 0, sizeof pdl);
+        memset(dly_buf, 0, sizeof dly_buf);
+        host_tracks_init();
+        song.g[G_BPM] = 120;
+        song.g[G_RMIX] = 0;
+        for (k = 0; k < ENGINES[ENGI_WAVE]->npresets; k++)            /* (WAVE's SUB BASS: a mono bass, its release short) */
+            if (!strcmp(ENGINES[ENGI_WAVE]->presets[k].name, "SUB BASS"))
+                e = k;
+        host_preset(&trk[0], ENGI_WAVE, e);
+        trk[0].p[P_DLY] = 100;
+        trk[0].p[P_DTIME] = 0;                          /* (1/4 at 120 BPM: 0.5 s) */
+        trk[0].p[P_DFDBK] = 50;
+        trk[0].p[P_REL] = 0;
+        trk_note_on(&trk[0], 48, 110);
+        for (f = 0; f < FS / 10u; f += CTL) {
+            mix_block(o, CTL);
+            for (b = 0; b < 2u * CTL; b++) pk_on = (uint32_t)abs(o[b]) > pk_on ? (uint32_t)abs(o[b]) : pk_on;
+        }
+        trk_note_off(&trk[0], 48);
+        for (f = 0; f < FS * 3u / 10u; f += CTL)        /* (the release over: 0.3 s) */
+            mix_block(o, CTL);
+        for (f = 0; f < FS / 2u; f += CTL) {            /* (0.4 .. 0.9 s: the first echo at 0.5 s) */
+            mix_block(o, CTL);
+            for (b = 0; b < 2u * CTL; b++) pk_after = (uint32_t)abs(o[b]) > pk_after ? (uint32_t)abs(o[b]) : pk_after;
+        }
+        snprintf(msg, sizeof msg, "  through the mix: a short note's echo after its voice is over (peak %u, the note %u)",
+                 pk_after, pk_on);
+        check(msg, pk_after > pk_on / 20u && pk_after > 200u && !trk[0].v[0].active);
     }
     printf(bad ? "patchfx: %d FAILED\n" : "patchfx: all passed\n", bad);
     return bad ? 1 : 0;

@@ -233,37 +233,17 @@ static int32_t chipkit_keys(const track_t *t, uint32_t k) { return drum_keys(t, 
 /* {TUNE, DECAY, CHIP, SWEEP, NOISE, RATE, VARY, VEL}. The keys from C2: KICK SNARE HAT OPEN TOM-L TOM-M TOM-H CRASH CLAP
  * ZAP COIN NOISE */
 static const preset_t CHIPKIT_PRESETS[] = {
-    {"NES KIT", {0, 64, CK_NES, 64, 64, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"GAME BOY KIT", {0, 64, CK_GB, 64, 64, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"MASTER SYS", {0, 64, CK_SMS, 64, 64, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"C64 KIT", {0, 64, CK_C64, 64, 64, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 20)},
-    {"8-BIT PUNCH", {0, 50, CK_NES, 90, 56, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 5, 10)},
     {"BOSS FIGHT", {-3, 80, CK_NES, 80, 70, 64, 10, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 15, 25)},
-    {"TITLE SCREEN", {2, 70, CK_GB, 64, 60, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 15, 30)},
     {"DUNGEON", {-5, 90, CK_NES, 50, 72, 48, 10, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 20, 45)},
-    {"SPACE SHOOT", {4, 50, CK_NES, 110, 64, 80, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 20, 20)},
-    {"LOFI CART", {0, 60, CK_GB, 64, 64, 32, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"FAST FRAMES", {0, 64, CK_NES, 64, 64, 110, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"TRACKER KIT", {0, 56, CK_NES, 70, 64, 64, 5, 80}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"NOISE DRUMS", {0, 64, CK_NES, 64, 110, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"TONE DRUMS", {0, 64, CK_NES, 80, 20, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"TIGHT 8BIT", {0, 30, CK_NES, 64, 64, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 5, 5)},
     {"LONG TAILS", {0, 110, CK_NES, 64, 64, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 25)},
-    {"PITCHED UP", {7, 60, CK_NES, 64, 64, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
     {"PITCHED DOWN", {-7, 70, CK_NES, 64, 64, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"SID BEATS", {0, 70, CK_C64, 80, 60, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 15, 20)},
-    {"SN76 BEATS", {0, 60, CK_SMS, 70, 70, 64, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"DMG CRUNCH", {0, 56, CK_GB, 90, 80, 64, 8, 64}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 10, 15)},
-    {"WOBBLY", {0, 64, CK_NES, 64, 64, 64, 60, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 10, 15)},
-    {"SOFT CHIP", {-2, 70, CK_C64, 40, 50, 64, 0, 90}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 15, 30)},
-    {"ARCADE", {2, 56, CK_NES, 96, 70, 72, 0, 64}, {0, 0, 127, 20}, 0, 0, FX(0, 0, 15, 20)},
 };
 
 static const engine_t ENG_CHIPKIT = {
     .name = "CHIPKIT",
     .id = EID_CHIPKIT,
     .cc = 0x25,                  /* CC74 DECAY, CC71 NOISE */
-    .cats = "DDDDDDDDDDDDDDDDDDDDDDDD",
+    .cats = "DDDD",
     .page_title = {"KIT", "CHIP"},
     .edit = {
         {"TUNE", F_INT, -24, 24, 0, 0, "st"},

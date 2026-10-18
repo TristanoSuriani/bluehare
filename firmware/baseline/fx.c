@@ -990,6 +990,9 @@ static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_
  * clamp holds it); TIME (P_DTIME) a division of the tempo, at most the line. A line no patch feeds runs until a line's
  * worth of half-samples has been silent, then sleeps */
 #define PDL_LEN (DLY_LEN / NTRK)
+#define PDL_SLEEP (65536u / NTRK)   /* (asleep after this many silent half-samples, or TIME's if longer: the device's line
+                                     * length, so the Native image's longer lines sleep as the device's do, the renders
+                                     * the same, golden.txt shared; its longer TIMEs still ring) */
 typedef char pdl_pow2[(PDL_LEN & (PDL_LEN - 1u)) == 0 ? 1 : -1];
 static struct { uint32_t w, quiet; int32_t acc, lp, y0, y1; uint8_t ph; } pdl[NTRK];
 static int32_t pdl_in[CTL];
@@ -999,9 +1002,9 @@ static __attribute__((noinline)) void pdl_block(uint32_t k, const int32_t *in, u
     int16_t *L = dly_buf + k * PDL_LEN;
     uint32_t i, D = div_samples((uint32_t)trk[k].p[P_DTIME]) >> 1;
     int32_t fb = trk[k].p[P_DFDBK] * 230, col = 2000 + 70 * 240;
-    if (!fed && pdl[k].quiet > PDL_LEN)
-        return;
     D = D < 2u ? 2u : D > PDL_LEN - 2u ? PDL_LEN - 2u : D;
+    if (!fed && pdl[k].quiet > (D + 2u > PDL_SLEEP ? D + 2u : PDL_SLEEP))
+        return;
     for (i = 0; i < n; i++) {
         int32_t x = fed ? in[i] : 0, w;
         pdl[k].acc += x;
@@ -1130,6 +1133,9 @@ static void mix_part(track_t *t, uint32_t n)
     if (track_render(t, b, n))
         t->tail = 16;                                   /* blocks of DIST state to run out after the last voice */
     else if (!t->tail || !t->p[P_DIST] || !--t->tail) {
+        int32_t pan = t->p[P_PAN];                      /* (2026-10-18) the patch's delay rings on after its last voice,
+                                                         * unfed, until its line is silent (pdl_block sleeps then) */
+        pdl_block((uint32_t)(t - trk) % NTRK, pdl_in, n, 4096 - (pan > 0 ? pan * 64 : 0), 4096 + (pan < 0 ? pan * 64 : 0), 0);
         if (mod.on)
             mod_end(t);
         return;

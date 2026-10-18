@@ -76,21 +76,11 @@ static void dubsiren8_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, c
  * (a DUBSIREN sound off the last track keeps its preset number here) */
 static const preset_t DUBSIREN8_PRESETS[] = {
     {"BIT SIREN", {0, 60, 12, 2, 0, 80, 90, 70}, {0, 0, 127, 30}, 0, 1, FX(0, 0, 0, 20)},
-    {"CHIP NEE NAW", {0, 40, 5, 0, 0, 70, 70, 60}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 0, 20)},
-    {"BIT WHOOP", {0, 30, 24, 1, 0, 90, 80, 60}, {0, 0, 127, 30}, 0, 1, FX(0, 0, 0, 20)},
-    {"BIT WAIL", {1, 20, 9, 3, 0, 100, 85, 60}, {10, 0, 127, 40}, 0, 1, FX(0, 0, 0, 30)},
-    {"CHIP LASER", {2, 110, 24, 2, -40, 60, 95, 70}, {0, 0, 127, 20}, 0, 1, FX(10, 0, 0, 10)},
-    {"BIT ALARM", {0, 90, 7, 0, 0, 50, 60, 50}, {0, 0, 127, 15}, 0, 1, FX(0, 0, 0, 10)},
-    {"BIT DIVE", {0, 0, 0, 0, -50, 110, 100, 70}, {0, 0, 127, 50}, 0, 1, FX(0, 0, 0, 30)},
     {"BIT RISER", {2, 70, 3, 3, 45, 80, 90, 60}, {40, 0, 127, 40}, 0, 1, FX(0, 20, 0, 30)},
     {"GRIT RUNAWAY", {0, 50, 12, 2, 0, 90, 118, 90}, {0, 0, 127, 30}, 0, 1, FX(0, 0, 0, 20)},
-    {"CHIP TRILL", {3, 120, 2, 0, 0, 70, 70, 50}, {0, 0, 127, 20}, 0, 1, FX(0, 0, 0, 20)},
-    {"BIT UFO", {3, 85, 14, 3, 10, 100, 95, 70}, {20, 0, 127, 60}, 0, 1, FX(0, 30, 0, 40)},
-    {"BIT HORN", {2, 0, 0, 0, 0, 85, 80, 55}, {0, 0, 127, 20}, 0, 1, FX(20, 0, 0, 20)},
     /* (Blue Hare) its own: the 8 bits as the point */
     {"ARCADE ZAP", {2, 127, 36, 2, -64, 30, 60, 50}, {0, 0, 127, 10}, 0, 1, FX(0, 0, 0, 10)},
     {"DIRTY DUB", {0, 45, 7, 3, 0, 95, 112, 95}, {0, 0, 127, 40}, 0, 1, FX(30, 0, 0, 25)},
-    {"POCKET HORN", {0, 0, 0, 0, 0, 70, 75, 60}, {0, 0, 127, 15}, 0, 1, FX(0, 0, 0, 15)},
     {"BROKEN TAPE", {3, 25, 3, 3, -8, 120, 105, 85}, {30, 0, 127, 60}, 0, 1, FX(0, 20, 0, 35)},
 };
 
@@ -98,7 +88,7 @@ static const engine_t ENG_DUBSIREN8 = {
     .name = "SIREN8",            /* (the protocol's names are 8 characters at most: DUBSIREN8 the code's name) */
     .id = EID_DUBSIREN8,
     .cc = 0x27,                  /* CC74 RATE, CC71 FDBK (as DUBSIREN) */
-    .cats = "FFFFFFFFFLFLFFLF",
+    .cats = "FFFFFF",
     .page_title = {"SIREN", "ECHO"},
     .edit = {
         {"WAVE", F_ENUM, 0, 3, 0, N_DS_WAVE, 0},

@@ -141,7 +141,7 @@ fixed id (`EID_*`), so a project, a user preset, a song or a backup moves betwee
   distribution's first engine;
 - a user preset of such an engine is kept as it is but listed nowhere and loads nothing (the editor still reads and
   writes it);
-- the power-on parts (WAVE's WARM PAD, SID BASS, BLISS's E.PIANO, MODAL's KALIMBA) whose engine is missing start as
+- the power-on parts (WAVE's WARM PAD, SID BASS, MODAL's GRAND and BELL) whose engine is missing start as
   their second pick, else the first engine;
 - the editor sees the missing engines as "-" (`INFO`), as it does the retired ids.
 

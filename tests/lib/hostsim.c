@@ -165,6 +165,9 @@ static void host_tracks_init(void)                /* as bluehare_init: defaults,
         for (i = 0; i < P_E0; i++)
             trk[k].p[i] = TP[i].def;
     trk_mix_defaults();
+    memset(pdl, 0, sizeof pdl);                   /* (2026-10-18) the patches' delays silent: they ring on after a
+                                                   * voice now, into the next render otherwise */
+    memset(dly_buf, 0, sizeof dly_buf);
     memset(host_song, 0, sizeof host_song);
     memset(&hs, 0, sizeof hs);
     host_rows = 0;

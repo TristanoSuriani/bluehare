@@ -63,21 +63,21 @@ int main(void)
     /* power-on: the engines.c picks, the second where the first is left out */
     reset();
 #if NPART == 8
-    bad += check("power-on: WARM PAD, SID BASS (centred), GRAND, KALIMBA, WAVE for VOSIM, BOWED STRING, BELL, SYNC LEAD",
+    bad += check("power-on: WARM PAD, SID BASS (centred), GRAND, BELL, WAVE for VOSIM, BOWED STRING, CHIMES, SYNC LEAD",
                  TRK_DEF[0][0] == ENGI_WAVE && str_eq(ENGINES[ENGI_WAVE]->presets[TRK_DEF[0][1]].name, "WARM PAD") &&
                  TRK_DEF[1][0] == ENGI_SID && TRK_DEF[1][1] == 0u && TRK_DEF[2][0] == ENGI_MODAL &&
                  str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[2][1]].name, "GRAND") &&
-                 TRK_DEF[3][0] == ENGI_MODAL && str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[3][1]].name, "KALIMBA") &&
+                 TRK_DEF[3][0] == ENGI_MODAL && str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[3][1]].name, "BELL") &&
                  TRK_DEF[4][0] == ENGI_WAVE && TRK_DEF[4][1] == 0u &&
                  TRK_DEF[5][0] == ENGI_MODAL && str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[5][1]].name, "BOWED STRING") && TRK_DEF[6][0] == ENGI_MODAL && TRK_DEF[7][0] == ENGI_SID &&
                  TRK_DEF[7][1] == 2u && !TRK_PAN[0] && !TRK_PAN[1] && TRK_PAN[2] < 0 && TRK_PAN[3] > 0 && TRK_PAN[4] < 0 &&
                  TRK_PAN[5] > 0 && TRK_PAN[6] < 0 && TRK_PAN[7] > 0);
 #else
-    bad += check("power-on (4 tracks): WARM PAD, SID BASS, GRAND, KALIMBA; the keys and the bells apart",
+    bad += check("power-on (4 tracks): WARM PAD, SID BASS, GRAND, BELL; the keys and the bells apart",
                  TRK_DEF[0][0] == ENGI_WAVE && str_eq(ENGINES[ENGI_WAVE]->presets[TRK_DEF[0][1]].name, "WARM PAD") &&
                  TRK_DEF[1][0] == ENGI_SID && TRK_DEF[1][1] == 0u && TRK_DEF[2][0] == ENGI_MODAL &&
                  str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[2][1]].name, "GRAND") &&
-                 TRK_DEF[3][0] == ENGI_MODAL && str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[3][1]].name, "KALIMBA") &&
+                 TRK_DEF[3][0] == ENGI_MODAL && str_eq(ENGINES[ENGI_MODAL]->presets[TRK_DEF[3][1]].name, "BELL") &&
                  !TRK_PAN[0] && !TRK_PAN[1] && TRK_PAN[2] < 0 && TRK_PAN[3] > 0);
 #endif
 
@@ -138,7 +138,7 @@ int main(void)
     ok = trk[0].p[P_OCT] == -3 && param_oct(P_OCT, 30) == 0 && param_oct(P_OCT, -65) == 0 && param_oct(P_OCT, -2) == -2 &&
          param_oct(P_DIST, 30) == 30 && TP[P_OCT].min == -4 && TP[P_OCT].max == 4 && str_eq(TP[P_OCT].label, "OCT");
     bad += check("  a song keeps OCT -3; an old ENV DEST FX value outside -4 .. 4 loads as 0 (not clamped to 4 octaves)", ok);
-    {   /* the sound: 3 octaves down (SID TRI FLUTE held at C4, its strongest line 100 .. 400 ms, OCT 0 against -3) */
+    {   /* the sound: 3 octaves down (SID BASS held at C4, its strongest line 100 .. 400 ms, OCT 0 against -3) */
         static int16_t rec[FS / 2u];
         char dbg[200];
         double bf[2];
@@ -149,7 +149,7 @@ int main(void)
             host_tracks_init();
             for (f = 0; f < FS / 10u; f += CTL)
                 mix_block(o, CTL);
-            host_preset(&trk[0], ENGI_SID, 6);
+            host_preset(&trk[0], ENGI_SID, 0);   /* (SID BASS; TRI FLUTE until the cut, 2026-10-18) */
             trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = trk[0].p[P_DIST] = 0;
             trk[0].p[P_OCT] = m ? -3 : 0;
             trk_note_on(&trk[0], 60, 110);
@@ -171,7 +171,7 @@ int main(void)
                 }
             }
         }
-        snprintf(dbg, sizeof dbg, "  SID TRI FLUTE at C4: %.1f Hz, OCT -3 %.1f Hz (x %.2f: 3 octaves down)", bf[0], bf[1],
+        snprintf(dbg, sizeof dbg, "  SID BASS at C4: %.1f Hz, OCT -3 %.1f Hz (x %.2f: 3 octaves down)", bf[0], bf[1],
                  bf[1] > 0 ? bf[0] / bf[1] : 0);
         bad += check(dbg, bf[1] > 0 && bf[0] / bf[1] > 7.8 && bf[0] / bf[1] < 8.2);
     }
@@ -223,7 +223,7 @@ int main(void)
                 loud += pk > 100;
                 n++;
             }
-        bad += check("every engine left renders every preset (not silent)", loud == n && n > 40u);
+        bad += check("every engine left renders every preset (not silent)", loud == n && n > 15u);   /* (21 since the cut) */
     }
     /* the project format: every build writes version 13 (the track count after the name); a project of more tracks than
      * the build is refused, one of fewer fills its first tracks. build/host/song_4trk.bin carries a 4-track project from

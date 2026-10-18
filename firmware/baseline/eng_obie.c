@@ -193,7 +193,6 @@ static const preset_t OBIE_PRESETS[] = {
     {"BIG STAB", {0, 64, 25, 0, 70, 10, 0, 40}, {0, 60, 90, 30}, 30, 0, FX(0, 30, 15, 45)},
     {"OB STRINGS", {0, 64, 45, 0, 75, 5, 0, 60}, {70, 90, 115, 85}, 0, 0, FX(0, 70, 15, 70)},
     {"PWM PAD", {1, 40, 20, 0, 70, 10, 0, 50}, {80, 90, 115, 95}, 0, 0, FX(0, 50, 20, 75), .lshp = 30, .lrate = 20},
-    {"SOFT FIFTHS", {2, 64, 35, 7, 50, 5, 0, 70}, {90, 100, 120, 100}, 0, 0, FX(0, 60, 20, 80)},
     {"BRASS SWELL", {0, 64, 30, 0, 40, 25, 1, 45}, {60, 80, 110, 60}, 50, 0, FX(0, 30, 15, 55)},
     {"SYNC LEAD", {3, 64, 0, 12, 100, 15, 1, 20}, {0, 80, 100, 30}, 0, 1, FX(10, 0, 35, 25), .eshp = 45},
     {"SQUARE LEAD", {1, 0, 10, 12, 85, 20, 1, 25}, {0, 70, 110, 35}, 20, 1, FX(0, 10, 40, 30)},
@@ -207,7 +206,7 @@ static const engine_t ENG_OBIE = {
     .name = "OBIE",
     .id = EID_OBIE,
     .cc = 0x56,                  /* CC74 CUT, CC71 RES */
-    .cats = "LLPPPLLLBFKL",
+    .cats = "LLPPLLLBFKL",
     .page_title = {"OSC", "FILTER"},
     .edit = {
         {"WAVE", F_ENUM, 0, 3, 0, N_PO_WAVE, 0},

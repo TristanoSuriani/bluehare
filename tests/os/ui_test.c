@@ -810,13 +810,16 @@ static int test_categories(void)
     memset(up_bank, 0, sizeof up_bank);
     for (e = 0; e < NENGINES; e++) {
         const char *c = ENGINES[e]->cats ? ENGINES[e]->cats : "";
-        ok &= str_len(c) == ENGINES[e]->npresets;
+        int okc = str_len(c) == ENGINES[e]->npresets;
         for (k = 0; k < ENGINES[e]->npresets; k++)
-            ok &= preset_cat(e, k) >= CAT_BASS && preset_cat(e, k) <= CAT_OTHER;
+            okc &= preset_cat(e, k) >= CAT_BASS && preset_cat(e, k) <= CAT_OTHER;
+        if (!okc)
+            printf("ui:   %s: %u categories for %u presets\n", ENGINES[e]->name, (unsigned)str_len(c), (unsigned)ENGINES[e]->npresets);
+        ok &= okc;
     }
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
-                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_MODAL, 7) == CAT_DRUM && preset_cat(ENGI_WAVE, 1) == CAT_PAD &&
-                 preset_cat(ENGI_SID, 12) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);
+                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_MODAL, 5) == CAT_DRUM && preset_cat(ENGI_WAVE, 1) == CAT_PAD &&
+                 preset_cat(ENGI_KIT, 0) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);   /* (MODAL's SUB DRUM; KIT's FM KIT) */
     {   /* (2026-10-17) archived engines' favourites refused: WEST (16) and SH101 (61) with KARPLUS (20) and BYTE (15) */
         favorites_t before = favorites;
         ok = !favorite_set(EID_WEST, 0, 1) && !favorite_has(EID_WEST, 0) && !favorite_set(EID_SH101, 0, 1) &&

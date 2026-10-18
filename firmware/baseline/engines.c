@@ -148,21 +148,22 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 }
 
 /* the parts at power-on (engine index, preset). (Blue Hare, 2026-10-16: Milestone 1) a role a track: the pad (WAVE's
- * WARM PAD) and the bass (SID BASS), centred, the keys (MODAL's GRAND, left) and the bells (MODAL's KALIMBA, right);
- * with 8, a choir (VOSIM's WARM CHOIR), strings (MODAL's BOWED STRING), a bell (MODAL) and a lead (SID SYNC LEAD) after them. An engine the
+ * WARM PAD) and the bass (SID BASS), centred, the keys (MODAL's GRAND, left) and the bells (MODAL's BELL, right; KALIMBA
+ * until the presets were cut, 2026-10-18); with 8, a choir (VOSIM's CHOIR AAH), strings (MODAL's BOWED STRING), a bell
+ * (MODAL's CHIMES) and a lead (SID SYNC LEAD) after them. An engine the
  * build leaves out: the second pick, else its first engine, preset 0 */
 #define TRK_PICK(X, p) {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : 0u, BLUEHARE_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
     {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : BLUEHARE_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      BLUEHARE_ENG_##X ? (uint8_t)(p) : BLUEHARE_ENG_##Y ? (uint8_t)(q) : 0u}
 #if NPART == 8
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 0), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 24, WAVE, 0),
-                                          TRK_PICK2(MODAL, 10, WAVE, 0), TRK_PICK2(VOSIM, 14, WAVE, 0),
-                                          TRK_PICK2(MODAL, 23, WAVE, 3), TRK_PICK2(MODAL, 2, WAVE, 0), TRK_PICK(SID, 2)};
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 0), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 8, WAVE, 0),
+                                          TRK_PICK2(MODAL, 0, WAVE, 0), TRK_PICK2(VOSIM, 6, WAVE, 0),
+                                          TRK_PICK2(MODAL, 7, WAVE, 1), TRK_PICK2(MODAL, 6, WAVE, 0), TRK_PICK(SID, 2)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24, -16, 16, -8, 8};
 #else
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 0), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 24, WAVE, 0),
-                                          TRK_PICK2(MODAL, 10, WAVE, 0)};
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 0), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 8, WAVE, 0),
+                                          TRK_PICK2(MODAL, 0, WAVE, 0)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24};
 #endif
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

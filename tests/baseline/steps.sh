@@ -39,7 +39,7 @@ slow compile $CC -O2 -w $I -o "$OUT/speech_test" tests/baseline/speech_test.c -l
 mkdir -p build/speech_demo
 slow run "SPEECH (back 2026-10-18): every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo
 compile $CC -O2 -w $I -o "$OUT/patchfx_test" tests/baseline/patchfx_test.c -lm
-run "the patches' delays (2026-10-18): the echo at TIME, FEED's next quieter, panned as the patch, one line each, asleep when silent, FEED 120 bounded" "$OUT/patchfx_test"
+run "the patches' delays (2026-10-18): the echo at TIME, FEED's next quieter, panned as the patch, one line each, asleep when silent, FEED 120 bounded, ringing on after a short note (through the mix)" "$OUT/patchfx_test"
 compile $CC -O1 -w $I -Itests/lib -o "$OUT/monolows_test" tests/baseline/monolows_test.c -lm
 run "MONO LOWS: the master's side under ~120 Hz in mono (40 Hz hard left on both), the highs' width kept, silence exact" "$OUT/monolows_test"
 compile $CC -O2 -w $I -Itests/lib -o "$OUT/gated_test" tests/baseline/gated_test.c -lm

@@ -166,8 +166,9 @@ string ensemble (STRINGS). What the rest of the system leans on:
 
 - **WAVE**: the wavetable data (`bluehare_wavetables.h`, 130 KB of flash) and the end of most substitute chains (SID,
   BLISS and STRINGS fall back to it); the power-on pad (WARM PAD).
-- **MODAL**: the only user of DaisySP's physical models (`shared/phys_dsp.c`); the power-on bells (KALIMBA) and the
-  host tests' drums (WOOD DRUM); the voice-capped engine the voice-budget tests use.
+- **MODAL**: the only user of DaisySP's physical models (`shared/phys_dsp.c`); the power-on keys and bells (GRAND,
+  BELL; KALIMBA until the presets were cut to the ones that make bangers, 2026-10-18); the voice-capped engine the
+  voice-budget tests use.
 - **SH101**: the power-on bass (101 BASS); the one user of the ladder filter (`LADDER_G`).
 - **SID**: SH101's substitute; the first engine (the fallback of last resort, and engine 0 in the tests).
 - **STRINGS**: the one user of the track's engine block for an effect after the voices (its ensemble line, `eng_slab`).

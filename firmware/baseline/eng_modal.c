@@ -222,50 +222,28 @@ static void modal_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 /* {MATRL, EXCIT, STRUCT, POS, DECAY, DAMP, BRIGHT, BEAT}; MATRL 0 BAR 1 MRMBA 2 BELL 3 GLASS 4 PLATE 5 DRUM 6 TUBE
  * 7 STRING; EXCIT 0 MALLET 1 PLUCK 2 BOW 3 CLICK. The amplitude: a long release, the modes ring as they will */
 static const preset_t MODAL_PRESETS[] = {
-    {"MARIMBA", {1, 0, 64, 20, 60, 70, 60, 0}, {0, 0, 127, 70}, 0, 0, FX(0, 0, 20, 25)},
-    {"VIBES", {1, 0, 64, 30, 95, 40, 70, 12}, {0, 0, 127, 90}, 0, 0, FX(0, 30, 30, 40)},
     {"BELL", {2, 0, 64, 30, 110, 30, 75, 20}, {0, 0, 127, 100}, 0, 0, FX(0, 10, 30, 50)},
     {"TUBULAR", {6, 0, 70, 25, 105, 35, 80, 6}, {0, 0, 127, 100}, 0, 0, FX(0, 10, 35, 55)},
-    {"GLASS", {3, 0, 64, 40, 100, 25, 90, 8}, {0, 0, 127, 95}, 0, 0, FX(0, 30, 35, 60)},
-    {"STEEL BAR", {0, 3, 64, 35, 90, 30, 100, 0}, {0, 0, 127, 85}, 0, 0, FX(0, 0, 30, 40)},
     {"PLATE", {4, 0, 64, 50, 95, 45, 70, 30}, {0, 0, 127, 95}, 0, 0, FX(0, 20, 30, 55)},
-    {"WOOD DRUM", {5, 0, 64, 15, 40, 90, 40, 0}, {0, 0, 127, 50}, 0, 0, FX(0, 0, 15, 20)},
-    {"PLUCK BAR", {0, 1, 64, 30, 70, 60, 70, 4}, {0, 0, 127, 70}, 0, 0, FX(0, 0, 30, 30)},
-    {"HARP", {7, 1, 64, 25, 90, 50, 80, 0}, {0, 0, 127, 85}, 0, 0, FX(0, 20, 30, 45)},
-    {"KALIMBA", {0, 0, 40, 20, 65, 80, 85, 0}, {0, 0, 127, 70}, 0, 0, FX(0, 0, 25, 30)},
     {"GAMELAN", {2, 0, 80, 40, 100, 40, 90, 70}, {0, 0, 127, 100}, 0, 0, FX(0, 20, 35, 55)},
     /* bowed: noise while the key is held, the modes singing */
-    {"BOWED GLASS", {3, 2, 64, 40, 110, 20, 60, 10}, {30, 0, 127, 90}, 0, 0, FX(0, 40, 30, 70)},
     {"BOWED BELL", {2, 2, 64, 30, 115, 25, 50, 20}, {50, 0, 127, 100}, 0, 0, FX(0, 40, 30, 75)},
-    {"DRONE PIPE", {6, 2, 64, 20, 120, 50, 40, 6}, {60, 0, 127, 100}, 0, 0, FX(0, 50, 25, 80)},
-    /* IDM: clicks, stretched metals, clanks */
-    {"CLANK", {4, 3, 100, 60, 60, 30, 110, 50}, {0, 0, 127, 50}, 0, 0, FX(20, 0, 30, 30)},
-    {"TIN CAN", {0, 3, 120, 70, 45, 20, 120, 80}, {0, 0, 127, 40}, 0, 0, FX(10, 0, 30, 25)},
-    {"METAL HIT", {4, 0, 30, 80, 75, 10, 115, 40}, {0, 0, 127, 70}, 0, 0, FX(20, 0, 35, 45)},
-    {"GLITCH BELL", {2, 3, 110, 90, 85, 20, 127, 127}, {0, 0, 127, 80}, 0, 0, FX(10, 20, 40, 50)},
+    /* a drum: low, short, the floor */
     {"SUB DRUM", {5, 0, 50, 10, 55, 100, 20, 0}, {0, 0, 127, 50}, 0, 0, FX(0, 0, 10, 15), .oct = -1},
-    /* (FOUNDRY's clean side: chimes and a bowed string) */
+    /* chimes and a bowed string */
     {"CHIMES", {2, 0, 64, 25, 115, 20, 85, 10}, {0, 0, 127, 110}, 0, 0, FX(0, 20, 35, 65)},
-    {"GLOCKEN", {0, 0, 64, 25, 95, 25, 110, 0}, {0, 0, 127, 90}, 0, 0, FX(0, 10, 30, 55)},
-    {"SOFT MARIMBA", {1, 0, 64, 15, 70, 80, 45, 0}, {0, 0, 127, 75}, 0, 0, FX(0, 10, 20, 35)},
     {"BOWED STRING", {7, 2, 64, 25, 115, 40, 55, 4}, {50, 0, 127, 100}, 0, 0, FX(0, 40, 30, 75)},
-    /* (2026-10-17, BLISS archived) pianos: a felt hammer (MALLET) on STRING's modes, stretched a little (STRUCT, a
-     * piano's inharmonic stretch), BEAT the unison strings of a note; the dampers on release (a short REL). The
-     * electric ones: TINE EP a struck bar whose high modes die at once (the bell, then the near-sine), REED EP TUBE's
-     * odd partials, a little drive */
+    /* (2026-10-17, BLISS archived) the piano: a felt hammer (MALLET) on STRING's modes, stretched a little (STRUCT, a
+     * piano's inharmonic stretch), BEAT the unison strings of a note; the dampers on release (a short REL): piano house's
+     * stabs (2026-10-18: the presets cut to the ones that make bangers, the other pianos with them) */
     {"GRAND", {7, 0, 66, 18, 95, 55, 72, 14}, {0, 0, 127, 22}, 0, 0, FX(0, 0, 10, 35)},
-    {"UPRIGHT", {7, 0, 65, 22, 82, 70, 58, 24}, {0, 0, 127, 18}, 0, 0, FX(0, 0, 10, 25)},
-    {"FELT", {7, 0, 65, 20, 92, 85, 25, 10}, {0, 0, 127, 40}, 0, 0, FX(0, 10, 15, 55)},
-    {"TINE EP", {0, 0, 64, 10, 100, 85, 55, 4}, {0, 0, 127, 20}, 0, 0, FX(0, 40, 15, 30)},
-    {"REED EP", {6, 0, 64, 30, 85, 60, 65, 0}, {0, 0, 127, 16}, 0, 0, FX(12, 20, 10, 25)},
-    {"TOY", {0, 0, 64, 30, 70, 40, 100, 30}, {0, 0, 127, 25}, 0, 0, FX(0, 0, 20, 35)},
 };
 
 static const engine_t ENG_MODAL = {
     .name = "MODAL",
     .id = EID_MODAL,
     .cc = 0x57,                  /* CC74 DECAY, CC71 BRIGHT */
-    .cats = "KKKKKKKDUUKKPPPFFFFDKKKPKKKKKK",
+    .cats = "KKKKPDKPK",
     .page_title = {"BODY", "STRIKE"},
     .edit = {
         {"MATRL", F_ENUM, 0, 7, 1, N_MD_MATRL, 0},

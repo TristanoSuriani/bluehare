@@ -164,21 +164,14 @@ static void breaks_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
  * C# CLASSIC, D THINK, D# HALFTIME, E BOOM BAP, F JUNGLE, F# TWO STEP, G SHUFFLE, G# BUSY, A DRILL, A# SPARSE, B GALLOP */
 static const preset_t BREAKS_PRESETS[] = {
     {"BREAKS", {0, 1, 0, 0, 0, 64, 64, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 0, 15)},
-    {"SWUNG", {0, 1, 50, 0, 0, 64, 64, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 0, 15)},
-    {"DOUBLE TIME", {0, 3, 0, 10, 0, 64, 56, 0}, {0, 0, 127, 5}, 0, 1, FX(10, 0, 0, 10)},
     {"HALF TIME", {0, 0, 20, 0, 0, 60, 76, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 10, 25)},
     {"ROLLS", {0, 1, 0, 50, 0, 64, 60, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 10, 15)},
     {"CUT UP", {0, 1, 0, 20, 50, 64, 64, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 10, 15)},
     {"DRILL N BASS", {0, 3, 0, 70, 40, 70, 50, 0}, {0, 0, 127, 5}, 0, 1, FX(20, 0, 10, 10)},
-    {"SAMPLER", {0, 1, 20, 0, 0, 58, 64, 70}, {0, 0, 127, 5}, 0, 1, FX(20, 0, 0, 15)},
     {"CRUSHED", {0, 1, 0, 20, 20, 64, 64, 110}, {0, 0, 127, 5}, 0, 1, FX(30, 0, 10, 10)},
     {"DUB BREAK", {0, 0, 30, 10, 0, 56, 80, 30}, {0, 0, 127, 10}, 0, 1, FX(10, 0, 60, 30)},
     /* (Blue Hare, the IDM review) */
     {"CHOPPED", {4, 1, 0, 10, 30, 64, 64, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 0, 15)},
-    {"LOFI DUST", {0, 1, 30, 0, 0, 54, 70, 50}, {0, 0, 127, 5}, 0, 1, FX(10, 20, 0, 25)},
-    {"GLITCH ROLLS", {0, 1, 0, 100, 60, 64, 56, 30}, {0, 0, 127, 5}, 0, 1, FX(10, 0, 20, 15)},
-    {"TIGHT BREAK", {0, 1, 10, 0, 0, 70, 40, 0}, {0, 0, 127, 5}, 0, 1, FX(20, 0, 0, 10)},
-    {"SLOW SWING", {0, 0, 70, 0, 0, 60, 80, 0}, {0, 0, 127, 5}, 0, 1, FX(0, 0, 10, 25)},
     {"SHRED", {0, 3, 0, 90, 90, 80, 50, 60}, {0, 0, 127, 5}, 0, 1, FX(30, 0, 20, 10)},
 };
 
@@ -193,7 +186,7 @@ static const engine_t ENG_BREAKS = {
     .name = "BREAKS",
     .id = EID_BREAKS,
     .cc = 0x45,                  /* CC74 STUTR, CC71 SHUF */
-    .cats = "DDDDDDDDDDDDDDDD",
+    .cats = "DDDDDDDDD",
     .page_title = {"BREAK", "MANGLE"},
     .edit = {
         {"SLICE", F_INT, 0, 15, 0, 0, 0},
