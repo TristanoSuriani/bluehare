@@ -190,6 +190,15 @@ body[class^="dist-"] .mid .slit { fill: color-mix(in srgb, var(--a2) 55%, var(--
 body[class^="dist-"] .lit .slit { fill: var(--a2); filter: drop-shadow(0 0 5px var(--a2)); }
 body[class^="dist-"] .held .face { stroke: var(--fg); stroke-width: 2.5; }
 body[class^="dist-"] .latched .face { stroke: var(--a1); stroke-width: 2.5; }
+/* SHAPE HARD: the shell lifted off the page, the caps pressed down into their skirts */
+body.hard .shell { filter: drop-shadow(0 18px 28px rgba(0, 0, 0, .65)); }
+body.hard .sheen, body.hard .knob-dome { pointer-events: none; transition: transform .04s; }
+body.hard .face { transition: fill .05s, transform .04s; }
+body.hard .held .face, body.hard .held .sheen, body.hard .held .slit, body.hard .held text { transform: translateY(3px); }
+body.hard .lit .sheen { opacity: .7; }
+body.hard .chip, body.hard dialog#about { border-radius: 0; }
+body.hard .chip { box-shadow: 0 3px 0 rgba(0, 0, 0, .55); }
+body.hard .chip:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, .55); }
 @keyframes breath-neon { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 60%, var(--tray)); } }
 @keyframes breath-neon-lo { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 35%, var(--tray)); } }
 body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { animation-name: breath-neon; }
@@ -235,6 +244,7 @@ body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { ani
       <dt><kbd>Shift</kbd>-click</dt><dd>holds a button</dd>
     </dl>
     <button class="chip" id="numb" type="button" aria-pressed="false">QE AD ZC: NOTES</button>
+    <button class="chip" id="shapeb" type="button" aria-pressed="true">SHAPE: HARD</button>
   </section>
   <section>
     <h3>MIDI</h3>
@@ -308,8 +318,14 @@ const knobs = [], buttons = [], keys = [];
 const btnBy = new Map(), keyBy = new Map();                   // pointer / key code -> label bit or key
 const send = (m) => { if (node) node.port.postMessage(m); };
 
+// (2026-10-18, an experiment: "much less round and more 3d") SHAPE HARD: square corners, keycaps that stand off the
+// panel (a lit top, a dark skirt under them, pressed they sink), domed knobs, the trays recessed; SOFT: the rounded
+// shapes. ABOUT switches it, remembered in this browser
+let hard = (() => { try { return localStorage.getItem("bluehare-emu-shape") !== "soft"; } catch { return true; } })();
 function build(name) {
   const L = LAYOUTS[name];
+  const R = hard ? { shell: 10, tray: 3, bezel: 4, btn: 2, key: 3, slit: 1 } : { shell: 40, tray: 14, bezel: 18, btn: 8, key: 0, slit: 0 };
+  document.body.classList.toggle("hard", hard);
   layout = name;
   svg.innerHTML = "";
   svg.setAttribute("viewBox", `0 0 ${L.w} ${L.h}`);
@@ -320,17 +336,33 @@ function build(name) {
   const lg = el("linearGradient", { id: "edge", x1: 0, y1: 0, x2: 1, y2: 1 }, defs);   // accents, corner to corner
   el("stop", { offset: "0", "stop-color": "var(--a2, var(--edge))" }, lg);
   el("stop", { offset: "1", "stop-color": "var(--a1, var(--edge))" }, lg);
-  el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: 40, fill: "var(--body)", class: "shell" });
-  for (const [x, y, w, h] of L.trays) el("rect", { x, y, width: w, height: h, rx: 14, fill: "var(--tray)", class: "tray" });
+  const grad = (id, stops, attrs = { x1: 0, y1: 0, x2: 0, y2: 1 }, tag = "linearGradient") => {
+    const g = el(tag, { id, ...attrs }, defs);
+    for (const [o, c, a] of stops) el("stop", { offset: o, "stop-color": c, "stop-opacity": a }, g);
+  };
+  grad("sheen", [[0, "#fff", .22], [.45, "#fff", .04], [.55, "#000", 0], [1, "#000", .35]]);   // a keycap's light and shade
+  grad("inset", [[0, "#000", .55], [.18, "#000", 0], [.9, "#fff", 0], [1, "#fff", .07]]);     // a recess: shade at the top
+  grad("shellsheen", [[0, "#fff", .07], [.25, "#fff", 0], [1, "#000", .3]]);
+  grad("dome", [[0, "#fff", .32], [.55, "#fff", .03], [1, "#000", .45]], { cx: .38, cy: .3, r: .75 }, "radialGradient");
+  el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: R.shell, fill: "var(--body)", class: "shell" });
+  if (hard) el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: R.shell, fill: "url(#shellsheen)", "pointer-events": "none" });
+  const tray = (x, y, w, h) => {
+    el("rect", { x, y, width: w, height: h, rx: R.tray, fill: "var(--tray)", class: "tray" });
+    if (hard) el("rect", { x, y, width: w, height: h, rx: R.tray, fill: "url(#inset)" });
+  };
+  for (const [x, y, w, h] of L.trays) tray(x, y, w, h);
   const [sx, sy, ss] = L.screen;
-  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: 18, fill: "#0b0b0c", class: "bezel" });
+  if (hard) tray(sx - 8, sy - 8, ss + 16, ss + 16);
+  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: R.bezel, fill: "#0b0b0c", class: "bezel" });
   const inset = ss / 32;                                         // the 240 x 240 panel inside its bezel
   Object.assign(canvas.style, { left: `${(sx + inset) / L.w * 100}%`, top: `${(sy + inset) / L.h * 100}%`,
                                 width: `${(ss - 2 * inset) / L.w * 100}%`, height: `${(ss - 2 * inset) / L.h * 100}%` });
   KNOBS.forEach((n, i) => {
     const [x, y, r] = L.knobs[i], g = el("g", {});
     el("circle", { cx: x, cy: y, r: r + 5, fill: "var(--tray)", class: "knob-well" }, g);
+    if (hard) el("circle", { cx: x, cy: y + 3, r: r + 1, fill: "#000", opacity: .55 }, g);   // (its skirt: it stands up)
     el("circle", { cx: x, cy: y, r, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 2, class: "knob-face" }, g);
+    if (hard) el("circle", { cx: x, cy: y, r, fill: "url(#dome)", class: "knob-dome" }, g);
     const ind = n === "MASTER" ? el("line", { x1: x, y1: y - r + 5, x2: x, y2: y - r + 14, stroke: "var(--label)", "stroke-width": 3, "stroke-linecap": "round", class: "knob-ind" }, g)
               : el("circle", { cx: x, cy: y - r + 7, r: 2.6, fill: "var(--label)", class: "knob-ind" }, g);   // (an encoder: a dot that turns)
     label(g, x, y - r - 12, n, 16, DOT);
@@ -339,7 +371,9 @@ function build(name) {
   });
   const button = ([x, y, w, h], n, sub) => {
     const g = el("g", {});
-    el("rect", { x, y, width: w, height: h, rx: 8, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 1.5, class: "face btn" }, g);
+    if (hard) el("rect", { x, y: y + 4, width: w, height: h, rx: R.btn, fill: "#000", opacity: .6, class: "skirt" }, g);
+    el("rect", { x, y, width: w, height: h, rx: R.btn, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 1.5, class: "face btn" }, g);
+    if (hard) el("rect", { x, y, width: w, height: h, rx: R.btn, fill: "url(#sheen)", class: "sheen" }, g);
     const ink = n === "REC" ? "#ff453a" : undefined;
     const F = document.body.className.startsWith("dist-") ? DOT : SANS;   // (2026-10-18: the dot face, as the knobs')
     if (sub) { label(g, x + w / 2, y + h / 2 - 2, n, 11.5, F, ink); label(g, x + w / 2, y + h / 2 + 11, sub, 10.5, F); }
@@ -354,13 +388,15 @@ function build(name) {
     button([gx + i * dx, gy + dy, gw, gh], ROW2[i], ROW2[i] === "PLAY" ? "STOP" : "");
   }
   const [x0, y0, w, h] = L.keybed;
-  el("rect", { x: x0, y: y0, width: w, height: h, rx: 18, fill: "var(--tray)", class: "tray" });
+  tray(x0, y0, w, h);
   // the keys: two rows of the same black keys, each with a slit down its middle that lights
   const pitch = (w - 24) / 16, kw = pitch * 0.78, kh = h * 0.425, sw = Math.max(3, kw * 0.14);
   const key = (cx, cy, k) => {
     const g = el("g", {}), y = cy - kh / 2;
-    el("rect", { x: cx - kw / 2, y, width: kw, height: kh, rx: kw / 2, class: "face key" }, g);
-    el("rect", { x: cx - sw / 2, y: y + kw * 0.4, width: sw, height: kh - kw * 0.8, rx: sw / 2, class: "slit" }, g);
+    if (hard) el("rect", { x: cx - kw / 2, y: y + 5, width: kw, height: kh, rx: R.key, fill: "#000", opacity: .6, class: "skirt" }, g);
+    el("rect", { x: cx - kw / 2, y, width: kw, height: kh, rx: hard ? R.key : kw / 2, class: "face key" }, g);
+    if (hard) el("rect", { x: cx - kw / 2, y, width: kw, height: kh, rx: R.key, fill: "url(#sheen)", class: "sheen" }, g);
+    el("rect", { x: cx - sw / 2, y: y + kw * 0.4, width: sw, height: kh - kw * 0.8, rx: hard ? R.slit : sw / 2, class: "slit" }, g);
     el("rect", { x: cx - pitch / 2, y: cy - h * 0.24, width: pitch, height: h * 0.48, fill: "transparent" }, g);   // its target
     keys[k] = { g, name: keyName(k) };
   };
@@ -558,6 +594,17 @@ function fullToggle() {
   }
 }
 document.getElementById("full").addEventListener("click", fullToggle);
+{   /* (2026-10-18) SHAPE: HARD (square, 3D) or SOFT (rounded) */
+  const b = document.getElementById("shapeb");
+  const show = () => { b.textContent = hard ? "SHAPE: HARD" : "SHAPE: SOFT"; b.setAttribute("aria-pressed", String(hard)); };
+  show();
+  b.addEventListener("click", () => {
+    hard = !hard;
+    try { localStorage.setItem("bluehare-emu-shape", hard ? "hard" : "soft"); } catch {}
+    show();
+    build(layout);
+  });
+}
 {   /* (2026-10-18) ABOUT: the keys, MIDI, the credits */
   const dlg = document.getElementById("about");
   document.getElementById("aboutb").addEventListener("click", () => dlg.showModal());
