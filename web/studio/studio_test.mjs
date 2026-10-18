@@ -189,6 +189,17 @@ check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)
   d.one("stu_gen", 0);
   d.render(100);
   check("TECHNO stops", d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0][0] === 0);
+  /* (2026-10-18) a TECHNO setup file's import: the piece settled at once (its sounds now, not at the next poll), then a
+   * patch staged over it keeps the file's sound and names the preset it came from */
+  d.one("stu_set", 1, G_GPRE, 2, 0);                 /* RAVE: KIT HOOVER HOOVER VOSIM */
+  d.one("stu_gen_settle");
+  const rave = [0, 1, 2, 3].map((t) => names[d.one("stu_track_engine", t)]);
+  d.one("stu_select", 1); d.one("stu_stage_begin"); d.one("stu_stage_load", names.indexOf("OBIE")); d.one("stu_stage_from", 8, 0);
+  d.render(200);
+  const dump = d.call([{ fn: "stu_dump", ret: ["i16", d.one("stu_pcount") + d.one("stu_gcount") + 4 + d.one("stu_xcount")] }])[0];
+  const at = d.one("stu_pcount") + d.one("stu_gcount");
+  check(`a setup's import: the piece settled at once (${rave.join(" ")}), a patch staged over it stays (${names[d.one("stu_track_engine", 1)]}, preset ${dump[at + 1] + 1})`,
+    rave.join() === "KIT,HOOVER,HOOVER,VOSIM" && names[d.one("stu_track_engine", 1)] === "OBIE" && dump[at + 1] === 8);
   d.one("stu_select", 0); d.one("stu_set_engine", names.indexOf("WAVE"));   /* (patch 1 WAVE again: the checks after it) */
   d.render(6000);
 }

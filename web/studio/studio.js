@@ -453,6 +453,7 @@ function showTab(id) {
   for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === tabNow));
   for (const p of $("groups").children) p.hidden = p.dataset.tab !== tabNow;
   if ($("fx-actions")) $("fx-actions").hidden = tabNow !== "fx";
+  if ($("gen-actions")) $("gen-actions").hidden = tabNow !== "gen";
   drawEnv();
 }
 async function buildGroups() {
@@ -480,7 +481,7 @@ async function buildGroups() {
     for (const g of extra(keys)) panel.append(groupBox(g));
     root.append(panel);
   }
-  tabs.append(fxActions());
+  tabs.append(fxActions(), genActions());
   showTab(tabNow);
   $("expert").setAttribute("aria-pressed", String(expert));
   $("normal").setAttribute("aria-pressed", String(!expert));
@@ -526,6 +527,17 @@ function fxActions() {
   return h("div", { id: "fx-actions", class: "tabacts", title: "Every effect here is shared by the four tracks. An effects file keeps them all (not MASTER)." },
     h("button", { class: "btn small", type: "button", onclick: () => download("effects.bluehare-fx.json", JSON.stringify(fxFile(), null, 1)) }, "Export effects"),
     h("button", { class: "btn small", type: "button", onclick: () => pickFile(file, loadFxFile) }, "Import effects"), file);
+}
+// TECHNO's setup file: at the top of the TECHNO tab
+function genActions() {
+  const file = h("input", { type: "file", accept: ".json,application/json", hidden: true });
+  return h("div", { id: "gen-actions", class: "tabacts", title: "The piece, the four patches with every setting, the effects and the performance effects: to improve the generative tracks' sound." },
+    h("button", { class: "btn small", type: "button", onclick: async () => {
+      const j = await setupFile();
+      download(`${fileBase("techno " + (j.piece || "setup"))}.bluehare-techno.json`, JSON.stringify(j, null, 1));
+      say("save-msg", "TECHNO setup exported.", "ok");
+    } }, "Export setup"),
+    h("button", { class: "btn small", type: "button", onclick: () => pickFile(file, loadSetupFile) }, "Import setup"), file);
 }
 // GEN: play / stop, the chord, the bar, a light for each role as it plays
 let genOn = false, genPlayed = [0, 0, 0, 0];
@@ -640,6 +652,7 @@ async function poll(force = false) {
     for (let i = 0; i < fw.G; i++) if (force || g[i] !== S.g[i]) if (!inflight.has("1." + i)) { S.g[i] = g[i]; changed.push({ scope: 1, id: i }); }
     for (let i = 0; i < fw.X; i++) if (force || x[i] !== S.x[i]) if (!inflight.has("2." + i)) { S.x[i] = x[i]; changed.push({ scope: 2, id: i }); }
     const selMoved = sel !== S.sel;
+    if (!engineMoved && !force && changed.some((c) => c.scope === 1)) await refreshTracks();   // (a piece: the other patches' sounds)
     Object.assign(S, { engine, preset, user, sel });
     if (selMoved && ctl[0].size && !engineMoved) await buildGroups();   // (the groups name the patch: "patch 2")
     if (engineMoved || force) {
@@ -881,6 +894,78 @@ async function loadFxFile(j) {
   }
   await call(q);
   await poll(true);
+}
+// (2026-10-18) TECHNO's setup: everything the generative tracks sound with, to improve them and make bangers of them.
+// The piece and TECHNO's settings, the four patches whole (the engine, the preset or user sound it came from, every
+// parameter, the patch's insert and delay), the shared effects (reverb, chorus, EQ), the performance effects, the
+// processing and the master. Every value with the device's label and its text as the device shows it, so the file
+// reads as a list of settings too; the values alone are what an import sets.
+const SX_PATCH = LAYER_LABELS;                                    // (the studio's effects that are each patch's own)
+const NO_SET = ["ENG", "ENGGO", "ROUT", "SLOT"];                  // (the editor's switches, MIDI routing, the project slot)
+async function setupFile() {
+  const sel = S.sel, piece = fw.pages.filter((pg) => pg.fam === FAM.ARP || pg.fam === FAM.TRK).flatMap((pg) => pg.items)
+    .filter((it) => it.scope === 1).map((it) => it.id);
+  const entry = async (scope, ids) => {           // {id: {label, value, text}} as the firmware has them now
+    const q = [];
+    for (const id of ids) q.push({ fn: "stu_desc_label", args: [scope, id], ret: "str" }, { fn: "stu_get", args: [scope, id] });
+    const r = await call(q), tq = ids.map((id, i) => ({ fn: "stu_format", args: [scope, id, r[2 * i + 1]], ret: "str" }));
+    const t = await call(tq), out = {};
+    ids.forEach((id, i) => { if (r[2 * i]) out[id] = { label: r[2 * i], value: r[2 * i + 1], text: t[i] }; });
+    return out;
+  };
+  const sxIds = [...Array(fw.X).keys()], perPatch = sxIds.filter((i) => SX_PATCH.includes(desc[2][i]?.label));
+  const patches = [], roles = ["DRUMS", "BASS", "STAB", "LEAD"];
+  for (let t = 0; t < fw.ntrk; t++) {
+    await one("stu_select", t);
+    const [d] = await call([{ fn: "stu_dump", ret: ["i16", fw.P + fw.G + 4 + fw.X] }]);
+    const [eng, preset, user] = d.slice(fw.P + fw.G, fw.P + fw.G + 3), e = fw.engines[eng];
+    const from = user ? { user: user, name: await str("stu_up_name", user - 1) } : { preset: preset + 1, name: e.presets[preset]?.name };
+    patches.push({ patch: t + 1, role: roles[t] || "-", engine: e.name, engineId: e.id, from,
+                   params: await entry(0, [...Array(fw.P).keys()]), insert: await entry(2, perPatch) });
+  }
+  await one("stu_select", sel);
+  const all = await entry(1, [...Array(fw.G).keys()]), techno = {}, effects = {};
+  for (const [id, v] of Object.entries(all))       // (not the project's actions, "--", nor the switches)
+    if (v.text !== "--" && !NO_SET.includes(v.label)) (piece.includes(+id) ? techno : effects)[id] = v;
+  const pieceId = Object.keys(techno).find((id) => techno[id].label === "PIECE");
+  return { format: "blue-hare-techno-setup", version: 1, exported: new Date().toISOString(),
+           firmware: document.querySelector(".brand span")?.textContent.replace(/^STUDIO · /, "") || "",
+           piece: pieceId ? techno[pieceId].text : "", techno, patches, effects,
+           performance: await entry(2, sxIds.filter((i) => !perPatch.includes(i))) };
+}
+async function loadSetupFile(j) {
+  if (j.format !== "blue-hare-techno-setup") throw new Error("not a Blue Hare TECHNO setup file");
+  remember(0);
+  const sel = S.sel, g = Object.entries({ ...(j.techno || {}), ...(j.effects || {}) });
+  const pieceAt = g.find(([, v]) => v.label === "PIECE");
+  if (pieceAt) {                                  // (the piece first: its sounds, then the file's over them)
+    await one("stu_set", 1, +pieceAt[0], pieceAt[1].value | 0, 0);
+    await one("stu_gen_settle");
+  }
+  for (const P of (j.patches || []).slice(0, fw.ntrk)) {
+    const t = P.patch - 1, e = fw.engines.find((x) => x.id === P.engineId) || fw.engines.find((x) => x.name === P.engine);
+    if (!e || t < 0) continue;
+    const q = [{ fn: "stu_select", args: [t] }, { fn: "stu_stage_begin" }];
+    for (const [k, v] of Object.entries(P.params || {})) if (+k < fw.P) q.push({ fn: "stu_stage_set", args: [+k, v.value | 0] });
+    q.push({ fn: "stu_stage_load", args: [e.index] });
+    for (const [k, v] of Object.entries(P.params || {})) if (+k < fw.P) q.push({ fn: "stu_set", args: [0, +k, v.value | 0, 7777] });
+    for (const v of Object.values(P.insert || {})) if (sxId(v.label) >= 0) q.push({ fn: "stu_set", args: [2, sxId(v.label), v.value | 0, 0] });
+    const f = P.from || {};
+    q.push({ fn: "stu_stage_from", args: [f.preset ? f.preset - 1 : 0, f.user | 0] });
+    await call(q);
+  }
+  await one("stu_select", sel);
+  const isPre = ([, v]) => v.label === "CHO" || v.label === "EQ";   // (G_CPRE, G_EQPRE)
+  const q = [];                                   // (the chorus and EQ presets before their own values: a preset sets them)
+  for (const pass of [true, false])
+    for (const [id, v] of g)
+      if (v.label !== "PIECE" && !NO_SET.includes(v.label) && +id < fw.G && isPre([id, v]) === pass)
+        q.push({ fn: "stu_set", args: [1, +id, v.value | 0, 0] });
+  for (const v of Object.values(j.performance || {})) if (sxId(v.label) >= 0) q.push({ fn: "stu_set", args: [2, sxId(v.label), v.value | 0, 0] });
+  await call(q);
+  await poll(true);
+  await refreshTracks();
+  setSound(cleanName(j.piece || "TECHNO"), "a TECHNO setup");
 }
 function pickFile(input, then) {
   input.onchange = async () => {

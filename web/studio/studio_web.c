@@ -396,6 +396,9 @@ STU_EXPORT char *stu_gen_chord(void)                /* (the player's first statu
         player()->status(a, b);
     return stu_say(a);
 }
+/* (2026-10-18) the piece knob set by a TECHNO setup file: its sounds loaded now (ui.c gen_poll, as the main loop
+ * would), so the file's patches, set after, are not replaced by the piece's at the next poll */
+STU_EXPORT void stu_gen_settle(void) { gen_poll(); }
 STU_EXPORT uint32_t stu_gen_npresets(void) { return player() ? player()->npieces : 0u; }
 STU_EXPORT char *stu_gen_preset_name(uint32_t k) { return stu_say(player() ? player()->piece_name(k) : ""); }
 
@@ -473,6 +476,15 @@ STU_EXPORT void stu_stage_load(uint32_t e)
     fm1_irq_on();
     load_end(t);
     sync_reload = 1;
+    ui.force = 1;
+}
+
+/* (2026-10-18) where the staged sound came from (a TECHNO setup file: the preset or user sound it was made from), as
+ * the device names a patch's sound; nothing else changes */
+STU_EXPORT void stu_stage_from(uint32_t preset, uint32_t user)
+{
+    TSEL->preset = (uint8_t)(preset < ENGINES[eng_idx(TSEL->eng_req)]->npresets ? preset : 0u);
+    TSEL->user = (uint8_t)(user <= UP_SLOTS ? user : 0u);
     ui.force = 1;
 }
 
