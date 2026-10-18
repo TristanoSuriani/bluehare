@@ -341,10 +341,10 @@ static const uint8_t STU_LAYOUT[] = {
     'X', X2(SX_PROC), 0xFF,                                           /* Blue Hare's processing or amb-1's */
     'W', X2(SX_LMODE), 0xFF,                                          /* the patch's play mode */
     'J', X2(SX_XSRC), X2(SX_XPOS), X2(SX_XVAL), 0xFF,                 /* the crossfade: the patch's, the layer's place */
-    'U', G1(G_EQLO), G1(G_EQLM), G1(G_EQHM), G1(G_EQHI), 0xFF,        /* the patch's EQ */
+    'U', G1(G_EQPRE), G1(G_EQLO), G1(G_EQLM), G1(G_EQHM), G1(G_EQHI), 0xFF,   /* the EQ: its preset, its bands */
     'Y', 0, P_DLY, 0, P_DFDBK, 0, P_DTIME, 0xFF,                     /* (2026-10-18) the patch's delay */
     'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RMIX), 0xFF,                  /* (2026-10-18) the global reverb */
-    'C', G1(G_CRATE), G1(G_CDEPTH), 0xFF,
+    'C', G1(G_CPRE), G1(G_CRATE), G1(G_CDEPTH), 0xFF,                 /* the chorus: its preset, rate, depth */
     'P', X2(SX_FILTER), X2(SX_CRUSH), X2(SX_THROW), X2(SX_DEPTH), 0xFF,
     'Q', X2(SX_SPKEQ), X2(SX_MASTER), 0xFF,
     'K', 0, P_ROOT, 0, P_SCALE, 0, P_QUANT, 0, P_TRANS, 0, P_CHRD, 0, P_VOIC, 0xFF,

@@ -1130,6 +1130,8 @@ function makeMockDevice(opt = {}) {
     D("STAB", F.PCT, 0, 127, 64),                                /* 33 */
     D("LEAD", F.PCT, 0, 127, 64),                                /* 34 */
     D("MIX", F.PCT, 0, 127, 30),                                 /* 35 */
+    E("CHO", ["SUBTL", "WIDE", "DEEP", "FAST", "WOBBL"], 1),     /* 36 */
+    E("EQ", ["FLAT", "PUNCH", "WARM", "BRITE", "SCOOP", "LOFI", "SMILE", "DARK"], 0), /* 37 */
   /*MOCK-GP-END*/];
   /* a retired engine number (1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE: removed in 1.5; engines.c ENG_NONE) */
   const GONE = { name: "-", titles: ["-", "-"], edit: [NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE], presets: [] };
@@ -1451,7 +1453,7 @@ function makeMockDevice(opt = {}) {
   ];
   /* (2026-10-17: TP above is the firmware's whole, 0 .. 95, generated: no appends here) */
   /*MOCK-COUNTS-BEGIN*/
-  const P_COUNT = 104, G_COUNT = 36, NSTEP = 64, P_E0 = 96, G_ENGSEL = 20, P_SLCR = 45;
+  const P_COUNT = 104, G_COUNT = 38, NSTEP = 64, P_E0 = 96, G_ENGSEL = 20, P_SLCR = 45;
   /*MOCK-COUNTS-END*/
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const enumOrig = (d, v) => d.fmt === F.ENUM && d.names ? aliasOf(d.names, v - d.min) + d.min : v;   /* params.c enum_orig */

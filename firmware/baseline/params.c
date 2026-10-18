@@ -13,6 +13,9 @@ static const char *const N_DIV[] = {"1/4", "1/8", "1/16", "1/32", "8T", "16T", "
 static const char *const N_SCALE[] = {"CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM",
                                     "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"};
 static const char *const N_ONOFF[] = {"OFF", "ON"};
+/* (2026-10-18) the chorus's and the EQ's presets (normal mode's knobs; EXPERT's pages hold every value): five letters */
+static const char *const N_CPRE[] = {"SUBTL", "WIDE", "DEEP", "FAST", "WOBBL"};
+static const char *const N_EQPRE[] = {"FLAT", "PUNCH", "WARM", "BRITE", "SCOOP", "LOFI", "SMILE", "DARK"};
 
 /* seq.c kb_map; 1 = SNAP (stored projects: the former ON). (3, SEQ, the sequencer's notes snapped too: gone with it) */
 static const char *const N_QUANT[] = {"OFF", "SNAP", "WHITE"};
@@ -196,6 +199,8 @@ static const param_desc_t GP[G_COUNT] = {
     [G_EQHI] = {"HIGH", F_INT, -12, 12, 0, 0, "dB"},
     /* (2026-10-18) the global reverb's MIX (REVERB's third knob) */
     [G_RMIX] = PD("MIX", F_PCT, 0, 127, 30),
+    [G_CPRE] = PE("CHO", N_CPRE, 1),               /* WIDE: CRT 40 CDP 60, the power-on chorus */
+    [G_EQPRE] = PE("EQ", N_EQPRE, 0),              /* FLAT: the power-on EQ */
 };
 
 static const param_desc_t *track_desc(const track_t *t, uint32_t id)
@@ -367,6 +372,7 @@ enum { GR_NONE, GR_ADSR, GR_LFO, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, 
        GR_GEN };                   /* (Blue Hare, 2026-10) the GEN page: playing or not, the chord, the bar */
 
 #define PX_PLAIN 0xF0u           /* (a page's column: the engine's plain[] column k is PX_PLAIN + k) */
+#define PX_GLOBAL 0x80u          /* (2026-10-18: a global parameter on a track page: PX_GLOBAL + its id) */
 
 
 typedef struct {
@@ -385,10 +391,14 @@ static const page_t PAGES[] = {
     /* (2026-10-18) FX: the global reverb and the patch's delay (EXPERT adds the sends, the chorus, the EQ) */
     {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RMIX, 0xFF}},   /* TYPE: DRY / SPRING / GATED / PLATE */
     {"DELAY", FAM_FX, SC_TRACK, GR_NONE, {P_DLY, P_DFDBK, P_DTIME, 0xFF}},       /* the patch's own: MIX FEED TIME */
-    {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, 0xFF, 0xFF}},
-    {"CHORUS", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
+    {"CHORUS", FAM_FX, SC_TRACK, GR_NONE, {P_CHOR, PX_GLOBAL + G_CPRE, 0xFF, 0xFF}},   /* the patch's amount, the preset */
 #if BLUEHARE_FX_EQ
-    {"EQ", FAM_FX, SC_GLOBAL, GR_NONE, {G_EQLO, G_EQLM, G_EQHM, G_EQHI}},   /* (2026-10-17) the patch's 4 bands */
+    {"EQ", FAM_FX, SC_GLOBAL, GR_NONE, {G_EQPRE, 0xFF, 0xFF, 0xFF}},                   /* the preset */
+#endif
+    {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, 0xFF, 0xFF}},
+    {"CHORUS EDIT", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},   /* (EXPERT) */
+#if BLUEHARE_FX_EQ
+    {"EQ BANDS", FAM_FX, SC_GLOBAL, GR_NONE, {G_EQLO, G_EQLM, G_EQHM, G_EQHI}},   /* (EXPERT) the four bands */
 #endif
     {"SCL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_TRANS}},
     {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, 0xFF, 0xFF}},   /* SCL again: the chord keys (chord.c) */
@@ -420,6 +430,26 @@ static const page_t PAGES[] = {
 #define NPAGES (sizeof(PAGES) / sizeof(PAGES[0]))
 static uint8_t mod_ui_slot;      /* the MOD page: the matrix slot (0..3) KNOB 2..4 edit */
 
+/* (2026-10-18) the chorus's presets {CRT, CDP} and the EQ's {LOW, LMID, HMID, HIGH} (dB), in N_CPRE's and N_EQPRE's order;
+ * picked (the knob, the editor, the studio: page_turned), they write those values */
+static const uint8_t CHO_PRE[][2] = {{20, 30}, {40, 60}, {25, 110}, {90, 45}, {8, 127}};
+static const int8_t EQ_PRE[][4] = {{0, 0, 0, 0}, {4, -2, 1, 2}, {3, 1, -2, -4}, {-1, 0, 3, 5}, {4, -4, -1, 3},
+                                   {-6, 3, -2, -9}, {3, -2, 0, 3}, {2, 0, -4, -8}};
+typedef char pre_named[NELEM(CHO_PRE) == NELEM(N_CPRE) && NELEM(EQ_PRE) == NELEM(N_EQPRE) ? 1 : -1];
+static void color_preset(uint32_t id)
+{
+    uint32_t i, k;
+    if (id == G_CPRE) {
+        k = (uint32_t)song.g[G_CPRE] % NELEM(CHO_PRE);
+        song.g[G_CRATE] = (int16_t)param_fit(&GP[G_CRATE], CHO_PRE[k][0]);
+        song.g[G_CDEPTH] = (int16_t)param_fit(&GP[G_CDEPTH], CHO_PRE[k][1]);
+    } else if (id == G_EQPRE) {
+        k = (uint32_t)song.g[G_EQPRE] % NELEM(EQ_PRE);
+        for (i = 0; i < 4u; i++)
+            song.g[G_EQLO + i] = (int16_t)param_fit(&GP[G_EQLO + i], EQ_PRE[k][i]);
+    }
+}
+
 /* (2026-10-17) the plain page: what column k is for the selected track's engine (a parameter id, PX_MACRO + k, 0xFF) */
 static uint32_t plain_id(const track_t *t, uint32_t k)
 {
@@ -431,6 +461,8 @@ static uint8_t plain_mk;
 /* after a knob changed *vp: a macro's value goes to its parameters */
 static void page_turned(const int16_t *vp)
 {
+    if (vp == &song.g[G_CPRE] || vp == &song.g[G_EQPRE])   /* (a chorus or EQ preset picked: its values) */
+        color_preset((uint32_t)(vp - song.g));
     if (vp == &plain_mval) {
         const engine_t *e = ENGINES[eng_idx(TSEL->eng_req)];
         if (e->macro_set)
@@ -463,7 +495,8 @@ static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **
         *valp = 0;
         return 0;
     }
-    if (pg->scope == SC_GLOBAL) {
+    if (pg->scope == SC_GLOBAL || (pg->scope == SC_TRACK && id >= PX_GLOBAL && id < PX_MACRO)) {
+        id = pg->scope == SC_GLOBAL ? id : id - PX_GLOBAL;   /* (2026-10-18: a global on a track page: PX_GLOBAL + id) */
         *valp = &song.g[id];
         return &GP[id];
     }

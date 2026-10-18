@@ -2162,8 +2162,8 @@ static int test_layer(void)
         bad += check("  DELAY page: MIX FEED TIME, the patch's, out at power-on; a project keeps them",
                      ok && TSEL->p[P_DLY] == mixv && TSEL->p[P_DTIME] == tv);
     }
-    go_title("CHORUS");
-    bad += check("  CHORUS page: CRT CDP", cur_page()->fam == FAM_FX && cur_page()->id[0] == G_CRATE &&
+    go_title("CHORUS EDIT");                            /* (2026-10-18: EXPERT's; CHORUS the amount and the preset) */
+    bad += check("  CHORUS EDIT page (EXPERT): CRT CDP", cur_page()->fam == FAM_FX && cur_page()->id[0] == G_CRATE &&
                  cur_page()->id[1] == G_CDEPTH && cur_page()->id[2] == 0xFFu);
     /* chording: a key held before FX stays a note, its note-off arrives */
     ui_power_on();
@@ -2561,11 +2561,20 @@ static int test_edit_cycle(void)
               page_desc(cur_page(), 1, &vp) && vp == &TSEL->p[P_DFDBK] && page_desc(cur_page(), 2, &vp) &&
               vp == &TSEL->p[P_DTIME] && TSEL->p[P_DLY] == 0;
         press(B_FX); frames(320);
+        ok &= str_eq(cur_page()->title, "CHORUS") && page_desc(cur_page(), 0, &vp) && vp == &TSEL->p[P_CHOR] &&
+              page_desc(cur_page(), 1, &vp) == &GP[G_CPRE] && vp == &song.g[G_CPRE];
+        turn(EN_K2, 2);                                 /* (WIDE -> FAST: its rate and depth) */
+        ok &= song.g[G_CPRE] == 3 && song.g[G_CRATE] == 90 && song.g[G_CDEPTH] == 45;
+        press(B_FX); frames(320);
+        ok &= str_eq(cur_page()->title, "EQ") && page_desc(cur_page(), 0, &vp) == &GP[G_EQPRE];
+        turn(EN_K1, 1);                                 /* (FLAT -> PUNCH: the four bands) */
+        ok &= song.g[G_EQPRE] == 1 && song.g[G_EQLO] == 4 && song.g[G_EQLM] == -2 && song.g[G_EQHI] == 2;
+        press(B_FX); frames(320);
         ok &= str_eq(cur_page()->title, "REVERB");
         TSEL->p[P_DLY] = 77;
         apply_preset_to(TSEL, 1);
         ok &= TSEL->p[P_DLY] == 77;
-        bad += check("FX (EXPERT OFF): REVERB and DELAY only; the delay out at power-on, the patch's (a preset keeps it)", ok);
+        bad += check("FX (EXPERT OFF): REVERB DELAY CHORUS EQ; the chorus and EQ presets set their values; the delay the patch's", ok);
     }
     return bad;
 }

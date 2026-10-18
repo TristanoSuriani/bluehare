@@ -245,7 +245,7 @@ async function editorMock() {
     const rd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 14)));
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 14, 5)));
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 14, 0)));
-    ok(rd.label === "ROUT" && rd.def === 0 && eq(rd.names, ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"]) && r1.value === 4 && r0.value === 0 && info.gcount === 36,
+    ok(rd.label === "ROUT" && rd.def === 0 && eq(rd.names, ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"]) && r1.value === 4 && r0.value === 0 && info.gcount === 38,
       "editor: MIDI IN routing (ROUT CH1-4 / SEL / CH5-8 / CH9-12 / CH13-16, global id 14)");
   }
   {
@@ -256,8 +256,8 @@ async function editorMock() {
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 0)));
     const d26 = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 26)));
     ok(rd.label === "TYPE" && rd.def === 3 && eq(rd.names, ["DRY", "SPRING", "GATED", "PLATE"]) && r1.value === 3 && r0.value === 0 &&
-       d26.label === "MOTN" && d26.max === 127 && d26.def === 64 && info.gcount === 36,
-      "editor: REVERB TYPE (DRY / SPRING / GATED / PLATE, global id 24; 26 GEN's MOTION; G_COUNT 36: the reverb's MIX)");
+       d26.label === "MOTN" && d26.max === 127 && d26.def === 64 && info.gcount === 38,
+      "editor: REVERB TYPE (DRY / SPRING / GATED / PLATE, global id 24; 26 GEN's MOTION; G_COUNT 38: the reverb's MIX, the chorus's and EQ's presets)");
   }
   const st = E.parse[E.CMD.STEP_SET](await rq(E.req.stepSet(5, { n: 2, notes: [60, 64], time: 0, flags: 1, vel: 100 })));
   ok(st.n === 2 && st.notes[1] === 64 && st.vel === 100, "editor: STEP_SET");

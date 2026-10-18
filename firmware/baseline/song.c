@@ -31,7 +31,7 @@
  * A project of more tracks than the build has is refused (SONG HAS 8 TRACKS), one of fewer fills its first tracks (the
  * rest as at power-on). */
 #define PROJ_NAME_LEN 12u                      /* the name: upper-case ASCII 32..126, 0-padded; "" = none */
-#define PROJ_VER 14u                           /* (Blue Hare) 14 (2026-10-18): the reverb's MIX (G_COUNT 36), the patches' delays; 13 the FX preset, WET; 12 (2026-10-17): GEN's densities (G_COUNT 35); 11: the EQ, the layers' crossfade; 8: no song (the sequencer is a placeholder); 9: no DUCK;
+#define PROJ_VER 15u                           /* (Blue Hare) 15 (2026-10-18): the chorus's and EQ's presets (G_COUNT 38); 14 the reverb's MIX, the patches' delays; 13 the FX preset, WET; 12 (2026-10-17): GEN's densities (G_COUNT 35); 11: the EQ, the layers' crossfade; 8: no song (the sequencer is a placeholder); 9: no DUCK;
                                                   * 10: the layers (core.h lay) */
 
 /* the stream's sink and source (2026-10-17): the format's hash and its fields here; where the bytes go, or come from,

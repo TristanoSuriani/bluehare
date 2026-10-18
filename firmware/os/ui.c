@@ -351,9 +351,11 @@ static int page_visible(uint32_t i)
 {
     if (PAGES[i].fam == FAM_EDIT && PAGES[i].scope == SC_ENGINE)
         return (PAGES[i].id[0] >= PX_PLAIN && PAGES[i].id[0] != 0xFFu) != expert_on();
-    if (PAGES[i].fam == FAM_FX)                      /* (FX: REVERB and DELAY; with EXPERT the sends, chorus, EQ too) */
-        return (PAGES[i].scope == SC_GLOBAL && PAGES[i].id[0] == G_RTYPE) ||
-               (PAGES[i].scope == SC_TRACK && PAGES[i].id[0] == P_DLY) || expert_on();
+    if (PAGES[i].fam == FAM_FX)                      /* (FX: REVERB DELAY CHORUS EQ; EXPERT adds the sends, CHORUS EDIT,
+                                                    * EQ BANDS) */
+        return (PAGES[i].scope == SC_GLOBAL && (PAGES[i].id[0] == G_RTYPE || PAGES[i].id[0] == G_EQPRE)) ||
+               (PAGES[i].scope == SC_TRACK && (PAGES[i].id[0] == P_DLY || PAGES[i].id[1] == PX_GLOBAL + G_CPRE)) ||
+               expert_on();
     return 1;
 }
 

@@ -169,6 +169,8 @@ enum {                          /* global parameters */
                                              * WAVES; 64 the piece's own, 0 the role silent, 127 about twice as busy */
     G_RMIX,                     /* (2026-10-18) the reverb's MIX: every patch into it at once (the reverb a global
                                  * effect; projects of format 14) */
+    G_CPRE, G_EQPRE,            /* (2026-10-18) the chorus's and the EQ's presets (params.c: picked, they set CRT CDP
+                                 * and the four bands; projects of format 15) */
     G_COUNT
 };
 
