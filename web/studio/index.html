@@ -232,7 +232,7 @@ header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; borde
 <div class="app">
   <header>
     <div class="brand"><h1>BLUE <b>HARE</b></h1><span>STUDIO · @VERSION@</span></div>
-    <nav id="tracks" aria-label="Layers"></nav>
+    <nav id="tracks" aria-label="Patches"></nav>
     <span id="patch-mode"></span>
     <button class="btn" id="undo" title="Undo (Ctrl/⌘ Z)" disabled>↶ Undo</button>
     <button class="btn" id="redo" title="Redo (Ctrl/⌘ ⇧ Z)" disabled>↷ Redo</button>
@@ -288,13 +288,13 @@ header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; borde
         </div>
         <div class="buttons">
           <button class="btn primary small" id="store">Save to slot</button>
-          <button class="btn small" id="export" title="The selected layer's sound, to a file">Export layer</button>
-          <button class="btn small" id="import" title="A sound file into the selected layer (Load Layer)">Load layer</button>
+          <button class="btn small" id="export" title="The selected patch's sound, to a file">Export patch</button>
+          <button class="btn small" id="import" title="A sound file into the selected patch">Load patch</button>
           <input type="file" id="file" accept=".json,application/json" hidden>
         </div>
         <div class="buttons" style="margin-top:5px">
-          <button class="btn small" id="patch-export" title="Every layer, embedded, with the play mode and the effects">Export patch</button>
-          <button class="btn small" id="patch-import">Import patch</button>
+          <button class="btn small" id="patch-export" title="All four patches, embedded, with the effects">Export set</button>
+          <button class="btn small" id="patch-import">Import set</button>
           <input type="file" id="patch-file" accept=".json,application/json" hidden>
         </div>
         <p class="note" id="save-msg"></p>

@@ -100,7 +100,9 @@ async function loadDescs(items) {
 
 // ------------------------------------------------------------------ the page's words for the parameters
 // the tabs, and the groups each shows (STU_LAYOUT's keys)
-const TABS = [["layer", "LAYER", "ZFJ"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "RYXCUPQ"],
+// (2026-10-18) the four are patches, not layers: the PATCH tab holds the patch's insert; the stacking (Z: in the patch,
+// key / velocity ranges; J: the crossfade) stays in the firmware, off the screen
+const TABS = [["layer", "PATCH", "F"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "RYXCUPQ"],
               ["gen", "GENERATIVE", "GHK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
@@ -108,8 +110,8 @@ const GROUPS = {
   N: { title: "Envelope moves", names: ["Filter", "Pitch", "Shape"] },
   Z: { title: "Layer", names: ["In the patch", "Key low", "Key high", "Vel low", "Vel high", "Transpose"], track: true, wide: true,
        note: "A layer ON is part of the patch: a note played sounds on every ON layer whose key and velocity ranges hold it (STACK: a stack, a key split or a velocity split, by the ranges), or on one of them in turn (ROUND ROBIN), at the note plus its transpose. With no layer ON, the keys play the selected layer alone." },
-  F: { title: "Layer insert", names: ["Drive", "Filter", "Cutoff", "Resonance", "Low cut", "Pan mode"], track: true, wide: true,
-       note: "The layer's own processing before the patch's effects: DRIVE, a 12 dB FILTER (low-, band- or high-pass), LOW CUT; PAN MODE spreads its voices (ALT left and right, RND at random)." },
+  F: { title: "Patch insert", names: ["Drive", "Filter", "Cutoff", "Resonance", "Low cut", "Pan mode"], track: true, wide: true,
+       note: "The patch's own processing before the effects: DRIVE, a 12 dB FILTER (low-, band- or high-pass), LOW CUT; PAN MODE spreads its voices (ALT left and right, RND at random)." },
   J: { title: "Crossfade", names: ["Crossfade by", "Place", "Morph"], track: true, wide: true,
        note: "The layers given a place fade into each other along VELOCITY, KEY or the WHEEL (MIDI CC1, or MORPH here), two neighbours at a time, equal power: at a layer's place that layer alone. A layer at OFF stays at full level: a bass under a morphing pad. VELOCITY and KEY set each note's level as it starts; a layer faded out for a note does not play it." },
   S: { title: "Spread, chorus", names: ["Spread", "Chorus"],
@@ -459,7 +461,7 @@ function groupBox(g) {
   const box = h("section", { class: "group" + (G.wide ? " wide" : ""), "data-group": g.key });
   const info = G.note && g.key !== "G" && !G.show ? h("button", { class: "info", type: "button", title: G.note, "aria-label": "About " + G.title,
     onclick: () => { const n = box.querySelector(".gnote"); if (n) n.hidden = !n.hidden; } }, "ⓘ") : null;
-  box.append(h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `layer ${S.sel + 1}`) : null,
+  box.append(h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `patch ${S.sel + 1}`) : null,
     G.fx ? h("span", { class: "sub" }, "the patch") : null, info));
   const ctrls = h("div", { class: "ctrls" });
   if (g.key === "E") {
@@ -634,14 +636,9 @@ async function refreshTracks() {
   const nav = $("tracks");
   nav.textContent = "";
   r.forEach((e, t) => nav.append(h("button", { class: "trk", type: "button", "aria-pressed": String(t === S.sel),
-    onclick: () => selectTrack(t), title: on[t] ? "In the patch" : "Not in the patch" },
-    h("small", {}, h("span", { class: "dot" + (on[t] ? " on" : "") }), `LAYER ${t + 1}`), h("b", {}, fw.engines[e]?.name || "-"))));
-  const pm = $("patch-mode");                 // the patch's play mode (STACK / ROUND ROBIN), beside the layers
-  if (pm && fw.SX_LMODE >= 0 && desc[2][fw.SX_LMODE]) {
-    pm.textContent = "";
-    pm.append(control(2, fw.SX_LMODE, "Play"));
-    ctl[2].get(fw.SX_LMODE)?.show(S.x[fw.SX_LMODE]);
-  }
+    onclick: () => selectTrack(t), title: `Patch ${t + 1}` },
+    h("small", {}, `PATCH ${t + 1}`), h("b", {}, fw.engines[e]?.name || "-"))));
+  void on;                                    // (2026-10-18: no stacking on the screen: no "in the patch" dot, no play mode)
 }
 async function selectTrack(t) {
   if (t === S.sel) return;
