@@ -10,7 +10,7 @@ PALETTE ICE
 # its components besides the engines (firmware/components.txt; none of a kind listed would mean all of it)
 FX PLATE
 FX EQ
-PLUGIN GEN
+PLUGIN TECHNO
 UI STROBE
 SID
 WAVE

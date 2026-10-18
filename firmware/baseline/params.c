@@ -46,8 +46,8 @@ static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL",
 };   /* G_DTYPE: the delay bus's (fx.c
                                                                    * dly_tape; PING, DUAL: Blue Hare's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
-/* (Blue Hare, 2026-10) GEN's presets (gen.c GEN_PRESETS, in that order: the names it shows on the knob) */
-static const char *const N_GEN_PRESET[] = {"GARDN", "DEPRT", "VOICE", "AFTER", "NIGHT", "SHORE", "GLASS", "TIDES"};
+/* (2026-10-18) TECHNO's pieces (techno.c TC_PIECES, in that order: the names the knob shows, five letters at most) */
+static const char *const N_TC_PIECE[] = {"WARE", "ACID", "RAVE", "DUB", "INDUS", "MINML", "PEAK", "DEEP"};
 /* modulation matrix (mod.c): sources, destinations (E1..E8 = P_E0..P_E7: shown with the engine's labels).
  * Append-only (stored values keep their meaning): S&H SLEW and DEPTH (#132) came after EXPR and E8 */
 static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"};
@@ -164,8 +164,8 @@ static const param_desc_t GP[G_COUNT] = {
     /* (Blue Hare, 2026-10) the GEN page's (gen.c): the preset, the scale, the root, MOTION; ids 12, 13, 15 and 26 were
      * the old SYSTEM page's MIDI, SYNC and CPU (on no page since 1.2) and the GM drum part's reverb send (inert since
      * 1.0). Their defaults: the first piece's (GARDEN: D dorian) and MOTION at its middle */
-    [G_GPRE] = PE("GEN", N_GEN_PRESET, 0),
-    [G_GSCL] = PE("SCL", N_SCALE, 3),
+    [G_GPRE] = PE("PIECE", N_TC_PIECE, 0),         /* (2026-10-18: TECHNO's, in GEN's ids) */
+    [G_GSCL] = PE("SCL", N_SCALE, 2),
     /* MIDI IN's routing, edited on MENU > MIDI > MIDI IN (1.2: menu_items.c MI_MIDIIN; up to 1.1.5 GLO > SYSTEM ROUT),
      * stored with the project as before. (was "--": stored 0 = CH1-4, as MIDI IN always was) */
     [G_ROUTE] = PE("ROUT", N_ROUTE, 0),
@@ -185,10 +185,10 @@ static const param_desc_t GP[G_COUNT] = {
     [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
     [G_GMOT] = PD("MOTN", F_PCT, 0, 127, 64),
     /* (2026-10-17) GEN's densities, a role each (the GEN MIX page, while it plays) */
-    [G_GDPAD] = PD("PAD", F_PCT, 0, 127, 64),
+    [G_GDPAD] = PD("DRUM", F_PCT, 0, 127, 64),   /* (2026-10-18) TECHNO's roles' DENSITY: DRUMS BASS STAB LEAD */
     [G_GDBASS] = PD("BASS", F_PCT, 0, 127, 64),
-    [G_GDBELL] = PD("BELL", F_PCT, 0, 127, 64),
-    [G_GDTEX] = PD("PL/WV", F_PCT, 0, 127, 64),   /* (the PULSE, or WAVES in the pieces that have it) */
+    [G_GDBELL] = PD("STAB", F_PCT, 0, 127, 64),
+    [G_GDTEX] = PD("LEAD", F_PCT, 0, 127, 64),
     /* (2026-10-17) the patch's EQ (fx.c eq_block) */
     [G_EQLO] = {"LOW", F_INT, -12, 12, 0, 0, "dB"},
     [G_EQLM] = {"LMID", F_INT, -12, 12, 0, 0, "dB"},
@@ -405,10 +405,10 @@ static const page_t PAGES[] = {
     {"PROJECT", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {0xFF, 0xFF, G_LOAD, G_SAVE}},   /* the song store (1.5: one song) */
     {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},
     /* (Blue Hare, 2026-10) ARP: the generative engine (gen.c); ARP starts and stops it (ui_input.c page_tap) */
-#if BLUEHARE_PLUGIN_GEN
-    {"GEN", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GPRE, G_GSCL, G_GROOT, G_GMOT}},
+#if BLUEHARE_PLUGIN_TECHNO
+    {"TECHNO", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GPRE, G_GSCL, G_GROOT, G_GMOT}},
     /* (2026-10-17) while GEN plays: how busy each role is (ARP starting it opens this page, stopping it GEN's) */
-    {"GEN MIX", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GDPAD, G_GDBASS, G_GDBELL, G_GDTEX}},
+    {"TECHNO MIX", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GDPAD, G_GDBASS, G_GDBELL, G_GDTEX}},
 #endif
     /* (Blue Hare) the sequencer's placeholder: SEQ (and GLO, which opened the song) shows TODO */
     {"SEQ", FAM_SEQ, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},

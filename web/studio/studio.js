@@ -103,7 +103,7 @@ async function loadDescs(items) {
 // (2026-10-18) the four are patches, not layers: the PATCH tab holds the patch's insert; the stacking (Z: in the patch,
 // key / velocity ranges; J: the crossfade) stays in the firmware, off the screen
 const TABS = [["layer", "PATCH", "F"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "RYXCUPQ"],
-              ["gen", "GENERATIVE", "GHK"]];
+              ["gen", "TECHNO", "GHK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
   A: { title: "Amp envelope", names: ["Attack", "Decay", "Sustain", "Release", "Level", "Octave"] },
@@ -132,10 +132,10 @@ const GROUPS = {
   P: { title: "Performance", names: ["Filter", "Crush", "Throw", "Depth"], fx: true,
        note: "Hold a button, or latch it, as a white key with FX held on the FM-1. FILTER: LPF left, HPF right; CRUSH: fewer bits; THROW: the dry mix into the delay and reverb; DEPTH: the hold effects' level (OCT UP / DN: the shimmer)." },
   Q: { title: "Master", names: ["Speaker EQ", "Master"], fx: true },
-  G: { title: "Generative", names: ["Piece", "Scale", "Root", "Motion", "Tempo"], wide: true,
-       note: "Four tracks as an ensemble: track 1 a pad of four breathing voices, 2 the bass, 3 bells in four loops of 13, 17, 23 and 29 beats, 4 a euclidean pulse. The chords drift on their own. A piece loads the four sounds, the tempo and the effects; SCALE and ROOT change the key at once; MOTION how far the music swells and thins. On the FM-1: ARP starts and stops it." },
-  H: { title: "Density", names: ["Pad", "Bass", "Bells", "Pulse / waves"], wide: true,
-       note: "How busy each role is while GEN plays (KNOB 1 to 4 on the FM-1's GEN MIX page): 64 the piece as written, 0 the role silent, 127 about twice as busy. The pieces without a pulse play WAVES on track 4: swells of noise. Keys played while GEN runs are snapped to its scale and sound on the bells." },
+  G: { title: "Techno", names: ["Piece", "Scale", "Root", "Motion", "Tempo"], wide: true,
+       note: "Evolving techno on the first four patches: DRUMS (KIT), BASS, STAB, LEAD, in phrases of 8 bars that move through intro, groove, build, drop and break. A piece loads the four sounds, the tempo, the key and the reverb; ROOT and SCALE change the key at once; MOTION how often the sections change and how much the patterns mutate. On the FM-1: ARP starts and stops it; a key played while it runs moves the key." },
+  H: { title: "Density", names: ["Drums", "Bass", "Stab", "Lead"], wide: true,
+       note: "Each role's density: 64 the piece's own, 0 silent, 127 every hit." },
   K: { title: "Keys", names: ["Root", "Scale", "Snap", "Transpose", "Chord", "Voicing"], track: true },
 };
 const ENGINE_WORDS = {

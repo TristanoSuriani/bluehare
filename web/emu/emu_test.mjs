@@ -118,7 +118,7 @@ a.tap(B.ARP);
 a.render(6000);
 a.peak = 0;
 a.render(500);
-check(`ARP: GEN plays (peak ${genPeak.toFixed(3)}); ARP again stops it (then ${a.peak.toFixed(4)})`, genPeak > 0.02 && a.peak < genPeak / 10);
+check(`ARP: TECHNO plays (peak ${genPeak.toFixed(3)}); ARP again stops it (then ${a.peak.toFixed(4)})`, genPeak > 0.02 && a.peak < genPeak / 10);
 a.ex.web_buttons(1 << B.FX);                                  // #119: FX held, its map: the effects breathe
 a.render(800);
 const brK = a.ex.web_breath_keys(), brB = a.ex.web_breath_buttons(), litK = a.ex.web_lit_keys();

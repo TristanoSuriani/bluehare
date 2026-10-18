@@ -227,7 +227,7 @@ static void input_off(track_t *t, uint32_t note)
 
 
 #include "patch.c"                 /* (Blue Hare, 2026-10-17) a sound loaded into a layer */
-#include "gen.c"                   /* (Blue Hare, 2026-10) GEN: the generative engine, on the ARP button */
+#include "techno.c"                /* (2026-10-18) TECHNO: evolving techno on the ARP button (GEN archived) */
 #include "player.c"                /* (2026-10-17) the players' interface: GEN the first */
 
 /* -------------------------------------------------------- sequencer --- */

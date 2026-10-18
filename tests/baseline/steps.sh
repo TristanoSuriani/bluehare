@@ -23,9 +23,9 @@ compile $CC -O2 -w $I -o "$OUT/click_test" tests/baseline/click_test.c -lm
 run "metronome: beats sample for sample (internal and external clock), accent, level, MASTER, not in USB, PLAY at once (no count-in)" "$OUT/click_test"
 compile $CC -O2 -w $I -o "$OUT/float_fx_test" tests/baseline/float_fx_test.c -lm
 run "floating point (2026-10-17): fastmath against libm, the EQ's bands, PLATE; the global reverb's types (2026-10-18)" "$OUT/float_fx_test"
-compile $CC -O2 -w $I -o "$OUT/gen_test" tests/baseline/gen_test.c -lm
-mkdir -p build/gen_demo
-run "GEN, the generative engine: roles, scale, chords, tempo, MOTION, the seed, stop, WAVES, densities, play along, every preset (demos)" "$OUT/gen_test" build/gen_demo
+compile $CC -O2 -w $I -o "$OUT/techno_test" tests/baseline/techno_test.c -lm
+mkdir -p build/techno_demo
+run "TECHNO, the player on ARP (2026-10-18): the arrangement to the DROP, every role, the scale, four on the floor, MOTION, DENSITY, a key, stop, the seed, every piece (demos)" "$OUT/techno_test" build/techno_demo
 slow compile $CC -O2 -w $I -o "$OUT/mod_test" tests/baseline/mod_test.c -lm
 mkdir -p build/mod_demo
 slow run "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" "$OUT/mod_test" build/mod_demo

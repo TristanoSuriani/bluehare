@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* (Blue Hare, 2026-10-17: the second review's I) A PLAYER: something that plays the layers on its own (a PLUGIN
- * component, firmware/components.txt), GEN the first. What the rest of Blue Hare knows of one is this interface: the
+ * component, firmware/components.txt), TECHNO the first (GEN archived 2026-10-18). What the rest of Blue Hare knows of one is this interface: the
  * audio side calls block every block and gives it the keys while it plays; the OS starts and stops it (ARP), loads its
  * pieces (the knob whose global id is piece_id), shows its two status lines and follows its roles' notes (GEN's ocean:
  * by the roles' names). A new generator is a file that fills a player_t, a PLUGIN line in the registry and its entry
@@ -24,27 +24,20 @@ typedef struct {
     uint32_t (*notes)(uint32_t role);         /* notes the role played since the start */
 } player_t;
 
-/* ---- GEN (gen.c) as a player */
-static const char *const GEN_ROLE_NAMES[GEN_ROLES] = {"PAD", "BASS", "BELL", "PULSE"};
-static void gen_p_request(int start) { gen.req = start ? 1u : 2u; }
-static int gen_p_playing(void) { return gen.on; }
-static const char *gen_p_piece_name(uint32_t k) { return GEN_PRESETS[k % GEN_NPRESETS].name; }
-static void gen_p_status(char *a, char *b)
-{
-    gen_chord_name(a);
-    str_cpy(b, "BAR ", 8);
-    fmt_int(b + 4, (int32_t)(gen.s.bar % 1000u) + 1);
-}
-static uint32_t gen_p_notes(uint32_t role) { return role < GEN_ROLES ? gen.s.played[role] : 0u; }
-static const player_t GEN_PLAYER = {
-    "GEN", GEN_ROLES, GEN_ROLE_NAMES, G_GPRE, GEN_NPRESETS, gen_block, gen_p_request, gen_p_playing, gen_play,
-    gen_play_off, gen_load_piece, gen_p_piece_name, gen_p_status, gen_p_notes,
+/* ---- TECHNO (techno.c) as a player (2026-10-18, in GEN's place) */
+static void tc_p_request(int start) { tc.req = start ? 1u : 2u; }
+static int tc_p_playing(void) { return tc.on; }
+static const char *tc_p_piece_name(uint32_t k) { return TC_PIECES[k % TC_NPIECES].name; }
+static uint32_t tc_p_notes(uint32_t role) { return role < TC_ROLES ? tc.s.played[role] : 0u; }
+static const player_t TECHNO_PLAYER = {
+    "TECHNO", TC_ROLES, TC_ROLE_NAMES, G_GPRE, TC_NPIECES, tc_block, tc_p_request, tc_p_playing, tc_key_on, tc_key_off,
+    tc_load_piece, tc_p_piece_name, tc_status, tc_p_notes,
 };
 
 /* the players this build has (the distribution's PLUGIN components); the first is ARP's */
 static const player_t *const PLAYERS[] = {
-#if BLUEHARE_PLUGIN_GEN
-    &GEN_PLAYER,
+#if BLUEHARE_PLUGIN_TECHNO
+    &TECHNO_PLAYER,
 #endif
     0,
 };

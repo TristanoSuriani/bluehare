@@ -168,7 +168,7 @@ static void ui_power_on(void)
     memset(&song, 0, sizeof song);
     trk_mix_defaults();                           /* (nothing playing) */
     seq_hook = 0;                                 /* (the sequencer: a placeholder; no test song) */
-    memset(&gen, 0, sizeof gen);                  /* (GEN stopped, as at power-on: ARP started it in a test before) */
+    memset(&tc, 0, sizeof tc);                    /* (TECHNO stopped, as at power-on: ARP started it in a test before) */
     memset(&ui, 0, sizeof ui);
     page_over = 0;                                /* (no layer's knobs; roll_settle's test page gone) */
     memset(&nm, 0, sizeof nm);                    /* NAME closed, no project name */
@@ -1780,7 +1780,7 @@ static int test_page_cycles(void)
             ok &= !str_eq(PAGES[i].title, "GLOBAL") && !str_eq(PAGES[i].title, "SYSTEM");
             for (k = 0; k < 4u && PAGES[i].scope == SC_GLOBAL; k++)
                 ok &= PAGES[i].id[k] != G_TUNE && PAGES[i].id[k] != G_ROUTE &&
-                      (str_eq(PAGES[i].title, "GEN") || (PAGES[i].id[k] != G_GPRE && PAGES[i].id[k] != G_GSCL &&
+                      (str_eq(PAGES[i].title, "TECHNO") || (PAGES[i].id[k] != G_GPRE && PAGES[i].id[k] != G_GSCL &&
                                                          PAGES[i].id[k] != G_GROOT));   /* (2026-10: GEN's ids) */
             if (str_eq(PAGES[i].title, "CLOCK"))
                 clock = i + 1u;
@@ -2801,11 +2801,11 @@ static int test_quick_layers(void)
             mix_block(ab, CTL);
         frames(40);
         const page_t *pg = cur_page();
-        ok = gen.on && pg->fam == FAM_ARP && pg->id[0] == G_GDPAD && pg->id[3] == G_GDTEX && st.ready;
+        ok = tc.on && pg->fam == FAM_ARP && pg->id[0] == G_GDPAD && pg->id[3] == G_GDTEX && st.ready;
         for (i = 0; i < ST_NBAR; i++)
             before += (uint32_t)st.bar[i];
-        gen.s.played[GR_BASS]++;
-        gen.s.played[GR_BELL]++;
+        tc.s.played[TR_BASS]++;
+        tc.s.played[TR_STAB]++;
         cv_begin(240, 122, 0);                          /* (a frame of it alone: its bars up, the tear on) */
         st_frame();
         for (i = 0; i < ST_NBAR; i++)
@@ -2815,8 +2815,8 @@ static int test_quick_layers(void)
         ok &= after > before && st.glitch > 0 && lit > 500u;
         btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
         mix_block(ab, CTL);
-        ok &= !gen.on && cur_page()->id[0] == G_GPRE;
-        bad += check("ARP: GEN plays, GEN MIX shown with STROBE (a bass note raises its bars, a bell tears it); ARP again: stopped, GEN", ok);
+        ok &= !tc.on && cur_page()->id[0] == G_GPRE;
+        bad += check("ARP: TECHNO plays, TECHNO MIX shown with STROBE (a bass note raises its bars, a stab tears it); ARP again: stopped", ok);
     }
     return bad;
 }

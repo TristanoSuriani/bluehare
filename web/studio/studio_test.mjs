@@ -254,22 +254,23 @@ check(`OCT UP latched: on after a press, off after the next (peak ${oup.ref.toFi
 const mt = d.call([{ fn: "stu_meters", ret: ["i32", 2] }])[0];
 check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)`, mt[0] > 0 && mt[0] <= 32768 && mt[1] > 0 && mt[1] <= 32768);
 
-// GEN: started and stopped as ARP does, its state; a preset picked loads its sounds and tempo (ui.c gen_poll)
+// TECHNO (2026-10-18, GEN's place): started and stopped as ARP does, its state; a piece picked loads its sounds and tempo
 {
   const G_GPRE = 12, G_BPM = 0;
-  d.one("stu_set", 1, G_GPRE, 3, 0);                 /* AFTERNOON: WAVE, WAVE (SUB BASS), MODAL (CHIMES), MODAL; 84 BPM */
+  d.one("stu_set", 1, G_GPRE, 1, 0);                 /* ACID: KIT, SID (FILTER ACID), OBIE, WAVE; 132 BPM */
   d.render(100);
   const eng = [0, 1, 2, 3].map((t) => names[d.one("stu_track_engine", t)]);
-  check(`a GEN piece picked (AFTERNOON) loads its four sounds and tempo: ${eng.join(" ")}, ${d.one("stu_get", 1, G_BPM)} BPM`,
-    eng.join() === "WAVE,WAVE,MODAL,MODAL" && d.one("stu_get", 1, G_BPM) === 84);
+  check(`a TECHNO piece picked (ACID) loads its four sounds and tempo: ${eng.join(" ")}, ${d.one("stu_get", 1, G_BPM)} BPM`,
+    eng.join() === "KIT,SID,OBIE,WAVE" && d.one("stu_get", 1, G_BPM) === 132);
   d.one("stu_gen", 1);
   d.render(6000);
-  const st = d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0], chord = d.str("stu_gen_chord");
-  check(`GEN plays: bar ${st[1] + 1}, notes (pad bass bells pulse) ${st.slice(4).join(" ")}, the chord ${chord}`,
-    st[0] === 1 && st[4] > 0 && st[5] > 0 && st[6] + st[7] > 0 && chord.length > 0);
+  const st = d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0], sect = d.str("stu_gen_chord");
+  check(`TECHNO plays: bar ${st[1] + 1}, notes (drums bass stab lead) ${st.slice(4).join(" ")}, the section ${sect}`,
+    st[0] === 1 && st[4] > 0 && sect.length > 0);
   d.one("stu_gen", 0);
   d.render(100);
-  check("GEN stops", d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0][0] === 0);
+  check("TECHNO stops", d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0][0] === 0);
+  d.one("stu_select", 0); d.one("stu_set_engine", names.indexOf("WAVE"));   /* (patch 1 WAVE again: the checks after it) */
   d.render(6000);
 }
 

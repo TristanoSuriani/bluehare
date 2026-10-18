@@ -384,25 +384,28 @@ STU_EXPORT void stu_gen(uint32_t on)
         gen_toggle();
 }
 static int32_t stu_gs[8];
+/* the player's state (2026-10-18: TECHNO's, through the player's interface): {on, bar, step, 0, the roles' notes} */
 STU_EXPORT int32_t *stu_gen_state(void)
 {
     uint32_t r;
-    stu_gs[0] = gen.on;
-    stu_gs[1] = (int32_t)gen.s.bar;
-    stu_gs[2] = (int32_t)gen.s.step;
-    stu_gs[3] = (int32_t)gen.s.nchord;
+    stu_gs[0] = player_playing();
+    stu_gs[1] = (int32_t)tc.s.bar;
+    stu_gs[2] = (int32_t)tc.s.step;
+    stu_gs[3] = (int32_t)tc.s.sect;
     for (r = 0; r < 4u; r++)
-        stu_gs[4 + r] = (int32_t)gen.s.played[r];
+        stu_gs[4 + r] = player() ? (int32_t)player()->notes(r) : 0;
     return stu_gs;
 }
-STU_EXPORT char *stu_gen_chord(void)
+STU_EXPORT char *stu_gen_chord(void)                /* (the player's first status line: TECHNO's section) */
 {
-    char b[8];
-    gen_chord_name(b);
-    return stu_say(b);
+    char a[8], b[8];
+    a[0] = 0;
+    if (player_playing())
+        player()->status(a, b);
+    return stu_say(a);
 }
-STU_EXPORT uint32_t stu_gen_npresets(void) { return GEN_NPRESETS; }
-STU_EXPORT char *stu_gen_preset_name(uint32_t k) { return stu_say(GEN_PRESETS[k % GEN_NPRESETS].name); }
+STU_EXPORT uint32_t stu_gen_npresets(void) { return player() ? player()->npieces : 0u; }
+STU_EXPORT char *stu_gen_preset_name(uint32_t k) { return stu_say(player() ? player()->piece_name(k) : ""); }
 
 /* ------------------------------------------------------------ the master --- */
 /* the master's always-on stages, now: the bus compressor's gain (Q15), the limiter's level over its threshold (Q15:

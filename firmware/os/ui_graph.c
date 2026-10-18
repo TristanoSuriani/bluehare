@@ -863,7 +863,7 @@ static void draw_graph(void)
         case GR_GEN:                                    /* (Blue Hare) the player (GEN): stopped, or the ocean */
             cv_oy = 0;
             if (!player_playing()) {
-                panel_note("GEN STOPPED", "[ARP] PLAY", "PAD BASS BELLS PULSE");
+                panel_note("TECHNO STOPPED", "[ARP] PLAY", "DRUMS BASS STAB LEAD");
                 st.ready = 0;                           /* (the next start: a fresh floor) */
                 break;
             }

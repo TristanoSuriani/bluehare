@@ -89,10 +89,10 @@ int main(void)
         memset(d, 0, sizeof d);
         memset(r, 0, sizeof r);
         fx_buses(c, d, r, w, CTL);
-        ok = !BLUEHARE_FX_PLATE && !BLUEHARE_FX_AMB && BLUEHARE_FX_EQ && BLUEHARE_PLUGIN_GEN && BLUEHARE_UI_STROBE &&
+        ok = !BLUEHARE_FX_PLATE && !BLUEHARE_FX_AMB && BLUEHARE_FX_EQ && BLUEHARE_PLUGIN_TECHNO && BLUEHARE_UI_STROBE &&
              GP[G_RTYPE].max == 2 && fx.rtype == 3u;
         song.g[G_RTYPE] = 2;
-        bad += check("components: PLATE left out: REVERB TYPE ends at GATED, a song's PLATE plays GATED; EQ, GEN, STROBE in",
+        bad += check("components: PLATE left out: REVERB TYPE ends at GATED, a song's PLATE plays GATED; EQ, TECHNO, STROBE in",
                      ok);
     }
 

@@ -263,16 +263,16 @@ int main(void)
     midi_enqueue(0x08u | 0x80u << 8 | 64u << 16, 1u);
     run(400);
     check("MIDI IN through the baseline's ring (midi_in.c) plays and releases", i > 300u && mi_r == mi_w);
-    check("the player interface (player.c): GEN, its four roles by name, its pieces",
-          player() && !strcmp(player()->name, "GEN") && player()->nroles == 4u && player_role("BELL") == 2 &&
-          player_role("BASS") == 1 && player()->npieces == GEN_NPRESETS && !strcmp(player()->piece_name(0), "GARDEN"));
-    gen_load_piece(0);                                  /* GARDEN: its sounds through os_load_sound */
-    gen.seed = 7u;
-    gen.req = 1;
+    check("the player interface (player.c): TECHNO, its four roles by name, its pieces",
+          player() && !strcmp(player()->name, "TECHNO") && player()->nroles == 4u && player_role("DRUMS") == 0 &&
+          player_role("BASS") == 1 && player()->npieces == TC_NPIECES && !strcmp(player()->piece_name(0), "WAREHOUSE"));
+    tc_load_piece(0);                                   /* WAREHOUSE: its sounds through os_load_sound */
+    tc.seed = 7u;
+    tc.req = 1;
     i = (uint32_t)run(3000);
-    check("a GEN piece loaded (its sounds, key, tempo) and played on the baseline alone",
-          gen.on && i > 300u && gen.s.played[0] > 0u && song.g[G_BPM] == GEN_PRESETS[0].bpm &&
-          trk[1].eng_req == ENGI_WAVE);   /* (GARDEN's bass: WAVE's SUB BASS) */
+    check("a TECHNO piece loaded (its sounds, key, tempo) and played on the baseline alone",
+          tc.on && i > 300u && tc.s.played[TR_DRUMS] > 0u && song.g[G_BPM] == TC_PIECES[0].bpm &&
+          trk[0].eng_req == ENGI_KIT);    /* (WAREHOUSE's drums: KIT's FM KIT) */
     {   /* the song: written into RAM, the music changed, read back: as it was (song.c, nothing of the OS's store) */
         pw_t w;
         pr_t r;

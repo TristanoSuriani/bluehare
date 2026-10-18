@@ -1106,8 +1106,8 @@ function makeMockDevice(opt = {}) {
     D("DAMP", F.PCT, 0, 127, 60),                                /* 9 */
     D("CRT", F.LFOHZ, 0, 127, 40),                               /* 10 */
     D("CDP", F.PCT, 0, 127, 60),                                 /* 11 */
-    E("GEN", ["GARDN", "DEPRT", "VOICE", "AFTER", "NIGHT", "SHORE", "GLASS", "TIDES"], 0), /* 12 */
-    E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 3), /* 13 */
+    E("PIECE", ["WARE", "ACID", "RAVE", "DUB", "INDUS", "MINML", "PEAK", "DEEP"], 0), /* 12 */
+    E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 2), /* 13 */
     E("ROUT", ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"], 0), /* 14 */
     D("ROOT", F.NOTE, 0, 11, 2),                                 /* 15 */
     D("SLOT", F.INT, 1, 1, 1),                                   /* 16 */
@@ -1125,10 +1125,10 @@ function makeMockDevice(opt = {}) {
     D("LMID", F.INT, -12, 12, 0, null, "dB"),                    /* 28 */
     D("HMID", F.INT, -12, 12, 0, null, "dB"),                    /* 29 */
     D("HIGH", F.INT, -12, 12, 0, null, "dB"),                    /* 30 */
-    D("PAD", F.PCT, 0, 127, 64),                                 /* 31 */
+    D("DRUM", F.PCT, 0, 127, 64),                                /* 31 */
     D("BASS", F.PCT, 0, 127, 64),                                /* 32 */
-    D("BELL", F.PCT, 0, 127, 64),                                /* 33 */
-    D("PL/WV", F.PCT, 0, 127, 64),                               /* 34 */
+    D("STAB", F.PCT, 0, 127, 64),                                /* 33 */
+    D("LEAD", F.PCT, 0, 127, 64),                                /* 34 */
     D("MIX", F.PCT, 0, 127, 30),                                 /* 35 */
   /*MOCK-GP-END*/];
   /* a retired engine number (1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE: removed in 1.5; engines.c ENG_NONE) */

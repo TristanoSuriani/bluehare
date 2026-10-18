@@ -49,7 +49,7 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | PLATE | fx | REVERB TYPE PLATE: Dattorro's plate, in float | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani |
 | AMB | fx | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1); ported by Tristano Suriani |
 | EQ | fx | the patch's EQ: four bands, in float | `firmware/baseline/fx.c`, `firmware/baseline/fastmath.h` | Tristano Suriani |
-| GEN | plugin | the generative ensemble on ARP: pad, bass, bells, pulse or waves | `firmware/baseline/gen.c`, `firmware/baseline/player.c` | Charles Vestal (amb-1's composition); Tristano Suriani |
+| TECHNO | plugin | evolving techno on ARP: drums, bass, stabs, a lead, in phrases | `firmware/baseline/techno.c`, `firmware/baseline/player.c` | Tristano Suriani |
 | STROBE | ui | the player's visuals: a neon floor, strobes, bars, glitches | `firmware/os/ui_strobe.c` | Tristano Suriani |
 <!-- COMPONENTS-END -->
 
