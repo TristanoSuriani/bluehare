@@ -21,6 +21,7 @@ ENGINE  DUBSIREN8 baseline eng_dubsiren8.c                    31  OBIE    | the 
 ENGINE  MODAL    baseline  eng_modal.c,shared/phys_dsp.c      34  WAVE    | struck, plucked and bowed resonators                      | Tristano Suriani; its resonators DaisySP's (MIT)
 ENGINE  KIT      baseline  eng_kit.c,shared/drum_map.c,shared/fmp_dsp.c 28  MODAL | a drum kit on one patch: 8 lanes on the General MIDI notes | Tristano Suriani
 ENGINE  BREAKS   baseline  eng_breaks.c,shared/fmp_dsp.c      29  KIT     | breakbeats, synthesized: a key starts a looping bar        | Tristano Suriani
+ENGINE  LINNKIT  baseline  eng_linnkit.c,shared/drum_map.c    54  KIT     | the 80s drum machine after the LinnDrum, synthesized: no samples | Tristano Suriani
 ENGINE  WAR      baseline  eng_war.c,shared/drum_map.c        44  KIT     | an industrial kit: FM drums through a folder into clipping | Tristano Suriani
 ENGINE  CHIPKIT  baseline  eng_chipkit.c,shared/drum_map.c    59  KIT     | the drums of the 8-bit consoles: NES, Game Boy, Master System, C64 | Tristano Suriani
 FX      PLATE    baseline  fx_amb.c,fastmath.h                -   -       | REVERB TYPE PLATE: Dattorro's plate, in float                 | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani

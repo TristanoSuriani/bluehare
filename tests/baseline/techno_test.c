@@ -167,6 +167,25 @@ int main(int argc, char **argv)
         check(msg, found && song.g[G_BPM] == p->bpm && peak > 3000 && peak < 32767 * 2);
         stop();
     }
+    {   /* (2026-10-18) KIT, TECHNO's drums: one octave on every octave (every C the kick, tuned as C2's: 36, 48, 72;
+         * no GM drum pitched up an octave and more any more); every note of 0 .. 127 a drum of 36 .. 47's */
+        static const uint8_t NOTE[3] = {36, 48, 72};
+        int ok = 1;
+        uint32_t j, nn;
+        int32_t o[2u * CTL], st[3] = {0};
+        for (j = 0; j < 3u; j++) {
+            host_tracks_init();
+            host_preset(&trk[0], ENGI_KIT, 0);
+            trk_note_on(&trk[0], NOTE[j], 110);
+            mix_block(o, CTL);
+            ok &= drum_lane(NOTE[j]) == DV_KICK && kit_lane[0][DV_KICK].owner != 0;
+            st[j] = kit_lane[0][DV_KICK].st;
+            trk_note_off(&trk[0], NOTE[j]);
+        }
+        for (nn = 0; nn < 128u; nn++)
+            ok &= drum_fold(nn) >= 36u && drum_fold(nn) <= 47u && drum_fold(nn) % 12u == nn % 12u;
+        check("KIT: one octave on every octave (C2, C3, C5 the same kick, tuned alike)", ok && st[0] == st[1] && st[1] == st[2]);
+    }
     printf(bad ? "techno: %d FAILED\n" : "techno: all passed\n", bad);
     return bad ? 1 : 0;
 }

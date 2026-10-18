@@ -18,6 +18,14 @@ static const war_drum_t WAR_D[12] = {   /* {note, the pitch's fall (st), RATIO Q
     {60, 0, 909, 7, 14, 480, 40}, {64, 3, 707, 8, 20, 700, 35}, {81, 0, 443, 10, 100, 1100, 80}, {85, 0, 395, 9, 85, 130, 85},
 };
 
+/* (2026-10-18, "way too distorted, sits poorly in the mix") DIST's drive: 1 .. 4 times (13 until then, and 4.75 at its
+ * default 40: every hit flattened into the clipper, its peaks 5 dB over its body); its make-up gain */
+#ifndef WAR_DRIVE
+#define WAR_DRIVE 8
+#endif
+#ifndef WAR_MAKEUP
+#define WAR_MAKEUP 4
+#endif
 static void war_note_on(track_t *t, voice_t *v)
 {
     int32_t k = ((int32_t)v->note - 36) % 12, len;
@@ -45,7 +53,9 @@ static void war_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
     const war_drum_t *d = &WAR_D[k % 12];
     uint32_t i, nz = (uint32_t)v->s[2], ph = v->ph[0], mph = v->ph[1], inv = (1u << 29) / (uint32_t)len;
     int32_t base16 = (d->note + p[P_E0]) * 16, idx = d->index * (16 + p[P_E3]) / 2;
-    int32_t noise = d->noise * (32 + p[P_E4]) / 96, sweep = d->sweep * (16 + p[P_E5]) / 80, dist = 256 + p[P_E6] * 24;
+    int32_t noise = d->noise * (32 + p[P_E4]) / 96, sweep = d->sweep * (16 + p[P_E5]) / 80, dist = 256 + p[P_E6] * WAR_DRIVE;
+    int32_t mk = (256 << 8) / (256 + (dist - 256) * WAR_MAKEUP / 8);   /* (2026-10-18) DIST's level made up: the edge,
+                                                                       * not a louder, flatter hit */
     int32_t kt = clamp(2500 + p[P_E2] * 236, 2500, 32767), tl = (int32_t)v->ph[2], pe0, pe1, pd, nk = 1500 + d->nlp * 240, crush = p[P_E7];
     int32_t mask = crush ? ~((1 << (crush / 12)) - 1) : -1, hold_n = 1 + crush / 20;
     pe0 = (int32_t)((32767u * 1100u) / (1100u + (uint32_t)age));   /* the pitch's fall: ~25 ms, hyperbolic (once a block, */
@@ -78,7 +88,7 @@ static void war_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
         lp += ((nzv - lp) * nk) >> 15;
         x = (x * (127 - noise) + lp * noise) >> 7;
         x = (x * e) >> 15;
-        x = softclip((x * dist) >> 8);                /* DIST */
+        x = (softclip((x * dist) >> 8) * mk) >> 8;    /* DIST */
         if (crush) {                                  /* CRUSH */
             if (--hc <= 0) {
                 hc = hold_n;
@@ -108,15 +118,15 @@ static int32_t war_keys(const track_t *t, uint32_t k) { return drum_keys(t, k); 
 /* {TUNE, DECAY, TONE, METAL, NOISE, PUNCH, DIST, CRUSH}. The keys from C2: KICK HARD SNARE CLAP HAT OPEN TOM-L TOM-H
  * METAL ANVIL CRASH PEDAL */
 static const preset_t WAR_PRESETS[] = {
-    {"WAR KIT", {0, 64, 100, 64, 64, 64, 40, 0}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 10, 20)},
-    {"INDUSTRIAL", {0, 70, 110, 90, 70, 70, 80, 0}, {0, 0, 127, 20}, 0, 0, FX(20, 0, 10, 25)},
-    {"BUNKER", {-3, 80, 70, 50, 50, 80, 60, 0}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 10, 40)},
-    {"HEAVY", {-5, 90, 80, 60, 50, 100, 110, 0}, {0, 0, 127, 20}, 0, 0, FX(30, 0, 10, 30)},
-    {"WARZONE", {0, 100, 90, 100, 90, 90, 127, 30}, {0, 0, 127, 20}, 0, 0, FX(40, 0, 20, 40)},
-    {"DEATH KIT", {-4, 90, 70, 50, 60, 110, 120, 0}, {0, 0, 127, 20}, 0, 0, FX(40, 0, 10, 30)},
-    {"EBM KIT", {0, 40, 110, 40, 50, 70, 30, 0}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 15, 15)},
-    {"DEMOLITION", {-2, 100, 90, 90, 100, 120, 127, 20}, {0, 0, 127, 20}, 0, 0, FX(50, 0, 10, 40)},
-    {"IRON FIST", {-1, 70, 90, 70, 60, 100, 90, 0}, {0, 0, 127, 20}, 0, 0, FX(30, 0, 10, 25)},
+    {"WAR KIT", {0, 64, 100, 64, 64, 64, 24, 0}, {0, 0, 127, 20}, 0, 0, FX(2, 0, 10, 20)},
+    {"INDUSTRIAL", {0, 70, 110, 90, 70, 70, 48, 0}, {0, 0, 127, 20}, 0, 0, FX(5, 0, 10, 25)},
+    {"BUNKER", {-3, 80, 70, 50, 50, 80, 36, 0}, {0, 0, 127, 20}, 0, 0, FX(2, 0, 10, 40)},
+    {"HEAVY", {-5, 90, 80, 60, 50, 100, 66, 0}, {0, 0, 127, 20}, 0, 0, FX(8, 0, 10, 30)},
+    {"WARZONE", {0, 100, 90, 100, 90, 90, 76, 30}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 20, 40)},
+    {"DEATH KIT", {-4, 90, 70, 50, 60, 110, 72, 0}, {0, 0, 127, 20}, 0, 0, FX(10, 0, 10, 30)},
+    {"EBM KIT", {0, 40, 110, 40, 50, 70, 18, 0}, {0, 0, 127, 20}, 0, 0, FX(2, 0, 15, 15)},
+    {"DEMOLITION", {-2, 100, 90, 90, 100, 120, 76, 20}, {0, 0, 127, 20}, 0, 0, FX(12, 0, 10, 40)},
+    {"IRON FIST", {-1, 70, 90, 70, 60, 100, 54, 0}, {0, 0, 127, 20}, 0, 0, FX(8, 0, 10, 25)},
 };
 
 static const engine_t ENG_WAR = {
@@ -132,7 +142,7 @@ static const engine_t ENG_WAR = {
         {"METAL", F_PCT, 0, 127, 64, 0, 0},
         {"NOISE", F_PCT, 0, 127, 64, 0, 0},
         {"PUNCH", F_PCT, 0, 127, 64, 0, 0},
-        {"DIST", F_PCT, 0, 127, 40, 0, 0},
+        {"DIST", F_PCT, 0, 127, 24, 0, 0},
         {"CRUSH", F_PCT, 0, 127, 0, 0, 0},
     },
     .presets = WAR_PRESETS,

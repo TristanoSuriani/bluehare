@@ -29,8 +29,9 @@ up next to them, not to make it a groovebox.
 ## What follows from it (2026-10-18)
 
 - Four patches, each its own sound on its own channel; no layer stacking.
-- Engines: SID WAVE VOSIM SPEECH OBIE HOOVER SANDSTORM DUBSIREN DUBSIREN8 MODAL KIT BREAKS WAR CHIPKIT (SANDSTORM,
-  SPEECH, DUBSIREN8, WAR and CHIPKIT back on 2026-10-18).
+- Engines: SID WAVE VOSIM SPEECH OBIE HOOVER SANDSTORM DUBSIREN DUBSIREN8 MODAL KIT LINNKIT BREAKS WAR CHIPKIT
+  (SANDSTORM, SPEECH, DUBSIREN8, WAR, CHIPKIT and LINNKIT back on 2026-10-18).
+- The device's colours: the IDM palette (deep indigo, electric cyan, hot magenta), the studio's too.
 - One global reverb (DRY SPRING GATED PLATE) and a delay per patch; chorus and EQ as presets, full controls in EXPERT.
 - On ARP: TECHNO, evolving techno on the four patches, and its visuals.
 - The sound design studio follows the FM-1's structure, normal and EXPERT, with the same TECHNO.

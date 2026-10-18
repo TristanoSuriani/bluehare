@@ -75,7 +75,7 @@ static void kit_note_on(track_t *t, voice_t *v)
     if (L->owner == i + 1u)                           /* this voice played another lane: it stops there */
         L->owner = 0;
     L = &kit_lane[pt][lane];
-    n = v->note >= 35u && v->note <= 81u ? v->note : 36u + (v->note + 120u - 36u) % 12u;
+    n = drum_fold(v->note);                           /* (2026-10-18: one octave, on every octave) */
     L->st = DRUM_GM[n - 35u][1];
     L->owner = (uint8_t)(i + 1u);
     L->choke = 0;

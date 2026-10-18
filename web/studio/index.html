@@ -11,14 +11,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blue Hare Studio</title>
 <meta name="description" content="Blue Hare's sound design studio: the FM-1 firmware's engines, effects and generative engine in your browser, to design sounds and send them to the FM-1.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%2350b8ec%22/%3E%3Cpath d=%22M3 11c2-6 4-6 5 0s3 6 5 0%22 stroke=%22%23081018%22 stroke-width=%221.6%22 fill=%22none%22/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%2300e5ff%22/%3E%3Cpath d=%22M3 11c2-6 4-6 5 0s3 6 5 0%22 stroke=%22%2308061a%22 stroke-width=%221.6%22 fill=%22none%22/%3E%3C/svg%3E">
 <style>
 /* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt): the device's lettering, for the titles */
 @font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
-/* the FM-1's ICE palette (tools/gen_ui_palettes.py): ground, panel, ink, accent, second accent */
+/* the FM-1's IDM palette (tools/gen_ui_palettes.py; the device's since 2026-10-18): ground, panel, ink, accent, second
+   accent: electric cyan values, hot magenta the active thing, on deep indigo */
 :root {
-  --bg: #081018; --panel: #142434; --panel2: #1b2e42; --edge: #2a4560; --ink: #e4f0f8; --dim: #8fa8bc;
-  --faint: #56718a; --accent: #50b8ec; --accent2: #ff8c64; --ok: #6fdc9a; --warn: #ffcc66; --bad: #ff6a6a;
+  --bg: #08061a; --panel: #1a1440; --panel2: #221a52; --edge: #3a2f78; --ink: #e8ecff; --dim: #a3a6d6;
+  --faint: #6a6aa6; --accent: #00e5ff; --accent2: #ff2ebe; --ok: #6fdc9a; --warn: #ffcc66; --bad: #ff6a6a;
   --knob: #0e1a26; --radius: 12px; color-scheme: dark;
 }
 :root[data-theme="light"] {

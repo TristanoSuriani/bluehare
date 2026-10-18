@@ -1115,7 +1115,7 @@ function makeMockDevice(opt = {}) {
     E("NAME", ["--"], 0),                                        /* 17 */
     E("LOAD", ["--", "GO"], 0),                                  /* 18 */
     E("SAVE", ["--", "GO"], 0),                                  /* 19 */
-    E("ENG", ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "WAVE", "-", "-", "HOOVER", "SPEECH", "-", "-", "VOSIM", "-", "-", "SID", "DUBSIREN", "-", "-", "KIT", "BREAKS", "-", "SIREN8", "-", "-", "MODAL", "-", "-", "-", "-", "-", "-", "-", "-", "-", "WAR", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "CHIPKIT", "SANDSTRM", "-", "OBIE"], 0), /* 20 */
+    E("ENG", ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "WAVE", "-", "-", "HOOVER", "SPEECH", "-", "-", "VOSIM", "-", "-", "SID", "DUBSIREN", "-", "-", "KIT", "BREAKS", "-", "SIREN8", "-", "-", "MODAL", "-", "-", "-", "-", "-", "-", "-", "-", "-", "WAR", "-", "-", "-", "-", "-", "-", "-", "-", "-", "LINNKIT", "-", "-", "-", "-", "CHIPKIT", "SANDSTRM", "-", "OBIE"], 0), /* 20 */
     E("SET", ["--", "GO"], 0),                                   /* 21 */
     E("CLRSQ", ["--", "GO"], 0),                                 /* 22 */
     E("INIT", ["--", "GO"], 0),                                  /* 23 */
@@ -1346,17 +1346,17 @@ function makeMockDevice(opt = {}) {
         D("METAL", F.PCT, 0, 127, 64),
         D("NOISE", F.PCT, 0, 127, 64),
         D("PUNCH", F.PCT, 0, 127, 64),
-        D("DIST", F.PCT, 0, 127, 40),
+        D("DIST", F.PCT, 0, 127, 24),
         D("CRUSH", F.PCT, 0, 127, 0)],
-      presets: [P("WAR KIT", [0, 64, 100, 64, 64, 64, 40, 0], [0, 0, 127, 20], 0),
-        P("INDUSTRIAL", [0, 70, 110, 90, 70, 70, 80, 0], [0, 0, 127, 20], 0),
-        P("BUNKER", [-3, 80, 70, 50, 50, 80, 60, 0], [0, 0, 127, 20], 0),
-        P("HEAVY", [-5, 90, 80, 60, 50, 100, 110, 0], [0, 0, 127, 20], 0),
-        P("WARZONE", [0, 100, 90, 100, 90, 90, 127, 30], [0, 0, 127, 20], 0),
-        P("DEATH KIT", [-4, 90, 70, 50, 60, 110, 120, 0], [0, 0, 127, 20], 0),
-        P("EBM KIT", [0, 40, 110, 40, 50, 70, 30, 0], [0, 0, 127, 20], 0),
-        P("DEMOLITION", [-2, 100, 90, 90, 100, 120, 127, 20], [0, 0, 127, 20], 0),
-        P("IRON FIST", [-1, 70, 90, 70, 60, 100, 90, 0], [0, 0, 127, 20], 0)] },
+      presets: [P("WAR KIT", [0, 64, 100, 64, 64, 64, 24, 0], [0, 0, 127, 20], 0),
+        P("INDUSTRIAL", [0, 70, 110, 90, 70, 70, 48, 0], [0, 0, 127, 20], 0),
+        P("BUNKER", [-3, 80, 70, 50, 50, 80, 36, 0], [0, 0, 127, 20], 0),
+        P("HEAVY", [-5, 90, 80, 60, 50, 100, 66, 0], [0, 0, 127, 20], 0),
+        P("WARZONE", [0, 100, 90, 100, 90, 90, 76, 30], [0, 0, 127, 20], 0),
+        P("DEATH KIT", [-4, 90, 70, 50, 60, 110, 72, 0], [0, 0, 127, 20], 0),
+        P("EBM KIT", [0, 40, 110, 40, 50, 70, 18, 0], [0, 0, 127, 20], 0),
+        P("DEMOLITION", [-2, 100, 90, 90, 100, 120, 76, 20], [0, 0, 127, 20], 0),
+        P("IRON FIST", [-1, 70, 90, 70, 60, 100, 54, 0], [0, 0, 127, 20], 0)] },
     GONE,                                         /* 45 */
     GONE,                                         /* 46 */
     GONE,                                         /* 47 */
@@ -1366,7 +1366,23 @@ function makeMockDevice(opt = {}) {
     GONE,                                         /* 51 */
     GONE,                                         /* 52 */
     GONE,                                         /* 53 */
-    GONE,                                         /* 54 */
+    { name: "LINNKIT", titles: ["KIT", "LINN"],   /* 54 */
+      edit: [D("TUNE", F.INT, -24, 24, 0, null, "st"),
+        D("DECAY", F.PCT, 0, 127, 64),
+        D("TONE", F.PCT, 0, 127, 100),
+        D("SNAP", F.PCT, 0, 127, 64),
+        D("BODY", F.PCT, 0, 127, 64),
+        D("GATE", F.PCT, 0, 127, 0),
+        D("CHAR", F.PCT, 0, 127, 64),
+        D("VEL", F.PCT, 0, 127, 64)],
+      presets: [P("LINN KIT", [0, 64, 100, 64, 64, 0, 64, 64], [0, 0, 127, 20], 0),
+        P("GATED 80S", [0, 90, 100, 70, 70, 100, 60, 60], [0, 0, 127, 20], 0),
+        P("ELECTRO", [0, 40, 115, 60, 80, 0, 56, 50], [0, 0, 127, 20], 0),
+        P("DEEP LINN", [-4, 85, 85, 56, 80, 0, 64, 60], [0, 0, 127, 20], 0),
+        P("BIG ROOM 84", [-1, 80, 100, 66, 70, 60, 60, 60], [0, 0, 127, 20], 0),
+        P("ITALO", [0, 60, 110, 64, 72, 20, 60, 50], [0, 0, 127, 20], 0),
+        P("CRUSHED LINN", [0, 55, 90, 70, 64, 0, 127, 64], [0, 0, 127, 20], 0),
+        P("PITCHED DOWN", [-6, 75, 90, 60, 72, 0, 64, 64], [0, 0, 127, 20], 0)] },
     GONE,                                         /* 55 */
     GONE,                                         /* 56 */
     GONE,                                         /* 57 */
@@ -1953,7 +1969,7 @@ function enumShown(d) {
    the engine numbers. engineOrder(names): the indices of names in that order, "-" (a reserved number) left out; a name
    the list does not know (another firmware) follows in index order */
 /*MOCK-ORDER-BEGIN*/
-const ENGINE_ORDER = ["SID", "WAVE", "VOSIM", "SPEECH", "OBIE", "HOOVER", "SANDSTRM", "DUBSIREN", "SIREN8", "MODAL", "KIT", "BREAKS", "WAR", "CHIPKIT"];
+const ENGINE_ORDER = ["SID", "WAVE", "VOSIM", "SPEECH", "OBIE", "HOOVER", "SANDSTRM", "DUBSIREN", "SIREN8", "MODAL", "KIT", "LINNKIT", "BREAKS", "WAR", "CHIPKIT"];
 /*MOCK-ORDER-END*/
 function engineOrder(names) {
   const rank = (n) => { const k = ENGINE_ORDER.indexOf(n); return k < 0 ? ENGINE_ORDER.length : k; };

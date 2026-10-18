@@ -3,10 +3,10 @@
 # synthesizer engines: the little monosynth, the C64 chip's voice, wavetables, formant voices (VOSIM), FM keys, west coast, struck and bowed
 # resonators, string ensembles.
 # The engines in display order, one a line (names: firmware/baseline/engine_ids.h). TRACKS: the build's track count;
-# PALETTE: the one a device starts with; VOICES 12: the voice budget 12 always (without the line: 8, 12 while the load
+# PALETTE: the one a device starts with (IDM since 2026-10-18: the user's, "techno vibes"; ICE before); VOICES 12: the voice budget 12 always (without the line: 8, 12 while the load
 # allows). The other distributions are in archive/distributions/; the build still takes any number of them.
 TRACKS 4
-PALETTE ICE
+PALETTE IDM
 # its components besides the engines (firmware/components.txt; none of a kind listed would mean all of it)
 FX PLATE
 FX EQ
@@ -23,6 +23,7 @@ DUBSIREN
 DUBSIREN8
 MODAL
 KIT
+LINNKIT
 BREAKS
 WAR
 CHIPKIT

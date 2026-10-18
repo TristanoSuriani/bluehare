@@ -205,3 +205,5 @@ What they were (from the README of before; the distributions as they were then):
   bangers identity and the device (image 466 KB of 581 KB, pool headroom 18 KB; SANDSTORM the costliest engine, ~1.2x
   MODAL). SPEECH's generator and vocabularies are in tools/ again, its test in tests/baseline. DUBSIREN's substitute is
   DUBSIREN8: off the last patch a DUBSIREN sound plays as the 8-bit siren with its own echo (OBIE before).
+- (2026-10-18) **LINNKIT is back** (firmware/baseline), the user's ask; its presets cut to eight (LINN KIT, GATED 80S,
+  ELECTRO, DEEP LINN, BIG ROOM 84, ITALO, PITCHED DOWN, CRUSHED LINN).

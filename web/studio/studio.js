@@ -166,6 +166,12 @@ const ENGINE_WORDS = {
   HOOVER: "The rave lead: detuned saws, the dive",
   DUBSIREN: "The dub siren and its echo (patch 4)",
   KIT: "A drum kit on the General MIDI notes",
+  LINNKIT: "The 80s drum machine, after the LinnDrum",
+  WAR: "An industrial kit: FM drums, driven",
+  CHIPKIT: "The 8-bit consoles' drums",
+  SPEECH: "Words, as the speech chips spoke them",
+  SANDSTRM: "The trance lead: five saws, the gate",
+  SIREN8: "The dub siren in 8 bits, any patch",
   BREAKS: "Breakbeats: a key starts a looping bar",
 };
 

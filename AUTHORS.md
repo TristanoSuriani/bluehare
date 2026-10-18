@@ -49,6 +49,7 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | MODAL | engine | struck, plucked and bowed resonators | `firmware/baseline/eng_modal.c`, `firmware/baseline/shared/phys_dsp.c` | Tristano Suriani; its resonators DaisySP's (MIT) |
 | KIT | engine | a drum kit on one patch: 8 lanes on the General MIDI notes | `firmware/baseline/eng_kit.c`, `firmware/baseline/shared/drum_map.c`, `firmware/baseline/shared/fmp_dsp.c` | Tristano Suriani |
 | BREAKS | engine | breakbeats, synthesized: a key starts a looping bar | `firmware/baseline/eng_breaks.c`, `firmware/baseline/shared/fmp_dsp.c` | Tristano Suriani |
+| LINNKIT | engine | the 80s drum machine after the LinnDrum, synthesized: no samples | `firmware/baseline/eng_linnkit.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | WAR | engine | an industrial kit: FM drums through a folder into clipping | `firmware/baseline/eng_war.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | CHIPKIT | engine | the drums of the 8-bit consoles: NES, Game Boy, Master System, C64 | `firmware/baseline/eng_chipkit.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | PLATE | fx | REVERB TYPE PLATE: Dattorro's plate, in float | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani |

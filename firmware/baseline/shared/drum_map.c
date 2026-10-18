@@ -6,8 +6,10 @@
  * Blue Hare removed that engine; what its kits played lives on here.
  *
  * Keys and notes: the keys play the General MIDI drum map with the kick on the first C (C KICK, C# RIM, D SNARE,
- * D# CLAP, F# HAT CL, A# HAT OP, F G A B C D TOMS, C# CYM, G# BELL; OCT -/+ move it), and a note plays its GM drum
- * (35..81; other notes as their octave of 36..47). */
+ * D# CLAP, F# HAT CL, A# HAT OP, F G A B C D TOMS, C# CYM, G# BELL; OCT -/+ move it). (2026-10-18) Every note plays
+ * its octave of 36..47, the GM kit's own (kick, rim, snares, clap, hats, toms): the same twelve on every octave, as WAR
+ * and CHIPKIT play theirs (the GM notes above, 48..81, were the toms, cymbals, bells and congas pitched up an octave and
+ * more: "horrible high pitched sounds") */
 enum { DV_KICK, DV_SNARE, DV_CLAP, DV_HATC, DV_HATO, DV_TOM, DV_RIM, DV_BELL, DV_NLANE };
 enum {
     DVT_PUNCH, DVT_ROUND, DVT_SNARE, DVT_CLAP, DVT_HATC, DVT_HATO, DVT_TOM, DVT_CONGA, DVT_RIM, DVT_CLAVE,
@@ -35,12 +37,10 @@ static const int8_t DRUM_GM[47][2] = {
     {DVT_CLAVE, -7}, {DVT_CONGA, 7}, {DVT_CONGA, 3}, {DVT_BELL, 12}, {DVT_BELL, 12},                  /* 77 */
 };
 
+/* the note a note plays: its octave of 36..47 */
+static uint32_t drum_fold(uint32_t note) { return 36u + (note + 120u - 36u) % 12u; }
 /* the lane a note strikes */
-static uint32_t drum_lane(uint32_t note)
-{
-    uint32_t n = note >= 35u && note <= 81u ? note : 36u + (note + 120u - 36u) % 12u;
-    return DV_TYPE_LANE[DRUM_GM[n - 35u][0]];
-}
+static uint32_t drum_lane(uint32_t note) { return DV_TYPE_LANE[DRUM_GM[drum_fold(note) - 35u][0]]; }
 
 /* the lane's name (5 characters at most) */
 static const char *drum_lane_name(const track_t *t, uint32_t l)
