@@ -5413,9 +5413,9 @@ static int test_style(void)
     ok &= ui.menu == 1u && str_eq(MI_NAME[MI_STYLE], "STYLE");
     turn(EN_K1, 1); ok &= ui_style == ST_LINE && ux.style == ST_LINE && ux.surf == ux.bg;
     turn(EN_K1, 1); frame();                            /* (2026-10-18) LED: FLAT's shapes, the fourteen-segment face */
-    ok &= ui_style == ST_LED && ux.style == ST_FLAT && ux.surf != ux.bg && &AF_S == &AF_SS && &AF_L == &AF_SL;
+    ok &= ui_style == ST_LED && ux.style == ST_FLAT && ux.surf != ux.bg && &AF_M == &AF_SM && &AF_L == &AF_SL;
     turn(EN_K1, 1); ok &= ui_style == ST_LED;
-    turn(EN_K1, -1); frame(); ok &= ui_style == ST_LINE && &AF_S != &AF_SS;
+    turn(EN_K1, -1); frame(); ok &= ui_style == ST_LINE && &AF_M != &AF_SM;
     turn(EN_K1, -1); ok &= ui_style == ST_FLAT;
     turn(EN_K1, -1); ok &= ui_style == ST_FLAT;
     press(B_OCTUP); ok &= ui_style == ST_LINE && ui.menu == 1u;

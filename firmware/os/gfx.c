@@ -24,12 +24,12 @@ typedef struct {
 typedef struct { const char *name; uint16_t bg, surf, text, theme, accent; } ui_pal_t;
 typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #include "ui_fonts.h"                   /* AF_S 12 px / 400, AF_M 15 px / 500, AF_L 28 px / 600 */
-/* (2026-10-18) MENU > STYLE LED: the screen's text in Blue Hare's fourteen-segment face (tools/gen_seg_font.py; AF_SS SM
- * SL, the same lines and capitals as Inter Tight's S M L): every AF_S, AF_M, AF_L the face the style picks (af_led) */
+/* (2026-10-18) MENU > STYLE LED: the screen's text in Blue Hare's fourteen-segment face (tools/gen_seg_font.py; AF_SM
+ * SL, the same lines and capitals as Inter Tight's M L): every AF_M, AF_L the face the style picks (af_led). The small
+ * labels (AF_S) stay Inter's (2026-10-19: segments at 9 px were heavy on the eyes) */
 static const aafont_t *af_cur[3] = {&AF_S, &AF_M, &AF_L};
 static void af_led(int on)
 {
-    af_cur[0] = on ? &AF_SS : &AF_S;
     af_cur[1] = on ? &AF_SM : &AF_M;
     af_cur[2] = on ? &AF_SL : &AF_L;
 }

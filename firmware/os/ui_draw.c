@@ -962,7 +962,7 @@ static void style_apply(void)
         ui_style = ui_style == 2u ? ST_LINE : ST_FLAT;
     st = ui_style == ST_LED ? ST_FLAT : ui_style;       /* (LED: FLAT's shapes, the fourteen-segment face) */
     led = ui_style == ST_LED;
-    if (ux.style != st || (af_cur[0] == &AF_SS) != led) {
+    if (ux.style != st || (af_cur[1] == &AF_SM) != led) {
         ux.style = st;
         af_led(led);
         palette_set(settings.palette);

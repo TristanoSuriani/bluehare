@@ -15,14 +15,15 @@ from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 
 UPM, ASC, DESC, CAP = 1000, 930, 240, 700
-W, T, SLANT = 430, 92, 0.1          # the cell's width, a segment's thickness, the slant (x per y)
-ADV = W + 150                       # the advance: the cell, a gap (the decimal point sits in it)
+W, T, SLANT = 430, 108, 0.05       # the cell's width, a segment's thickness, the slant (x per y) (2026-10-19, "more
+                                    # readable, less heavy on the eyes": thicker, half the slant, the gaps closed up)
+ADV = W + 170                       # the advance: the cell, a gap (the decimal point sits in it)
 ASC0, DESC0, CAP0, W0, ADV0 = ASC, DESC, CAP, W, ADV
 # the unit cell: x 0 .. 1, y 0 .. 2 (top to bottom); a segment from (x1, y1) to (x2, y2)
 SEG = {
-    "a": (.1, 0, .9, 0), "b": (1, .1, 1, .9), "c": (1, 1.1, 1, 1.9), "d": (.1, 2, .9, 2), "e": (0, 1.1, 0, 1.9),
-    "f": (0, .1, 0, .9), "g": (.1, 1, .46, 1), "G": (.54, 1, .9, 1), "h": (.16, .2, .42, .82), "i": (.5, .14, .5, .86),
-    "j": (.84, .2, .58, .82), "k": (.42, 1.18, .16, 1.8), "l": (.5, 1.14, .5, 1.86), "m": (.58, 1.18, .84, 1.8),
+    "a": (.05, 0, .95, 0), "b": (1, .05, 1, .95), "c": (1, 1.05, 1, 1.95), "d": (.05, 2, .95, 2), "e": (0, 1.05, 0, 1.95),
+    "f": (0, .05, 0, .95), "g": (.05, 1, .48, 1), "G": (.52, 1, .95, 1), "h": (.16, .18, .42, .84), "i": (.5, .1, .5, .9),
+    "j": (.84, .18, .58, .84), "k": (.42, 1.16, .16, 1.82), "l": (.5, 1.1, .5, 1.9), "m": (.58, 1.16, .84, 1.82),
 }
 CH = {
     "0": "abcdefjk", "1": "bc", "2": "abdegG", "3": "abcdG", "4": "bcfgG", "5": "acdfgG", "6": "acdefgG", "7": "abc",

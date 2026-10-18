@@ -58,11 +58,10 @@ def led_faces():
     out.mkdir(parents=True, exist_ok=True)
     # each size its own metrics (font units): the ascent and descent round up to Inter's line (asc 12 / 15 / 28,
     # desc 3 / 4 / 7), the capitals Inter's 9 / 11 / 21 rows
-    # (S: a narrower cell, its digits Inter's 7 px)
+    # (2026-10-19: the small labels stay Inter's, LED or not: segments at 9 px tired the eyes; SM and SL only)
     for name, px, asc, desc, cap, w, adv, rng, ex, ph in (
-            ("SS", 13, 920, 230, 700, 380, 520, (32, 126), EXTRAS, PHASES),
-            ("SM", 16, 935, 245, 690, None, None, (32, 126), EXTRAS, PHASES),
-            ("SL", 30, 930, 230, 740, None, None, (32, 32), [ord(c) for c in L_CHARS[1:]], PHASES_L)):
+            ("SM", 16, 935, 245, 690, 400, 560, (32, 126), EXTRAS, PHASES),
+            ("SL", 30, 930, 230, 715, None, None, (32, 32), [ord(c) for c in L_CHARS[1:]], PHASES_L)):
         f = out / f"BlueHareLED-{name}.ttf"
         gen_seg_font.main(str(f), asc, desc, cap, w, adv)
         faces.append((name, str(f), px, rng, ex, 0.0, ph))
