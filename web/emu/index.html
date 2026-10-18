@@ -209,6 +209,11 @@ body[class^="dist-"] .face.key.white ~ .slit { fill: #c4c6d4; }
 body[class^="dist-"] .dim .face.key.white ~ .slit { fill: color-mix(in srgb, var(--a2) 40%, #c4c6d4); }
 body[class^="dist-"] .mid .face.key.white ~ .slit { fill: color-mix(in srgb, var(--a2) 65%, #c4c6d4); }
 body[class^="dist-"] .lit .face.key ~ .slit { fill: var(--a2); filter: drop-shadow(0 0 4px var(--a2)); }
+/* the fourteen-segment lettering: the ghosts faint, the lit segments glowing */
+.seg14 .seg-off { opacity: .1; }
+.seg14 .seg-on { filter: drop-shadow(0 0 2.5px color-mix(in srgb, currentColor 0%, var(--label))); }
+body[class^="dist-"] .lit .seg14 .seg-on { stroke: var(--bg); filter: none; }
+body[class^="dist-"] .lit .seg14 .seg-off { stroke: var(--bg); opacity: .14; }
 @keyframes breath-neon { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 60%, var(--tray)); } }
 @keyframes breath-neon-lo { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 35%, var(--tray)); } }
 body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { animation-name: breath-neon; }
@@ -314,8 +319,44 @@ function el(tag, attrs, parent = svg) {
   return e;
 }
 const SANS = "-apple-system, 'Helvetica Neue', Arial, sans-serif", DOT = "'DotGothic16', " + SANS;
-function label(parent, x, y, s, size, font = SANS, ink = "var(--label)") {
-  const t = el("text", { x, y, "text-anchor": "middle", "font-family": font,
+// (2026-10-18) the lettering in fourteen segments, as a VFD panel's (the firmware's CLOCK the seven-segment figures):
+// every segment of a character drawn faint (its ghost), the lit ones over it in the ink, glowing. A character is W x 2W
+// (H the cap height), slanted a little; a segment a stroke. The unit cell: x 0 .. 1, y 0 .. 2
+const SEG14 = {
+  a: [.12, 0, .88, 0], b: [1, .12, 1, .88], c: [1, 1.12, 1, 1.88], d: [.12, 2, .88, 2], e: [0, 1.12, 0, 1.88],
+  f: [0, .12, 0, .88], g: [.12, 1, .44, 1], G: [.56, 1, .88, 1], h: [.14, .16, .4, .84], i: [.5, .12, .5, .88],
+  j: [.86, .16, .6, .84], k: [.4, 1.16, .14, 1.84], l: [.5, 1.12, .5, 1.88], m: [.6, 1.16, .86, 1.84],
+};
+const CHAR14 = {
+  0: "abcdefjk", 1: "bcj", 2: "abdegG", 3: "abcdG", 4: "bcfgG", 5: "acdfgG", 6: "acdefgG", 7: "abc", 8: "abcdefgG",
+  9: "abcdfgG", A: "abcefgG", B: "abcdGil", C: "adef", D: "abcdil", E: "adefg", F: "aefg", G: "acdefG", H: "bcefgG",
+  I: "adil", J: "bcde", K: "efgjm", L: "def", M: "bcefhj", N: "bcefhm", O: "abcdef", P: "abefgG", Q: "abcdefm",
+  R: "abefgGm", S: "acdfgG", T: "ail", U: "bcdef", V: "efjk", W: "bcefkm", X: "hjkm", Y: "hjl", Z: "adjk",
+  "-": "gG", "+": "gGil", "/": "jk", " ": "",
+};
+function segText(parent, x, y, s, size, ink, anchor = "middle") {
+  const H = size * 0.74, W = H * 0.52, adv = W * 1.42, sw = Math.max(1.1, H * 0.12), slant = H * 0.1;
+  const g = el("g", { class: "seg14" }, parent), str = String(s).toUpperCase();
+  const tw = str.length * adv - (adv - W);
+  let x0 = anchor === "middle" ? x - tw / 2 : anchor === "end" ? x - tw : x;
+  const top = y - H, u = H / 2;
+  const line = (cx, k, on) => {
+    const [x1, y1, x2, y2] = SEG14[k];
+    el("line", { x1: cx + x1 * W + slant * (1 - y1 / 2), y1: top + y1 * u, x2: cx + x2 * W + slant * (1 - y2 / 2), y2: top + y2 * u,
+                 stroke: on ? ink : "var(--label)", "stroke-width": sw, "stroke-linecap": "round", class: on ? "seg-on" : "seg-off" }, g);
+  };
+  for (const ch of str) {
+    const on = CHAR14[ch] ?? "";
+    if (ch !== " ")
+      for (const k of Object.keys(SEG14)) line(x0, k, on.includes(k));
+    x0 += adv;
+  }
+  return g;
+}
+function label(parent, x, y, s, size, font = SANS, ink = "var(--label)", anchor = "middle") {
+  if (document.body.className.startsWith("dist-"))
+    return segText(parent, x, y, s, size, ink, anchor);
+  const t = el("text", { x, y, "text-anchor": anchor, "font-family": font,
                          "font-size": size, "font-weight": 600, fill: ink, "letter-spacing": ".04em" }, parent);
   t.textContent = s;
   return t;
@@ -365,10 +406,7 @@ function build(name) {
   const [sx, sy, ss] = L.screen;
   if (hard) tray(sx - 8, sy - 8, ss + 16, ss + 16);
   if (L.logo) {                                                  // the wordmark, between the panel and the keys
-    const t = label(svg, L.logo[0], L.logo[1], "BLUE HARE", 17, DOT, "var(--label)");
-    t.setAttribute("text-anchor", "start");
-    t.setAttribute("letter-spacing", ".34em");
-    t.setAttribute("class", "logo");
+    label(svg, L.logo[0], L.logo[1] + 2, "BLUE HARE", 22, DOT, "var(--label)", "start").classList.add("logo");
     el("line", { x1: L.logo[0], y1: L.logo[1] + 8, x2: L.w - 20, y2: L.logo[1] + 8, stroke: "var(--a2, var(--edge))", "stroke-width": 1, opacity: .5, class: "rule" });
   }
   el("rect", { x: sx, y: sy, width: ss, height: ss, rx: R.bezel, fill: "#0b0b0c", class: "bezel" });
@@ -536,6 +574,20 @@ function bindKnob(k) {
   });
 }
 const tall = matchMedia("(orientation: portrait) and (max-width: 700px)");
+{   /* (2026-10-18) the page's title in the same fourteen segments: BLUE in the ink, HARE in the first accent */
+  const h1 = document.querySelector(".brand h1");
+  if (h1 && document.body.className.startsWith("dist-")) {
+    const t = document.createElementNS(NS, "svg");
+    t.setAttribute("viewBox", "0 0 224 40");
+    t.setAttribute("width", "179");
+    t.setAttribute("height", "32");
+    t.setAttribute("role", "img");
+    t.setAttribute("aria-label", "Blue Hare");
+    segText(t, 2, 36, "BLUE", 46, "var(--fg)", "start");
+    segText(t, 120, 36, "HARE", 46, "var(--a1, var(--fg))", "start");
+    h1.replaceChildren(t);
+  }
+}
 build(tall.matches ? "tall" : "wide");
 tall.addEventListener("change", () => build(tall.matches ? "tall" : "wide"));
 document.fonts?.load("16px DotGothic16").then(() => build(layout), () => {});   // the labels' width: the hit areas
