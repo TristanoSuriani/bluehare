@@ -57,6 +57,9 @@ static int settings_import(persist_t *p, int n)
     if (p->favorites.factory[15][11] > 8u)         /* PRESETS LIST's category (1.2, ui.c ui_lcat, CAT_*): unknown = none */
         p->favorites.factory[15][11] = 0;
     /* [15][26] HOME (1.3, ui.c ui_home_view): kept as saved; a value this firmware does not know draws SCOPE */
+    if (!current)                                  /* (2026-10-18) a setting of before PER5: the distribution's palette once
+                                                    * (IDM since then; ICE, the old default, saved with every setting) */
+        p->palette = palette_to_stored(BLUEHARE_DIST_PALETTE);
     p->magic = PERSIST_MAGIC;
     p->palette = palette_to_stored(palette_from_stored(p->palette));
     settings.magic = SETTINGS_MAGIC;
