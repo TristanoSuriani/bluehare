@@ -87,7 +87,7 @@ for (let i = 0; i < lay.length && lay[i];) {
   groups.push(g);
 }
 check(`the layout: ${groups.map((g) => g.key).join("")} (${groups.reduce((n, g) => n + g.items.length, 0)} parameters)`,
-  groups.map((g) => g.key).join("") === "EANLDMVZFSXWJOUYRCPQKGH");
+  groups.map((g) => g.key).join("") === "EANLDMVZFSXWJUYRCPQKGH");
 const descOk = groups.every((g) => g.items.every(([s, id]) => {
   const [fmt, min, max, def] = d.call([{ fn: "stu_desc", args: [s, id], ret: ["i32", 5] }])[0];
   return id < [P, G, X][s] && min <= def && def <= max && d.str("stu_desc_label", s, id) !== "" && fmt >= 0;
@@ -203,24 +203,27 @@ d.one("stu_set", 2, SX.PANMODE, 0, 0);
   d.one("stu_select", 0); d.one("stu_set", 2, SX.LAYER, 0, 0); d.one("stu_set", 2, SX.XPOS, -1, 0);
 }
 
-// (2026-10-17) the patch's EQ, PLATE and AMB
+// (2026-10-17) the patch's EQ; (2026-10-18) the global reverb (PLATE) and the patch's delay
 {
-  const G_DTYPE = 25, G_RTYPE = 24, G_EQLO = 27, G_EQHI = 30, P_DLY = 35, P_REV = 36;
+  const G_RTYPE = 24, G_EQLO = 27, G_EQHI = 30, G_RMIX = 35, P_DLY = 35;
   check(`EQ: four bands of the patch, ±12 dB ("${d.str("stu_format", 1, G_EQLO, 12)}", "${d.str("stu_format", 1, G_EQHI, -12)}"; their response: tests/baseline/float_fx_test.c)`,
     d.str("stu_format", 1, G_EQLO, 12).includes("dB") && d.one("stu_set", 1, G_EQHI, 40, 0) === 12 && d.one("stu_set", 1, G_EQHI, 0, 0) === 0);
-  const tail = (sendId, gid, type) => {
-    d.one("stu_set", 1, gid, type, 0); d.one("stu_set", 0, sendId, 100, 0); d.render(200);
+  const tail = (scope, sendId) => {
+    d.one("stu_set", scope, sendId, 100, 0); d.render(200);
     d.one("stu_note", 60, 110); d.render(150); d.one("stu_note", 60, 0); d.render(400);
     const t1 = d.render(400), t2 = (d.render(8000), d.render(4000));
-    d.one("stu_set", 0, sendId, 0, 0); d.render(6000);
+    d.one("stu_set", scope, sendId, 0, 0); d.render(6000);
     return [t1, t2];
   };
-  const pl = tail(P_REV, G_RTYPE, 5), am = tail(P_DLY, G_DTYPE, 5);
-  d.one("stu_set", 1, G_DTYPE, 0, 0); d.one("stu_set", 1, G_RTYPE, 2, 0); d.render(500);
-  check(`PLATE: a tail after the note (${pl[0].toFixed(3)}), dying away (${pl[1].toFixed(4)}); "${d.str("stu_format", 1, G_RTYPE, 5)}"`,
-    pl[0] > 0.005 && pl[0] < 1 && pl[1] < pl[0] / 4 && d.str("stu_format", 1, G_RTYPE, 5) === "PLATE");
-  check(`AMB: echoes after the note (${am[0].toFixed(3)}), not running away (${am[1].toFixed(4)}); "${d.str("stu_format", 1, G_DTYPE, 5)}"`,
-    am[0] > 0.005 && am[0] < 1 && am[1] < 1 && d.str("stu_format", 1, G_DTYPE, 5) === "AMB");
+  d.one("stu_set", 1, G_RTYPE, 3, 0); d.one("stu_set", 1, G_RMIX, 0, 0);
+  const pl = tail(1, G_RMIX);
+  d.one("stu_set", 1, G_RTYPE, 0, 0);
+  const dl = tail(0, P_DLY);
+  d.one("stu_set", 1, G_RTYPE, 3, 0); d.one("stu_set", 1, G_RMIX, 30, 0); d.render(500);
+  check(`PLATE (the global reverb at MIX 100): a tail after the note (${pl[0].toFixed(3)}), dying away (${pl[1].toFixed(4)}); "${d.str("stu_format", 1, G_RTYPE, 3)}"`,
+    pl[0] > 0.005 && pl[0] < 1 && pl[1] < pl[0] / 4 && d.str("stu_format", 1, G_RTYPE, 3) === "PLATE");
+  check(`the patch's DELAY (MIX 100, FEED 45): echoes after the note (${dl[0].toFixed(3)}), dying away (${dl[1].toFixed(4)})`,
+    dl[0] > 0.005 && dl[0] < 1 && dl[1] < dl[0] / 4);
 }
 d.one("stu_set", 2, SX.SPKEQ, 2, 0);
 check("SPEAKER EQ BASS+, back to FLAT", d.one("stu_get", 2, SX.SPKEQ) === 2 && d.one("stu_set", 2, SX.SPKEQ, 0, 0) === 0);

@@ -22,7 +22,7 @@ run "SPEAKER EQ: FLAT / LOWCUT / BASS+ responses, BASS+ harmonics of the bass, t
 compile $CC -O2 -w $I -o "$OUT/click_test" tests/baseline/click_test.c -lm
 run "metronome: beats sample for sample (internal and external clock), accent, level, MASTER, not in USB, PLAY at once (no count-in)" "$OUT/click_test"
 compile $CC -O2 -w $I -o "$OUT/float_fx_test" tests/baseline/float_fx_test.c -lm
-run "floating point (2026-10-17): fastmath against libm, the EQ's bands, PLATE, AMB and its switch" "$OUT/float_fx_test"
+run "floating point (2026-10-17): fastmath against libm, the EQ's bands, PLATE; the global reverb's types (2026-10-18)" "$OUT/float_fx_test"
 compile $CC -O2 -w $I -o "$OUT/gen_test" tests/baseline/gen_test.c -lm
 mkdir -p build/gen_demo
 run "GEN, the generative engine: roles, scale, chords, tempo, MOTION, the seed, stop, WAVES, densities, play along, every preset (demos)" "$OUT/gen_test" build/gen_demo
@@ -35,13 +35,8 @@ slow run "sound items: matrix S&H / SLEW / DEPTH, SPREAD (bit for bit at 0, L / 
     "$OUT/sound14_test" build/sound14_demo
 compile $CC -O2 -w $I -o "$OUT/swing_test" tests/baseline/swing_test.c -lm
 run "SWING: track + global at most 100, the song player's step lengths, the SWG display" "$OUT/swing_test"
-slow compile $CC -O2 -w $I -o "$OUT/reverb_test" tests/baseline/reverb_test.c -lm
-mkdir -p build/reverb_demo
-slow run "REVERB TYPE: ROOM / SPRING bit-identical, SPRING and HALL decay / stability / level, HALL silence / stereo / ringing, model changes, DELAY TYPE, cost, demos" "$OUT/reverb_test" build/fx_demo build/reverb_demo
-compile $CC -O2 -w $I -Itests/lib -o "$OUT/concert_test" tests/baseline/concert_test.c -lm
-run "REVERB TYPE CONCERT (the device's): HALL's level, longer with SIZE, stable at the corners, exact silence, stereo, model changes" "$OUT/concert_test"
-compile $CC -O1 -w $I -Itests/lib -o "$OUT/dual_test" tests/baseline/dual_test.c -lm
-run "DELAY TYPE DUAL: the left at TIME, the right at 3/4 of it, each its side, the echoes die away, FDBK 127 bounded" "$OUT/dual_test"
+compile $CC -O2 -w $I -o "$OUT/patchfx_test" tests/baseline/patchfx_test.c -lm
+run "the patches' delays (2026-10-18): the echo at TIME, FEED's next quieter, panned as the patch, one line each, asleep when silent, FEED 120 bounded" "$OUT/patchfx_test"
 compile $CC -O1 -w $I -Itests/lib -o "$OUT/monolows_test" tests/baseline/monolows_test.c -lm
 run "MONO LOWS: the master's side under ~120 Hz in mono (40 Hz hard left on both), the highs' width kept, silence exact" "$OUT/monolows_test"
 compile $CC -O2 -w $I -Itests/lib -o "$OUT/gated_test" tests/baseline/gated_test.c -lm

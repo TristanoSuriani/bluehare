@@ -6,8 +6,7 @@
  *   fastmath   fastmath.h (X0X's, Charles Vestal's) against libm, the bounds its header promises
  *   EQ         fx.c eq_block: every band's gain at its frequency and away from it, 0 dB passed bit for bit, the glide
  *   PLATE      fx_amb.c rev_plate (half rate): a tail, stereo, SIZE longer, silence after, nothing but numbers
- *   AMB        fx_amb.c dly_amb: the first echo at DLY TIME, FDBK 127 bounded over a minute; the switch to and from
- *              AMB clears the delay's line a part a block (silent meanwhile), nothing of the other type left in it */
+ *   REVERB     the global reverb's types (2026-10-18): DRY no tail, SPRING and PLATE tails (the AMB delay type gone) */
 #define main hostsim_main
 #include "../lib/hostsim.c"
 #undef main
@@ -179,77 +178,6 @@ static double rev_energy(int rt)
     return e;
 }
 
-static void test_amb(void)
-{
-    static int32_t din[CTL], rin[CTL], w[CTL];
-    uint32_t blk, i, first = 0, pk = 0, cleared = 0, silent = 1, n;
-    char msg[240];
-    song.g[G_DTIME] = 5;                                /* (a note value: its samples div_samples gives) */
-    song.g[G_DFDBK] = 60;
-    song.g[G_DMIX] = 90;
-    song.g[G_DCOLOR] = 70;
-    song.g[G_GMOT] = 0;
-    song.g[G_RTYPE] = 0;
-    song.g[G_DTYPE] = 0;
-    memset(&fx, 0, sizeof fx);
-    for (i = 0; i < DLY_LEN; i++)
-        dly_buf[i] = 1234;                              /* (CLEAN's line, full of something) */
-    song.g[G_DTYPE] = 5;
-    for (n = 0; fx.dclr || !fx.amb_on; n++) {           /* the switch: the line cleared a part a block, silent */
-        for (i = 0; i < CTL; i++)
-            din[i] = 10000, rin[i] = 0, w[i] = 0;
-        fx_buses(din, din, rin, w, CTL);
-        for (i = 0; i < CTL; i++)
-            silent &= w[i] == 0;                        /* (the chorus is at its default: its input here) */
-        if (n > 100000u)
-            break;
-    }
-    for (i = 0, cleared = 1; i < DLY_LEN; i++)
-        cleared &= dly_buf[i] == 0 || i < AMB_TAPE_DEV + AMB_PLEX_N;   /* (AMB's own may have begun) */
-    snprintf(msg, sizeof msg, "DELAY TYPE AMB: the switch clears the line (%u blocks, %.1f ms), nothing left of CLEAN's",
-             n, n * 1000.0 * CTL / FS);
-    check(msg, fx.amb_on && cleared && n == DLY_LEN / DCLR_N);
-    for (blk = 0; blk < (uint32_t)(3.0 * FS / CTL); blk++) {
-        for (i = 0; i < CTL; i++)
-            din[i] = blk == 0 && i < 8u ? 20000 : 0, rin[i] = 0, w[i] = 0;
-        dly_amb(din, rin, w, CTL);
-        for (i = 0; i < CTL; i++) {
-            uint32_t a = (uint32_t)(w[i] < 0 ? -w[i] : w[i]);
-            uint32_t at = blk * CTL + i, want = div_samples(5);
-            if (at > want - 100u && at < want + 600u && a > first)
-                first = a;                              /* (the tape's first echo: at DLY TIME, after its taps' 61 ms) */
-        }
-    }
-    {
-        double want = div_samples(5);
-        snprintf(msg, sizeof msg, "  the tape's first echo at DLY TIME (%.0f ms): peak %u", want * 1000.0 / FS, first);
-        check(msg, first > 500u);
-    }
-    song.g[G_DFDBK] = 127;
-    for (blk = 0; blk < (uint32_t)(60.0 * FS / CTL); blk++) {
-        for (i = 0; i < CTL; i++)
-            din[i] = blk < 200u ? (int32_t)(hs_rand() % 40001u) - 20000 : 0, rin[i] = 0, w[i] = 0;
-        dly_amb(din, rin, w, CTL);
-        for (i = 0; i < CTL; i++) {
-            uint32_t a = (uint32_t)(w[i] < 0 ? -w[i] : w[i]);
-            pk = a > pk ? a : pk;
-        }
-    }
-    snprintf(msg, sizeof msg, "  FDBK 127 for a minute: bounded (peak %u: the tape's 16 bits hold it)", pk);
-    check(msg, pk < 200000u);
-    song.g[G_DTYPE] = 0;
-    for (n = 0; fx.dclr || fx.amb_on; n++) {
-        for (i = 0; i < CTL; i++)
-            din[i] = 0, rin[i] = 0, w[i] = 0;
-        fx_buses(din, din, rin, w, CTL);
-        if (n > 100000u)
-            break;
-    }
-    for (i = 0, cleared = 1; i < DLY_LEN; i++)
-        cleared &= dly_buf[i] == 0;
-    check("  back to CLEAN: the line cleared of the tape, CLEAN from silence", !fx.amb_on && cleared);
-}
-
 int main(void)
 {
     memset(&song, 0, sizeof song);
@@ -258,12 +186,16 @@ int main(void)
     test_fastmath();
     test_eq();
     test_plate();
-    test_amb();
-    {
-        char msg[120];
-        double db = 10.0 * log10(rev_energy(5) / rev_energy(2));
-        snprintf(msg, sizeof msg, "PLATE as loud as HALL (SIZE 90, 0.2 .. 2 s): %+.1f dB", db);
-        check(msg, db > -1.5 && db < 1.5);
+    {   /* (2026-10-18) the global reverb's types: DRY 0, SPRING 1, GATED 2, PLATE 3 (HALL and the AMB delay gone) */
+        char msg[160];
+        double pl, sp, dry;
+        memset(&fx, 0, sizeof fx);
+        dry = rev_energy(0);
+        sp = rev_energy(1);
+        pl = rev_energy(3);
+        snprintf(msg, sizeof msg, "REVERB DRY: no tail from silence; SPRING and PLATE tails (%.1f dB apart, SIZE 90, 0.2 .. 2 s)",
+                 10.0 * log10(pl / (sp + 1)));
+        check(msg, dry == 0.0 && sp > 1e9 && pl > 1e9);
     }
     printf(bad ? "float fx: %d FAILED\n" : "float fx: all passed\n", bad);
     return bad ? 1 : 0;

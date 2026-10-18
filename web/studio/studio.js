@@ -100,7 +100,7 @@ async function loadDescs(items) {
 
 // ------------------------------------------------------------------ the page's words for the parameters
 // the tabs, and the groups each shows (STU_LAYOUT's keys)
-const TABS = [["layer", "LAYER", "ZFJ"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "OXYRCUPQ"],
+const TABS = [["layer", "LAYER", "ZFJ"], ["sound", "SOUND", "EANSV"], ["move", "MOVEMENT", "LDM"], ["fx", "EFFECTS", "RYXCUPQ"],
               ["gen", "GENERATIVE", "GHK"]];
 const GROUPS = {
   E: { title: "Engine", wide: true },
@@ -112,20 +112,18 @@ const GROUPS = {
        note: "The layer's own processing before the patch's effects: DRIVE, a 12 dB FILTER (low-, band- or high-pass), LOW CUT; PAN MODE spreads its voices (ALT left and right, RND at random)." },
   J: { title: "Crossfade", names: ["Crossfade by", "Place", "Morph"], track: true, wide: true,
        note: "The layers given a place fade into each other along VELOCITY, KEY or the WHEEL (MIDI CC1, or MORPH here), two neighbours at a time, equal power: at a layer's place that layer alone. A layer at OFF stays at full level: a bass under a morphing pad. VELOCITY and KEY set each note's level as it starts; a layer faded out for a note does not play it." },
-  S: { title: "Spread, sends", names: ["Spread", "Chorus", "Delay", "Reverb"],
-       note: "Saved with the sound. The delay and reverb sends lose everything under ~220 Hz: the bass stays dry." },
+  S: { title: "Spread, chorus", names: ["Spread", "Chorus"],
+       note: "Saved with the sound." },
   V: { title: "Voice", names: ["Mode", "Glide", "Glide by", "Priority", "Allocation", "Detune", "Pan"] },
   L: { title: "LFO", names: ["Rate", "Wave", "Phase", "Fade in", "Sync", "Trigger", "Polarity"] },
   D: { title: "LFO moves", names: ["Pitch", "Filter", "Shape", "Amp"] },
   M: { title: "Mod matrix", wide: true },
   X: { title: "Sound processing", names: ["Processing"], fx: true, wide: true,
        note: "BLUE HARE: its chorus, delay and reverb buses (amb-1's plate and echo among their types: PLATE, AMB), the EQ, mono lows, compressor and limiter. AMB-1 (Charles Vestal's): a 5.6 s tape echo with two wandering heads and a 160 ms Echoplex, fed into a full-rate Dattorro plate, mixed wet, one soft clip at the end; no chorus, no compressor. The same knobs drive it: TIME, FEEDBACK, COLOR, MIX the echo; SIZE, DAMPING the plate; GEN's MOTION the heads." },
-  Y: { title: "Delay", names: ["Type", "Time", "Feedback", "Color", "Mix"], fx: true,
-       note: "CLEAN: low-passed repeats · TAPE, WORN: wow, flutter, a saturated loop · PING: ping-pong · DUAL: two lines · AMB: amb-1's 5.3 s tape echo with two wandering heads (GEN's MOTION) and a 160 ms Echoplex, its echoes fed into the reverb" },
-  R: { title: "Reverb", names: ["Type", "Size", "Damping"], fx: true,
-       note: "ROOM: combs · SPRING: a dispersive spring · HALL: an 8-line FDN · GATED: HALL cut off · CONCERT: 16 lines · PLATE: amb-1's Dattorro plate, in float. The native app adds CAVERN and SHIMMER." },
-  O: { title: "FX preset", names: ["Preset", "Wet"], fx: true, wide: true,
-       note: "A preset sets the delay, the reverb, the chorus and the EQ at once (the layers' sends stay the sounds'): DRY ROOM PLATE HALL VAULT TAPE DUB DRIFT WIDE GATED LOFI SPACE. Changed below, the FM-1 shows the preset with a * (with EXPERT off it shows only this). WET turns every layer's chorus, delay and reverb sends down together: 100 % as the sounds set them." },
+  Y: { title: "Delay", names: ["Mix", "Feedback", "Time"], track: true,
+       note: "The patch's own delay: MIX sends it in (0: out, the default; a preset leaves it as it is), FEEDBACK the repeats (past 100 they grow), TIME a division of the tempo, 0.74 s at most. The repeats darken a little: the line runs at half the rate." },
+  R: { title: "Reverb", names: ["Type", "Size", "Mix"], fx: true,
+       note: "One reverb for the whole instrument, every patch into it at MIX. DRY: none (a tail dies away) · SPRING: a dispersive spring · GATED: a hall cut off, the 80s · PLATE: amb-1's Dattorro plate, in float." },
   U: { title: "EQ", names: ["Low", "Low mid", "High mid", "High"], fx: true,
        note: "The patch's four bands on the mix, before the compressor: shelves at 100 Hz and 8 kHz, peaks at 400 Hz and 2.5 kHz, ±12 dB." },
   C: { title: "Chorus", names: ["Rate", "Depth"], fx: true },

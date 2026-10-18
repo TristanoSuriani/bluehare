@@ -14,7 +14,8 @@
 static int param_kept(uint32_t i)
 {
     return i == P_LEVEL || i == P_PAN || i == P_MUTE || (i >= P_RSV17 && i <= P_SGATE) ||
-           (i >= P_RSV33 && i <= P_RSV36) || i == P_CHRD || i == P_VOIC || i == P_SQNT;
+           (i >= P_RSV33 && i <= P_RSV36) || i == P_CHRD || i == P_VOIC || i == P_SQNT ||
+           i == P_DLY;                                /* (2026-10-18: the patch's delay MIX, TIME, FEED: the patch's) */
 }
 
 /* preset pi of the engine the track asked for (eng_req): the sound only (not param_kept); its notes released (MONO /
@@ -50,8 +51,9 @@ static void patch_preset(track_t *t, uint32_t pi)
         t->p[P_LRATE] = (int16_t)(pr->lrate - 1u);
     if (pr->lwave)
         t->p[P_LWAVE] = (int16_t)(pr->lwave - 1u);
-    for (i = 0; i < 4u; i++)                          /* the sends */
-        t->p[P_DIST + i] = (int16_t)(pr->fx[i] ? pr->fx[i] - 1 : FX_DEF[i]);
+    for (i = 0; i < 4u; i++)                          /* the sends (2026-10-18: not the delay's: the patch's, out by */
+        if (P_DIST + i != P_DLY)                      /* default) */
+            t->p[P_DIST + i] = (int16_t)(pr->fx[i] ? pr->fx[i] - 1 : FX_DEF[i]);
 }
 
 /* engine index ei (this build's) with its defaults and its first preset. The caller holds the audio side off (the ISR

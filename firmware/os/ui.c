@@ -345,14 +345,15 @@ static int layer_locked(void);
 static uint32_t layer_leds(uint32_t *br);
 static uint32_t layer_btn(void);
 
-/* a page shown (2026-10-17: EDIT's engine pages by MENU > EXPERT: OFF the plain SOUND, ON EDIT 1 and 2; FX: OFF the
- * FX PRESET page only, Milestone 1's "the FX screen chooses presets") */
+/* a page shown (2026-10-17: EDIT's engine pages by MENU > EXPERT: OFF the plain SOUND, ON EDIT 1 and 2; 2026-10-18 FX:
+ * OFF the REVERB and DELAY pages only) */
 static int page_visible(uint32_t i)
 {
     if (PAGES[i].fam == FAM_EDIT && PAGES[i].scope == SC_ENGINE)
         return (PAGES[i].id[0] >= PX_PLAIN && PAGES[i].id[0] != 0xFFu) != expert_on();
-    if (PAGES[i].fam == FAM_FX)                      /* (FX: the preset page; with EXPERT the sends and the effects too) */
-        return PAGES[i].id[0] == G_FXPRE && PAGES[i].scope == SC_GLOBAL ? 1 : expert_on();
+    if (PAGES[i].fam == FAM_FX)                      /* (FX: REVERB and DELAY; with EXPERT the sends, chorus, EQ too) */
+        return (PAGES[i].scope == SC_GLOBAL && PAGES[i].id[0] == G_RTYPE) ||
+               (PAGES[i].scope == SC_TRACK && PAGES[i].id[0] == P_DLY) || expert_on();
     return 1;
 }
 

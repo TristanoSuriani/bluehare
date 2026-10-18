@@ -337,14 +337,13 @@ static const uint8_t STU_LAYOUT[] = {
      * performance layer, the master */
     'Z', X2(SX_LON), X2(SX_KLO), X2(SX_KHI), X2(SX_VLO), X2(SX_VHI), X2(SX_LTR), 0xFF,   /* the layer: in the patch, ranges */
     'F', 0, P_DIST, X2(SX_LFT), X2(SX_LFC), X2(SX_LFR), X2(SX_LOWCUT), X2(SX_PMODE), 0xFF,   /* the layer's insert */
-    'S', 0, P_SPRD, 0, P_CHOR, 0, P_DLY, 0, P_REV, 0xFF,             /* (the sound's: spread, sends) */
+    'S', 0, P_SPRD, 0, P_CHOR, 0xFF,                                  /* (the sound's: spread, the chorus send) */
     'X', X2(SX_PROC), 0xFF,                                           /* Blue Hare's processing or amb-1's */
     'W', X2(SX_LMODE), 0xFF,                                          /* the patch's play mode */
     'J', X2(SX_XSRC), X2(SX_XPOS), X2(SX_XVAL), 0xFF,                 /* the crossfade: the patch's, the layer's place */
-    'O', G1(G_FXPRE), G1(G_WET), 0xFF,                                /* (2026-10-17) the FX preset, WET */
     'U', G1(G_EQLO), G1(G_EQLM), G1(G_EQHM), G1(G_EQHI), 0xFF,        /* the patch's EQ */
-    'Y', G1(G_DTYPE), G1(G_DTIME), G1(G_DFDBK), G1(G_DCOLOR), G1(G_DMIX), 0xFF,
-    'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RDAMP), 0xFF,
+    'Y', 0, P_DLY, 0, P_DFDBK, 0, P_DTIME, 0xFF,                     /* (2026-10-18) the patch's delay */
+    'R', G1(G_RTYPE), G1(G_RSIZE), G1(G_RMIX), 0xFF,                  /* (2026-10-18) the global reverb */
     'C', G1(G_CRATE), G1(G_CDEPTH), 0xFF,
     'P', X2(SX_FILTER), X2(SX_CRUSH), X2(SX_THROW), X2(SX_DEPTH), 0xFF,
     'Q', X2(SX_SPKEQ), X2(SX_MASTER), 0xFF,

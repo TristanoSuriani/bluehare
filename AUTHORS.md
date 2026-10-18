@@ -49,8 +49,6 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | PLATE | fx | REVERB TYPE PLATE: Dattorro's plate, in float | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani |
 | AMB | fx | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1); ported by Tristano Suriani |
 | EQ | fx | the patch's EQ: four bands, in float | `firmware/baseline/fx.c`, `firmware/baseline/fastmath.h` | Tristano Suriani |
-| CAVERN | fx | REVERB TYPE CAVERN: a cave, its echoes, a 30 s tail (Native's memory only) | `firmware/baseline/fx_native.c`, `firmware/baseline/fastmath.h` | Tristano Suriani |
-| SHIMMER | fx | REVERB TYPE SHIMMER: a tail climbing in octaves (Native's memory only) | `firmware/baseline/fx_native.c`, `firmware/baseline/fastmath.h` | Tristano Suriani |
 | GEN | plugin | the generative ensemble on ARP: pad, bass, bells, pulse or waves | `firmware/baseline/gen.c`, `firmware/baseline/player.c` | Charles Vestal (amb-1's composition); Tristano Suriani |
 | OCEAN | ui | the ocean on GEN's pages while it plays | `firmware/os/ui_ocean.c` | Tristano Suriani, after his generative proof of concept |
 <!-- COMPONENTS-END -->

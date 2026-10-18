@@ -84,16 +84,16 @@ int main(void)
     {   /* (2026-10-17) the components (firmware/components.txt): TEST SUBSET leaves PLATE out */
         static int32_t c[CTL], d[CTL], r[CTL], w[CTL];
         reset();
-        song.g[G_RTYPE] = 5;                            /* (a song made where PLATE is: its id) */
+        song.g[G_RTYPE] = 3;                            /* (a song made where PLATE is: its id, 2026-10-18) */
         memset(c, 0, sizeof c);
         memset(d, 0, sizeof d);
         memset(r, 0, sizeof r);
         fx_buses(c, d, r, w, CTL);
-        ok = !BLUEHARE_FX_PLATE && BLUEHARE_FX_AMB && BLUEHARE_FX_EQ && BLUEHARE_PLUGIN_GEN && BLUEHARE_UI_OCEAN &&
-             GP[G_RTYPE].max == 4 && fx.rtype == 2u && str_eq(GP[G_DTYPE].names[5], "AMB");
+        ok = !BLUEHARE_FX_PLATE && !BLUEHARE_FX_AMB && BLUEHARE_FX_EQ && BLUEHARE_PLUGIN_GEN && BLUEHARE_UI_OCEAN &&
+             GP[G_RTYPE].max == 2 && fx.rtype == 3u;
         song.g[G_RTYPE] = 2;
-        bad += check("components: PLATE left out: REVERB TYPE ends at CONCERT, a song's PLATE plays HALL; AMB, EQ, GEN, "
-                     "OCEAN in", ok);
+        bad += check("components: PLATE left out: REVERB TYPE ends at GATED, a song's PLATE plays GATED; EQ, GEN, OCEAN in",
+                     ok);
     }
 
     /* protocol */
@@ -237,7 +237,7 @@ int main(void)
         trk[1].p[P_E2] = 77;                            /* (MODAL's STRUCT: 0 .. 127) */
         trk[NTRK - 1u].p[P_ATK] = 21;
         project_save(0);
-        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 13u;   /* (every build: no song, no DUCK; the layers; the EQ; GEN's densities; the FX preset, WET) */
+        ok = proj_ram[0][PROJ_HDR] == PROJ_VER && PROJ_VER == 14u;   /* (2026-10-18: the reverb MIX, the patches' delays) */
         set_engine_of(&trk[1], ENGI_SID);
         trk[NTRK - 1u].p[P_ATK] = 0;
         project_load(0);

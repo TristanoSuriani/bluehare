@@ -626,7 +626,7 @@ static void setup(int s)
     case S_MOD: TSEL->p[P_M1SRC] = 1; TSEL->p[P_M1DST] = 2; TSEL->p[P_M1AMT] = 40; TSEL->p[P_M2SRC] = 6;
         TSEL->p[P_M2DST] = 14; TSEL->p[P_M2AMT] = -64; mod_ui_slot = 1; go_title("MOD"); break;
     case S_FX: go_title("FX"); break;
-    case S_DLY: go_title("DLY"); break;
+    case S_DLY: go_title("DELAY"); break;
     case S_SCL: TSEL->p[P_SCALE] = 2; go_title("SCL"); break;
     case S_CHORD:                                    /* A minor DIA7, the last chord on B: Bm7b5 */
     case S_CHORD_WIDE: {                             /* A harmonic minor DIA7 +OCT on G#: G#dim7 over three octaves */
@@ -711,7 +711,7 @@ static void setup(int s)
         fx_say(key_at(0, 1), PF_TAPE, "");
         break;
     case S_REVERB: go_title("REVERB"); song.g[G_RTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: SPRING */
-    case S_DLY2: go_title("DLY 2"); song.g[G_DTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: TAPE (Blue Hare) */
+    case S_DLY2: go_title("DELAY"); song.g[G_DTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: TAPE (Blue Hare) */
     case S_MENU_HOLD: ui.menu = 1; ui.menu_sel = MI_HOLD; settings_hold = 2; break;
     case S_MENU_LEDS: ui.menu = 1; ui.menu_sel = MI_LEDS; settings_leds = LEDS_INV; break;
     case S_MENU_ANIM_IDLE: ui.menu = 1; ui.menu_sel = MI_ANIM; menu_put(MI_ANIM, 2); break;   /* (1.2: ANIM IDLE, #135) */

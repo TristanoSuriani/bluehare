@@ -9,7 +9,6 @@ TRACKS 4
 PALETTE ICE
 # its components besides the engines (firmware/components.txt; none of a kind listed would mean all of it)
 FX PLATE
-FX AMB
 FX EQ
 PLUGIN GEN
 UI OCEAN

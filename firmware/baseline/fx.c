@@ -729,7 +729,7 @@ static __attribute__((noinline)) void rev_concert(const int32_t *rev_in, int32_t
 static float pl_mem_native[AMB_PL_HALF];
 #endif
 #define PL_MEM pl_mem_native
-#define RT_LAST (5 + BLUEHARE_FX_CAVERN + BLUEHARE_FX_SHIMMER)   /* (5 PLATE; 6 CAVERN, 7 SHIMMER, components: fx_native.c's 5, 6) */
+#define RT_LAST 5                                /* (2026-10-18: CAVERN and SHIMMER out of the registry; fx_native.c's code kept) */
 #else
 #define RT_LAST (4 + BLUEHARE_FX_PLATE)                  /* (2026-10: the device's CONCERT; 10-17: PLATE, a component) */
 #endif
@@ -888,56 +888,19 @@ static __attribute__((noinline)) void dly_tape(const int32_t *dly_in, int32_t *w
 }
 
 /* process the three buses for one block; sends in, the mid (wet: to both sides) and the side (wside) out */
+/* (2026-10-18) the shared buses: the chorus and the global reverb (the delays are the patches': pdl_block). G_RTYPE 0
+ * DRY, 1 SPRING, 2 GATED, 3 PLATE, onto the reverbs' own models (fx.rtype: 1 SPRING, 3 GATED, RT_PLATE): DRY lets the
+ * last one's tail die away (its input silent), so a switch to DRY never cuts a tail; a build without PLATE: GATED */
+static const int32_t rev_zero[CTL];
 static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet,
                      uint32_t n)
 {
-    uint32_t i, dl = delay_samples(), dt = (uint32_t)song.g[G_DTYPE], ping = dt == 3u, dual = dt == 4u, dl2;
-    int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240, fb2;
-    int32_t dmix = song.g[G_DMIX] * 258;
-    int32_t cdepth = song.g[G_CDEPTH] * 6, rt;
+    uint32_t i;
+    int32_t cdepth = song.g[G_CDEPTH] * 6, rt, g = song.g[G_RTYPE];
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL;
-    dt = dt <= 2u ? dt : 0u;                          /* (PING: CLEAN's loop, two reads) */
-    if ((ping || dual) && dl > (DLY_LEN - 4u) / 2u)
-        dl = (DLY_LEN - 4u) / 2u;                     /* (PING's right one at twice the time, DUAL's halves: 0.74 s) */
-    dl2 = dual ? dl * 3u / 4u : dl * 2u;
-    fb2 = mulq15(fb, fb);                             /* PING's loop: a pair of echoes a pass */
-    if (dt && !fx.dtype) {                            /* CLEAN -> TAPE / WORN: the read starts where CLEAN's is */
-        fx.tp_d8 = (int32_t)(dl << 8);
-        fx.tp_hp8 = fx.dly_lp << 8;
-        fx.tp_wd = fx.tp_fd = fx.tp_hpm = 0;
-        fx.tp_drv = 256;
-        fx.tp_fbk = fb;
-        fx.tp_wow = fx.tp_flt = 0;
-    }
-    if ((BLUEHARE_FX_AMB && song.g[G_DTYPE] == (int16_t)DT_AMB) != fx.amb_on && !fx.dclr)
-        fx.dclr = 1;                                  /* AMB on or off: the line cleared first, the delay silent */
-    if (fx.dclr) {
-        uint32_t a = (fx.dclr - 1u) * DCLR_N;
-        memset(&dly_buf[a], 0, DCLR_N * sizeof dly_buf[0]);
-        if (a + DCLR_N < DLY_LEN) {
-            fx.dclr++;
-        } else {
-            fx.dclr = 0;
-            fx.amb_on = BLUEHARE_FX_AMB && song.g[G_DTYPE] == (int16_t)DT_AMB;
-            fx.dtype = fx.tp_out = 0;
-            fx.dly_lp = fx.dly_lp2 = 0;
-            fx.dly_w = 0;
-            if (fx.amb_on)
-                amb_echo_init(&amb_de, dly_buf, AMB_TAPE_DEV, dly_buf + AMB_TAPE_DEV, 0);
-        }
-    }
-    if (fx.amb_on || fx.dclr) {
-        dt = 0;
-    } else if (dt) {
-        fx.dtype = (uint8_t)dt;
-        fx.tp_out = 0;
-    } else if (fx.dtype) {                            /* .. -> CLEAN: the tape until its read is CLEAN's, then CLEAN */
-        fx.tp_out = 1;
-        if (!fx.tp_wd && !fx.tp_fd && fx.tp_d8 == (int32_t)(dl << 8) && fx.tp_drv == 256 && fx.tp_fbk == fb && !fx.tp_hpm)
-            fx.dtype = fx.tp_out = 0;
-    }
+    (void)dly_in;
     for (i = 0; i < n; i++) {
-        int32_t y = 0, x, r, ca, cb, sd, sw;
+        int32_t y = 0, r, ca, cb, sw;
         /* chorus: modulated short delay, 5..15 ms; the left read, and the right one half a sweep away */
         cho_buf[fx.cho_w & (CHO_LEN - 1u)] = (int16_t)clamp(cho_in[i] >> 1, -32768, 32767);
         fx.cho_ph += cinc;
@@ -957,82 +920,28 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             cb = c0 + (((c1 - c0) * f) >> 8);
         }
         y += ca + cb;                                 /* (left 2 ca, right 2 cb: each as loud as the mono one was) */
-        sd = ca - cb;
         fx.cho_w++;
-        if (fx.dtype || fx.amb_on || fx.dclr) {       /* TAPE, WORN, AMB: after the loop (the same line) */
-            wet[i] = y;
-            wside[i] = sd;
-            continue;
-        }
-        if (ping) {                                   /* PING: left at dl, right at 2 dl (FDBK's share), round */
-            int32_t xl = dly_buf[(fx.dly_w - dl) & (DLY_LEN - 1u)], xr = dly_buf[(fx.dly_w - dl2) & (DLY_LEN - 1u)];
-            int32_t el, er;
-            fx.dly_lp += mulq15(xr - fx.dly_lp, col);
-            dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
-                (int16_t)clamp((dly_in[i] >> 1) + mulq15(fx.dly_lp, fb2), -32768, 32767);
-            fx.dly_w++;
-            el = mulq15(xl << 1, dmix);
-            er = mulq15(mulq15(xr, fb) << 1, dmix);
-            wet[i] = y + ((el + er) >> 1);
-            wside[i] = sd + ((el - er) >> 1);
-            continue;
-        }
-        if (dual) {                                   /* DUAL: two lines, the left at dl, the right at 3/4 of it */
-            const uint32_t H = DLY_LEN / 2u;
-            int32_t xl = dly_buf[(fx.dly_w - dl) & (H - 1u)], xr = dly_buf[H + ((fx.dly_w - dl2) & (H - 1u))];
-            int32_t el, er, ml, mr;
-            fx.dly_lp += mulq15(xl - fx.dly_lp, col);
-            fx.dly_lp2 += mulq15(xr - fx.dly_lp2, col);
-            ml = fx.dly_lp - (fx.dly_lp >> 2) + (fx.dly_lp2 >> 2);   /* (3/4 its own, 1/4 the other's) */
-            mr = fx.dly_lp2 - (fx.dly_lp2 >> 2) + (fx.dly_lp >> 2);
-            dly_buf[fx.dly_w & (H - 1u)] = (int16_t)clamp((dly_in[i] >> 1) + mulq15(ml, fb), -32768, 32767);
-            dly_buf[H + (fx.dly_w & (H - 1u))] = (int16_t)clamp((dly_in[i] >> 1) + mulq15(mr, fb), -32768, 32767);
-            fx.dly_w++;
-            el = mulq15(xl << 1, dmix);
-            er = mulq15(xr << 1, dmix);
-            wet[i] = y + ((el + er) >> 1);
-            wside[i] = sd + ((el - er) >> 1);
-            continue;
-        }
-        /* delay with a low-passed feedback */
-        x = dly_buf[(fx.dly_w - dl) & (DLY_LEN - 1u)];
-        fx.dly_lp += mulq15(x - fx.dly_lp, col);
-        dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
-            (int16_t)clamp((dly_in[i] >> 1) + mulq15(fx.dly_lp, fb), -32768, 32767);
-        fx.dly_w++;
-        y += mulq15(x << 1, dmix);
         wet[i] = y;
-        wside[i] = sd;
+        wside[i] = ca - cb;
     }
-    if (fx.amb_on && !fx.dclr)
-        dly_amb(dly_in, (int32_t *)rev_in, wet, n);   /* (its echoes feed the reverb's send: amb-1's) */
-    else if (fx.dtype)
-        dly_tape(dly_in, wet, n, dl, fb, col, dmix);
-    rt = song.g[G_RTYPE];
-    if ((rt == RT_PLATE && !BLUEHARE_FX_PLATE) || (rt == 6 && !(BLUEHARE_NATIVE_FX && BLUEHARE_FX_CAVERN)) ||
-        (rt == 7 && !(BLUEHARE_NATIVE_FX && BLUEHARE_FX_SHIMMER)))
-        rt = 2;                                       /* (a component not in this build: HALL) */
-    rt = rt >= 1 && rt <= RT_LAST ? rt : 0;
+    if (g <= 0) {                                     /* DRY: the last reverb's tail, nothing more into it */
+        rev_in = rev_zero;
+        rt = fx.rtype;
+    } else {
+        rt = g == 1 ? 1 : g == 2 ? 3 : RT_PLATE;
+    }
+    if (rt == RT_PLATE && !BLUEHARE_FX_PLATE)
+        rt = 3;                                       /* (a build without PLATE: GATED) */
+    rt = rt == 1 || rt == 3 || rt == RT_PLATE ? rt : 3;
     hl.side = 0;
     if (rt != fx.rtype)
         rev_switch(rev_in, wet, n, rt);
     else if (rt == RT_PLATE)
         rev_plate(rev_in, wet, n);
-#ifdef BLUEHARE_NATIVE
-    else if (rt >= 4)
-        rev_native(RN_OF(rt), rev_in, wet, wside, n);
-#else
-    else if (rt == 4)
-        rev_concert(rev_in, wet, n);
-#endif
     else if (rt == 3)
         rev_gated(rev_in, wet, n);
-    else if (rt == 2)
-        rev_hall(rev_in, wet, n);
-    else if (rt)
-        rev_spring(rev_in, wet, n);
     else
-        rev_room(rev_in, wet, wside, n);
+        rev_spring(rev_in, wet, n);
 }
 
 /* (Blue Hare) the delay's and the reverb's sends without their lows: two one-pole high-passes each (~220 Hz, 12
@@ -1074,6 +983,45 @@ static __attribute__((noinline)) void rev_side_mix(int32_t *l, int32_t *r, uint3
 static void events_block(uint32_t n);                    /* seq.c */
 static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_r[CTL];
 
+/* (2026-10-18) the patches' delays: a line a patch (dly_buf in NTRK parts: 0.74 s each at 4 patches), written and read
+ * at half the rate (two samples averaged in, the output held and halfway-smoothed between its samples: the repeats end
+ * near 10 kHz, as a delay that darkens should), its feedback low-passed (the old CLEAN's COLOR 70). MIX (P_DLY) the
+ * send into it, the echoes back at unity, panned as the patch; FEED (P_DFDBK) up to 120 (past 100 it grows, the
+ * clamp holds it); TIME (P_DTIME) a division of the tempo, at most the line. A line no patch feeds runs until a line's
+ * worth of half-samples has been silent, then sleeps */
+#define PDL_LEN (DLY_LEN / NTRK)
+typedef char pdl_pow2[(PDL_LEN & (PDL_LEN - 1u)) == 0 ? 1 : -1];
+static struct { uint32_t w, quiet; int32_t acc, lp, y0, y1; uint8_t ph; } pdl[NTRK];
+static int32_t pdl_in[CTL];
+static uint32_t div_samples(uint32_t div);
+static __attribute__((noinline)) void pdl_block(uint32_t k, const int32_t *in, uint32_t n, int32_t gl, int32_t gr, int fed)
+{
+    int16_t *L = dly_buf + k * PDL_LEN;
+    uint32_t i, D = div_samples((uint32_t)trk[k].p[P_DTIME]) >> 1;
+    int32_t fb = trk[k].p[P_DFDBK] * 230, col = 2000 + 70 * 240;
+    if (!fed && pdl[k].quiet > PDL_LEN)
+        return;
+    D = D < 2u ? 2u : D > PDL_LEN - 2u ? PDL_LEN - 2u : D;
+    for (i = 0; i < n; i++) {
+        int32_t x = fed ? in[i] : 0, w;
+        pdl[k].acc += x;
+        if (pdl[k].ph) {
+            int32_t xin = pdl[k].acc >> 1, yv = L[(pdl[k].w - D) & (PDL_LEN - 1u)];
+            pdl[k].acc = 0;
+            pdl[k].lp += mulq15(yv - pdl[k].lp, col);
+            L[pdl[k].w & (PDL_LEN - 1u)] = (int16_t)clamp((xin >> 1) + mulq15(pdl[k].lp, fb), -32768, 32767);
+            pdl[k].w++;
+            pdl[k].y0 = pdl[k].y1;
+            pdl[k].y1 = yv;
+            pdl[k].quiet = (yv > 1 || yv < -1 || xin) ? 0u : pdl[k].quiet + 1u;
+        }
+        pdl[k].ph ^= 1u;
+        w = (pdl[k].ph ? (pdl[k].y0 + pdl[k].y1) >> 1 : pdl[k].y1) << 1;
+        mix_l[i] += (w * gl) >> 12;
+        mix_r[i] += (w * gr) >> 12;
+    }
+}
+
 static void track_lowcut(uint32_t k, int32_t *b, uint32_t n);   /* (Blue Hare: LOW CUT, below) */
 static void track_filter(uint32_t k, int32_t *b, uint32_t n);   /* (Blue Hare: the layer's filter, below) */
 
@@ -1098,8 +1046,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     int32_t gla = 4096 - (pa > 0 ? pa * 64 : 0), gra = 4096 + (pa < 0 ? pa * 64 : 0);
     int32_t glb = 4096 - (pb > 0 ? pb * 64 : 0), grb = 4096 + (pb < 0 ? pb * 64 : 0);
     int32_t glm = (gla + glb) >> 1, grm = (gra + grb) >> 1, gld = (gla - glb) >> 1, grd = (gra - grb) >> 1;
-    int32_t ws = 258 * song.g[G_WET] / 127;           /* (2026-10-17) WET: every layer's sends at once */
-    int32_t c = t->p[P_CHOR] * ws, dl = t->p[P_DLY] * ws, r = t->p[P_REV] * ws, pk = t->peak;
+    int32_t c = t->p[P_CHOR] * 258, dl = t->p[P_DLY] * 258, r = song.g[G_RMIX] * 258, pk = t->peak;
     int32_t xmax = c > dl ? c : dl;
     xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);
     for (i = 0; i < n; i++)
@@ -1118,14 +1065,14 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
             pk = a;
         if (c)
             send_c[i] += mulq15(xs, c);
-        if (dl)
-            send_d[i] += mulq15(xs, dl);
+        pdl_in[i] = dl ? mulq15(xs, dl) : 0;
         if (r)
             send_r[i] += mulq15(xs, r);
         mix_l[i] += ((x * glm) >> 12) + ((y * gld) >> 12);
         mix_r[i] += ((x * grm) >> 12) + ((y * grd) >> 12);
     }
     t->peak = pk;
+    pdl_block((uint32_t)(t - trk) % NTRK, pdl_in, n, glm, grm, dl != 0);   /* (the patch's delay, at its centre pan) */
 }
 
 /* (Blue Hare) LOW CUT (core.h trk_lowcut): two one-pole high-passes at TL_HZ[] on the track's block, after DIST (so the
@@ -1196,8 +1143,8 @@ static void mix_part(track_t *t, uint32_t n)
         if (lay_wg[(uint32_t)(t - trk) % NTRK] < 32767)   /* (the layers' crossfade on WHEEL: seq.c lay_wheel) */
             lvl = (lvl * lay_wg[(uint32_t)(t - trk) % NTRK]) >> 15;
         int32_t gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
-        int32_t ws = 258 * song.g[G_WET] / 127;       /* (2026-10-17) WET: every layer's sends at once */
-        int32_t c = t->p[P_CHOR] * ws, d = t->p[P_DLY] * ws, r = t->p[P_REV] * ws, pk = t->peak;
+        int32_t c = t->p[P_CHOR] * 258, d = t->p[P_DLY] * 258, r = song.g[G_RMIX] * 258, pk = t->peak;   /* (2026-10-18:
+                                                       * the reverb global, every patch at its MIX; d the patch's delay) */
         int32_t xmax = c > d ? c : d;
         xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);   /* sends: loud chords at a high LEVEL */
         uint32_t k = (uint32_t)(t - trk) % NTRK;
@@ -1215,14 +1162,14 @@ static void mix_part(track_t *t, uint32_t n)
                 pk = a;
             if (c)
                 send_c[i] += mulq15(xs, c);
-            if (d)
-                send_d[i] += mulq15(xs, d);
+            pdl_in[i] = d ? mulq15(xs, d) : 0;
             if (r)
                 send_r[i] += mulq15(xs, r);
             mix_l[i] += (x * gl) >> 12;
             mix_r[i] += (x * gr) >> 12;
         }
         t->peak = pk;
+        pdl_block(k, pdl_in, n, gl, gr, d != 0);    /* (2026-10-18) the patch's delay, panned as the patch */
     }
     if (mod.on)
         mod_end(t);                                     /* the stored values back */

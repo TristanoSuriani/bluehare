@@ -169,61 +169,31 @@ int main(void)
     ck("CANYON and ECHOES retired: their sounds load nothing", eng_load_id(EID_CANYON, 0) == ENG_NO &&
        eng_load_id(EID_ECHOES, 0) == ENG_NO && eng_named("CANYON") == ENG_NO);
 
-    /* the reverbs only the native image has */
+    /* (2026-10-18) the reverb is the device's on Native too (DRY SPRING GATED PLATE: CAVERN, SHIMMER out); the patches'
+     * delays have Native's longer memory: 2BAR at 120 BPM (4 s) in one patch's line */
     host_tracks_init();
-#if BLUEHARE_FX_CAVERN && BLUEHARE_FX_SHIMMER                 /* (2026-10-17: components; Native's set has them) */
-    ck("REVERB TYPE: ROOM SPRING HALL GATED CONCERT PLATE (the device's), then CAVERN SHIMMER",
-       GP[G_RTYPE].max == 7 && !strcmp(N_RTYPE[3], "GATED") && !strcmp(N_RTYPE[4], "CONCERT") &&
-       !strcmp(N_RTYPE[5], "PLATE") && !strcmp(N_RTYPE[6], "CAVERN") && !strcmp(N_RTYPE[7], "SHIMMER"));
-    rev_run(2, &hall, &hall_side, &hall_end);
-    for (i = 0; i < 3u; i++) {
-        double e2, side, end, db;
-        rev_run(i ? 5u + i : 4u, &e2, &side, &end);   /* (CONCERT 4, CAVERN 6, SHIMMER 7) */
-        db = 10 * log10(e2 / hall);
-        snprintf(msg, sizeof msg, "%-7s: %+.1f dB against HALL (2 s), side %.0f %% (HALL %.0f %%), silent after %.1f s "
-                 "(HALL %.1f s)", RT[i], db, side * 100, hall_side * 100, end, hall_end);
-        ck(msg, db > -4.0 && db < 4.0 && side > 0.15 && end > RT_TAIL[i] && end < 59.0);
-    }
-#else
-    {   /* (a distribution without them, HARE FM1's set: the list ends at PLATE; a song's CAVERN or SHIMMER plays HALL) */
-        double e2, side, end, ok2 = 1;
-        rev_run(2, &hall, &hall_side, &hall_end);
-        for (i = 6; i <= 7u; i++) {
-            rev_run(i, &e2, &side, &end);
-            ok2 = ok2 && fabs(10 * log10(e2 / hall)) < 0.5 && fabs(end - hall_end) < 0.3;
-        }
-        ck("REVERB TYPE without CAVERN and SHIMMER (components left out): ends at PLATE; their ids play HALL",
-           GP[G_RTYPE].max == 5 && !strcmp(N_RTYPE[5], "PLATE") && ok2);
-    }
-#endif
-
-    /* the delay: 2BAR at 120 BPM is 4 s (the device's line holds 1.49) */
+    ck("REVERB TYPE: DRY SPRING GATED PLATE, as the device's", GP[G_RTYPE].max == 3 && !strcmp(N_RTYPE[3], "PLATE"));
     {
-        static int32_t c[CTL], d[CTL], r[CTL], w[CTL];
+        static int32_t in[CTL];
         uint32_t k, j, at = 0;
         int32_t pk = 0;
-        host_tracks_init();
         song.g[G_BPM] = 120;
-        song.g[G_DTIME] = 8;                          /* 2BAR */
-        song.g[G_DFDBK] = 0;
-        song.g[G_DMIX] = 127;
-        song.g[G_DTYPE] = 0;
-        memset(c, 0, sizeof c);
-        memset(r, 0, sizeof r);
+        trk[0].p[P_DTIME] = 8;                        /* 2BAR */
+        trk[0].p[P_DFDBK] = 0;
+        memset(pdl, 0, sizeof pdl);
         for (k = 0; k < 5u * FS / CTL; k++) {
             for (j = 0; j < CTL; j++) {
-                d[j] = k == 0u && j == 0u ? 20000 : 0;
-                w[j] = 0;
-                wside[j] = 0;
+                in[j] = k == 0u && j == 0u ? 20000 : 0;
+                mix_l[j] = mix_r[j] = 0;
             }
-            fx_buses(c, d, r, w, CTL);
+            pdl_block(0, in, CTL, 4096, 4096, 1);
             for (j = 0; j < CTL; j++)
-                if (w[j] > pk)
-                    pk = w[j], at = k * CTL + j;
+                if (mix_l[j] > pk)
+                    pk = mix_l[j], at = k * CTL + j;
         }
-        snprintf(msg, sizeof msg, "the delay's line %.1f s: 2BAR at 120 BPM echoes at %.3f s", (double)DLY_LEN / FS,
+        snprintf(msg, sizeof msg, "a patch's delay line %.1f s: 2BAR at 120 BPM echoes at %.3f s", (double)PDL_LEN * 2 / FS,
                  (double)at / FS);
-        ck(msg, DLY_LEN == 1048576u && at >= 4u * FS && at <= 4u * FS + 2u && pk > 1000);
+        ck(msg, PDL_LEN * 2u > 4u * FS && at + 4u >= 4u * FS && at <= 4u * FS + 4u && pk > 1000);
     }
     printf("%s\n", bad ? "NATIVE TEST FAILED" : "native test passed");
     return bad ? 1 : 0;

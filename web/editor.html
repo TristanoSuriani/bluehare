@@ -1013,8 +1013,8 @@ function makeMockDevice(opt = {}) {
     D("FLT", F.BIPCT, -64, 63, 0),                               /* 14 */
     D("SHP", F.BIPCT, -64, 63, 0),                               /* 15 */
     D("AMP", F.PCT, 0, 127, 0),                                  /* 16 */
-    NONE,                                                        /* 17 */
-    NONE,                                                        /* 18 */
+    E("TIME", ["1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"], 1), /* 17 */
+    D("FEED", F.PCT, 0, 120, 45),                                /* 18 */
     NONE,                                                        /* 19 */
     NONE,                                                        /* 20 */
     NONE,                                                        /* 21 */
@@ -1031,7 +1031,7 @@ function makeMockDevice(opt = {}) {
     D("GATE", F.PCT, 1, 127, 64),                                /* 32 */
     D("DST", F.PCT, 0, 127, 0),                                  /* 33 */
     D("CHO", F.PCT, 0, 127, 0),                                  /* 34 */
-    D("DLY", F.PCT, 0, 127, 0),                                  /* 35 */
+    D("MIX", F.PCT, 0, 127, 0),                                  /* 35 */
     D("REV", F.PCT, 0, 127, 0),                                  /* 36 */
     E("VCE", ["POLY", "MONO", "LEG", "UNI"], 0),                 /* 37 */
     D("GLD", F.TIME, 0, 127, 0),                                 /* 38 */
@@ -1118,8 +1118,8 @@ function makeMockDevice(opt = {}) {
     E("SET", ["--", "GO"], 0),                                   /* 21 */
     E("CLRSQ", ["--", "GO"], 0),                                 /* 22 */
     E("INIT", ["--", "GO"], 0),                                  /* 23 */
-    E("TYPE", ["ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE"], 2), /* 24 */
-    E("TYPE", ["CLEAN", "TAPE", "WORN", "PING", "DUAL", "AMB"], 0), /* 25 */
+    E("TYPE", ["DRY", "SPRING", "GATED", "PLATE"], 3),           /* 24 */
+    E("TYPE", ["CLEAN", "TAPE", "WORN", "PING", "DUAL"], 0),     /* 25 */
     D("MOTN", F.PCT, 0, 127, 64),                                /* 26 */
     D("LOW", F.INT, -12, 12, 0, null, "dB"),                     /* 27 */
     D("LMID", F.INT, -12, 12, 0, null, "dB"),                    /* 28 */
@@ -1129,8 +1129,7 @@ function makeMockDevice(opt = {}) {
     D("BASS", F.PCT, 0, 127, 64),                                /* 32 */
     D("BELL", F.PCT, 0, 127, 64),                                /* 33 */
     D("PL/WV", F.PCT, 0, 127, 64),                               /* 34 */
-    E("PRESET", ["DRY", "ROOM", "PLATE", "HALL", "VAULT", "TAPE", "DUB", "DRIFT", "WIDE", "GATED", "LOFI", "SPACE"], 3), /* 35 */
-    D("WET", F.PCT, 0, 127, 127),                                /* 36 */
+    D("MIX", F.PCT, 0, 127, 30),                                 /* 35 */
   /*MOCK-GP-END*/];
   /* a retired engine number (1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE: removed in 1.5; engines.c ENG_NONE) */
   const GONE = { name: "-", titles: ["-", "-"], edit: [NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE], presets: [] };
@@ -1452,7 +1451,7 @@ function makeMockDevice(opt = {}) {
   ];
   /* (2026-10-17: TP above is the firmware's whole, 0 .. 95, generated: no appends here) */
   /*MOCK-COUNTS-BEGIN*/
-  const P_COUNT = 104, G_COUNT = 37, NSTEP = 64, P_E0 = 96, G_ENGSEL = 20, P_SLCR = 45;
+  const P_COUNT = 104, G_COUNT = 36, NSTEP = 64, P_E0 = 96, G_ENGSEL = 20, P_SLCR = 45;
   /*MOCK-COUNTS-END*/
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const enumOrig = (d, v) => d.fmt === F.ENUM && d.names ? aliasOf(d.names, v - d.min) + d.min : v;   /* params.c enum_orig */

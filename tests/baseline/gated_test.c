@@ -28,7 +28,7 @@ static double band(uint32_t rt, uint32_t size, double a, double b, double again)
         memset(r, 0, sizeof r);
         memset(w, 0, sizeof w);
         memset(wside, 0, sizeof wside);
-        fx_buses(c, d, r, w, CTL);
+        if (rt == 99u) rev_hall(r, w, CTL); else fx_buses(c, d, r, w, CTL);
     }
     for (k = 0; k < total; k++) {
         double t = (double)k * CTL / FS;
@@ -38,7 +38,10 @@ static double band(uint32_t rt, uint32_t size, double a, double b, double again)
             w[i] = 0;
             wside[i] = 0;
         }
-        fx_buses(c, d, r, w, CTL);
+        if (rt == 99u)                                 /* (2026-10-18: HALL no type of its own, GATED's inside: direct) */
+            rev_hall(r, w, CTL);
+        else
+            fx_buses(c, d, r, w, CTL);
         if (t >= a && t < b)
             for (i = 0; i < CTL; i++)
                 e += (double)w[i] * w[i] + (double)rev_side[i] * rev_side[i];
@@ -49,10 +52,10 @@ static double band(uint32_t rt, uint32_t size, double a, double b, double again)
 int main(void)
 {
     char what[200];
-    double h_in = band(2, 40, 0.05, 0.15, 0), g_in = band(3, 40, 0.05, 0.15, 0);
-    double h_out = band(2, 40, 0.30, 0.60, 0), g_out = band(3, 40, 0.30, 0.60, 0);
-    double g_long = band(3, 110, 0.30, 0.40, 0), g_again = band(3, 40, 0.80, 0.90, 0.70);
-    ck("REVERB TYPE 3 is GATED, on every build", !strcmp(N_RTYPE[3], "GATED") && GP[G_RTYPE].max >= 3);
+    double h_in = band(99, 40, 0.05, 0.15, 0), g_in = band(2, 40, 0.05, 0.15, 0);
+    double h_out = band(99, 40, 0.30, 0.60, 0), g_out = band(2, 40, 0.30, 0.60, 0);
+    double g_long = band(2, 110, 0.30, 0.40, 0), g_again = band(2, 40, 0.80, 0.90, 0.70);
+    ck("REVERB TYPE 2 is GATED (2026-10-18: DRY SPRING GATED PLATE), on every build", !strcmp(N_RTYPE[2], "GATED") && GP[G_RTYPE].max >= 2);
     snprintf(what, sizeof what, "SIZE 40: while it holds (50 .. 150 ms) as loud as HALL (%+.1f dB)", 10 * log10(g_in / h_in));
     ck(what, fabs(10 * log10(g_in / h_in)) < 1.0);
     snprintf(what, sizeof what, "after its hold (300 .. 600 ms): cut, %.0f dB under HALL's ringing tail", 10 * log10(g_out / h_out + 1e-30));

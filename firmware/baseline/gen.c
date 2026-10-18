@@ -748,6 +748,7 @@ static void gen_load_piece(uint32_t k)
     song.g[G_GMOT] = (int16_t)(p->motion * 127 / 100);
     for (i = 0; i < 10u; i++)
         song.g[FXID[i]] = (int16_t)param_fit(&GP[FXID[i]], p->fx[i]);
+    song.g[G_RTYPE] = BLUEHARE_FX_PLATE ? 3 : 2;      /* (2026-10-18: the reverb's types renumbered: PLATE, GATED without it) */
 }
 
 /* the chord now, as a name ("FM7", "Dm7"; amb1 en_chord_name): b holds 8; "" stopped */

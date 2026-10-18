@@ -12,7 +12,7 @@ fi
 I="-Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1"
 for d in hare_fm1 all; do
     slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=$d $I -Itests/lib -o "$OUT/native_test_$d" tests/native/native_test.c -lm
-    slow run "native image ($d): 16 voices a track, the device's engines as they are, CONCERT CAVERN SHIMMER, the long delay" "$OUT/native_test_$d"
+    slow run "native image ($d): 16 voices a track, the device's engines as they are, the device's reverb, the patches' long delays" "$OUT/native_test_$d"
 done
 slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=all $I -o "$OUT/regress_native" tests/baseline/regress.c -lm
 slow run "regression, Native (every component): its presets' golden renders (as the device's)" "$OUT/regress_native" tests/baseline/golden.txt tests/baseline/cpu_baseline.txt
@@ -20,7 +20,7 @@ FV=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/fm1/blueha
 slow compile $CC -O1 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=all "-DBLUEHARE_VERSION=\"$FV\"" $I -Itests/os \
     -o "$OUT/ui_render_native" tests/os/ui_render.c -lm
 mkdir -p build/ui_native/ppm build/ui_native_slot
-slow run "UI renders, Native (every component: dist_all.h): CONCERT CAVERN SHIMMER, its version line: the same lint and alignment" \
+slow run "UI renders, Native (every component: dist_all.h): its version line: the same lint and alignment" \
     "$OUT/ui_render_native" build/ui_native build/ui_native_slot
 
 # the application (native/build.sh: SDL2): built, then booted with dummy video and audio drivers

@@ -141,6 +141,9 @@ enum {                          /* per-track parameters */
     P_E0, P_E1, P_E2, P_E3, P_E4, P_E5, P_E6, P_E7,
     P_COUNT
 };
+/* (2026-10-18) the patch's own delay (fx.c pdl_block): MIX is the old delay send P_DLY, TIME and FEED two inert ids */
+#define P_DTIME P_RSV17
+#define P_DFDBK P_RSV18
 
 enum {                          /* global parameters */
     G_BPM, G_SWING, G_CLOCK, G_TUNE,
@@ -164,9 +167,8 @@ enum {                          /* global parameters */
                                       * HIGH MID 2.5 kHz, HIGH shelf 8 kHz, -12 .. +12 dB each (projects of format 11) */
     G_GDPAD, G_GDBASS, G_GDBELL, G_GDTEX,   /* (2026-10-17) GEN's density a role (gen.c): PAD BASS BELLS, PULSE or
                                              * WAVES; 64 the piece's own, 0 the role silent, 127 about twice as busy */
-    G_FXPRE, G_WET,             /* (2026-10-17, Milestone 1) the FX preset (params.c FX_PRESETS: picked, it sets the
-                                 * delay, reverb, chorus and EQ) and WET, every layer's chorus, delay and reverb sends
-                                 * at once (127 as the sounds set them, 0 dry) (projects of format 13) */
+    G_RMIX,                     /* (2026-10-18) the reverb's MIX: every patch into it at once (the reverb a global
+                                 * effect; projects of format 14) */
     G_COUNT
 };
 

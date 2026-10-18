@@ -21,7 +21,5 @@ ENGINE  BREAKS   baseline  eng_breaks.c,shared/fmp_dsp.c      29  KIT     | brea
 FX      PLATE    baseline  fx_amb.c,fastmath.h                -   -       | REVERB TYPE PLATE: Dattorro's plate, in float                 | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani
 FX      AMB      baseline  fx_amb.c,fastmath.h                -   -       | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | Charles Vestal (amb-1); ported by Tristano Suriani
 FX      EQ       baseline  fx.c,fastmath.h                    -   -       | the patch's EQ: four bands, in float                          | Tristano Suriani
-FX      CAVERN   baseline  fx_native.c,fastmath.h             -   -       | REVERB TYPE CAVERN: a cave, its echoes, a 30 s tail (Native's memory only) | Tristano Suriani
-FX      SHIMMER  baseline  fx_native.c,fastmath.h             -   -       | REVERB TYPE SHIMMER: a tail climbing in octaves (Native's memory only) | Tristano Suriani
 PLUGIN  GEN      baseline  gen.c,player.c                     -   -       | the generative ensemble on ARP: pad, bass, bells, pulse or waves | Charles Vestal (amb-1's composition); Tristano Suriani
 UI      OCEAN    os        ui_ocean.c                         -   -       | the ocean on GEN's pages while it plays                       | Tristano Suriani, after his generative proof of concept

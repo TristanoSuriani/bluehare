@@ -245,28 +245,19 @@ async function editorMock() {
     const rd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 14)));
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 14, 5)));
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 14, 0)));
-    ok(rd.label === "ROUT" && rd.def === 0 && eq(rd.names, ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"]) && r1.value === 4 && r0.value === 0 && info.gcount === 37,
+    ok(rd.label === "ROUT" && rd.def === 0 && eq(rd.names, ["CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-16"]) && r1.value === 4 && r0.value === 0 && info.gcount === 36,
       "editor: MIDI IN routing (ROUT CH1-4 / SEL / CH5-8 / CH9-12 / CH13-16, global id 14)");
   }
   {
-    /* FX > REVERB TYPE (G_RTYPE 24, the old drum channel's id): ROOM (0) / SPRING (1) / HALL (2, 1.2: the default);
-     * G_COUNT unchanged; 10 clamps to the last */
+    /* FX > REVERB TYPE (G_RTYPE 24; 2026-10-18): DRY / SPRING / GATED / PLATE (3, the default); 10 clamps to the last;
+     * G_COUNT 36 (the reverb's MIX in the FX preset's and WET's place) */
     const rd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 24)));
     const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 10)));
     const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 24, 0)));
     const d26 = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 26)));
-    ok(rd.label === "TYPE" && rd.def === 2 && eq(rd.names, ["ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE"]) && r1.value === 5 && r0.value === 0 &&
-       d26.label === "MOTN" && d26.max === 127 && d26.def === 64 && info.gcount === 37,
-      "editor: REVERB TYPE (ROOM / SPRING / HALL / GATED / CONCERT / PLATE, global id 24; 26 GEN's MOTION; G_COUNT 37: the FX preset, WET)");
-  }
-  {
-    /* FX > DLY 2 TYPE (G_DTYPE 25, the old drum level's id, Blue Hare 1.5): CLEAN (0, the default) / TAPE / WORN / PING / DUAL;
-     * 10 clamps to the last */
-    const dd = E.parse[E.CMD.DESC](await rq(E.req.desc(1, 25)));
-    const r1 = E.parse[E.CMD.SET](await rq(E.req.set(1, 25, 10)));
-    const r0 = E.parse[E.CMD.SET](await rq(E.req.set(1, 25, 0)));
-    ok(dd.label === "TYPE" && dd.def === 0 && eq(dd.names, ["CLEAN", "TAPE", "WORN", "PING", "DUAL", "AMB"]) && r1.value === 5 &&
-       r0.value === 0 && info.gcount === 37, "editor: DELAY TYPE (CLEAN / TAPE / WORN / PING / DUAL / AMB, global id 25)");
+    ok(rd.label === "TYPE" && rd.def === 3 && eq(rd.names, ["DRY", "SPRING", "GATED", "PLATE"]) && r1.value === 3 && r0.value === 0 &&
+       d26.label === "MOTN" && d26.max === 127 && d26.def === 64 && info.gcount === 36,
+      "editor: REVERB TYPE (DRY / SPRING / GATED / PLATE, global id 24; 26 GEN's MOTION; G_COUNT 36: the reverb's MIX)");
   }
   const st = E.parse[E.CMD.STEP_SET](await rq(E.req.stepSet(5, { n: 2, notes: [60, 64], time: 0, flags: 1, vel: 100 })));
   ok(st.n === 2 && st.notes[1] === 64 && st.vel === 100, "editor: STEP_SET");
@@ -507,7 +498,7 @@ async function editorLibrarian() {
   const pts = [cap, { ...bass, engineName: info.engines[bass.engine], tags: ["bass", "device"] }];
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
   ok(file.format === "bluehare-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
-    file.paramLabels[83] === "-#13" && file.paramLabels[90] === "-#20" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
+    file.paramLabels[83] === "-#11" && file.paramLabels[90] === "-#18" && file.paramLabels[17] === "TIME" && file.paramLabels[18] === "FEED" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
     file.engines.length === 63,
     "library file: versioned, with P_COUNT, labels and engines");
   const back = E.readLibraryFile(file, ctx);

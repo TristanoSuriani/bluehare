@@ -13,10 +13,7 @@ static const char *const N_DIV[] = {"1/4", "1/8", "1/16", "1/32", "8T", "16T", "
 static const char *const N_SCALE[] = {"CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM",
                                     "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"};
 static const char *const N_ONOFF[] = {"OFF", "ON"};
-/* (2026-10-17, Milestone 1) the FX presets: the patch's delay, reverb, chorus and EQ in one pick (FX_PRESETS below;
- * the layers' sends stay the sounds'). Five letters at most: the device's value */
-static const char *const N_FXPRE[] = {"DRY", "ROOM", "PLATE", "HALL", "VAULT", "TAPE", "DUB", "DRIFT", "WIDE", "GATED",
-                                      "LOFI", "SPACE"};
+
 /* seq.c kb_map; 1 = SNAP (stored projects: the former ON). (3, SEQ, the sequencer's notes snapped too: gone with it) */
 static const char *const N_QUANT[] = {"OFF", "SNAP", "WHITE"};
 /* chord keys (chord.c): OFF, the diatonic triad / seventh of the track's ROOT and SCALE on the key, fixed shapes */
@@ -35,25 +32,13 @@ static const char *const N_ROUTE[] = {"CH1-4", "SEL", "CH5-8", "CH9-12", "CH13-1
 #endif
 static const char *const N_NOTE[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const N_DASH[] = {"--"};
-#ifdef BLUEHARE_NATIVE                    /* G_RTYPE: the reverb bus's model (fx.c; native: fx_native.c's too) */
-#if (BLUEHARE_FX_SHIMMER && !BLUEHARE_FX_CAVERN) || (BLUEHARE_FX_CAVERN && !BLUEHARE_FX_PLATE)
-#error "REVERB TYPE's ids are fixed: a distribution with SHIMMER has CAVERN, one with CAVERN has PLATE"
-#endif
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT", "PLATE",   /* (2026-10-17: CAVERN, */
-#if BLUEHARE_FX_CAVERN                                                                    /* SHIMMER components) */
-                                      "CAVERN",
-#endif
-#if BLUEHARE_FX_SHIMMER
-                                      "SHIMMER",
+/* G_RTYPE (2026-10-18): the global reverb, DRY or one of three (fx.c fx_buses: SPRING, GATED HALL's gated, PLATE amb-1's
+ * Dattorro plate); a build without the PLATE component ends at GATED */
+static const char *const N_RTYPE[] = {"DRY", "SPRING", "GATED",
+#if BLUEHARE_FX_PLATE
+                                      "PLATE"
 #endif
 };
-#else
-static const char *const N_RTYPE[] = {"ROOM", "SPRING", "HALL", "GATED", "CONCERT",   /* (Blue Hare: GATED, every */
-#if BLUEHARE_FX_PLATE                                             /* build's; CONCERT the device's since 2026-10; */
-                                      "PLATE"                     /* PLATE a component, 2026-10-17) */
-#endif
-};
-#endif
 static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL",
 #if BLUEHARE_FX_AMB                                               /* (AMB a component, 2026-10-17) */
                                       "AMB"
@@ -99,8 +84,8 @@ static const param_desc_t TP[P_COUNT] = {
     [P_LD_FLT] = PD("FLT", F_BIPCT, -64, 63, 0),
     [P_LD_SHP] = PD("SHP", F_BIPCT, -64, 63, 0),
     [P_LD_AMP] = PD("AMP", F_PCT, 0, 127, 0),
-    [P_RSV17] = PD("-", F_INT, 0, 0, 0),              /* (17 .. 24: the arpeggiator's until 2026-10; inert) */
-    [P_RSV18] = PD("-", F_INT, 0, 0, 0),
+    [P_RSV17] = PE("TIME", N_DIV, 1),                 /* (2026-10-18) P_DTIME: the patch delay's time (17 .. 24: the */
+    [P_RSV18] = PD("FEED", F_PCT, 0, 120, 45),        /* arpeggiator's until 2026-10) P_DFDBK: its feedback */
     [P_RSV19] = PD("-", F_INT, 0, 0, 0),
     [P_RSV20] = PD("-", F_INT, 0, 0, 0),
     [P_RSV21] = PD("-", F_INT, 0, 0, 0),
@@ -118,7 +103,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_SGATE] = PD("GATE", F_PCT, 1, 127, 64),
     [P_DIST] = PD("DST", F_PCT, 0, 127, 0),
     [P_CHOR] = PD("CHO", F_PCT, 0, 127, 0),
-    [P_DLY] = PD("DLY", F_PCT, 0, 127, 0),
+    [P_DLY] = PD("MIX", F_PCT, 0, 127, 0),            /* (2026-10-18: the patch delay's MIX; 0 out, the default) */
     [P_REV] = PD("REV", F_PCT, 0, 127, 0),
     [P_VOICE] = PE("VCE", N_VOICE, 0),
     [P_GLIDE] = PD("GLD", F_TIME, 0, 127, 0),
@@ -194,7 +179,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_CLRSEQ] = PE("CLRSQ", N_GO, 0),          /* (unused: the sequencer is a placeholder; the id stays, as G_ENGGO) */
     [G_INITSND] = PE("INIT", N_GO, 0),
     /* the reverb's model on the REVERB page: the id of the old GM drum channel (G_DRCH, inert since 1.0) */
-    [G_RTYPE] = PE("TYPE", N_RTYPE, 2),         /* HALL at power-on since 1.2 (ROOM before; projects keep theirs) */
+    [G_RTYPE] = PE("TYPE", N_RTYPE, BLUEHARE_FX_PLATE ? 3 : 2),   /* (2026-10-18) PLATE (GATED without it) */
     /* the delay's type on DLY 2: the id of the old GM drum part's level (G_DRLVL, inert since 1.0: every song holds
      * 0, CLEAN) */
     [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
@@ -209,9 +194,8 @@ static const param_desc_t GP[G_COUNT] = {
     [G_EQLM] = {"LMID", F_INT, -12, 12, 0, 0, "dB"},
     [G_EQHM] = {"HMID", F_INT, -12, 12, 0, 0, "dB"},
     [G_EQHI] = {"HIGH", F_INT, -12, 12, 0, 0, "dB"},
-    /* (2026-10-17, Milestone 1) the FX page with EXPERT OFF: the preset (FX_PRESETS below) and WET */
-    [G_FXPRE] = PE("PRESET", N_FXPRE, 3),       /* HALL: the power-on FX, as they were */
-    [G_WET] = PD("WET", F_PCT, 0, 127, 127),
+    /* (2026-10-18) the global reverb's MIX (REVERB's third knob) */
+    [G_RMIX] = PD("MIX", F_PCT, 0, 127, 30),
 };
 
 static const param_desc_t *track_desc(const track_t *t, uint32_t id)
@@ -384,44 +368,7 @@ enum { GR_NONE, GR_ADSR, GR_LFO, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, 
 
 #define PX_PLAIN 0xF0u           /* (a page's column: the engine's plain[] column k is PX_PLAIN + k) */
 
-/* (2026-10-17, Milestone 1) the FX presets, in N_FXPRE's order: {DTYPE DTIME FDBK COLR MIX, RTYPE SIZE DAMP, CRT CDP,
- * EQ LOW LMID HMID HIGH}. DTYPE 0 CLEAN 1 TAPE 2 WORN 3 PING 4 DUAL 5 AMB; DTIME N_DIV (0 1/4, 1 1/8, 2 1/16); RTYPE
- * 0 ROOM 1 SPRING 2 HALL 3 GATED 4 CONCERT 5 PLATE (a build without AMB or PLATE: the last it has, param_fit). HALL is
- * the power-on FX exactly (G_FXPRE's default: a new project's preset, unedited) */
-static const int8_t FX_PRESETS[][14] = {
-    {0, 1, 20, 70, 20, 0, 30, 70, 40, 20, 0, 0, 0, 0},       /* DRY: a breath of room */
-    {0, 2, 15, 60, 45, 0, 55, 60, 40, 30, 0, 0, 0, 0},       /* ROOM: a small room, a short slap */
-    {0, 1, 35, 70, 55, 5, 70, 50, 45, 45, 0, 0, 0, 2},       /* PLATE: the studio's plate, light chorus, air */
-    {0, 1, 60, 70, 90, 2, 90, 60, 40, 60, 0, 0, 0, 0},       /* HALL: the power-on FX */
-    {0, 0, 45, 55, 50, 4, 120, 85, 30, 50, 1, -3, 0, -2},    /* VAULT: a long dark church, the low mids out */
-    {1, 1, 70, 55, 90, 1, 70, 60, 40, 40, 2, 0, 0, -3},      /* TAPE: a tape echo into a spring, warm */
-    {5, 0, 95, 45, 100, 1, 90, 70, 35, 30, -2, 1, 0, -4},    /* DUB: the wandering echo, long, the spring, dark */
-    {4, 0, 70, 60, 80, 5, 115, 55, 20, 70, 0, -1, 0, 1},     /* DRIFT: amb-1's space: a long plate, both sides' echoes */
-    {4, 1, 45, 70, 70, 2, 70, 50, 55, 100, 0, 0, 0, 0},      /* WIDE: deep chorus, both sides' echoes, a short hall */
-    {0, 2, 20, 70, 30, 3, 70, 40, 40, 40, 2, 0, 2, 1},       /* GATED: the 80s */
-    {2, 1, 55, 30, 80, 0, 50, 90, 70, 70, 1, 3, -2, -8},     /* LOFI: a worn echo, a dull room, no highs */
-    {3, 0, 100, 60, 90, 2, 127, 40, 30, 60, 0, 0, 0, 2},     /* SPACE: a huge hall, echoes left and right */
-};
-static const uint8_t FX_PRESET_ID[14] = {G_DTYPE, G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX, G_RTYPE, G_RSIZE, G_RDAMP,
-                                         G_CRATE, G_CDEPTH, G_EQLO, G_EQLM, G_EQHM, G_EQHI};
-typedef char fx_presets_named[sizeof FX_PRESETS / sizeof FX_PRESETS[0] == sizeof N_FXPRE / sizeof N_FXPRE[0] ? 1 : -1];
-/* preset k's values into the song (picked: the FX page, the editor, the studio) */
-static void fx_preset_apply(uint32_t k)
-{
-    uint32_t i;
-    k %= sizeof FX_PRESETS / sizeof FX_PRESETS[0];
-    for (i = 0; i < 14u; i++)
-        song.g[FX_PRESET_ID[i]] = (int16_t)param_fit(&GP[FX_PRESET_ID[i]], FX_PRESETS[k][i]);
-}
-/* the song's FX are not its preset's any more (edited on EXPERT's pages, a GEN piece's own): the "*" by its name */
-static int fx_preset_edited(void)
-{
-    uint32_t i, k = (uint32_t)song.g[G_FXPRE] % (sizeof FX_PRESETS / sizeof FX_PRESETS[0]);
-    for (i = 0; i < 14u; i++)
-        if (song.g[FX_PRESET_ID[i]] != param_fit(&GP[FX_PRESET_ID[i]], FX_PRESETS[k][i]))
-            return 1;
-    return 0;
-}
+
 typedef struct {
     const char *title;
     uint8_t fam, scope, graph;
@@ -435,11 +382,10 @@ static const page_t PAGES[] = {
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_LSYNC, P_LTRIG, P_LPOL, 0xFF}},   /* 1.2: SYNC TRIG POL */
     {"LFO DEST", FAM_LFO, SC_TRACK, GR_NONE, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
     {"MOD", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},   /* KNOB 1: the slot (mod_ui_slot) */
-    {"FX PRESET", FAM_FX, SC_GLOBAL, GR_NONE, {G_FXPRE, G_WET, 0xFF, 0xFF}},   /* (2026-10-17) EXPERT OFF: this only */
-    {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
-    {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
-    {"DLY 2", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE, 0xFF, 0xFF, 0xFF}},   /* TYPE: CLEAN / TAPE / WORN / PING / DUAL / AMB */
-    {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* TYPE: ROOM / SPRING / HALL / GATED / CONCERT / PLATE */
+    /* (2026-10-18) FX: the global reverb and the patch's delay (EXPERT adds the sends, the chorus, the EQ) */
+    {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RMIX, 0xFF}},   /* TYPE: DRY / SPRING / GATED / PLATE */
+    {"DELAY", FAM_FX, SC_TRACK, GR_NONE, {P_DLY, P_DFDBK, P_DTIME, 0xFF}},       /* the patch's own: MIX FEED TIME */
+    {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, 0xFF, 0xFF}},
     {"CHORUS", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
 #if BLUEHARE_FX_EQ
     {"EQ", FAM_FX, SC_GLOBAL, GR_NONE, {G_EQLO, G_EQLM, G_EQHM, G_EQHI}},   /* (2026-10-17) the patch's 4 bands */
@@ -485,8 +431,6 @@ static uint8_t plain_mk;
 /* after a knob changed *vp: a macro's value goes to its parameters */
 static void page_turned(const int16_t *vp)
 {
-    if (vp == &song.g[G_FXPRE])                       /* (an FX preset picked: its delay, reverb, chorus, EQ) */
-        fx_preset_apply((uint32_t)song.g[G_FXPRE]);
     if (vp == &plain_mval) {
         const engine_t *e = ENGINES[eng_idx(TSEL->eng_req)];
         if (e->macro_set)

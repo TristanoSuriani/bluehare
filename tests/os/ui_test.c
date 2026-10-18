@@ -2000,7 +2000,7 @@ static int test_layer(void)
     bad += check("FX tap: nothing on press, the FX page when let go", ok && !ui.home && cur_page()->fam == FAM_FX);
     frames(320);                                       /* (not a double tap: #83) */
     press(B_FX);
-    bad += check("  a second tap: the next page of the family (FX PRESET, then FX: EXPERT)", str_eq(cur_page()->title, "FX"));
+    bad += check("  a second tap: the next page of the family (REVERB, then DELAY)", str_eq(cur_page()->title, "DELAY"));
     ui_power_on();
     btn_down(B_FX);
     for (flash = 0, i = 0; i < 22u; i++) { frame(); flash |= ui.layer; }      /* 0.35 s */
@@ -2120,18 +2120,18 @@ static int test_layer(void)
     key_up(white(12)); btn_up(B_FX); frame();
     bad += check("FX + B3 / C4: OCT UP / OCT DN held, silent, no MIDI; KNOB 4 turns; D4, D5 nothing; FX let go: K4 0",
                  ok && !perf_held && !ui.layer && !perf_k[3] && mo_w == mo);
-    /* REVERB > TYPE (FX family, global): ROOM / SPRING / HALL on KNOB 1 (HALL at power-on since 1.2), kept by a
-     * project */
+    /* REVERB > TYPE (FX family, global; 2026-10-18): DRY / SPRING / GATED / PLATE on KNOB 1 (PLATE at power-on), SIZE
+     * and MIX beside it, kept by a project */
     ui_power_on();
     go_title("REVERB");
     ok = cur_page()->fam == FAM_FX && cur_page()->id[0] == G_RTYPE && cur_page()->id[1] == G_RSIZE &&
-         cur_page()->id[2] == G_RDAMP && song.g[G_RTYPE] == 2 && str_eq(GP[G_RTYPE].names[2], "HALL");
-    turn(EN_K1, -2);
-    ok &= song.g[G_RTYPE] == 0 && str_eq(GP[G_RTYPE].names[song.g[G_RTYPE]], "ROOM");
+         cur_page()->id[2] == G_RMIX && song.g[G_RTYPE] == 3 && str_eq(GP[G_RTYPE].names[3], "PLATE");
+    turn(EN_K1, -3);
+    ok &= song.g[G_RTYPE] == 0 && str_eq(GP[G_RTYPE].names[song.g[G_RTYPE]], "DRY");
     turn(EN_K1, 1);
     ok &= song.g[G_RTYPE] == 1 && str_eq(GP[G_RTYPE].names[song.g[G_RTYPE]], "SPRING");
     turn(EN_K1, 5);
-    ok &= song.g[G_RTYPE] == GP[G_RTYPE].max;   /* (Blue Hare: its last, GATED) */
+    ok &= song.g[G_RTYPE] == GP[G_RTYPE].max;
     turn(EN_K1, -(int32_t)GP[G_RTYPE].max + 1);
     ok &= song.g[G_RTYPE] == 1;
     song.playing = 0;
@@ -2139,32 +2139,29 @@ static int test_layer(void)
     turn(EN_K1, -1);
     ok &= song.g[G_RTYPE] == 0;
     project_load(2);
-    bad += check("REVERB page: TYPE HALL (power-on) / ROOM / SPRING on KNOB 1 (SIZE, DAMP beside it); a project keeps SPRING",
+    bad += check("REVERB page: TYPE PLATE (power-on) / DRY / SPRING on KNOB 1 (SIZE, MIX beside it); a project keeps SPRING",
                  ok && song.g[G_RTYPE] == 1);
     /* DLY 2 > TYPE (Blue Hare): CLEAN (power-on) / TAPE / WORN on KNOB 1, kept by a project */
     ui_power_on();
     go_title("VOICE 3");                                /* (Blue Hare) OCT beside SPREAD */
     bad += check("  VOICE 3 page: SPRD, OCT (-4 .. 4, the sound's octave)", cur_page()->id[0] == P_SPRD && cur_page()->id[1] == P_OCT &&
                  TP[P_OCT].min == -4 && TP[P_OCT].max == 4);
-    go_title("DLY 2");
-    ok = cur_page()->fam == FAM_FX && cur_page()->id[0] == G_DTYPE && cur_page()->id[1] == 0xFFu && song.g[G_DTYPE] == 0 &&
-         str_eq(GP[G_DTYPE].names[0], "CLEAN");
-    turn(EN_K1, 1);
-    ok &= song.g[G_DTYPE] == 1 && str_eq(GP[G_DTYPE].names[song.g[G_DTYPE]], "TAPE");
-    turn(EN_K1, 1);
-    ok &= song.g[G_DTYPE] == 2 && str_eq(GP[G_DTYPE].names[2], "WORN");
-    turn(EN_K1, 1);
-    ok &= song.g[G_DTYPE] == 3 && str_eq(GP[G_DTYPE].names[3], "PING");
-    turn(EN_K1, 5);
-    ok &= song.g[G_DTYPE] == 5 && str_eq(GP[G_DTYPE].names[4], "DUAL") &&
-          str_eq(GP[G_DTYPE].names[5], "AMB");                                /* (2026-10-17: AMB the last) */
-    turn(EN_K1, -4);
-    song.playing = 0;
-    project_save(2);
-    turn(EN_K1, -1);
-    ok &= song.g[G_DTYPE] == 0;
-    project_load(2);
-    bad += check("  DLY 2 page: TYPE CLEAN (power-on) / TAPE / WORN / PING / DUAL / AMB on KNOB 1; a project keeps TAPE", ok && song.g[G_DTYPE] == 1);
+    go_title("DELAY");                                  /* (2026-10-18) the patch's delay: MIX FEED TIME, kept by a project */
+    ok = cur_page()->fam == FAM_FX && cur_page()->scope == SC_TRACK && cur_page()->id[0] == P_DLY &&
+         cur_page()->id[1] == P_DFDBK && cur_page()->id[2] == P_DTIME && TSEL->p[P_DLY] == 0;
+    turn(EN_K1, 40);
+    turn(EN_K3, 1);                                     /* (TIME steps the divisions by length) */
+    {
+        int16_t mixv = TSEL->p[P_DLY], tv = TSEL->p[P_DTIME];
+        ok &= mixv > 0 && tv != 1;
+        song.playing = 0;
+        project_save(2);
+        TSEL->p[P_DLY] = 0;
+        TSEL->p[P_DTIME] = 1;
+        project_load(2);
+        bad += check("  DELAY page: MIX FEED TIME, the patch's, out at power-on; a project keeps them",
+                     ok && TSEL->p[P_DLY] == mixv && TSEL->p[P_DTIME] == tv);
+    }
     go_title("CHORUS");
     bad += check("  CHORUS page: CRT CDP", cur_page()->fam == FAM_FX && cur_page()->id[0] == G_CRATE &&
                  cur_page()->id[1] == G_CDEPTH && cur_page()->id[2] == 0xFFu);
@@ -2550,51 +2547,25 @@ static int test_edit_cycle(void)
               page_desc(cur_page(), 2, &vp) == track_desc(TSEL, P_E4) && page_desc(cur_page(), 3, &vp) == track_desc(TSEL, P_E6);
         bad += check("  the plain pages: SID's quick knobs; VOSIM VOCAL: VOWEL (writes F1 F2, reads them back) SIZE SWEEP BRTH; MODAL", ok);
     }
-    {   /* (2026-10-17, Milestone 1) FX with EXPERT OFF: FX PRESET only (a second tap stays); a preset picked sets the
-         * delay, reverb, chorus and EQ, HALL the power-on FX; a value changed: the "*" (edited); WET 0: no sends */
+    {   /* (2026-10-18) FX with EXPERT OFF: REVERB (TYPE SIZE MIX, the global reverb) and DELAY (MIX FEED TIME, the
+         * patch's), a second tap the other; a preset load leaves the patch's delay as it is */
         int16_t *vp;
-        const param_desc_t *d;
-        static int32_t host_mix[2 * CTL];
-        int32_t pk[2];
-        uint32_t w;
         ui_power_on();
         menu_put(MI_EXPERT, 0);
         go_home(); frame();
         press(B_FX); frames(320);
-        ok = str_eq(cur_page()->title, "FX PRESET");
+        ok = str_eq(cur_page()->title, "REVERB") && page_desc(cur_page(), 0, &vp) == &GP[G_RTYPE] &&
+             page_desc(cur_page(), 2, &vp) == &GP[G_RMIX] && str_eq(N_RTYPE[0], "DRY") && str_eq(N_RTYPE[3], "PLATE");
         press(B_FX); frames(320);
-        ok &= str_eq(cur_page()->title, "FX PRESET") && song.g[G_FXPRE] == 3 && !fx_preset_edited();
-        d = page_desc(cur_page(), 0, &vp);
-        ok &= d == &GP[G_FXPRE] && vp == &song.g[G_FXPRE] && page_desc(cur_page(), 1, &vp) == &GP[G_WET];
-        turn(EN_K1, 2);                                 /* HALL -> TAPE (VAULT between) */
-        ok &= song.g[G_FXPRE] == 5 && str_eq(N_FXPRE[5], "TAPE") && song.g[G_DTYPE] == 1 && song.g[G_RTYPE] == 1 &&
-              song.g[G_DFDBK] == 70 && song.g[G_EQHI] == -3 && !fx_preset_edited();
-        song.g[G_RSIZE] = 20;
-        ok &= fx_preset_edited();
-        bad += check("FX (EXPERT OFF): FX PRESET only; HALL at power-on; TAPE sets the delay, reverb, EQ; an edit: the *", ok);
-        for (w = 0; w < 2u; w++) {                      /* WET: 127 the sends as set, 0 none (the reverb's return) */
-            uint32_t b;
-            ui_power_on();
-            fx_preset_apply(3);
-            song.master_q12 = 4096;
-            song.g[G_WET] = (int16_t)(w ? 0 : 127);
-            TSEL->p[P_REV] = 127;
-            TSEL->p[P_DLY] = TSEL->p[P_CHOR] = 0;
-            TSEL->p[P_REL] = 0;                         /* (the note itself gone at once: the tail is the reverb's) */
-            song.g[G_DMIX] = 0;
-            trk_note_on(TSEL, 60, 120);
-            for (b = 0; b < 40u; b++) mix_block(host_mix, CTL);
-            trk_note_off(TSEL, 60);
-            for (b = 0; b < 20u; b++) mix_block(host_mix, CTL);    /* (the note gone at once: then the reverb's tail) */
-            pk[w] = 0;
-            for (b = 0; b < 40u; b++) {
-                uint32_t j;
-                mix_block(host_mix, CTL);
-                for (j = 0; j < 2u * CTL; j++)
-                    pk[w] = host_mix[j] > pk[w] ? host_mix[j] : -host_mix[j] > pk[w] ? -host_mix[j] : pk[w];
-            }
-        }
-        bad += check("  WET: 127 the sends as the sounds set them, 0 dry (no reverb tail)", pk[0] > 50 && pk[1] < pk[0] / 20 + 2);
+        ok &= str_eq(cur_page()->title, "DELAY") && page_desc(cur_page(), 0, &vp) && vp == &TSEL->p[P_DLY] &&
+              page_desc(cur_page(), 1, &vp) && vp == &TSEL->p[P_DFDBK] && page_desc(cur_page(), 2, &vp) &&
+              vp == &TSEL->p[P_DTIME] && TSEL->p[P_DLY] == 0;
+        press(B_FX); frames(320);
+        ok &= str_eq(cur_page()->title, "REVERB");
+        TSEL->p[P_DLY] = 77;
+        apply_preset_to(TSEL, 1);
+        ok &= TSEL->p[P_DLY] == 77;
+        bad += check("FX (EXPERT OFF): REVERB and DELAY only; the delay out at power-on, the patch's (a preset keeps it)", ok);
     }
     return bad;
 }

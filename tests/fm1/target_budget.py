@@ -27,8 +27,8 @@ FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER
          # (mix_track: inlined into the ISR again since DUCK, whose calls kept it out of line, was archived 2026-10-16)
          "rev_concert",                                     # (Blue Hare 2026-10) REVERB TYPE CONCERT, the device's (fx.c)
          "mono_lows",                                       # (Blue Hare 2026-10) the master's lows in mono (fx.c)
-         "dly_tape",                                        # DELAY TYPE TAPE / WORN (Blue Hare 1.5, fx.c), when chosen
-         "rev_plate", "dly_amb", "eq_block",                # (2026-10-17) PLATE, AMB (fx_amb.c), the EQ: float, the FPU
+         "pdl_block",                                       # (2026-10-18) the patches' delays (fx.c)
+         "rev_plate", "eq_block",                # (2026-10-17) PLATE, AMB (fx_amb.c), the EQ: float, the FPU
          "sid_render", "wave_render",       # (Blue Hare 2026-10-16: HARE FM1's engines; the others archived)
          "modal_render",                                    # (WEST, SH101, BLISS, STRINGS archived 2026-10-17)
          "obie_render",                                     # (2026-10-17: after the OB-Xa)
