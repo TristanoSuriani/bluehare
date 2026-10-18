@@ -2831,6 +2831,22 @@ static int test_quick_layers(void)
         mix_block(ab, CTL);
         ok &= !tc.on && cur_page()->id[0] == G_GPRE;
         bad += check("ARP: TECHNO plays, TECHNO MIX shown with STROBE (a bass note raises its bars, a stab tears it); ARP again: stopped", ok);
+        /* (2026-10-18, the user's bug) playing, another page, ARP: back to its visuals, still playing; ARP there: stops */
+        btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
+        mix_block(ab, CTL);
+        ok = tc.on;
+        go_title("ENV"); frame();
+        btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
+        mix_block(ab, CTL);
+        ok &= tc.on && cur_page()->fam == FAM_ARP && cur_page()->id[0] == G_GDPAD && !ui.home;
+        btn_down(B_HOME); frame(); btn_up(B_HOME); frame();
+        btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
+        mix_block(ab, CTL);
+        ok &= tc.on && cur_page()->fam == FAM_ARP;
+        btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
+        mix_block(ab, CTL);
+        ok &= !tc.on;
+        bad += check("ARP while TECHNO plays, from ENV or HOME: back to its visuals, playing on; ARP there: stopped", ok);
         {   /* (2026-10-18) safe to watch: drum hits every few frames for 2 s, every scene and scheme: the strip's mean
              * brightness never jumps more than 6 % of white between two frames (no flash); every scene draws */
             uint32_t sc, sch, f, k2, drawn = 0, worst = 0;
@@ -3084,26 +3100,21 @@ static int test_bughunt_ui2(void)
                            : "dead FX held from a dialog: no map, the key plays a note, no effect", ok);
         }
     }
-    {   /* 3. MIXER: the knob just turned is the one drawn in the accent (K1 LEVEL, K2 PAN, K3 REV, K4 the MUTE badge) */
-        uint32_t k, a[4][4], ok = 1;
+    {   /* 3. MIXER (2026-10-18: a play view, ui_play.c): the knob just turned named in the band, K1 LEVEL, K2 PAN, K3 REV,
+         * K4 MUTE, with its value; none turned: no band */
+        static const uint8_t ID[4] = {P_LEVEL, P_PAN, P_REV, P_MUTE};
+        uint32_t k, ok = 1;
+        char la[24], va[24];
+        int32_t r;
         for (k = 0; k < 4u; k++) {
-            int32_t X = CARD_X(0), Y = Y_GRAPH;
             ui_power_on();
-            settings.palette = 1; palette_set(1);
             go_page(GR_TRK); frame(); frame();
-            turn(EN_K1 + k, 1);                                       /* (K4 right: MUTE on, its badge shown) */
-            ui.force = 1; frame();
-            a[k][0] = accent_in(X + 4, Y + 37, X + 38, Y + 71);       /* LEVEL */
-            a[k][1] = accent_in(X + 3, Y + 84, X + 28, Y + 115);      /* PAN */
-            a[k][2] = accent_in(X + 30, Y + 84, X + 55, Y + 115);     /* REV */
-            a[k][3] = accent_in(X + 22, Y + 4, X + 56, Y + 20);       /* the MUTE badge */
+            turn(EN_K1 + k, 1);
+            frame();
+            if (NTRK == 4u)                             /* (8 tracks: MIXER's cards and strips as before) */
+                ok &= play_view() == PV_MIX && play_band(la, va, &r) && str_eq(la, TP[ID[k]].label) && va[0];
         }
-        for (k = 0; k < 4u; k++) {
-            uint32_t j;
-            for (j = 0; j < 4u; j++)
-                ok &= j == k ? a[k][j] > 0u : a[k][j] == 0u;
-        }
-        bad += check("MIXER: K1..K4 light LEVEL / PAN / REV / the MUTE badge, nothing else", ok);
+        bad += check("MIXER: K1..K4 named in the band (LEVEL / PAN / REV / MUTE) with their values", ok);
     }
     {   /* 4. renaming the slot the music came from renames the music: the next SAVE prefills the new name */
         char pn[16];
@@ -5261,11 +5272,12 @@ static int test_large(void)
     bad += check("#15 LARGE ON: ENV's cards tall (a K1..K4 pill over each column), its ADSR a strip, the footer kept", ok);
 
     /* the value in L: CLOCK's BPM 124 stands about twice as tall as in M */
-    go_title("CLOCK"); frame();
+    go_title("CLOCK"); page_over = &ROLL_PG; ui.force = 1; frame();   /* (the CLOCK page is a play view: its cards over it) */
     ok = large_kind() == LK_TALL && strip_kind() == SK_TITLE && cur_page()->id[0] == G_BPM && lg_value_rows(0) >= AF_L_CAP_H - 3;
     ui_prefs = 0; ui.force = 1; frame();
     ok &= lg_value_rows(0) <= AF_M_CAP_H + 2;
     ui_prefs = PREF_LARGE; ui.force = 1; frame();
+    page_over = 0;
     bad += check("#15 LARGE: a card value in L (CLOCK's BPM 120: about 21 rows of figures, M's 11)", ok);
 
     /* a knob turned: its own card redrawn, the other three not */
@@ -5288,13 +5300,14 @@ static int test_large(void)
     go_page(GR_TODO); frame();
     ok &= large_kind() == LK_LABEL;
     go_page(GR_TRK); frame();
-    ok &= large_kind() == LK_TALL && strip_kind() == SK_TRK && lg_px(CARD_X(0) + 8, LG_Y_GRAPH + 56) == T_SURF;
+    ok &= play_view() == (NTRK == 4u ? PV_MIX : PV_NONE);   /* (2026-10-18: MIXER a play view, LARGE or not; 8 tracks:
+                                                           * its strips) */
     go_title("ENV"); frame();
     btn_down(B_GLO); frames(800);
     ok &= ui.layer && large_kind() == LK_LABEL && card_h() == CARD_H;
     btn_up(B_GLO); frame(); frame();
     ok &= !ui.layer && large_kind() == LK_TALL && lg_px(30, LG_Y_GRAPH - 2) == T_BG;
-    bad += check("#15 LARGE: PRESETS and SEQ keep the layout (labels in M), the layers too; MIXER tall, its tracks in the strip", ok);
+    bad += check("#15 LARGE: PRESETS and SEQ keep the layout (labels in M), the layers too; MIXER its play view", ok);
 
     {   /* saved with the settings; settings from before it: OFF (and so again: idempotent) */
         persist_t p, q;

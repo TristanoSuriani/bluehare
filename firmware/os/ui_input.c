@@ -547,7 +547,11 @@ static int page_tap(uint32_t b)
     }
     if (b == B_ARP && BLUEHARE_PLUGIN_TECHNO) {         /* (Blue Hare) ARP: the player (TECHNO) starts or stops; starting shows */
         uint32_t i, mix = !player_playing();            /* GEN MIX (the roles' densities), stopping it GEN */
-        gen_toggle();
+        if (player_playing() && (ui.home || cur_page()->fam != FAM_ARP))
+            mix = 1;                                    /* (2026-10-18) playing, from another page: back to its visuals,
+                                                         * it plays on; ARP there stops it */
+        else
+            gen_toggle();
         for (i = 0; i < NPAGES; i++)
             if (PAGES[i].fam == FAM_ARP && (PAGES[i].id[0] == G_GDPAD) == mix)
                 break;
