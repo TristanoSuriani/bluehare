@@ -14,8 +14,12 @@
  *   under them, PAN and REV small; the selected one marked in the accent, a muted one dim.
  *   CLOCK (MIXER's second page): retro-futuristic, the user's: the tempo in seven-segment figures as a vacuum
  *   fluorescent display shows them (the unlit segments a ghost behind), four beat squares under them stepping with
- *   TECHNO (small, they move: nothing flashes), SWING and CLOCK as rows */
-enum { PV_NONE, PV_HOME, PV_GEN, PV_MIX, PV_CLOCK };
+ *   TECHNO (small, they move: nothing flashes), SWING and CLOCK as rows.
+ *   (2026-10-19) EDIT ENV LFO FX SCL, the knob pages: a title line (the page and its number left, the patch's number
+ *   and sound right, small), a row a knob (its label left, its value right, a thin bar under them; the knob just
+ *   turned in the accent), the page's picture in a strip at the bottom (ENV its envelope, LFO its wave, the others
+ *   the scope). The pages with their own screens (PRESETS, MOD, SAVE's, TOOLS) keep them */
+enum { PV_NONE, PV_HOME, PV_GEN, PV_MIX, PV_CLOCK, PV_ROWS };
 #define PV_TOP 44                                       /* the top band */
 #define PV_SCOPE_Y 44                                   /* HOME: the scope (124 rows) */
 #define PV_NAME_Y 168                                   /* HOME: the name's band, to the bottom (the three tile the
@@ -27,7 +31,17 @@ static uint32_t play_view(void)
     if (cur_page() >= &PAGES[0] && cur_page() < &PAGES[NPAGES] && cur_page()->fam == FAM_TRK && cur_page()->scope == SC_GLOBAL &&
         cur_page()->id[0] == G_BPM)
         return PV_CLOCK;                                /* (the CLOCK page itself, not a page the tests put over it) */
-    return cur_page()->graph == GR_GEN ? PV_GEN : cur_page()->graph == GR_TRK && NTRK == 4u ? PV_MIX : PV_NONE;
+    if (cur_page()->graph == GR_GEN)
+        return PV_GEN;
+    if (cur_page()->graph == GR_TRK)
+        return NTRK == 4u ? PV_MIX : PV_NONE;
+    if (cur_page() >= &PAGES[0] && cur_page() < &PAGES[NPAGES] && !act_cols() &&
+        (cur_page()->fam == FAM_EDIT || cur_page()->fam == FAM_ENV || cur_page()->fam == FAM_LFO ||
+         cur_page()->fam == FAM_FX || cur_page()->fam == FAM_SCL) &&
+        (cur_page()->graph == GR_NONE || cur_page()->graph == GR_ADSR || cur_page()->graph == GR_LFO ||
+         cur_page()->graph == GR_SCALE || cur_page()->graph == GR_FX || cur_page()->graph == GR_CHORD))
+        return PV_ROWS;
+    return PV_NONE;
 }
 /* what the top band says: a notice, or the knob just turned (label, value, its place 0 .. 1000 or -1); 0: nothing */
 static int play_band(char *label, char *val, int32_t *ratio)
@@ -340,6 +354,95 @@ static void play_clock(void)
     cv_blit(0, PV_TOP + 120);
 }
 
+/* the knob pages: the title line (rows 0 .. 27), four rows (28 .. 163), the strip (164 .. 239) */
+#define PR_TOP 28
+#define PR_ROW 34
+#define PR_STRIP (PR_TOP + 4 * PR_ROW)
+static int pr_row(uint32_t c, char *label, char *val, int32_t *ratio, uint16_t *vc)   /* knob c's row; 0: none */
+{
+    int16_t *vp;
+    const param_desc_t *d = page_desc(cur_page(), c, &vp);
+    const char *unit;
+    if (!d || !vp || !d->label || d->label[0] == '-')
+        return 0;
+    str_cpy(label, d->label, 16);
+    param_format(d, *vp, val, &unit);
+    if (unit && unit[0] && str_len(val) + str_len(unit) < 15u) {
+        str_cpy(val + str_len(val), " ", 4);
+        str_cpy(val + str_len(val), unit, 8);
+    }
+    *ratio = d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, enum_rank(d, *vp));
+    *vc = vp == &TSEL->p[P_LRATE] && TSEL->p[P_LSYNC] ? T_DIM : c == ui.hot_col && ui.hot_t ? T_ACCENT : T_THEME;
+    return 1;
+}
+static void play_rows(void)
+{
+    static uint32_t top_sig, rows_sig;
+    char ti[20], nm[24], num[4], la[16], va[24];
+    int32_t r;
+    uint16_t vc;
+    uint32_t s, k;
+    if (ui.force)
+        top_sig = rows_sig = 0;
+    page_title(ti);
+    sound_name(TSEL, nm);
+    fmt_int(num, (int32_t)song.sel + 1);
+    s = str_hash(str_hash(str_hash(3u, ti), nm), num) + ux.accent;
+    if (s != top_sig) {                                 /* the title line */
+        int32_t y = CAP_IN(S, PR_TOP), x;
+        top_sig = s;
+        cv_begin(240, PR_TOP, T_BG);
+        cv_bg = T_BG;
+        GFX_HOOK_ALIGN(0, 0, 0, PR_TOP, AL_V, "rows: the page's title centred up/down");
+        cv_text(16, y, &AF_S, ti, T_MID);
+        x = 224 - text_w(&AF_S, nm);
+        cv_text(x, y, &AF_S, nm, T_TEXT);
+        cv_text(x - 6 - text_w(&AF_S, num), y, &AF_S, num, T_ACCENT);
+        cv_blit(0, 0);
+    }
+    s = (uint32_t)ui.page * 977u + ux.accent + (ui.hot_t ? ui.hot_col + 1u : 0u) * 31u;
+    for (k = 0; k < 4u; k++)
+        if (pr_row(k, la, va, &r, &vc))
+            s = (s ^ str_hash(str_hash(k, la), va)) * 16777619u + (uint32_t)r + vc;
+    if (s != rows_sig) {                                /* the rows: two canvases of two */
+        uint32_t h;
+        rows_sig = s;
+        for (h = 0; h < 2u; h++) {
+            cv_begin(240, 2 * PR_ROW, T_BG);
+            cv_bg = T_BG;
+            for (k = 2u * h; k < 2u * h + 2u; k++) {
+                int32_t y0 = (int32_t)(k - 2u * h) * PR_ROW, y = y0 + CAP_IN(M, PR_ROW - 8);
+                if (!pr_row(k, la, va, &r, &vc))
+                    continue;
+                GFX_HOOK_ALIGN(0, y0, 0, y0 + PR_ROW - 8, AL_V, "rows: a knob's row centred up/down");
+                cv_text(16, y, &AF_M, la, vc == T_ACCENT ? T_TEXT : T_MID);
+                cv_text(224 - text_w(&AF_M, va), y, &AF_M, va, vc);
+                if (r >= 0) {
+                    cv_rect(16, y0 + PR_ROW - 6, 208, 2, T_LINE);
+                    cv_rect(16, y0 + PR_ROW - 6, 208 * clamp(r, 0, 1000) / 1000, 2, vc == T_DIM ? T_DIM : vc);
+                }
+            }
+            cv_blit(0, (uint32_t)(PR_TOP + (int32_t)(2u * PR_ROW * h)));
+        }
+    }
+    if (ui.force || (ui.frame & 1u)) {                  /* the strip: ENV's envelope, LFO's wave, else the scope */
+        uint32_t g = cur_page()->graph;
+        cv_begin(240, 240 - PR_STRIP, T_BG);
+        cv_bg = T_BG;
+        cv_oy = g == GR_ADSR || g == GR_LFO ? 4 : 0;
+        graph_ht = 240 - PR_STRIP - 8;
+        if (g == GR_ADSR)
+            graph_adsr(TSEL, ACC);
+        else if (g == GR_LFO)
+            graph_lfo(TSEL, ACC);
+        else
+            graph_scope(ACC);
+        graph_ht = 100;
+        cv_oy = 0;
+        cv_blit(0, PR_STRIP);
+    }
+}
+
 static void draw_play(uint32_t v)
 {
     static uint32_t last;
@@ -349,12 +452,16 @@ static void draw_play(uint32_t v)
     }
     if (v == PV_NONE)
         return;
+    for (uint32_t c = 0; c < NELEM(ui.roll); c++)       /* (the rolling digits are the cards' and the header's: none here) */
+        ui.roll[c].from[0] = 0;
     if (v == PV_HOME)
         play_home();
     else if (v == PV_MIX)
         play_mix();
     else if (v == PV_CLOCK)
         play_clock();
+    else if (v == PV_ROWS)
+        play_rows();
     else
         play_gen();
 }

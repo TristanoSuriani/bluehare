@@ -607,6 +607,15 @@ static void go_title(const char *title)
     ui.page = (uint8_t)i;
     page_entered();
 }
+/* (2026-10-19) a page drawn as cards: a copy of it outside PAGES over it (page_over, a layer's way), as the pages
+ * ui_play.c does not take (PRESETS, MOD ..) are; the card checks run on ENV's knobs so */
+static page_t pg_cards;
+static void go_cards(const char *t)
+{
+    go_title(t);
+    pg_cards = *cur_page();
+    page_over = &pg_cards;
+}
 static uint32_t oct_leds_seen(int all)            /* over 1 s: the OCT LED bits lit at some point (all: throughout) */
 {
     uint32_t k, any = 0, every = 3u | OCT_BREATH;
@@ -1931,7 +1940,7 @@ static int test_product_ux(void)
     for (p = 0; p < NPALETTES; p++) for (b = 0; b < 1u; b++) {
         uint16_t graph[240 * H_GRAPH], columns[240 * (Y_SEP_END - Y_LABEL)];
         ui_power_on(); palette_set(p); settings.zoom = 1;
-        open_family(FAM_ENV); frame();
+        open_family(FAM_ENV); pg_cards = *cur_page(); page_over = &pg_cards; frame();   /* (ENV as cards: go_cards) */
         memcpy(graph, host_screen + Y_GRAPH * 240, sizeof graph);
         memcpy(columns, host_screen + Y_LABEL * 240, sizeof columns);
         ui.hot_col = 1; ui.hot_t = 40; ui.force = 1; ui_draw();
@@ -5241,7 +5250,7 @@ static int test_large(void)
     static uint16_t off[240 * 240];
     ui_power_on();
     song.playing = 0;
-    go_title("ENV");                                    /* (2026-10-18: HOME is a play view, no cards: ENV's) */
+    go_cards("ENV");                                    /* (2026-10-18: HOME is a play view, no cards: ENV's) */
     frame();
     ok = !(ui_prefs & PREF_LARGE) && large_kind() == LK_OFF && card_h() == CARD_H && graph_y() == Y_GRAPH;
     ok &= MI_LARGE == MI_STYLE + 1u && str_eq(MI_NAME[MI_LARGE], "LARGE") && menu_flag(MI_LARGE) &&
@@ -5260,7 +5269,7 @@ static int test_large(void)
     bad += check("#15 MENU > LARGE: OFF by default, under STYLE; KNOB 1 right / OCT+ ON, left / OCT- OFF", ok && !ui.menu);
 
     /* ENV: tall cards (rows 28..132) and the strip (136..198); the footer as it was */
-    go_title("ENV"); frame();
+    go_cards("ENV"); frame();
     ok = !ui.home && large_kind() == LK_TALL && card_h() == LG_CARD_H && graph_y() == LG_Y_GRAPH && strip_kind() == SK_ADSR;
     ok &= lg_px(30, Y_SEP_END + 1) == T_SURF && off[(Y_SEP_END + 1) * 240 + 30] == swap16(T_BG);     /* a card where the gap was */
     ok &= lg_px(30, LG_Y_GRAPH - 2) == T_BG && off[(LG_Y_GRAPH - 2) * 240 + 6] == swap16(T_SURF);   /* a gap in the panel
@@ -5281,7 +5290,7 @@ static int test_large(void)
     bad += check("#15 LARGE: a card value in L (CLOCK's BPM 120: about 21 rows of figures, M's 11)", ok);
 
     /* a knob turned: its own card redrawn, the other three not */
-    go_title("ENV"); frame(); frames(600);
+    go_cards("ENV"); frame(); frames(600);
     memcpy(off, host_screen, sizeof off);
     turn(EN_K2, 3);
     {
@@ -5295,6 +5304,7 @@ static int test_large(void)
     bad += check("#15 LARGE: ENV tall with its ADSR in the strip; KNOB 2 turned redraws card 2 only", ok);
 
     /* per page type: lists and rolls keep the layout, the layers too; MIXER's tracks in the strip */
+    page_over = 0;                                      /* (the ENV stand-in above gone: the real pages) */
     go_page(GR_BROWSE); frame();
     ok = large_kind() == LK_LABEL && card_h() == CARD_H && graph_y() == Y_GRAPH && graph_h() == H_GRAPH;
     go_page(GR_TODO); frame();
@@ -5302,10 +5312,11 @@ static int test_large(void)
     go_page(GR_TRK); frame();
     ok &= play_view() == (NTRK == 4u ? PV_MIX : PV_NONE);   /* (2026-10-18: MIXER a play view, LARGE or not; 8 tracks:
                                                            * its strips) */
-    go_title("ENV"); frame();
+    go_cards("ENV"); frame();
     btn_down(B_GLO); frames(800);
     ok &= ui.layer && large_kind() == LK_LABEL && card_h() == CARD_H;
-    btn_up(B_GLO); frame(); frame();
+    btn_up(B_GLO); frame();
+    page_over = &pg_cards; frame();                     /* (the layer gone took the stand-in with it: ENV as cards again) */
     ok &= !ui.layer && large_kind() == LK_TALL && lg_px(30, LG_Y_GRAPH - 2) == T_BG;
     bad += check("#15 LARGE: PRESETS and SEQ keep the layout (labels in M), the layers too; MIXER its play view", ok);
 
@@ -5404,7 +5415,7 @@ static int test_style(void)
     int bad = 0, ok;
     const uint32_t rule = 26u * 240u + 120u;           /* (the rule under the header: ui_draw.c draw_rules) */
     ui_power_on();
-    go_title("ENV");                                    /* (2026-10-18: HOME is a play view, no header, no rule) */
+    go_cards("ENV");                                    /* (2026-10-18: HOME is a play view, no header, no rule) */
     frame();
     ok = ui_style == ST_FLAT && ux.style == ST_FLAT && ux.surf != ux.bg;
     ui.force = 1; frame();
@@ -5424,7 +5435,7 @@ static int test_style(void)
     press(B_OCTUP); ok &= ui_style == ST_LINE;
     ok &= !(ui_prefs & 0xFFu) && settings_leds == LEDS_DIM;   /* (no other setting moved) */
     hold(B_HOME);
-    go_title("ENV"); frame();
+    go_cards("ENV"); frame();
     ok &= !ui.menu && ux.style == ST_LINE && host_screen[rule] == swap16(T_RULE);
     bad += check("MENU > STYLE: FLAT by default, KNOB 1 / OCT-+ FLAT / LINE / LED (its face), LINE drawn (rules, no SURF)", ok);
     {

@@ -872,7 +872,10 @@ static void sweep_columns(void)
                     *vp = (int16_t)v;
                     nscr = npend = 0;
                     ui.force = 1;
-                    draw_columns();
+                    if (play_view() == PV_ROWS)          /* (2026-10-19: the knob pages' rows, ui_play.c) */
+                        play_rows();
+                    else
+                        draw_columns();
                     lint();
                     nsweep++;
                     if (v - d->min > 300) v = d->max - 1;      /* wide ranges: the ends */
@@ -1408,12 +1411,20 @@ int main(int argc, char **argv)
                 double tg, ti;
                 setup(G[k]); pal(1); draw(G[k]);
                 c0 = clock();
-                for (i = 0; i < N * 4; i++) { ui.force = 1; draw_graph(); ui.force = 0; nscr = npend = 0; }
+                for (i = 0; i < N * 4; i++) {           /* (2026-10-19: ENV and FX the rows view, ui_play.c) */
+                    ui.force = 1;
+                    if (play_view() == PV_ROWS) play_rows(); else draw_graph();
+                    ui.force = 0; nscr = npend = 0;
+                }
                 tg = (double)(clock() - c0) / CLOCKS_PER_SEC / (N * 4) * 1e6;
                 song.playing = 0;                        /* (no playhead moving) */
                 ui_draw(); ui_draw(); nscr = npend = 0;
                 c0 = clock();
-                for (i = 0; i < N * 4; i++) { ui.frame++; draw_graph(); nscr = npend = 0; }
+                for (i = 0; i < N * 4; i++) {
+                    ui.frame++;
+                    if (play_view() == PV_ROWS) play_rows(); else draw_graph();
+                    nscr = npend = 0;
+                }
                 ti = (double)(clock() - c0) / CLOCKS_PER_SEC / (N * 4) * 1e6;
                 fprintf(rep, "  %s: the panel redrawn %.1f us; an unchanged frame (signature only) %.2f us\n", S_NAME[G[k]], tg, ti);
             }
