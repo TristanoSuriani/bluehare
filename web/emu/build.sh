@@ -31,7 +31,7 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
 # (2026-10-18) the page wears the distribution's palette (its PALETTE line: HARE FM1's IDM), not its name's
 PAL=$(sed -n 's/^PALETTE[[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p' "distributions/$DIST.txt" 2>/dev/null | head -n 1 | tr 'A-Z' 'a-z')
 sed -e "s/@VERSION@/$VERSION$TAG/g" -e "s/@PREVIEW@/$PREVIEW/g" -e "s/@DIST@/${PAL:-$DIST}/g" web/emu/index.html > "$OUTD/index.html"
-cp web/emu/worklet.js "$OUTD/"
+cp web/emu/worklet.js web/emu/shell.js web/emu/shell.css "$OUTD/"   # (2026-10-19: the instrument, shared with the studio)
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt "$OUTD/fonts/"
 cp build/gen/BlueHareLED.ttf "$OUTD/fonts/"                 # (2026-10-18: the LED face, tools/gen_seg_font.py)
 echo "emu: $OUTD ($(wc -c < "$OUTD/bluehare.wasm" | tr -d ' ') B wasm, $VERSION$TAG)"

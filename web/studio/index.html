@@ -4,10 +4,11 @@
      The sound design studio: the FM-1 firmware's engines, effects and generative engine in the browser (studio.js,
      sysex.js, worklet.js, bluehare.wasm: web/studio/build.sh), to design sounds, try them and store them as the FM-1
      stores them.
-     (2026-10-19) The FM-1's screen made big (the user's: "the studio should be the big version of the firmware"): the
-     device's families down the left as its buttons, each family's pages as the device draws them (a title line; rows
-     of a label, its value and a thin bar; the page's picture), its fonts (the LED face, Pixelify Sans for the small
-     labels) and its IDM palette. The mouse turns the knobs: drag a row, the wheel, a click on a choice. -->
+     (2026-10-19) The emulator's instrument (web/emu/shell.js, shell.css: the same shell, knobs, buttons, keys and key
+     mapping, the user's), its screen made large and replaced by the studio's interface, in the firmware's look: its
+     families as tabs (the shell's buttons open them too), each family's pages as the device draws them (a title line;
+     rows of a label, its value and a thin bar), its fonts (the LED face, Pixelify Sans) and its IDM palette; the
+     FM-1's own screen on HOME. One laptop screen; a phone held upright gets the tall shell. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -15,256 +16,235 @@
 <title>Blue Hare Studio</title>
 <meta name="description" content="Blue Hare's sound design studio: the FM-1 firmware's engines, effects and generative engine in your browser, to design sounds and send them to the FM-1.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%2308061a%22/%3E%3Cpath d=%22M3 11c2-6 4-6 5 0s3 6 5 0%22 stroke=%22%2300e5ff%22 stroke-width=%221.6%22 fill=%22none%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="shell.css">
 <style>
-/* Blue Hare's LED face, fourteen segments (tools/gen_seg_font.py, the firmware's STYLE LED): names and values */
+@font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
 @font-face { font-family: "BlueHareLED"; src: url("fonts/BlueHareLED.ttf") format("truetype"); font-display: swap; }
 /* Pixelify Sans (SIL OFL 1.1, fonts/OFL-PixelifySans.txt): the firmware's small labels */
 @font-face { font-family: "Pixelify"; src: url("fonts/PixelifySans.ttf") format("truetype"); font-weight: 400 700; font-display: swap; }
-/* the FM-1's IDM palette (tools/gen_ui_palettes.py): the ground, the panel, the text (a soft yellow), the values
-   (electric cyan), the one active thing (hot magenta); mid and line as the firmware derives them */
-:root {
-  --bg: #08061a; --panel: #100c2e; --panel2: #1a1440; --line: #2e3270; --edge: #2e3270; --ink: #faf096;
-  --mid: #9a9466; --faint: #5e5c8a; --accent: #00e5ff; --accent2: #ff2ebe; --ok: #5fe08a; --bad: #ff6a6a;
-  --led: "BlueHareLED", ui-monospace, monospace; --px: "Pixelify", ui-monospace, monospace;
-  color-scheme: dark;
-}
-* { box-sizing: border-box; }
-html { background: var(--bg); }
-body { margin: 0; color: var(--ink); font: 14px/1.35 var(--px); min-height: 100vh;
-       background: radial-gradient(1000px 560px at 8% -10%, rgba(255, 46, 190, .13), transparent 70%),
-                   radial-gradient(1000px 560px at 96% 10%, rgba(0, 229, 255, .10), transparent 70%), var(--bg);
-       background-attachment: fixed; }
-body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 30;
-               background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 3px); }
+/* the screen's colours: the FM-1's IDM palette (tools/gen_ui_palettes.py), mid and line as the firmware derives them */
+:root { --ink: #faf096; --mid: #9a9466; --faint: #5e5c8a; --line: #2e3270; --accent: #00e5ff; --accent2: #ff2ebe;
+        --ok: #5fe08a; --bad: #ff6a6a; --scr: #08061a; --led: "BlueHareLED", ui-monospace, monospace;
+        --px: "Pixelify", ui-monospace, monospace; }
+html { background: #08061a; }
+body { margin: 0; min-height: 100vh; overflow-x: hidden; color: var(--fg); font: 13px/1.4 var(--px);
+       background: radial-gradient(900px 520px at 12% -8%, var(--glow1), transparent 70%),
+                   radial-gradient(900px 520px at 92% 18%, var(--glow2), transparent 70%), var(--bg); background-attachment: fixed; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+               background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 3px); }
 button, select, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
-:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 [hidden] { display: none !important; }
-.mono { font-family: var(--led); }
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
 
-/* ---- one screen: the bar; the rail, the browser, the pages, the side; the keys */
-.app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; position: relative; z-index: 1; }
-header { display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.brand { display: flex; align-items: baseline; gap: 10px; }
-.brand h1 { margin: 0; font: 400 26px/1 var(--led); letter-spacing: .06em; }
-.brand h1 b { font-weight: 400; color: var(--accent); text-shadow: 0 0 14px rgba(0, 229, 255, .45); }
-.brand span { font-size: 12px; color: var(--mid); letter-spacing: .14em; text-transform: uppercase; }
-/* the four patches: the device's number and name */
-#tracks { display: flex; gap: 4px; margin-left: 14px; }
-.trk { display: flex; gap: 9px; align-items: baseline; padding: 6px 14px 7px; background: transparent; border: 0; border-bottom: 2px solid transparent; }
-.trk small { font: 400 16px/1 var(--led); color: var(--mid); }
-.trk b { font: 400 16px/1 var(--led); letter-spacing: .05em; color: var(--mid); font-weight: 400; }
+/* ---- the instrument: as large as the window holds it (its front face under it) */
+#stage { position: relative; z-index: 1; padding: 10px 12px 34px; perspective: 2600px; }
+.device.r3d { transform: rotateX(9deg); width: min(100%, calc((100vh - 64px) * 1760 / 920)); }
+body.tall #stage { padding: 6px 4px 24px; }
+body.tall .device.r3d { transform: none; width: 100%; }
+body.tall .device.r3d .case-front, body.tall .device.r3d::after { display: none; }
+
+/* ---- the screen: the studio's interface, sized by the screen it is in (its font: a share of its width) */
+.ui { position: absolute; z-index: 2; overflow: hidden; background: var(--scr); color: var(--ink); border-radius: 3px;
+      display: grid; grid-template-rows: auto minmax(0, 1fr); container-type: size; font: 400 1em/1.35 var(--px);
+      box-shadow: inset 0 0 40px rgba(0, 229, 255, .06); }
+.ui::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+             background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 3px); }
+.ui :focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+.ui ::-webkit-scrollbar { width: .5em; height: .5em; }
+.ui ::-webkit-scrollbar-thumb { background: var(--line); border-radius: .25em; }
+.ui ::-webkit-scrollbar-track { background: transparent; }
+.mono { font-family: var(--led); }
+.ui canvas { position: static; image-rendering: auto; background: transparent; }   /* (not the shell's panel canvas) */
+
+/* the top line: the families (the device's buttons), the four patches, the mode, undo, recording */
+.top { display: flex; align-items: center; gap: .8em; padding: .45em .9em; border-bottom: 1px solid var(--line); min-width: 0; }
+.tabs { display: flex; gap: .1em; overflow-x: auto; scrollbar-width: none; flex: none; max-width: 60%; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { position: relative; border: 0; background: transparent; padding: .4em .6em .45em; border-radius: .2em; white-space: nowrap;
+       font: 400 1.08em/1 var(--led); letter-spacing: .06em; color: var(--mid); }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); background: rgba(0, 229, 255, .07); box-shadow: inset 0 -2px 0 var(--accent); }
+.tab .live { display: inline-block; width: .45em; height: .45em; margin-left: .35em; border-radius: 50%; background: var(--accent2);
+             box-shadow: 0 0 .6em var(--accent2); vertical-align: .15em; }
+.tab.libtab { display: none; }
+#tracks { display: flex; gap: .1em; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.trk { display: flex; gap: .45em; align-items: baseline; padding: .35em .55em; background: transparent; border: 0; border-radius: .2em; white-space: nowrap; }
+.trk small { font: 400 1em/1 var(--led); color: var(--faint); }
+.trk b { font: 400 1em/1 var(--led); letter-spacing: .04em; color: var(--mid); font-weight: 400; }
 .trk:hover b { color: var(--ink); }
-.trk[aria-pressed="true"] { border-bottom-color: var(--accent2); }
+.trk[aria-pressed="true"] { box-shadow: inset 0 -2px 0 var(--accent2); }
 .trk[aria-pressed="true"] small { color: var(--accent2); }
 .trk[aria-pressed="true"] b { color: var(--ink); }
 .grow { flex: 1; }
-.btn { background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 5px 12px; min-height: 30px;
-       font: 500 12px/1 var(--px); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); transition: border-color .12s, color .12s, box-shadow .12s; }
+.btn { background: transparent; border: 1px solid var(--line); border-radius: .25em; padding: .4em .8em; white-space: nowrap;
+       font: 500 .82em/1 var(--px); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); transition: border-color .12s, color .12s, box-shadow .12s; }
 .btn:hover { border-color: var(--accent); color: var(--accent); }
 .btn:disabled { opacity: .35; cursor: default; border-color: var(--line); color: var(--ink); }
-.btn.primary { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 14px rgba(0, 229, 255, .18), inset 0 0 10px rgba(0, 229, 255, .08); }
-.btn.on { border-color: var(--accent2); color: var(--accent2); box-shadow: 0 0 14px rgba(255, 46, 190, .25); }
-.btn.small { min-height: 26px; padding: 3px 9px; font-size: 11px; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-.seg button { border: 0; background: transparent; padding: 6px 12px; font: 400 13px/1 var(--led); letter-spacing: .08em; color: var(--mid); }
+.btn.primary { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 1em rgba(0, 229, 255, .18), inset 0 0 .7em rgba(0, 229, 255, .08); }
+.btn.on { border-color: var(--accent2); color: var(--accent2); box-shadow: 0 0 1em rgba(255, 46, 190, .25); }
+.btn.small { padding: .3em .6em; font-size: .76em; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: .25em; overflow: hidden; flex: none; }
+.seg button { border: 0; background: transparent; padding: .4em .6em; font: 400 .9em/1 var(--led); letter-spacing: .06em; color: var(--mid); }
 .seg button[aria-pressed="true"] { color: var(--accent); background: rgba(0, 229, 255, .08); }
-.status { color: var(--mid); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
-.dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); margin-right: 6px; vertical-align: 1px; }
-.dot.on { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.status { color: var(--mid); font-size: .8em; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.dot { display: inline-block; width: .45em; height: .45em; border-radius: 50%; background: var(--faint); margin-right: .4em; vertical-align: .05em; }
+.dot.on { background: var(--accent); box-shadow: 0 0 .6em var(--accent); }
 
-.layout { display: grid; grid-template-columns: 112px 228px minmax(0, 1fr) 300px; min-height: 0; }
-.col { min-height: 0; overflow: auto; display: flex; flex-direction: column; }
-
-/* the rail: the device's family buttons, an LED each */
-.rail { display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; border-right: 1px solid var(--line); overflow: auto; }
-.tab { position: relative; display: flex; align-items: center; gap: 10px; text-align: left; padding: 12px 10px; border: 0; border-radius: 4px;
-       background: transparent; font: 400 15px/1 var(--led); letter-spacing: .08em; color: var(--mid); }
-.tab::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: var(--line); flex: none; transition: background .12s, box-shadow .12s; }
-.tab:hover { color: var(--ink); }
-.tab[aria-selected="true"] { color: var(--ink); background: rgba(0, 229, 255, .06); }
-.tab[aria-selected="true"]::before { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-.tab .live { position: absolute; right: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
-
-/* the browser: the engines, the presets and the user's sounds, as the device lists them */
-#browser { border-right: 1px solid var(--line); padding: 14px 0 10px; gap: 14px; }
-.ttl { margin: 0 16px 6px; font: 400 12px/1 var(--px); letter-spacing: .14em; text-transform: uppercase; color: var(--mid);
-       display: flex; align-items: center; gap: 6px; }
-#engines { display: grid; grid-template-columns: 1fr 1fr; padding: 0 8px; }
-.eng { text-align: left; padding: 6px 8px; border: 0; border-radius: 3px; background: transparent; font: 400 14px/1.15 var(--led); letter-spacing: .05em; color: var(--mid); }
+/* the body: the sounds at the side, the page */
+.main { display: grid; grid-template-columns: 14.5em minmax(0, 1fr); min-height: 0; }
+.side { display: flex; flex-direction: column; gap: .8em; min-height: 0; padding: .8em 0 .5em; border-right: 1px solid var(--line); }
+.ttl { margin: 0 1em .35em; font: 400 .8em/1 var(--px); letter-spacing: .14em; text-transform: uppercase; color: var(--mid); }
+#engines { display: grid; grid-template-columns: 1fr 1fr; padding: 0 .5em; }
+.eng { text-align: left; padding: .32em .5em; border: 0; border-radius: .2em; background: transparent; font: 400 .95em/1.1 var(--led); letter-spacing: .04em; color: var(--mid); white-space: nowrap; }
 .eng:hover { color: var(--ink); }
-.eng[aria-pressed="true"] { color: var(--accent); background: rgba(0, 229, 255, .07); text-shadow: 0 0 10px rgba(0, 229, 255, .4); }
-.browse { flex: 1; min-height: 140px; display: flex; flex-direction: column; }
-.ltabs { display: flex; margin: 0 16px 8px; gap: 14px; border-bottom: 1px solid var(--line); }
-.ltab { padding: 4px 0 6px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent;
-        font: 400 12px/1 var(--px); letter-spacing: .12em; text-transform: uppercase; color: var(--mid); }
+.eng[aria-pressed="true"] { color: var(--accent); background: rgba(0, 229, 255, .07); text-shadow: 0 0 .7em rgba(0, 229, 255, .4); }
+.browse { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ltabs { display: flex; margin: 0 1em .5em; gap: 1em; border-bottom: 1px solid var(--line); }
+.ltab { padding: .25em 0 .4em; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent;
+        font: 400 .8em/1 var(--px); letter-spacing: .12em; text-transform: uppercase; color: var(--mid); }
 .ltab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent2); }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 14px 8px; }
-.chip { font: 400 11px/1 var(--px); letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 3px;
+.chips { display: flex; flex-wrap: wrap; gap: .25em; margin: 0 .9em .5em; }
+.chip { font: 400 .72em/1 var(--px); letter-spacing: .08em; text-transform: uppercase; padding: .25em .45em; border-radius: .2em;
         border: 1px solid var(--line); background: transparent; color: var(--mid); }
 .chip[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
-.list { flex: 1; min-height: 0; overflow: auto; padding: 0 8px; }
-.row { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; background: transparent; border: 0; border-radius: 3px; padding: 6px 8px; }
+.list { flex: 1; min-height: 0; overflow: auto; padding: 0 .5em; }
+.row { display: flex; align-items: baseline; gap: .6em; width: 100%; text-align: left; background: transparent; border: 0; border-radius: .2em; padding: .38em .5em; }
 .row:hover { background: rgba(255, 255, 255, .03); }
-.row .n { color: var(--faint); width: 2.2em; font: 400 12px/1 var(--led); flex: none; }
-.row .name { flex: 1; font: 400 14px/1.1 var(--led); letter-spacing: .05em; color: var(--mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .n { color: var(--faint); width: 2em; font: 400 .78em/1 var(--led); flex: none; }
+.row .name { flex: 1; font: 400 .95em/1.1 var(--led); letter-spacing: .04em; color: var(--mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row:hover .name { color: var(--ink); }
-.row .tag { font: 400 10px/1 var(--px); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.row .tag { font: 400 .64em/1 var(--px); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .row[aria-current="true"] .n { color: var(--accent2); }
-.row[aria-current="true"] .name { color: var(--accent); text-shadow: 0 0 10px rgba(0, 229, 255, .35); }
+.row[aria-current="true"] .name { color: var(--accent); text-shadow: 0 0 .7em rgba(0, 229, 255, .35); }
 
-/* the middle: the title line (the page's family; the patch's number and name, as the device's), the pages */
-#editor { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.titleline { display: flex; align-items: center; gap: 14px; padding: 16px 24px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.titleline .pg { font: 400 13px/1 var(--px); letter-spacing: .16em; text-transform: uppercase; color: var(--mid); }
-.titleline .num { font: 400 30px/1 var(--led); color: var(--accent2); margin-left: auto; text-shadow: 0 0 14px rgba(255, 46, 190, .45); }
-.titleline .title { font: 400 30px/1 var(--led); letter-spacing: .06em; text-shadow: 0 0 16px rgba(250, 240, 150, .25); }
-.titleline .sub { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--mid); }
-.titleline .edited { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent2); }
-.tabacts { display: flex; gap: 6px; align-items: center; }
-.tabbody { flex: 1; min-height: 0; overflow: auto; padding: 20px 24px 28px; }
-.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; align-content: start; }
-/* a page: a screen of the device, its title line, its rows */
-.group { background: linear-gradient(180deg, rgba(26, 20, 64, .55), rgba(16, 12, 46, .55)); border: 1px solid var(--line); border-radius: 6px; padding: 14px 18px 12px;
-         box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03), 0 10px 30px rgba(0, 0, 0, .25); }
+.content { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+/* the title line, as the device's: the page; the patch's number and the sound's name */
+.titleline { display: flex; align-items: center; gap: .8em; padding: .7em 1.3em .6em; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.titleline .pg { font: 400 .82em/1 var(--px); letter-spacing: .16em; text-transform: uppercase; color: var(--mid); }
+.titleline .num { font: 400 1.75em/1 var(--led); color: var(--accent2); margin-left: auto; text-shadow: 0 0 .5em rgba(255, 46, 190, .45); }
+.titleline .title { font: 400 1.75em/1 var(--led); letter-spacing: .06em; text-shadow: 0 0 .6em rgba(250, 240, 150, .25); white-space: nowrap; }
+.titleline .sub { font-size: .76em; letter-spacing: .1em; text-transform: uppercase; color: var(--mid); white-space: nowrap; }
+.titleline .edited { font-size: .76em; letter-spacing: .1em; text-transform: uppercase; color: var(--accent2); }
+.tabacts { display: flex; gap: .4em; align-items: center; }
+.tabbody { flex: 1; min-height: 0; overflow: auto; padding: 1em 1.3em 1.4em; }
+.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(21em, 1fr)); gap: 1em; align-content: start; }
+.group { background: linear-gradient(180deg, rgba(26, 20, 64, .5), rgba(16, 12, 46, .5)); border: 1px solid var(--line); border-radius: .35em; padding: .8em 1.1em .7em; }
 .group.wide { grid-column: 1 / -1; }
-.group h3 { margin: 0 0 6px; font: 400 12px/1 var(--px); letter-spacing: .14em; text-transform: uppercase; color: var(--mid); display: flex; gap: 10px; align-items: center; }
+.group h3 { margin: 0 0 .3em; font: 400 .78em/1 var(--px); letter-spacing: .14em; text-transform: uppercase; color: var(--mid); display: flex; gap: .7em; align-items: center; }
 .group h3 .sub { color: var(--faint); letter-spacing: .1em; }
-.group h3 .info { margin-left: auto; border: 1px solid var(--line); border-radius: 50%; width: 18px; height: 18px; padding: 0; background: none;
-                  color: var(--mid); font: 400 11px/1 var(--px); }
+.group h3 .info { margin-left: auto; border: 1px solid var(--line); border-radius: 50%; width: 1.5em; height: 1.5em; padding: 0; background: none; color: var(--mid); font: 400 .9em/1 var(--px); }
 .group h3 .info:hover { color: var(--accent); border-color: var(--accent); }
-.ctrls { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); column-gap: 28px; align-items: start; }
+.ctrls { display: grid; grid-template-columns: repeat(auto-fill, minmax(16em, 1fr)); column-gap: 1.8em; align-items: start; }
 .group:not(.wide) .ctrls { grid-template-columns: 1fr; }
-.ctrls .subhead { grid-column: 1 / -1; margin: 12px 0 0; font: 400 11px/1 var(--px); letter-spacing: .16em; text-transform: uppercase; color: var(--faint);
-                  border-top: 1px dashed var(--line); padding-top: 10px; }
-.ctrls .subhead:first-child { margin-top: 2px; border: 0; padding-top: 0; }
-.dim { opacity: .3; filter: grayscale(1); }
-.gnote { grid-column: 1 / -1; margin: 10px 0 2px; font-size: 12.5px; line-height: 1.45; color: var(--mid); }
+.ctrls .subhead { grid-column: 1 / -1; margin: .8em 0 0; font: 400 .72em/1 var(--px); letter-spacing: .16em; text-transform: uppercase; color: var(--faint);
+                  border-top: 1px dashed var(--line); padding-top: .7em; }
+.ctrls .subhead:first-child { margin-top: .1em; border: 0; padding-top: 0; }
+.dimmed { opacity: .3; filter: grayscale(1); }
+.gnote { grid-column: 1 / -1; margin: .7em 0 .1em; font-size: .85em; line-height: 1.45; color: var(--mid); }
 
-/* a row: the device's knob row. The label, the value, the bar; the one being turned in the active colour */
-.prow { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 10px; padding: 9px 2px 9px;
-        touch-action: none; user-select: none; -webkit-user-select: none; cursor: ew-resize; border-radius: 3px; }
-.prow .lbl { font: 400 17px/1 var(--led); letter-spacing: .05em; color: var(--mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prow .val { font: 400 17px/1 var(--led); letter-spacing: .04em; color: var(--accent); white-space: nowrap; transition: color .1s; }
-.prow .bar { grid-column: 1 / -1; position: relative; height: 2px; background: var(--line); margin-top: 6px; }
+/* a row: the device's knob row */
+.prow { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: .25em .7em; padding: .55em .1em;
+        touch-action: none; user-select: none; -webkit-user-select: none; cursor: ew-resize; border-radius: .2em; }
+.prow .lbl { font: 400 1.12em/1 var(--led); letter-spacing: .05em; color: var(--mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prow .val { font: 400 1.12em/1 var(--led); letter-spacing: .04em; color: var(--accent); white-space: nowrap; transition: color .1s; }
+.prow .bar { grid-column: 1 / -1; position: relative; height: 2px; background: var(--line); margin-top: .4em; }
 .prow .bar b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); transition: background .1s; }
-.prow .bar b.bip { left: auto; }
 .prow .bar i { position: absolute; top: -3px; width: 1px; height: 8px; background: var(--faint); }
-.prow:hover .lbl { color: var(--ink); }
-.prow.hot .lbl { color: var(--ink); }
-.prow.hot .val { color: var(--accent2); text-shadow: 0 0 10px rgba(255, 46, 190, .5); }
-.prow.hot .bar b { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+.prow:hover .lbl, .prow.hot .lbl { color: var(--ink); }
+.prow.hot .val { color: var(--accent2); text-shadow: 0 0 .7em rgba(255, 46, 190, .5); }
+.prow.hot .bar b { background: var(--accent2); box-shadow: 0 0 .5em var(--accent2); }
 .prow.off { opacity: .35; cursor: default; }
 .prow.pick { cursor: pointer; }
-/* a choice of a few: its names in a line, the one chosen lit */
-.prow .opts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 6px; }
-.prow .opts button { border: 0; background: transparent; padding: 3px 0; font: 400 14px/1 var(--led); letter-spacing: .05em; color: var(--faint); }
+.prow .opts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .1em 1em; margin-top: .4em; }
+.prow .opts button { border: 0; background: transparent; padding: .2em 0; font: 400 .95em/1 var(--led); letter-spacing: .05em; color: var(--faint); }
 .prow .opts button:hover { color: var(--ink); }
-.prow .opts button[aria-pressed="true"] { color: var(--accent); text-shadow: 0 0 10px rgba(0, 229, 255, .45); }
+.prow .opts button[aria-pressed="true"] { color: var(--accent); text-shadow: 0 0 .7em rgba(0, 229, 255, .45); }
 .prow.hot .opts button[aria-pressed="true"] { color: var(--accent2); }
-/* the list a longer choice opens */
-.menu { position: fixed; z-index: 40; min-width: 200px; max-height: 360px; overflow: auto; padding: 6px; background: #0c0924;
+.menu { position: fixed; z-index: 40; min-width: 180px; max-height: 340px; overflow: auto; padding: 6px; background: #0c0924;
         border: 1px solid var(--accent); border-radius: 4px; box-shadow: 0 0 24px rgba(0, 229, 255, .2), 0 18px 40px rgba(0, 0, 0, .5); }
 .menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 10px; border-radius: 3px;
                font: 400 15px/1 var(--led); letter-spacing: .05em; color: var(--mid); }
 .menu button:hover, .menu button:focus-visible { color: var(--ink); background: rgba(255, 255, 255, .04); outline: 0; }
 .menu button[aria-current="true"] { color: var(--accent); }
-#env-graph { grid-column: 1 / -1; width: 100%; height: 84px; margin: 10px 0 2px; }
-.matrix { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr 1fr minmax(160px, 1fr); gap: 4px 14px; align-items: center; }
-.matrix .h { font: 400 11px/1 var(--px); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
-.matrix .slot { font: 400 17px/1 var(--led); color: var(--accent2); }
-.matrix select, .field select { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 6px 2px;
-                                font: 400 15px/1 var(--led); letter-spacing: .04em; color: var(--accent); }
+#env-graph { grid-column: 1 / -1; width: 100%; height: 5.5em; margin: .6em 0 .1em; }
+.matrix { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr 1fr minmax(10em, 1fr); gap: .25em 1em; align-items: center; }
+.matrix .h { font: 400 .72em/1 var(--px); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+.matrix .slot { font: 400 1.1em/1 var(--led); color: var(--accent2); }
+.matrix select, .field select { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: .4em .1em;
+                                font: 400 .95em/1 var(--led); letter-spacing: .04em; color: var(--accent); min-width: 0; }
 .matrix select option, .field select option { background: #0c0924; color: var(--ink); }
 .matrix .prow .lbl { display: none; }
-.perf { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
-.perfb { min-width: 84px; touch-action: none; font-family: var(--led); font-size: 13px; }
-.perfb[aria-pressed="true"] { border-color: var(--accent2); color: var(--accent2); box-shadow: 0 0 14px rgba(255, 46, 190, .3); }
-.stages { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
-.chain { display: flex; flex-wrap: wrap; gap: 4px 16px; }
-.stage { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--mid); }
-.stage::before { content: "■ "; color: var(--ok); font-size: 9px; vertical-align: 1px; }
-.meter { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--mid); }
-.meter .lbl { width: 92px; letter-spacing: .08em; text-transform: uppercase; }
+.perf { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .4em; margin: .3em 0 .7em; }
+.perfb { min-width: 5.5em; touch-action: none; font-family: var(--led); font-size: .85em; }
+.perfb[aria-pressed="true"] { border-color: var(--accent2); color: var(--accent2); box-shadow: 0 0 1em rgba(255, 46, 190, .3); }
+.stages { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .5em; margin: .7em 0 .3em; }
+.chain { display: flex; flex-wrap: wrap; gap: .2em 1em; }
+.stage { font-size: .8em; letter-spacing: .08em; text-transform: uppercase; color: var(--mid); }
+.stage::before { content: "■ "; color: var(--ok); font-size: .7em; vertical-align: .1em; }
+.meter { display: flex; gap: .7em; align-items: center; font-size: .8em; color: var(--mid); }
+.meter .lbl { width: 7em; letter-spacing: .08em; text-transform: uppercase; }
 .meter .bar { flex: 1; height: 2px; background: var(--line); position: relative; }
 .meter .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
 .meter.gr .bar i { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
-.meter .mono { min-width: 64px; text-align: right; color: var(--accent); }
+.meter .mono { min-width: 5em; text-align: right; color: var(--accent); }
 .meter.clip .bar i { background: var(--bad); }
+.genbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 1.2em; margin: .3em 0 .8em; }
+.genbar .play { min-width: 7.5em; font: 400 1em/1 var(--led); letter-spacing: .1em; padding: .6em 1em; }
+.genbar .chord { font: 400 2.2em/1 var(--led); min-width: 3em; color: var(--accent); text-shadow: 0 0 .5em rgba(0, 229, 255, .45); }
+.genbar .where { font: 400 .95em/1 var(--led); color: var(--mid); }
+.roles { display: flex; gap: 1em; }
+.role { font: 400 .9em/1 var(--led); color: var(--faint); letter-spacing: .06em; transition: color .06s, text-shadow .06s; }
+.role.hit { color: var(--accent2); text-shadow: 0 0 .7em var(--accent2); }
 
-/* TECHNO: its transport and its state, as the device's GEN view */
-.genbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin: 4px 0 12px; }
-.genbar .play { min-width: 120px; font: 400 15px/1 var(--led); letter-spacing: .1em; min-height: 38px; }
-.genbar .chord { font: 400 34px/1 var(--led); min-width: 100px; color: var(--accent); text-shadow: 0 0 14px rgba(0, 229, 255, .45); }
-.genbar .where { font: 400 14px/1 var(--led); color: var(--mid); }
-.roles { display: flex; gap: 14px; }
-.role { font: 400 13px/1 var(--led); color: var(--faint); letter-spacing: .06em; transition: color .06s, text-shadow .06s; }
-.role.hit { color: var(--accent2); text-shadow: 0 0 10px var(--accent2); }
-
-/* the side: the FM-1's screen in its bezel, the output, saving, the device */
-#side { border-left: 1px solid var(--line); padding: 16px 16px 12px; gap: 18px; }
-.card h2 { margin: 0 0 10px; font: 400 12px/1 var(--px); letter-spacing: .14em; text-transform: uppercase; color: var(--mid); display: flex; align-items: center; gap: 6px; }
-.bezel { padding: 12px; border-radius: 10px; background: linear-gradient(160deg, #1d1a40, #0a0820 60%); border: 1px solid #3a3488;
-         box-shadow: inset 0 2px 6px rgba(0, 0, 0, .6), 0 0 26px rgba(0, 229, 255, .08); }
-#screen { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; border-radius: 3px; background: #000; }
-#scope { width: 100%; height: 76px; display: block; }
-.field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mid); min-width: 0; }
-.field input { background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 6px 2px; color: var(--ink); width: 100%;
-               font: 400 20px/1 var(--led); letter-spacing: .06em; text-transform: uppercase; }
+/* HOME: the device's view, large (the scope, the number, the name) and the FM-1's own screen; SAVE: saving, files, USB */
+.view { flex: 1; min-height: 0; overflow: auto; padding: 1.2em 1.4em; }
+.home { display: grid; grid-template-columns: minmax(0, 1fr) 15em; gap: 1.6em; align-items: stretch; height: 100%; min-height: 16em; }
+.home .big { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: .6em; min-width: 0; min-height: 0; }
+.home .scopebox { position: relative; min-height: 8em; }
+#scope { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.home .who { display: flex; align-items: baseline; gap: .5em; margin-top: .4em; }
+.home .who .n { font: 400 3.4em/1 var(--led); color: var(--accent2); text-shadow: 0 0 .4em rgba(255, 46, 190, .5); }
+.home .who .t { font: 400 3.4em/1 var(--led); letter-spacing: .05em; text-shadow: 0 0 .4em rgba(250, 240, 150, .3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home .fm1 { display: flex; flex-direction: column; gap: .6em; min-width: 0; }
+.home .fm1 h2, .card h2 { margin: 0; font: 400 .78em/1 var(--px); letter-spacing: .14em; text-transform: uppercase; color: var(--mid); display: flex; align-items: center; gap: .5em; }
+.fm1 .bezel2 { padding: .5em; border-radius: .5em; background: linear-gradient(160deg, #1d1a40, #0a0820 60%); border: 1px solid #3a3488; }
+#screen { width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; display: block; border-radius: 2px; background: #000; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(19em, 1fr)); gap: 1em; align-content: start; }
+.card { border: 1px solid var(--line); border-radius: .35em; padding: .9em 1.1em; background: linear-gradient(180deg, rgba(26, 20, 64, .5), rgba(16, 12, 46, .5)); }
+.card h2 { margin-bottom: .8em; }
+.field { display: flex; flex-direction: column; gap: .3em; font-size: .72em; letter-spacing: .12em; text-transform: uppercase; color: var(--mid); min-width: 0; }
+.field input { background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: .3em .1em; color: var(--ink); width: 100%;
+               font: 400 1.8em/1 var(--led); letter-spacing: .06em; text-transform: uppercase; }
 .field input:focus { outline: 0; border-bottom-color: var(--accent); }
-.field select { width: 100%; font-size: 13px; }
-.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.field select { width: 100%; font-size: 1.25em; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: .8em; margin-bottom: .9em; }
 .fields .full { grid-column: 1 / -1; }
-.buttons { display: flex; flex-wrap: wrap; gap: 6px; }
-.note { font-size: 12px; line-height: 1.45; color: var(--mid); margin: 8px 0 0; }
+.buttons { display: flex; flex-wrap: wrap; gap: .4em; }
+.note { font-size: .82em; line-height: 1.45; color: var(--mid); margin: .6em 0 0; }
 .note.bad { color: var(--bad); }
 .note.ok { color: var(--ok); }
 .note:empty { display: none; }
+.keyhelp { display: grid; grid-template-columns: auto 1fr; gap: .3em 1em; font-size: .85em; color: var(--mid); margin: 0; }
+.keyhelp dt { color: var(--ink); font-family: var(--led); }
+.keyhelp dd { margin: 0; }
 
-/* the keys: the emulator's, an LED along each key's back edge */
-#keys { border-top: 1px solid var(--line); padding: 8px 18px 12px; background: linear-gradient(180deg, rgba(10, 8, 32, .4), rgba(10, 8, 32, .9)); }
-.keyrow { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; font-size: 12px; color: var(--mid); letter-spacing: .06em; }
-.keyrow label { display: flex; gap: 8px; align-items: center; text-transform: uppercase; }
-.keyrow input[type=range] { width: 110px; accent-color: var(--accent); }
-.keyrow .mono { color: var(--accent); font-size: 15px; }
-.keyrow .hint { color: var(--faint); margin-left: auto; }
-.kbd { position: relative; height: 96px; display: flex; gap: 3px; user-select: none; -webkit-user-select: none; touch-action: none;
-       padding: 6px 6px 0; border-radius: 8px 8px 0 0; background: linear-gradient(180deg, #121030, #0a0820); box-shadow: inset 0 3px 8px rgba(0, 0, 0, .6); }
-.kbd .w, .kbd .b { position: relative; display: flex; align-items: flex-end; justify-content: center; font: 400 10px/1 var(--px); letter-spacing: .06em; }
-.kbd .w { flex: 1; background: linear-gradient(180deg, #d9dbe8, #eef0f6 18%, #e2e4ee); border-radius: 0 0 5px 5px; padding-bottom: 7px; color: #6a6e8a;
-          box-shadow: inset 0 -5px 0 #b8bbd0, 0 2px 0 #050414; transition: transform .04s; }
-.kbd .b { position: absolute; top: 6px; height: 58%; background: linear-gradient(180deg, #0c0b16, #1c1a38 88%, #26244a); border-radius: 0 0 4px 4px; z-index: 1;
-          padding-bottom: 6px; color: #5e5c8a; box-shadow: inset 0 -4px 0 #04030c, 0 3px 4px rgba(0, 0, 0, .6); }
-.kbd .w::before, .kbd .b::before { content: ""; position: absolute; left: 18%; right: 18%; top: 5px; height: 3px; border-radius: 2px; background: rgba(0, 0, 0, .14); transition: background .06s, box-shadow .06s; }
-.kbd .b::before { background: rgba(255, 255, 255, .06); }
-.kbd .down.w, .kbd .down.b { transform: translateY(1px); }
-.kbd .down.w { background: linear-gradient(180deg, #c9ccdc, #dfe1ec); box-shadow: inset 0 -3px 0 #b8bbd0; }
-.kbd .down.w::before, .kbd .down.b::before { background: var(--accent); box-shadow: 0 0 8px var(--accent), 0 0 2px var(--accent); }
+/* a narrow screen (the phone's): the sounds a tab of their own, the top line in two */
+.ui.narrow .top { flex-wrap: wrap; row-gap: .3em; }
+.ui.narrow .tabs { max-width: 100%; order: 3; flex-basis: 100%; }
+.ui.narrow .tab.libtab { display: inline-block; }
+.ui.narrow .main { grid-template-columns: minmax(0, 1fr); }
+.ui.narrow .side { display: none; border-right: 0; }
+.ui.narrow[data-tab="lib"] .side { display: flex; }
+.ui.narrow[data-tab="lib"] .content { display: none; }
+.ui.narrow .home { grid-template-columns: minmax(0, 1fr); height: auto; }
+.ui.narrow .home .scopebox { height: 9em; }
+.ui.narrow .home .fm1 { width: 60%; margin: 0 auto; }
+.ui.narrow .hide-narrow { display: none; }
+.ui.narrow .groups, .ui.narrow .cards { grid-template-columns: minmax(0, 1fr); }
 
-/* narrower than a laptop: the rail across, the columns one after another */
-@media (max-width: 1200px) {
-  .layout { grid-template-columns: 200px minmax(0, 1fr); }
-  .rail { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 12px; }
-  #side { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; border-left: 0; border-top: 1px solid var(--line); }
-  #side .card { flex: 1 1 260px; }
-  .app { height: auto; }
-  .col, .tabbody { overflow: visible; }
-}
-@media (max-width: 760px) {
-  .layout { grid-template-columns: minmax(0, 1fr); }
-  #browser { border-right: 0; }
-  #tracks { margin: 0; flex-wrap: wrap; }
-  .keyrow .hint { display: none; }
-  .tabbody { padding: 16px; }
-  .groups { grid-template-columns: minmax(0, 1fr); }
-  #keys { position: sticky; bottom: 0; background: var(--bg); }
-}
-
-#start { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(8, 6, 26, .94); }
-#start .box { max-width: 540px; padding: 28px; text-align: center; }
+/* switching on */
+#start { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(8, 6, 26, .92); }
+#start .box { max-width: 540px; padding: 28px; text-align: center; color: var(--ink); }
 #start h2 { font: 400 40px/1.1 var(--led); letter-spacing: .06em; margin: 0 0 10px; }
 #start h2 b { font-weight: 400; color: var(--accent); text-shadow: 0 0 16px rgba(0, 229, 255, .5); }
 #start p { color: var(--mid); font-size: 15px; line-height: 1.5; }
@@ -272,12 +252,12 @@ header { display: flex; align-items: center; gap: 14px; padding: 10px 18px; bord
 #start a { color: var(--accent); }
 </style>
 </head>
-<body>
+<body class="dist-idm">
 <div id="start">
   <div class="box">
     <h2>BLUE <b>HARE</b> STUDIO</h2>
     <p>The FM-1's own engines, effects and generative engine, running in this browser. Pick an engine and a preset,
-       shape it, play it from the keyboard, then save it for the FM-1.</p>
+       shape it, play it from the keys, then save it for the FM-1.</p>
     <button class="btn primary" id="go">Switch on</button>
     <p id="start-msg" class="note"></p>
     <p class="note">Blue Hare, a fork of <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita (Hügelton Instruments) ·
@@ -285,107 +265,109 @@ header { display: flex; align-items: center; gap: 14px; padding: 10px 18px; bord
   </div>
 </div>
 
-<div class="app">
-  <header>
-    <div class="brand"><h1>BLUE <b>HARE</b></h1><span>Studio · @VERSION@</span></div>
-    <nav id="tracks" aria-label="Patches"></nav>
-    <span class="grow"></span>
-    <span class="seg mode" role="group" aria-label="Mode" title="NORMAL: the FM-1's plain pages; EXPERT: every parameter (the device's MENU > EXPERT)">
-      <button type="button" id="normal" aria-pressed="true">NORMAL</button><button type="button" id="expert" aria-pressed="false">EXPERT</button>
-    </span>
-    <button class="btn" id="undo" title="Undo (Ctrl/⌘ Z)" disabled>Undo</button>
-    <button class="btn" id="redo" title="Redo (Ctrl/⌘ ⇧ Z)" disabled>Redo</button>
-    <button class="btn" id="rec" title="Record what plays to a WAV file">● Rec</button>
-    <span class="status"><span class="dot" id="midi-dot"></span><span id="midi-text">MIDI: off</span></span>
-    <span class="status mono" id="load"></span>
-  </header>
-
-  <div class="layout">
-    <nav class="rail" id="tabs" role="tablist" aria-label="Pages"></nav>
-
-    <aside class="col" id="browser">
-      <section>
-        <h2 class="ttl">Engine</h2>
-        <div id="engines"></div>
-      </section>
-      <section class="browse">
-        <div class="ltabs" role="tablist">
-          <button class="ltab" role="tab" id="lt-presets" aria-selected="true">Presets</button>
-          <button class="ltab" role="tab" id="lt-users" aria-selected="false">My sounds</button>
-        </div>
-        <div id="pane-presets" class="browse" style="min-height:0">
-          <div class="chips" id="cats"></div>
-          <div class="list" id="presets"></div>
-        </div>
-        <div id="pane-users" class="browse" style="min-height:0" hidden>
-          <div class="list" id="users"></div>
-        </div>
-      </section>
-    </aside>
-
-    <main id="editor">
-      <div class="titleline">
-        <span class="pg" id="page-title">Sound</span>
-        <span class="tabacts" id="acts"></span>
-        <span class="num" id="sound-num">1</span>
-        <span class="title" id="sound-name">—</span>
-        <span class="edited" id="sound-edited" hidden>edited</span>
-        <span class="sub" id="sound-sub"></span>
-      </div>
-      <div class="tabbody" id="groups"></div>
-    </main>
-
-    <aside class="col" id="side">
-      <section class="card">
-        <h2>The FM-1</h2>
-        <div class="bezel"><canvas id="screen" width="240" height="240"></canvas></div>
-      </section>
-      <section class="card">
-        <h2>Output</h2>
-        <canvas id="scope" width="536" height="152"></canvas>
-        <div class="meter" id="meter" style="margin-top:8px"><span class="bar"><i id="bar"></i></span><span class="mono" id="peak">-∞ dB</span></div>
-      </section>
-      <section class="card">
-        <h2>Save</h2>
-        <div class="fields">
-          <div class="field full"><label for="name">Name</label><input id="name" maxlength="12" autocomplete="off" spellcheck="false"></div>
-          <div class="field"><label for="cat">Category</label><select id="cat"></select></div>
-          <div class="field"><label for="slot">Slot</label><select id="slot"></select></div>
-        </div>
-        <div class="buttons">
-          <button class="btn primary small" id="store">Save to slot</button>
-          <button class="btn small" id="export" title="The selected patch's sound, to a file">Export</button>
-          <button class="btn small" id="import" title="A sound file into the selected patch">Load</button>
-          <input type="file" id="file" accept=".json,application/json" hidden>
-        </div>
-        <div class="buttons" style="margin-top:6px">
-          <button class="btn small" id="patch-export" title="All four patches, embedded, with the effects">Export set</button>
-          <button class="btn small" id="patch-import">Import set</button>
-          <input type="file" id="patch-file" accept=".json,application/json" hidden>
-        </div>
-        <p class="note" id="save-msg"></p>
-      </section>
-      <section class="card">
-        <h2>USB <span class="grow"></span><button class="btn small" id="connect">Connect</button></h2>
-        <div class="field" id="dev-slot-field" hidden><label for="dev-slot">FM-1 slot</label><select id="dev-slot"></select></div>
-        <div class="buttons" style="margin-top:8px"><button class="btn primary small" id="send" hidden>Send to FM-1</button></div>
-        <p class="note" id="dev-msg">Connect the FM-1 by USB (Chrome or Edge) to send this sound to one of its user slots.</p>
-      </section>
-    </aside>
-  </div>
-
-  <div id="keys">
-    <div class="keyrow">
-      <button class="btn small" id="oct-down" title="Octave down (Z)">− Oct</button>
-      <span class="mono" id="oct">C3</span>
-      <button class="btn small" id="oct-up" title="Octave up (X)">+ Oct</button>
-      <label>Velocity <input type="range" id="vel" min="1" max="127" value="100"><span class="mono" id="vel-v">100</span></label>
-      <button class="btn small" id="hold" aria-pressed="false" title="Keep notes sounding until pressed again">Hold</button>
-      <button class="btn small" id="panic" title="Stop every note">All off</button>
-      <span class="hint">Keys A W S E D F T G Y H U J K O L P · Z X octave · Esc all off</span>
+<div id="stage">
+<div class="device" id="device">
+  <svg id="panel" viewBox="0 0 1760 920" aria-hidden="true"></svg>
+  <div class="ui" id="ui" data-tab="home">
+    <div class="top">
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Pages"></nav>
+      <nav id="tracks" aria-label="Patches"></nav>
+      <span class="grow"></span>
+      <span class="seg mode hide-narrow" role="group" aria-label="Mode" title="NORMAL: the FM-1's plain pages; EXPERT: every parameter (the device's MENU > EXPERT)">
+        <button type="button" id="normal" aria-pressed="true">NORMAL</button><button type="button" id="expert" aria-pressed="false">EXPERT</button>
+      </span>
+      <button class="btn small" id="undo" title="Undo (Ctrl/⌘ Z)" disabled>Undo</button>
+      <button class="btn small" id="redo" title="Redo (Ctrl/⌘ ⇧ Z)" disabled>Redo</button>
+      <button class="btn small" id="rec" title="Record what plays to a WAV file">● Rec</button>
+      <span class="status mono hide-narrow" id="load"></span>
     </div>
-    <div class="kbd" id="kbd"></div>
+    <div class="main">
+      <aside class="side" id="browser">
+        <section>
+          <h2 class="ttl">Engine</h2>
+          <div id="engines"></div>
+        </section>
+        <section class="browse">
+          <div class="ltabs" role="tablist">
+            <button class="ltab" role="tab" id="lt-presets" aria-selected="true">Presets</button>
+            <button class="ltab" role="tab" id="lt-users" aria-selected="false">My sounds</button>
+          </div>
+          <div id="pane-presets" class="browse">
+            <div class="chips" id="cats"></div>
+            <div class="list" id="presets"></div>
+          </div>
+          <div id="pane-users" class="browse" hidden>
+            <div class="list" id="users"></div>
+          </div>
+        </section>
+      </aside>
+      <main class="content">
+        <div class="titleline">
+          <span class="pg" id="page-title">Home</span>
+          <span class="tabacts" id="acts"></span>
+          <span class="num" id="sound-num">1</span>
+          <span class="title" id="sound-name">—</span>
+          <span class="edited" id="sound-edited" hidden>edited</span>
+          <span class="sub hide-narrow" id="sound-sub"></span>
+        </div>
+        <div class="view" id="view-home">
+          <div class="home">
+            <div class="big">
+              <div class="scopebox"><canvas id="scope" width="1200" height="420"></canvas></div>
+              <div class="meter" id="meter"><span class="bar"><i id="bar"></i></span><span class="mono" id="peak">-∞ dB</span></div>
+            </div>
+            <div class="fm1">
+              <h2>The FM-1 <span class="grow"></span><span class="status"><span class="dot" id="midi-dot"></span><span id="midi-text">MIDI: off</span></span></h2>
+              <div class="bezel2"><canvas id="screen" width="240" height="240" role="img" aria-label="The FM-1's screen"></canvas></div>
+              <dl class="keyhelp hide-narrow">
+                <dt>Z–/ Q–O</dt><dd>the keys (S D F H J L ; ' the black)</dd>
+                <dt>1–=</dt><dd>FX … REC, [ ] OCT</dd>
+                <dt>↑ ↓ ← →</dt><dd>KNOB 1, ALGORITHM</dd>
+                <dt>Esc</dt><dd>every note off</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+        <div class="view" id="view-save" hidden>
+          <div class="cards">
+            <section class="card">
+              <h2>Save the patch's sound</h2>
+              <div class="fields">
+                <div class="field full"><label for="name">Name</label><input id="name" maxlength="12" autocomplete="off" spellcheck="false"></div>
+                <div class="field"><label for="cat">Category</label><select id="cat"></select></div>
+                <div class="field"><label for="slot">Slot</label><select id="slot"></select></div>
+              </div>
+              <div class="buttons">
+                <button class="btn primary small" id="store">Save to slot</button>
+                <button class="btn small" id="export" title="The selected patch's sound, to a file">Export</button>
+                <button class="btn small" id="import" title="A sound file into the selected patch">Load</button>
+                <input type="file" id="file" accept=".json,application/json" hidden>
+              </div>
+              <p class="note" id="save-msg"></p>
+            </section>
+            <section class="card">
+              <h2>The four patches</h2>
+              <p class="note" style="margin:0 0 .8em">All four patches with their sounds and the effects, in one file.</p>
+              <div class="buttons">
+                <button class="btn small" id="patch-export" title="All four patches, embedded, with the effects">Export set</button>
+                <button class="btn small" id="patch-import">Import set</button>
+                <input type="file" id="patch-file" accept=".json,application/json" hidden>
+              </div>
+            </section>
+            <section class="card">
+              <h2>The FM-1 by USB <span class="grow"></span><button class="btn small" id="connect">Connect</button></h2>
+              <div class="field" id="dev-slot-field" hidden><label for="dev-slot">FM-1 slot</label><select id="dev-slot"></select></div>
+              <div class="buttons" style="margin-top:.6em"><button class="btn primary small" id="send" hidden>Send to FM-1</button></div>
+              <p class="note" id="dev-msg">Connect the FM-1 by USB (Chrome or Edge) to send this sound to one of its user slots.</p>
+            </section>
+          </div>
+        </div>
+        <div class="tabbody" id="groups" hidden></div>
+      </main>
+    </div>
   </div>
+  <div class="case-front" aria-hidden="true"></div>
+</div>
 </div>
 
 <script type="module" src="studio.js"></script>

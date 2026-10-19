@@ -130,7 +130,7 @@ check("FX held: its button and the effects' keys breathe, none lit; let go: noth
       a.ex.web_breath_keys() === 0 && a.ex.web_breath_buttons() === 0);
 { // the page's breathing peaks against the firmware's (hal/fm1_input.h FM1_LED_BREATH_PK / _LO, /256 of lit): the
   // colour at 50 % between the dark and the lit one by the LED's share, gamma-encoded (sRGB), within 0.06
-  const html = fs.readFileSync(new URL("./index.html", import.meta.url), "utf8");
+  const html = fs.readFileSync(new URL("./shell.css", import.meta.url), "utf8");   // (2026-10-19: the instrument's own)
   const hal = fs.readFileSync(new URL("../../firmware/hal/fm1_input.h", import.meta.url), "utf8");
   const pk = (n) => +hal.match(new RegExp(`#define ${n} (\\d+)u`))[1] / 256;
   const srgb = (x) => x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055;

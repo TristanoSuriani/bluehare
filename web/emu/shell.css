@@ -1,0 +1,123 @@
+/* SPDX-License-Identifier: GPL-3.0-only
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * The page follows X0X's browser page, web/emu/index.html of charlesvestal/fm1-x0x (GPL-3.0), a Felucca fork.
+ * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
+/* (2026-10-19) The instrument's drawing, shared by the emulator (web/emu/index.html) and the studio (web/studio): the
+ * palettes, the shell, the knobs, the buttons and their LEDs, the keys (shell.js draws them) */
+:root { --bg: #8e8e93; --fg: #111; --dim: #2c2c2e; --rule: #5a5a5e;
+        --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
+        --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
+/* (Blue Hare) every distribution its own palette (the class the build sets, web/emu/build.sh; its device palette
+ * the same: distributions/*.txt PALETTE). IDM: electric cyan and hot magenta on deep indigo, a scan-line glow behind
+ * the device; FOUNDRY: molten orange and gold on near-black; WAREHOUSE: acid green and UV violet on concrete; CHIP:
+ * the Game Boy's greens */
+body.dist-foundry { --bg: #0c0806; --fg: #f6e8d6; --dim: #c09878; --rule: #4c3020; --a1: #ff6414; --a2: #ffd646;
+                    --body: #1c1410; --tray: #120c08; --part: #2e2018; --edge: #4a3424; --label: #f4dcc0;
+                    --glow1: rgba(255, 100, 20, .26); --glow2: rgba(255, 214, 70, .10); color-scheme: dark; }
+body.dist-warehouse { --bg: #0a0b0c; --fg: #e8ece4; --dim: #a8b0a0; --rule: #34383c; --a1: #b0ff30; --a2: #b268ff;
+                      --body: #18191b; --tray: #0e0f10; --part: #26292c; --edge: #3c4044; --label: #e0e6d8;
+                      --glow1: rgba(176, 255, 48, .16); --glow2: rgba(178, 104, 255, .18); color-scheme: dark; }
+body.dist-chip { --bg: #0a1a0a; --fg: #e2f2be; --dim: #9bbc0f; --rule: #306230; --a1: #9bbc0f; --a2: #faf8d2;
+                 --body: #1a321a; --tray: #0f240f; --part: #2a4a2a; --edge: #3e6a3e; --label: #e2f2be;
+                 --glow1: rgba(155, 188, 15, .18); --glow2: rgba(250, 248, 210, .10); color-scheme: dark; }
+body.dist-idm { --bg: #08061a; --fg: #faf096; --dim: #b8b088; --rule: #2e3270; --a1: #ff2ebe; --a2: #00e5ff;
+                --body: #121030; --tray: #0a0820; --part: #1e1a4a; --edge: #3a3488; --label: #faf096;
+                --glow1: rgba(255, 46, 190, .22); --glow2: rgba(0, 229, 255, .16); color-scheme: dark; }
+.device { position: relative; width: 100%; aspect-ratio: 1000 / 624; user-select: none; -webkit-user-select: none;
+          -webkit-touch-callout: none; touch-action: manipulation; }
+.device svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.device canvas { position: absolute; image-rendering: crisp-edges; image-rendering: pixelated; background: #000; }
+.hit { position: absolute; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 10px; }
+.hit.knob { cursor: ns-resize; border-radius: 50%; }
+.hit:focus-visible { outline: 2px solid var(--lit); outline-offset: 2px; }
+.face { transition: fill .05s; }
+.dim .face.btn { fill: #3a3934; }
+.lit .face.btn { fill: var(--lit); }
+.lit text { fill: #1d1d1f; }
+.green .face.btn { fill: var(--green); }
+.green text { fill: #0d2414; }
+.face.key { fill: #0c0c0d; stroke: var(--edge); stroke-width: 1.5; }
+.slit { fill: #3a3a3c; transition: fill .05s; }
+.dim .slit { fill: #77777b; }
+.lit .slit { fill: #ececee; filter: drop-shadow(0 0 3px rgba(255, 255, 255, .6)); }
+/* #119: what can be pressed breathes, dark .. ~60 % of lit and back (hal/fm1_input.h fm1_led_breath, ~1.1 s; MENU >
+ * LEDS DIM LO ~30 %): the peaks between dark and lit at ~0.8 / ~0.58 on screen (the LED's share, gamma-encoded) */
+@keyframes breath-btn { 0%, 100% { fill: #3a3934; } 50% { fill: #d8cfb6; } }
+@keyframes breath-slit { 0%, 100% { fill: #3a3a3c; } 50% { fill: #c8c8ca; } }
+@keyframes breath-btn-lo { 0%, 100% { fill: #3a3934; } 50% { fill: #aca592; } }
+@keyframes breath-slit-lo { 0%, 100% { fill: #3a3a3c; } 50% { fill: #a1a1a3; } }
+.breath .face.btn { animation: breath-btn 1.13s ease-in-out infinite; }
+.breath .slit { animation: breath-slit 1.13s ease-in-out infinite; }
+.dimlo .breath .face.btn { animation-name: breath-btn-lo; }
+.dimlo .breath .slit { animation-name: breath-slit-lo; }
+@media (prefers-reduced-motion: reduce) {
+  .breath .face.btn, .breath .slit { animation: none; }
+  .breath .face.btn { fill: #aca592; }
+  .breath .slit { fill: #a1a1a3; }
+}
+/* the DRUM grid's beats (hal/fm1_input.h fm1_led_mid): a steady level between the glow and lit, ~15 % (DIM LO ~10 %) */
+.mid .slit { fill: #9a9a9e; }
+.dimlo .mid .slit { fill: #8a8a8e; }
+.held .face { stroke: var(--lit); stroke-width: 3; }
+.latched .face { stroke: #79b8ff; stroke-width: 3; }
+/* the device */
+body[class^="dist-"] .shell { stroke: url(#edge); stroke-width: 2; }
+body[class^="dist-"] .tray { stroke: color-mix(in srgb, var(--edge) 70%, transparent); stroke-width: 1; }
+body[class^="dist-"] .bezel { stroke: var(--a1); stroke-width: 1.5; filter: drop-shadow(0 0 7px color-mix(in srgb, var(--a1) 55%, transparent)); }
+body[class^="dist-"] .knob-well { fill: var(--tray); }
+body[class^="dist-"] .knob-face { fill: var(--tray); stroke: var(--a2); stroke-width: 1.6;
+                                  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--a2) 45%, transparent)); }
+body[class^="dist-"] .knob-ind { fill: var(--fg); stroke: var(--fg); filter: drop-shadow(0 0 3px var(--fg)); }
+body[class^="dist-"] .face.btn { fill: var(--tray); stroke: color-mix(in srgb, var(--a2) 35%, var(--edge)); stroke-width: 1.2; }
+body[class^="dist-"] .dim .face.btn { fill: color-mix(in srgb, var(--a2) 12%, var(--tray)); }
+body[class^="dist-"] .lit .face.btn { fill: var(--a2); stroke: var(--a2); filter: drop-shadow(0 0 8px var(--a2)); }
+body[class^="dist-"] .lit text { fill: var(--bg); }
+body[class^="dist-"] .green .face.btn { fill: var(--green); stroke: var(--green); filter: drop-shadow(0 0 8px var(--green)); }
+body[class^="dist-"] .face.key { fill: var(--tray); stroke: color-mix(in srgb, var(--a2) 22%, var(--edge)); stroke-width: 1.2; }
+body[class^="dist-"] .slit { fill: color-mix(in srgb, var(--a2) 10%, var(--tray)); }
+body[class^="dist-"] .dim .slit { fill: color-mix(in srgb, var(--a2) 30%, var(--tray)); }
+body[class^="dist-"] .mid .slit { fill: color-mix(in srgb, var(--a2) 55%, var(--tray)); }
+body[class^="dist-"] .lit .slit { fill: var(--a2); filter: drop-shadow(0 0 5px var(--a2)); }
+body[class^="dist-"] .held .face { stroke: var(--fg); stroke-width: 2.5; }
+body[class^="dist-"] .latched .face { stroke: var(--a1); stroke-width: 2.5; }
+/* SHAPE HARD: the shell lifted off the page, the caps pressed down into their skirts */
+body.hard .shell { filter: drop-shadow(0 18px 28px rgba(0, 0, 0, .65)); }
+body.hard .sheen, body.hard .knob-dome { pointer-events: none; transition: transform .04s; }
+body.hard .face { transition: fill .05s, transform .04s; }
+body.hard .held .face, body.hard .held .sheen, body.hard .held .slit, body.hard .held text { transform: translateY(3px); }
+body.hard .lit .sheen { opacity: .7; }
+body.hard .chip, body.hard dialog#about { border-radius: 0; }
+body.hard .chip { box-shadow: 0 3px 0 rgba(0, 0, 0, .55); }
+body.hard .chip:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, .55); }
+.case-front { display: none; }
+.device.r3d .case-front { display: block; }
+/* (2026-10-18) the instrument in 3D: tilted back under a perspective, its front face below it, its shadow on the page */
+#stage { perspective: 2200px; perspective-origin: 50% 0%; padding: 6px 0 48px; }
+.device.r3d { transform: rotateX(24deg); transform-origin: 50% 100%; transform-style: preserve-3d;
+              width: min(100%, calc((100vh - 240px) * 1.5)); margin: 0 auto; }   /* (it fits the window: its front, the bar) */
+.device.r3d .case-front { position: absolute; left: 0.4%; right: 0.4%; top: 99.4%; height: 16%; transform-origin: 50% 0;
+                          transform: rotateX(90deg); border-radius: 0 0 6px 6px;
+                          background: linear-gradient(180deg, color-mix(in srgb, var(--body) 80%, #fff 6%), color-mix(in srgb, var(--body) 60%, #000) 70%, #000);
+                          box-shadow: inset 0 1px 0 color-mix(in srgb, var(--a2, #fff) 55%, transparent); }
+.device.r3d::after { content: ""; position: absolute; left: 4%; right: 4%; top: 103%; height: 10%; pointer-events: none;
+                     background: radial-gradient(closest-side, rgba(0, 0, 0, .7), transparent); transform: translateZ(-60px); }
+body[class^="dist-"] .face.key.white { fill: #e8eaf2; stroke: #8a8ea6; stroke-width: 1; }
+body[class^="dist-"] .face.key.black { fill: #0c0b16; stroke: #2a2850; stroke-width: 1; }
+body[class^="dist-"] .held .face.key.white { fill: #c9ccdc; }
+body[class^="dist-"] .held .face.key.black { fill: #23224a; }
+body[class^="dist-"] .face.key.white ~ .slit { fill: #c4c6d4; }
+body[class^="dist-"] .dim .face.key.white ~ .slit { fill: color-mix(in srgb, var(--a2) 40%, #c4c6d4); }
+body[class^="dist-"] .mid .face.key.white ~ .slit { fill: color-mix(in srgb, var(--a2) 65%, #c4c6d4); }
+body[class^="dist-"] .lit .face.key ~ .slit { fill: var(--a2); filter: drop-shadow(0 0 4px var(--a2)); }
+/* the fourteen-segment lettering: the ghosts faint, the lit segments glowing */
+.seg14 .seg-off { opacity: .1; }
+.seg14 .seg-on { filter: drop-shadow(0 0 2.5px color-mix(in srgb, currentColor 0%, var(--label))); }
+body[class^="dist-"] .lit .seg14 .seg-on { stroke: var(--bg); filter: none; }
+body[class^="dist-"] .lit .seg14 .seg-off { stroke: var(--bg); opacity: .14; }
+@keyframes breath-neon { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 60%, var(--tray)); } }
+@keyframes breath-neon-lo { 0%, 100% { fill: var(--tray); } 50% { fill: color-mix(in srgb, var(--a2) 35%, var(--tray)); } }
+body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { animation-name: breath-neon; }
+.dimlo body[class^="dist-"] .breath .face.btn, .dimlo body[class^="dist-"] .breath .slit { animation-name: breath-neon-lo; }
+@media (prefers-reduced-motion: reduce) {
+  body[class^="dist-"] .breath .face.btn, body[class^="dist-"] .breath .slit { animation: none; fill: color-mix(in srgb, var(--a2) 45%, var(--tray)); }
+}

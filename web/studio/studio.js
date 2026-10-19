@@ -6,6 +6,7 @@
 // slots (kept in this browser as the emulator keeps its flash). Sounds go to a file, to a slot here, or to a
 // connected FM-1 (the editor protocol's UP_PUT, web/EDITOR_PROTOCOL.md).
 import { ED, frame, reply, parseInfo, parseUpList, upPutArgs } from "./sysex.js";
+import { initShell, build, currentLayout, drawLights, tap, B } from "./shell.js";
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, attrs = {}, ...kids) => {
@@ -499,13 +500,27 @@ async function meterPoll() {
   for (const b of perfEls) b.setAttribute("aria-pressed", String(!!((on >>> +b.dataset.e) & 1)));
 }
 
-let tabNow = pref("bluehare-studio-tab") || "sound";
-function showTab(id) {
-  tabNow = TABS.some((t) => t[0] === id) ? id : "sound";
+// (2026-10-19) the screen's tabs: HOME and SAVE (the studio's own views) round the families; SOUNDS (the engines and
+// presets) a tab of its own on a narrow screen. The shell's buttons open them as the device's open its pages; a tab
+// clicked presses the device's button (its screen, on HOME, follows), not ARP (it starts TECHNO) nor SAVE
+const VIEWS = [["home", "HOME", "Home", B.HOME], ["sound", "EDIT", "", B.EDIT], ["env", "ENV", "", B.ENV], ["lfo", "LFO", "", B.LFO],
+               ["keys", "SCL", "", B.SCL], ["fx", "FX", "", B.FX], ["gen", "TECHNO", "", -1], ["save", "SAVE", "Save · files · USB", -1],
+               ["lib", "SOUNDS", "Engines · presets", -1]];
+const BUTTON_TAB = { [B.HOME]: "home", [B.EDIT]: "sound", [B.ENV]: "env", [B.LFO]: "lfo", [B.SCL]: "keys", [B.FX]: "fx", [B.ARP]: "gen", [B.SAVE]: "save" };
+let tabNow = pref("bluehare-studio-tab") || "home";
+function showTab(id, press = false) {
+  tabNow = VIEWS.some((t) => t[0] === id) ? id : "home";
   pref("bluehare-studio-tab", tabNow);
+  $("ui").dataset.tab = tabNow;
   for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === tabNow));
+  const page = TABS.some((t) => t[0] === tabNow);
+  $("groups").hidden = !page;
+  $("view-home").hidden = tabNow !== "home";
+  $("view-save").hidden = tabNow !== "save";
   for (const p of $("groups").children) p.hidden = p.dataset.tab !== tabNow;
-  $("page-title").textContent = TABS.find((t) => t[0] === tabNow)[4];
+  $("page-title").textContent = page ? TABS.find((t) => t[0] === tabNow)[4] : VIEWS.find((t) => t[0] === tabNow)[2];
+  const bit = VIEWS.find((t) => t[0] === tabNow)[3];
+  if (press && node && bit >= 0) tap(bit);
   if ($("fx-actions")) $("fx-actions").hidden = tabNow !== "fx";
   if ($("gen-actions")) $("gen-actions").hidden = tabNow !== "gen";
   drawEnv();
@@ -514,15 +529,16 @@ async function buildGroups() {
   const root = $("groups"), tabs = $("tabs");
   root.textContent = "";
   tabs.textContent = "";
+  for (const [id, title] of VIEWS)
+    tabs.append(h("button", { class: "tab" + (id === "lib" ? " libtab" : ""), role: "tab", type: "button", "data-tab": id,
+                              onclick: () => showTab(id, true) }, title,
+      id === "gen" ? h("span", { class: "live", id: "gen-live", hidden: true }) : null));
   for (const k of [0, 1, 2, 3]) ctl[k].clear();
   await one("stu_set_expert", expert ? 1 : 0);
   await loadPages();
   const extra = (keys) => fw.layout.filter((g) => keys.includes(g.key));
   await loadDescs([...fw.pages.filter((pg) => pg.vis).flatMap((pg) => pg.items), ...fw.layout.flatMap((g) => g.items)]);
   for (const [id, title, fams, keys] of TABS) {
-    const b = h("button", { class: "tab", role: "tab", type: "button", "data-tab": id, onclick: () => showTab(id) }, title,
-      id === "gen" ? h("span", { class: "live", id: "gen-live", hidden: true }) : null);
-    tabs.append(b);
     const panel = h("div", { class: "groups", role: "tabpanel", "data-tab": id });
     let genDone = false;
     for (const pg of fw.pages) {
@@ -675,9 +691,9 @@ function matrix(items) {
 function procSync() {
   const k = desc[2].findIndex((d) => d && d.label === "PROC"), amb = k >= 0 && S.x[k] === 1;
   const grp = (key) => document.querySelector(`[data-group="${key}"]`);
-  grp("C")?.classList.toggle("dim", amb);
-  for (const key of ["Y", "R"]) grp(key)?.querySelector(".choice")?.classList.toggle("dim", amb);
-  grp("Q")?.querySelector(".stages")?.classList.toggle("dim", amb);
+  grp("C")?.classList.toggle("dimmed", amb);
+  for (const key of ["Y", "R"]) grp(key)?.querySelector(".choice")?.classList.toggle("dimmed", amb);
+  grp("Q")?.querySelector(".stages")?.classList.toggle("dimmed", amb);
 }
 async function showValues(items) {
   const q = items.map(({ scope, id }) => ({ fn: "stu_format", args: [scope, id, cur(scope, id)], ret: "str" }));
@@ -1100,97 +1116,9 @@ async function sendDevice() {
   }
 }
 
-// ------------------------------------------------------------------ playing: the keys, the computer keys, MIDI in
-let octave = +(pref("bluehare-studio-oct") || 4), hold = false;
-const held = new Map();                  // note -> how it is held ("ptr" pointers, key letters) / latched
-const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const LETTERS = "awsedftgyhujkolp;";     // C .. E of the next octave
-const kbdEls = new Map();
-function buildKeys() {
-  const k = $("kbd");
-  k.textContent = "";
-  kbdEls.clear();
-  const n0 = 12 * octave, whites = [];
-  for (let n = n0; n <= n0 + 24; n++) if (![1, 3, 6, 8, 10].includes(n % 12)) whites.push(n);
-  const W = 100 / whites.length;
-  whites.forEach((n) => {
-    const i = n - n0, el = h("div", { class: "w", "data-n": n }, i < LETTERS.length ? LETTERS[i].toUpperCase() : (n % 12 ? "" : NOTE_NAMES[0] + (n / 12 - 1)));
-    k.append(el);
-    kbdEls.set(n, el);
-  });
-  whites.forEach((n, wi) => {
-    if ([0, 2, 5, 7, 9].includes(n % 12) && n + 1 <= n0 + 24) {
-      const i = n + 1 - n0;
-      const el = h("div", { class: "b", "data-n": n + 1, style: `left:calc(${(wi + 1) * W}% - ${W * .3}%);width:${W * .6}%` },
-        i < LETTERS.length ? LETTERS[i].toUpperCase() : "");
-      k.append(el);
-      kbdEls.set(n + 1, el);
-    }
-  });
-  $("oct").textContent = "C" + (octave - 1);
-  for (const n of held.keys()) kbdEls.get(n)?.classList.add("down");
-}
-function noteOn(n, how) {
-  if (!node) return;
-  if (hold && held.has(n) && how !== "midi") { noteOff(n, true); return; }
-  if (held.has(n)) return;
-  held.set(n, how);
-  node.port.postMessage({ type: "call", id: 0, calls: [{ fn: "stu_note", args: [n, +$("vel").value] }] });
-  kbdEls.get(n)?.classList.add("down");
-}
-function noteOff(n, force = false) {
-  if (!held.has(n) || (hold && !force)) return;
-  held.delete(n);
-  node.port.postMessage({ type: "call", id: 0, calls: [{ fn: "stu_note", args: [n, 0] }] });
-  kbdEls.get(n)?.classList.remove("down");
-}
+// ------------------------------------------------------------------ playing: the shell's keys (shell.js), MIDI in
 function allOff() {
-  for (const n of [...held.keys()]) noteOff(n, true);
   if (node) node.port.postMessage({ type: "call", id: 0, calls: [{ fn: "stu_all_off" }] });
-}
-function bindKeys() {
-  const k = $("kbd");
-  const at = (e) => { const t = document.elementFromPoint(e.clientX, e.clientY); return t && t.dataset.n ? +t.dataset.n : null; };
-  const ptr = new Map();
-  k.addEventListener("pointerdown", (e) => {
-    k.setPointerCapture(e.pointerId);
-    const n = at(e);
-    if (n !== null) { ptr.set(e.pointerId, n); noteOn(n, "ptr"); }
-  });
-  k.addEventListener("pointermove", (e) => {
-    if (!ptr.has(e.pointerId) || hold) return;
-    const n = at(e), o = ptr.get(e.pointerId);
-    if (n !== null && n !== o) { noteOff(o); ptr.set(e.pointerId, n); noteOn(n, "ptr"); }
-  });
-  const up = (e) => { if (ptr.has(e.pointerId)) { noteOff(ptr.get(e.pointerId)); ptr.delete(e.pointerId); } };
-  k.addEventListener("pointerup", up);
-  k.addEventListener("pointercancel", up);
-  const typing = (e) => /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) || e.target.isContentEditable;
-  const down = new Map();
-  addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !typing(e)) { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y" && !typing(e)) { e.preventDefault(); redo(); return; }
-    if (e.metaKey || e.ctrlKey || e.altKey || typing(e) || e.repeat) return;
-    const key = e.key.toLowerCase();
-    if (key === "z") { setOctave(octave - 1); return; }
-    if (key === "x") { setOctave(octave + 1); return; }
-    if (key === "escape") { allOff(); return; }
-    const i = LETTERS.indexOf(key);
-    if (i < 0) return;
-    const n = 12 * octave + i;
-    down.set(key, n);
-    noteOn(n, "key");
-  });
-  addEventListener("keyup", (e) => {
-    const key = e.key.toLowerCase();
-    if (down.has(key)) { noteOff(down.get(key)); down.delete(key); }
-  });
-  addEventListener("blur", () => { for (const n of down.values()) noteOff(n); down.clear(); });
-}
-function setOctave(o) {
-  octave = clamp(o, 1, 8);
-  pref("bluehare-studio-oct", octave);
-  buildKeys();
 }
 // MIDI in: a controller plays the selected track (its channel, MIDI IN CH1-4: channel k + 1 plays track k + 1), its CCs
 // reach the firmware's MIDI control as on the device
@@ -1199,8 +1127,6 @@ function midiIn(d) {
   if (!node || d.length < 2) return;
   const st = (d[0] & 0xF0) | (S.sel & 15);
   node.port.postMessage({ type: "midi", data: [st, d[1], d[2] || 0] });
-  if ((d[0] & 0xF0) === 0x90 && d[2]) kbdEls.get(d[1])?.classList.add("down");
-  else if ((d[0] & 0xF0) === 0x80 || ((d[0] & 0xF0) === 0x90 && !d[2])) { if (!held.has(d[1])) kbdEls.get(d[1])?.classList.remove("down"); }
   $("midi-dot").classList.add("on");
   clearTimeout(midiBlink);
   midiBlink = setTimeout(() => $("midi-dot").classList.remove("on"), 90);
@@ -1364,6 +1290,7 @@ async function switchOn() {
           if (m.fb) drawScreen(m.fb);
           if (m.sectors) saveFlash(m.sectors);
           if (m.load !== undefined) $("load").textContent = `CPU ${(m.load * 100).toFixed(0)}%`;
+          if (m.leds) drawLights(m.leds, m.anim);
         }
       };
       node.port.postMessage({ type: "load", wasm, sectors: loadFlash(), master: 700 }, [wasm]);
@@ -1377,11 +1304,9 @@ async function switchOn() {
     await poll(true);
     await refreshUsers();
     await nameFromDevice();
-    buildKeys();
-    bindKeys();
     $("start").hidden = true;
     midiOn();
-    setInterval(() => poll(), 300);
+    setInterval(() => poll(), 150);                 // (the shell's knobs turn the device's: their rows light soon)
     setInterval(() => meterPoll(), 120);
     setInterval(() => genPoll(), 150);
     node.port.postMessage({ type: "visible", on: !document.hidden });
@@ -1415,16 +1340,49 @@ $("patch-export").addEventListener("click", async () => { const j = await patchF
 $("patch-import").addEventListener("click", () => pickFile($("patch-file"), loadPatchFile));
 $("connect").addEventListener("click", connectDevice);
 $("send").addEventListener("click", sendDevice);
-$("oct-down").addEventListener("click", () => setOctave(octave - 1));
-$("oct-up").addEventListener("click", () => setOctave(octave + 1));
-$("vel").addEventListener("input", () => { $("vel-v").textContent = $("vel").value; });
-$("panic").addEventListener("click", allOff);
-$("hold").addEventListener("click", () => {
-  hold = !hold;
-  $("hold").setAttribute("aria-pressed", String(hold));
-  $("hold").classList.toggle("on", hold);
-  if (!hold) allOff();
-});
 $("name").addEventListener("input", () => { const p = $("name").selectionStart; $("name").value = $("name").value.toUpperCase(); $("name").setSelectionRange(p, p); });
 document.addEventListener("visibilitychange", () => node && node.port.postMessage({ type: "visible", on: !document.hidden }));
 requestAnimationFrame(drawScope);
+
+// ------------------------------------------------------------------ the instrument (2026-10-19: the emulator's, its screen this page)
+// WIDE: one laptop screen, the screen 1292 x 646 of 1760 x 920, the four left knobs in a column, KNOB 1 .. 4 and the
+// twelve buttons (four rows of three) right, OCT- / OCT+ and the keys in front; TALL (a phone held upright): the
+// screen across the top, the knobs, the buttons, the keys below
+const STUDIO_LAYOUTS = {
+  studio: {
+    w: 1760, h: 920, screen: [214, 22, 1292, 646], inset: 6, r3d: true,
+    knobs: [[107, 96, 34], [107, 246, 34], [107, 396, 34], [107, 546, 34], [1580, 92, 30], [1690, 92, 30], [1580, 222, 30], [1690, 222, 30]],
+    trays: [[1524, 300, 226, 288]],
+    oct: [[246, 728, 150, 82], [246, 822, 150, 82]],
+    grid: [1534, 312, 62, 56, 72, 68, 3], keybed: [420, 716, 1130, 196], logo: [36, 700],
+  },
+  studiotall: {
+    w: 600, h: 1300, screen: [10, 10, 580, 700], inset: 4,
+    knobs: [[90, 790, 26], [230, 790, 26], [370, 790, 26], [510, 790, 26], [90, 890, 26], [230, 890, 26], [370, 890, 26], [510, 890, 26]],
+    trays: [[14, 940, 572, 134]],
+    oct: [[164, 1082, 128, 40], [308, 1082, 128, 40]],
+    grid: [24, 950, 86, 52, 94, 62], keybed: [14, 1130, 572, 160],
+  },
+};
+const ui = $("ui");
+initShell({ device: $("device"), svg: $("panel"), slot: ui, layouts: STUDIO_LAYOUTS, before: document.querySelector(".case-front"),
+  send: (m) => { if (node) node.port.postMessage(m); }, on: () => !!node,
+  onButton: (bit) => { if (BUTTON_TAB[bit] !== undefined) showTab(BUTTON_TAB[bit]); },
+  keydown: (e) => {                                  // (the page's own first: undo, every note off; a row's arrows)
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return true; }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return true; }
+    if (e.key === "Escape") { closeMenu(); allOff(); return true; }
+    return !!e.target.closest?.(".prow, .menu");
+  } });
+const tall = matchMedia("(orientation: portrait) and (max-width: 700px)");
+const shape = () => { document.body.classList.toggle("tall", tall.matches); build(tall.matches ? "studiotall" : "studio"); };
+shape();
+tall.addEventListener("change", shape);
+document.fonts?.load("16px DotGothic16").then(() => build(currentLayout()), () => {});
+// the screen's type: a share of its width (a phone's narrow screen: larger, the sounds a tab)
+new ResizeObserver(() => {
+  const w = ui.clientWidth, narrow = w < 640;
+  ui.classList.toggle("narrow", narrow);
+  ui.style.fontSize = Math.max(9.5, Math.min(16, w / (narrow ? 33 : 78))) + "px";
+  if (!narrow && tabNow === "lib") showTab("home");
+}).observe(ui);
