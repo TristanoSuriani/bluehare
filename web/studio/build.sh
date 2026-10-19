@@ -23,6 +23,7 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
     -o "$OUTD/bluehare.wasm" web/studio/studio_web.c
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@DIST@/$DIST/g" web/studio/index.html > "$OUTD/index.html"
 cp web/studio/studio.js web/studio/sysex.js web/emu/worklet.js "$OUTD/"
-cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt "$OUTD/fonts/"
+cp "assets/fonts/PixelifySans[wght].ttf" "$OUTD/fonts/PixelifySans.ttf"   # (2026-10-19: the small labels, as the firmware's)
+cp assets/fonts/OFL-PixelifySans.txt "$OUTD/fonts/"
 cp build/gen/BlueHareLED.ttf "$OUTD/fonts/"                 # (2026-10-18: the LED face, tools/gen_seg_font.py)
 echo "studio: $OUTD ($(wc -c < "$OUTD/bluehare.wasm" | tr -d ' ') B wasm, $VERSION)"

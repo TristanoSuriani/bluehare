@@ -108,8 +108,10 @@ async function loadDescs(items) {
 // 4 SCL, 5 EDIT, 8 ARP, 10 the TRK pages (CLOCK)
 const FAM = { ENV: 1, LFO: 2, FX: 3, SCL: 4, EDIT: 5, ARP: 8, TRK: 10 };
 const GR = { ADSR: 1, MOD: 9, TRK: 8, GEN: 13 };
-const TABS = [["sound", "SOUND", [FAM.EDIT], "F"], ["env", "ENV", [FAM.ENV], ""], ["lfo", "LFO", [FAM.LFO], "M"],
-              ["keys", "KEYS", [FAM.SCL], ""], ["fx", "FX", [FAM.FX], "XPQ"], ["gen", "TECHNO", [FAM.ARP, FAM.TRK], ""]];
+// (2026-10-19) named as the device's buttons; the title line says more
+const TABS = [["sound", "EDIT", [FAM.EDIT], "F", "Edit · the sound"], ["env", "ENV", [FAM.ENV], "", "Envelopes"],
+              ["lfo", "LFO", [FAM.LFO], "M", "LFO · modulation"], ["keys", "SCL", [FAM.SCL], "", "Scale · keys"],
+              ["fx", "FX", [FAM.FX], "XPQ", "Effects"], ["gen", "TECHNO", [FAM.ARP, FAM.TRK], "", "Techno · generative"]];
 let expert = pref("bluehare-studio-expert") === "1";
 fw.pages = [];
 async function loadPages() {             // the device's pages as they are now (the engine's titles, its plain page's columns)
@@ -230,103 +232,138 @@ function setSound(name, sub, edited = false) {
   $("sound-name").textContent = name || "—";
   $("sound-sub").textContent = sub || "";
   $("sound-edited").hidden = !edited;
+  $("sound-num").textContent = String(S.sel + 1);
   if (!edited && name) $("name").value = name.slice(0, 12);
 }
 const markEdited = () => { if (!sound.edited) { sound.edited = true; $("sound-edited").hidden = false; } };
 
-// ------------------------------------------------------------------ a knob
-const ARC = 270, A0 = -135;
-function polar(r, deg) { const a = (deg - 90) * Math.PI / 180; return [24 + r * Math.cos(a), 24 + r * Math.sin(a)]; }
-function arcPath(r, d0, d1) {
-  if (Math.abs(d1 - d0) < .5) return "";
-  const [x0, y0] = polar(r, Math.min(d0, d1)), [x1, y1] = polar(r, Math.max(d0, d1));
-  return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${Math.abs(d1 - d0) > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+// ------------------------------------------------------------------ a row (2026-10-19: the device's knob row)
+// the label, the value, a thin bar (a choice of a few: its names in a line); the one being turned lit in the active
+// colour, as the device lights a turned knob's row. Drag it sideways (or up), the wheel, the arrows; a double click: the
+// default; a click on a longer choice: its list
+let menuEl = null;
+function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
+function openMenu(el, d, scope, id) {
+  closeMenu();
+  const m = h("div", { class: "menu", role: "listbox", "aria-label": d.label });
+  d.names.forEach((n, k) => m.append(h("button", { type: "button", role: "option", "aria-current": String(d.min + k === cur(scope, id)),
+    onclick: () => { change(scope, id, d.min + k, 0); ctl[scope].get(id)?.flash(); closeMenu(); el.focus(); } }, n)));
+  document.body.append(m);
+  const r = el.getBoundingClientRect(), mh = Math.min(m.scrollHeight, 360);
+  m.style.left = clamp(r.right - m.offsetWidth, 8, innerWidth - m.offsetWidth - 8) + "px";
+  m.style.top = (r.bottom + mh + 8 < innerHeight ? r.bottom + 4 : Math.max(8, r.top - mh - 4)) + "px";
+  menuEl = m;
+  (m.querySelector('[aria-current="true"]') || m.firstChild)?.focus();
+  m.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest" });
+  m.addEventListener("keydown", (e) => {
+    const bs = [...m.children], i = bs.indexOf(document.activeElement);
+    if (e.key === "Escape") { closeMenu(); el.focus(); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") bs[clamp(i + (e.key === "ArrowDown" ? 1 : -1), 0, bs.length - 1)].focus();
+    else return;
+    e.preventDefault();
+  });
 }
-const NS = "http://www.w3.org/2000/svg";
-function svg(tag, attrs) { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; }
+addEventListener("pointerdown", (e) => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); }, true);
 
-// a control of parameter (scope, id): a knob, or (an enum of a few names) buttons, or a list
 function control(scope, id, name) {
   const d = desc[scope][id];
   if (!d) return h("span");
   const label = name || d.label;
-  let el, show;
-  if (d.fmt === F.ENUM && d.names && d.names.length <= 5) {
-    const seg = h("div", { class: "seg", role: "radiogroup", "aria-label": label });
+  const fixed = d.max <= d.min;
+  const named = d.fmt === F.ENUM && d.names;
+  const few = named && d.names.length <= 6 && d.names.join("").length <= 24;
+  const val = h("span", { class: "val" }, "");
+  const el = h("div", { class: "prow" + (fixed ? " off" : "") + (named && !few ? " pick" : ""), role: "slider", tabindex: fixed ? "-1" : "0",
+                        "aria-label": label, "aria-valuemin": d.min, "aria-valuemax": d.max,
+                        title: `${d.label} · drag, wheel or arrows${named && !few ? " · click: the list" : ""} · double-click: default` },
+    h("span", { class: "lbl" }, label), val);
+  const pct = (v) => 100 * (v - d.min) / Math.max(1, d.max - d.min);
+  let show;
+  let hotT = 0;
+  const flash = (ms = 900) => { el.classList.add("hot"); clearTimeout(hotT); hotT = setTimeout(() => el.classList.remove("hot"), ms); };
+  if (few) {
+    val.hidden = true;
+    const opts = h("div", { class: "opts" });
     const bs = d.names.map((n, k) => {
-      const b = h("button", { type: "button", "aria-pressed": "false", onclick: () => change(scope, id, d.min + k, "seg" + scope + "." + id + "." + k) }, n);
-      seg.append(b);
+      const b = h("button", { type: "button", tabindex: "-1", "aria-pressed": "false",
+        onclick: (e) => { e.stopPropagation(); change(scope, id, d.min + k, "seg" + scope + "." + id + "." + k); flash(); } }, n);
+      opts.append(b);
       return b;
     });
-    el = h("div", { class: "choice", title: d.label }, h("span", { class: "lbl" }, label), seg);
-    show = (v) => bs.forEach((b, k) => b.setAttribute("aria-pressed", String(d.min + k === v)));
-  } else if (d.fmt === F.ENUM && d.names) {
-    const sel = h("select", { "aria-label": label, onchange: () => change(scope, id, +sel.value, 0) },
-      d.names.map((n, k) => h("option", { value: d.min + k }, n)));
-    el = h("div", { class: "choice", title: d.label }, h("span", { class: "lbl" }, label), sel);
-    show = (v) => { sel.value = String(v); };
+    el.append(opts);
+    show = (v) => { bs.forEach((b, k) => b.setAttribute("aria-pressed", String(d.min + k === v))); el.setAttribute("aria-valuenow", v); };
   } else {
-    const fixed = d.max <= d.min;
+    const bar = h("span", { class: "bar" }), fill = h("b");
     const bip = d.min < 0 && d.max > 0;
-    const g = svg("svg", { viewBox: "0 0 48 48", "aria-hidden": "true" });
-    g.append(svg("circle", { class: "face", cx: 24, cy: 24, r: 15, "stroke-width": 1 }));
-    g.append(svg("path", { class: "track", d: arcPath(20, A0, A0 + ARC), fill: "none", "stroke-width": 4, "stroke-linecap": "round" }));
-    const arc = svg("path", { class: "arc", fill: "none", "stroke-width": 4, "stroke-linecap": "round" });
-    const ptr = svg("line", { class: "ptr", x1: 24, y1: 24, x2: 24, y2: 12, "stroke-width": 2.4, "stroke-linecap": "round" });
-    g.append(arc, ptr);
-    const val = h("span", { class: "val" }, "");
-    el = h("div", { class: "knob" + (fixed ? " off" : ""), role: "slider", tabindex: fixed ? "-1" : "0", "aria-label": label,
-                    "aria-valuemin": d.min, "aria-valuemax": d.max, title: `${d.label} · double-click: ${d.def}` },
-      h("span", { class: "lbl" }, label), g, val);
-    const deg = (v) => A0 + ARC * (v - d.min) / Math.max(1, d.max - d.min);
+    bar.append(fill);
+    if (!named && d.def > d.min && d.def < d.max) bar.append(h("i", { style: `left:${pct(d.def)}%` }));   // (where the default is)
+    if (!(named && d.max - d.min < 2)) el.append(bar);                                                   // (the device: no bar for a two-way choice)
     show = (v) => {
-      const a = deg(v), z = bip ? deg(0) : A0;
-      arc.setAttribute("d", arcPath(20, z, a));
-      ptr.setAttribute("transform", `rotate(${a} 24 24)`);
+      const p = pct(v), z = bip ? pct(0) : 0;
+      fill.style.left = Math.min(p, z) + "%";
+      fill.style.width = Math.abs(p - z) + "%";
       el.setAttribute("aria-valuenow", v);
-      el.classList.toggle("moved", v !== d.def);
     };
-    el._val = val;
-    if (!fixed) {
-      let drag = null;
-      el.addEventListener("pointerdown", (e) => {
-        if (e.button) return;
-        el.setPointerCapture(e.pointerId);
-        drag = { y: e.clientY, v: cur(scope, id), key: Symbol() };
-        e.preventDefault();
-      });
-      el.addEventListener("pointermove", (e) => {
-        if (!drag) return;
-        const span = d.max - d.min, px = e.shiftKey ? 600 : 180;
-        const v = Math.round(drag.v + (drag.y - e.clientY) * Math.max(span, 8) / px);
-        change(scope, id, clamp(v, d.min, d.max), drag.key);
-      });
-      const end = () => { drag = null; };
-      el.addEventListener("pointerup", end);
-      el.addEventListener("pointercancel", end);
-      el.addEventListener("dblclick", () => change(scope, id, d.def, 0));
-      el.addEventListener("wheel", (e) => {
-        e.preventDefault();
-        const step = e.shiftKey ? 1 : Math.max(1, Math.round((d.max - d.min) / 64));
-        change(scope, id, clamp(cur(scope, id) + (e.deltaY < 0 ? step : -step), d.min, d.max), "wheel" + scope + "." + id);
-      }, { passive: false });
-      el.addEventListener("keydown", (e) => {
-        const big = Math.max(1, Math.round((d.max - d.min) / 10));
-        const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: big, PageDown: -big }[e.key];
-        let v = null;
-        if (k) v = cur(scope, id) + k;
-        else if (e.key === "Home") v = d.min;
-        else if (e.key === "End") v = d.max;
-        else if (e.key === "Delete" || e.key === "Backspace") v = d.def;
-        if (v === null) return;
-        e.preventDefault();
-        e.stopPropagation();
-        change(scope, id, clamp(v, d.min, d.max), "key" + scope + "." + id);
-      });
-    }
   }
-  const c = { el, show, text: (t) => { if (el._val) el._val.textContent = t; el.setAttribute?.("aria-valuetext", t); } };
-  ctl[scope].set(id, c);
+  if (!fixed) {
+    let drag = null;
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button || e.target.closest(".opts button")) return;
+      el.setPointerCapture(e.pointerId);
+      drag = { x: e.clientX, y: e.clientY, v: cur(scope, id), key: Symbol(), moved: false };
+      el.focus({ preventScroll: true });
+      e.preventDefault();
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const dd = (e.clientX - drag.x) - (e.clientY - drag.y);
+      if (!drag.moved && Math.abs(dd) < 4) return;
+      drag.moved = true;
+      flash(100000);
+      let v;
+      if (named) v = drag.v + Math.trunc(dd / 22);
+      else {
+        const span = d.max - d.min, px = (e.shiftKey ? 3 : 1) * Math.max(240, el.clientWidth);
+        v = Math.round(drag.v + dd * Math.max(span, 8) / px);
+      }
+      change(scope, id, clamp(v, d.min, d.max), drag.key);
+    });
+    const end = () => {
+      if (!drag) return;
+      if (!drag.moved && named && !few) openMenu(el, d, scope, id);
+      if (drag.moved) flash();
+      drag = null;
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", () => { drag = null; flash(); });
+    el.addEventListener("dblclick", (e) => { if (!e.target.closest(".opts button")) { change(scope, id, d.def, 0); flash(); } });
+    el.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const step = named || e.shiftKey ? 1 : Math.max(1, Math.round((d.max - d.min) / 64));
+      const dir = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? -e.deltaY : e.deltaX) > 0 ? 1 : -1;
+      change(scope, id, clamp(cur(scope, id) + dir * step, d.min, d.max), "wheel" + scope + "." + id);
+      flash();
+    }, { passive: false });
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && named && !few) { e.preventDefault(); openMenu(el, d, scope, id); return; }
+      const big = Math.max(1, Math.round((d.max - d.min) / 10));
+      const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: big, PageDown: -big }[e.key];
+      let v = null;
+      if (k) v = cur(scope, id) + k;
+      else if (e.key === "Home") v = d.min;
+      else if (e.key === "End") v = d.max;
+      else if (e.key === "Delete" || e.key === "Backspace") v = d.def;
+      if (v === null) return;
+      e.preventDefault();
+      e.stopPropagation();
+      change(scope, id, clamp(v, d.min, d.max), "key" + scope + "." + id);
+      flash();
+    });
+  }
+  const c = { el, show, flash, text: (t) => { val.textContent = t; el.setAttribute("aria-valuetext", t); } };
+  const prev = ctl[scope].get(id);                     // (one parameter on two pages, as on the device: both rows follow)
+  ctl[scope].set(id, !prev ? c : { el, show: (v) => { prev.show(v); show(v); }, flash: (ms) => { prev.flash?.(ms); flash(ms); },
+                                     text: (t) => { prev.text(t); c.text(t); } });
   return el;
 }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -378,14 +415,23 @@ function drawEnv() {
   const a = S.p[1] / 127, dcy = S.p[2] / 127, s = S.p[3] / 127, r = S.p[4] / 127;
   const seg = (W - 16) / 4, xa = 8 + a * seg, xd = xa + dcy * seg, xs = xd + seg * .8, xr = xs + r * seg;
   const y = (v) => H - 8 - v * (H - 16);
-  x.strokeStyle = st.getPropertyValue("--accent");
-  x.fillStyle = st.getPropertyValue("--accent").trim() + "22";
-  x.lineWidth = 2;
+  const acc = st.getPropertyValue("--accent").trim();
+  x.fillStyle = st.getPropertyValue("--line").trim();
+  x.fillRect(0, y(0), W, 2);
   x.beginPath();
   x.moveTo(8, y(0)); x.lineTo(xa, y(1)); x.lineTo(xd, y(s)); x.lineTo(xs, y(s)); x.lineTo(xr, y(0));
-  x.stroke();
-  x.lineTo(8, y(0));
+  const grad = x.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, acc + "40");
+  grad.addColorStop(1, acc + "00");
+  x.fillStyle = grad;
   x.fill();
+  x.strokeStyle = acc;
+  x.lineWidth = 3;
+  x.lineJoin = "round";
+  x.shadowColor = acc;
+  x.shadowBlur = 10;
+  x.stroke();
+  x.shadowBlur = 0;
 }
 
 // the performance layer's hold effects (perform.c PF_DEF's order): held while pressed, or latched (a press on, a press
@@ -459,6 +505,7 @@ function showTab(id) {
   pref("bluehare-studio-tab", tabNow);
   for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === tabNow));
   for (const p of $("groups").children) p.hidden = p.dataset.tab !== tabNow;
+  $("page-title").textContent = TABS.find((t) => t[0] === tabNow)[4];
   if ($("fx-actions")) $("fx-actions").hidden = tabNow !== "fx";
   if ($("gen-actions")) $("gen-actions").hidden = tabNow !== "gen";
   drawEnv();
@@ -488,7 +535,8 @@ async function buildGroups() {
     for (const g of extra(keys)) panel.append(groupBox(g));
     root.append(panel);
   }
-  tabs.append(fxActions(), genActions());
+  $("acts").textContent = "";
+  $("acts").append(fxActions(), genActions());
   showTab(tabNow);
   $("expert").setAttribute("aria-pressed", String(expert));
   $("normal").setAttribute("aria-pressed", String(!expert));
@@ -507,7 +555,7 @@ function groupBox(g) {
   const info = G.note && g.key !== "G" && !G.show ? h("button", { class: "info", type: "button", title: G.note, "aria-label": "About " + G.title,
     onclick: () => { const n = box.querySelector(".gnote"); if (n) n.hidden = !n.hidden; } }, "ⓘ") : null;
   box.append(h("h3", {}, G.title, G.track ? h("span", { class: "sub" }, `patch ${S.sel + 1}`) : null,
-    G.fx ? h("span", { class: "sub" }, "the patch") : null, info));
+    G.fx ? h("span", { class: "sub" }, "every patch") : null, info));
   const ctrls = h("div", { class: "ctrls" });
   if (g.key === "E") {
     box.id = "engine-group";
@@ -517,11 +565,11 @@ function groupBox(g) {
   } else {
     if (g.gen) ctrls.append(genBar());
     if (g.key === "P") ctrls.append(perfButtons());
-    if (g.page && g.page.graph === GR.ADSR) {
-      envCanvas = h("canvas", { id: "env-graph", width: 300, height: 112 });
+    g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, g.page ? undefined : G.names?.[i])));
+    if (g.page && g.page.graph === GR.ADSR) {           // (the device's strip under the rows: the envelope)
+      envCanvas = h("canvas", { id: "env-graph", width: 720, height: 168 });
       ctrls.append(envCanvas);
     }
-    g.items.forEach((it, i) => ctrls.append(control(it.scope, it.id, g.page ? undefined : G.names?.[i])));
     if (g.key === "Q") ctrls.append(masterStages());
     if (G.note) ctrls.append(h("p", { class: "gnote", hidden: !G.show && g.key !== "G" }, G.note));   /* (the others: ⓘ) */
   }
@@ -659,6 +707,7 @@ async function poll(force = false) {
     for (let i = 0; i < fw.G; i++) if (force || g[i] !== S.g[i]) if (!inflight.has("1." + i)) { S.g[i] = g[i]; changed.push({ scope: 1, id: i }); }
     for (let i = 0; i < fw.X; i++) if (force || x[i] !== S.x[i]) if (!inflight.has("2." + i)) { S.x[i] = x[i]; changed.push({ scope: 2, id: i }); }
     const selMoved = sel !== S.sel;
+    const soundMoved = engineMoved || preset !== S.preset || user !== S.user;   // (a piece, the device: another sound)
     if (!engineMoved && !force && changed.some((c) => c.scope === 1)) await refreshTracks();   // (a piece: the other patches' sounds)
     Object.assign(S, { engine, preset, user, sel });
     if (selMoved && ctl[0].size && !engineMoved) await buildGroups();   // (the groups name the patch: "patch 2")
@@ -669,14 +718,17 @@ async function poll(force = false) {
       await buildGroups();                  // (the engine's pages: its titles, its plain page, its macros)
       await refreshEngineLabels();
     }
-    if (selMoved) await nameFromDevice();
+    if (selMoved || (soundMoved && !force)) await nameFromDevice();
     const shown = changed.filter(({ scope, id }) => ctl[scope].has(id));
     if (ctl[3].size) {                      // (the macros: read back from the parameters they move)
       const ids = [...ctl[3].keys()], mv = await call(ids.map((id) => ({ fn: "stu_get", args: [3, id] })));
       ids.forEach((id, j) => { if (force || engineMoved || mv[j] !== S.m[id]) { S.m[id] = mv[j]; if (!inflight.has("3." + id)) shown.push({ scope: 3, id }); } });
     }
     if (engineMoved || force) await showValues(pageItems());
-    else if (shown.length) await showValues(shown);
+    else if (shown.length) {
+      await showValues(shown);
+      for (const { scope, id } of shown) if (!inflight.has(scope + "." + id)) ctl[scope].get(id)?.flash?.();
+    }
     renderPresetMark();
   } finally { polling = false; }
 }
@@ -695,7 +747,8 @@ async function refreshTracks() {
   nav.textContent = "";
   r.forEach((e, t) => nav.append(h("button", { class: "trk", type: "button", "aria-pressed": String(t === S.sel),
     onclick: () => selectTrack(t), title: `Patch ${t + 1}` },
-    h("small", {}, `PATCH ${t + 1}`), h("b", {}, fw.engines[e]?.name || "-"))));
+    h("small", {}, String(t + 1)), h("b", {}, fw.engines[e]?.name || "-"))));
+  $("sound-num").textContent = String(S.sel + 1);
 }
 async function selectTrack(t) {
   if (t === S.sel) return;
@@ -709,7 +762,7 @@ function renderEngines() {
   box.textContent = "";
   for (const e of fw.engines)
     box.append(h("button", { class: "eng", type: "button", "aria-pressed": String(e.index === S.engine),
-      onclick: () => pickEngine(e.index) }, h("b", {}, e.name), h("small", {}, ENGINE_WORDS[e.name] || "")));
+      title: ENGINE_WORDS[e.name] || e.name, onclick: () => pickEngine(e.index) }, e.name));
 }
 async function pickEngine(e) {
   if (e === S.engine) return;
@@ -1182,10 +1235,12 @@ function drawScope() {
   for (let i = 1; i < buf.length / 2; i++) if (buf[i - 1] < 0 && buf[i] >= 0) { start = i; break; }
   const st = getComputedStyle(document.documentElement);
   x.clearRect(0, 0, W, H);
-  x.strokeStyle = st.getPropertyValue("--edge");
-  x.beginPath(); x.moveTo(0, H / 2); x.lineTo(W, H / 2); x.stroke();
+  x.fillStyle = st.getPropertyValue("--line");
+  x.fillRect(0, H / 2 - 1, W, 2);
   x.strokeStyle = st.getPropertyValue("--accent");
-  x.lineWidth = 2;
+  x.shadowColor = x.strokeStyle;
+  x.shadowBlur = 8;
+  x.lineWidth = 3;
   x.beginPath();
   const n = Math.min(1024, buf.length - start);
   let pk = 0;
@@ -1195,6 +1250,7 @@ function drawScope() {
     i ? x.lineTo(i * W / n, y) : x.moveTo(0, y);
   }
   x.stroke();
+  x.shadowBlur = 0;
   peakHold = Math.max(pk, peakHold * .96);
   const db = 20 * Math.log10(peakHold || 1e-9);
   $("peak").textContent = (db < -90 ? "-∞" : db.toFixed(1)) + " dB";
@@ -1370,12 +1426,5 @@ $("hold").addEventListener("click", () => {
   if (!hold) allOff();
 });
 $("name").addEventListener("input", () => { const p = $("name").selectionStart; $("name").value = $("name").value.toUpperCase(); $("name").setSelectionRange(p, p); });
-$("theme").addEventListener("click", () => {
-  const light = document.documentElement.dataset.theme !== "light";
-  document.documentElement.dataset.theme = light ? "light" : "dark";
-  pref("bluehare-studio-theme", light ? "light" : "dark");
-  drawEnv();
-});
-document.documentElement.dataset.theme = pref("bluehare-studio-theme") || "dark";
 document.addEventListener("visibilitychange", () => node && node.port.postMessage({ type: "visible", on: !document.hidden }));
 requestAnimationFrame(drawScope);
