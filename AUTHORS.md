@@ -70,6 +70,7 @@ These carry `Copyright (C) 2026 Tristano Suriani (Blue Hare)`.
 | Stable engine ids, distributions, and builds of any set of up to 16 engines | `firmware/baseline/engine_ids.h`, `tools/gen_dist.py`, `distributions/` |
 | Niglio, the mascot (the power-on splash): Tristano Suriani's | `assets/niglio.png`, `tools/gen_niglio.py` |
 | The LED face, fourteen segments (MENU > STYLE LED, the studio, the emulator) | `tools/gen_seg_font.py` |
+| STYLE LED's small labels: Pixelify Sans (SIL OFL 1.1, Copyright 2021 The Pixelify Sans Project Authors) | `assets/fonts/PixelifySans[wght].ttf`, `assets/fonts/OFL-PixelifySans.txt` |
 | WAVE (wavetables) | `firmware/baseline/eng_wave.c`, `tools/gen_wavetables.py` |
 | BYTE (bytebeat) | `firmware/src/eng_byte.c` |
 | WEST (west coast) | `firmware/baseline/eng_west.c` |

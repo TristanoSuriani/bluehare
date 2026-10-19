@@ -66,6 +66,15 @@ def led_faces():
         gen_seg_font.main(str(f), asc, desc, cap, w, adv)
         faces.append((name, str(f), px, rng, ex, 0.0, ph))
     gen_seg_font.main(str(out / "BlueHareLED.ttf"))              # (the studio's and the emulator's: one for every size)
+    # (2026-10-19) LED's small labels: Pixelify Sans (SIL OFL 1.1, assets/fonts/OFL-PixelifySans.txt), a pixel face after
+    # the FM-1's own new firmware's (the user's), at 12 px, its pixels whole; its descent trimmed in a copy so its line is
+    # Inter Tight's S (asc 12, desc 3: 15 px)
+    from fontTools.ttLib import TTFont
+    px = TTFont(str(FONTS.parent / "assets" / "fonts" / "PixelifySans[wght].ttf"))
+    px["hhea"].descent, px["OS/2"].sTypoDescender, px["OS/2"].usWinDescent = -240, -240, 240
+    pxf = out / "PixelifySans-BlueHare.ttf"
+    px.save(str(pxf))
+    faces.insert(0, ("SP", str(pxf), 12, (32, 126), EXTRAS, 0.0, 1))   # (one phase: its pixels whole, never blurred)
     return faces
 
 

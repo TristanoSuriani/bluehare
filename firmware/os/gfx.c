@@ -26,10 +26,12 @@ typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #include "ui_fonts.h"                   /* AF_S 12 px / 400, AF_M 15 px / 500, AF_L 28 px / 600 */
 /* (2026-10-18) MENU > STYLE LED: the screen's text in Blue Hare's fourteen-segment face (tools/gen_seg_font.py; AF_SM
  * SL, the same lines and capitals as Inter Tight's M L): every AF_M, AF_L the face the style picks (af_led). The small
- * labels (AF_S) stay Inter's (2026-10-19: segments at 9 px were heavy on the eyes) */
+ * labels (AF_S) not in segments (2026-10-19: at 9 px they were heavy on the eyes) but in a pixel face, Pixelify Sans
+ * (AF_SP), as the FM-1's own new firmware's */
 static const aafont_t *af_cur[3] = {&AF_S, &AF_M, &AF_L};
 static void af_led(int on)
 {
+    af_cur[0] = on ? &AF_SP : &AF_S;                    /* (2026-10-19) the small labels: Pixelify Sans, a pixel face */
     af_cur[1] = on ? &AF_SM : &AF_M;
     af_cur[2] = on ? &AF_SL : &AF_L;
 }
