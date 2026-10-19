@@ -242,6 +242,15 @@ body.tall .device.r3d .case-front, body.tall .device.r3d::after { display: none;
 .ui.narrow .hide-narrow { display: none; }
 .ui.narrow .groups, .ui.narrow .cards { grid-template-columns: minmax(0, 1fr); }
 
+/* (2026-10-19) VISUALS: TECHNO's STROBE (strobe.js) on the whole screen */
+#vis { position: fixed; inset: 0; z-index: 60; background: #000; }
+#vis canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#vis.idle { cursor: none; }
+.vis-hint { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); padding: 8px 14px; border: 1px solid #2e3270; border-radius: 4px;
+            background: rgba(8, 6, 26, .7); color: #9a9466; font: 400 12px/1 var(--px); letter-spacing: .14em; text-transform: uppercase;
+            transition: opacity .6s; pointer-events: none; white-space: nowrap; }
+#vis.idle .vis-hint { opacity: 0; }
+
 /* switching on */
 #start { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(8, 6, 26, .92); }
 #start .box { max-width: 540px; padding: 28px; text-align: center; color: var(--ink); }
@@ -369,6 +378,8 @@ body.tall .device.r3d .case-front, body.tall .device.r3d::after { display: none;
   <div class="case-front" aria-hidden="true"></div>
 </div>
 </div>
+
+<div id="vis" hidden><canvas id="vis-cv"></canvas><div class="vis-hint">Esc leaves · Space plays or stops · the keys play along</div></div>
 
 <script type="module" src="studio.js"></script>
 </body>

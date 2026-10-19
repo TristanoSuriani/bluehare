@@ -7,6 +7,7 @@
 // connected FM-1 (the editor protocol's UP_PUT, web/EDITOR_PROTOCOL.md).
 import { ED, frame, reply, parseInfo, parseUpList, upPutArgs } from "./sysex.js";
 import { initShell, build, currentLayout, drawLights, tap, B } from "./shell.js";
+import { createStrobe } from "./strobe.js";
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, attrs = {}, ...kids) => {
@@ -617,13 +618,14 @@ function genBar() {
     await one("stu_gen", genOn ? 0 : 1);
     await genPoll();
   } }, "▶ Play");
-  return h("div", { class: "genbar" }, play, h("span", { class: "chord", id: "gen-chord" }, "—"),
+  const vis = h("button", { class: "btn", type: "button", title: "TECHNO's visuals on the whole screen (Esc leaves)", onclick: () => openVisuals() }, "◼ Visuals");
+  return h("div", { class: "genbar" }, play, vis, h("span", { class: "chord", id: "gen-chord" }, "—"),
     h("span", { class: "where", id: "gen-where" }, "stopped"),
     h("span", { class: "roles" }, ["DRUMS", "BASS", "STAB", "LEAD"].map((n, i) => h("span", { class: "role", id: "gen-r" + i }, n))));
 }
 async function genPoll() {
   if (!node || !$("gen-play")) return;
-  const [st, chord] = await call([{ fn: "stu_gen_state", ret: ["i32", 8] }, { fn: "stu_gen_chord", ret: "str" }]);
+  const [st, chord] = await call([{ fn: "stu_gen_state", ret: ["i32", 12] }, { fn: "stu_gen_chord", ret: "str" }]);
   genOn = !!st[0];
   $("gen-play").textContent = genOn ? "■ Stop" : "▶ Play";
   $("gen-play").classList.toggle("on", genOn);
@@ -1371,6 +1373,8 @@ initShell({ device: $("device"), svg: $("panel"), slot: ui, layouts: STUDIO_LAYO
   keydown: (e) => {                                  // (the page's own first: undo, every note off; a row's arrows)
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return true; }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return true; }
+    if (!$("vis").hidden && e.key === "Escape") { closeVisuals(); return true; }
+    if (!$("vis").hidden && e.code === "Space") { e.preventDefault(); if (!e.repeat) one("stu_gen", visState.on ? 0 : 1); return true; }
     if (e.key === "Escape") { closeMenu(); allOff(); return true; }
     return !!e.target.closest?.(".prow, .menu");
   } });
@@ -1386,3 +1390,60 @@ new ResizeObserver(() => {
   ui.style.fontSize = Math.max(9.5, Math.min(16, w / (narrow ? 33 : 78))) + "px";
   if (!narrow && tabNow === "lib") showTab("home");
 }).observe(ui);
+
+// ------------------------------------------------------------------ VISUALS (2026-10-19): TECHNO's STROBE, full screen
+// the firmware's visuals (ui_strobe.c) drawn again at the screen's resolution (strobe.js), following the same signals:
+// the player's part, piece, tempo, 1/16 and the roles' notes, read ~30 times a second. Esc (or leaving full screen)
+// closes it; Space starts and stops TECHNO; the shell's keys still play along
+const visState = { on: 0, step: 0, part: 0, piece: 0, bpm: 120, notes: [0, 0, 0, 0], roles: ["", "", "", ""], name: "" };
+let strobe = null, visRaf = 0, visPoll = 0, visBusy = false, visLast = 0, visIdle = 0;
+async function visRead() {
+  if (visBusy || !node) return;
+  visBusy = true;
+  try {
+    const [g] = await call([{ fn: "stu_gen_state", ret: ["i32", 12] }]);
+    Object.assign(visState, { on: g[0], notes: g.slice(4, 8), part: g[8], piece: g[9], bpm: g[10], step: g[11] });
+    if (!visState.on || !visState.name) visState.name = await str("stu_gen_preset_name", Math.max(0, g[9]));
+  } finally { visBusy = false; }
+}
+function visLoop(t) {
+  visRaf = requestAnimationFrame(visLoop);
+  const dt = visLast ? Math.min(100, t - visLast) : 16;
+  visLast = t;
+  strobe.frame(visState, dt);
+}
+function visWake() {
+  $("vis").classList.remove("idle");
+  clearTimeout(visIdle);
+  visIdle = setTimeout(() => $("vis").classList.add("idle"), 2500);
+}
+async function openVisuals() {
+  const v = $("vis");
+  if (!node || !v.hidden) return;
+  v.hidden = false;
+  strobe = strobe || createStrobe($("vis-cv"));
+  strobe.resize();
+  const r = await call([0, 1, 2, 3].map((k) => ({ fn: "stu_gen_role", args: [k], ret: "str" })));
+  visState.roles = r;
+  visState.name = "";
+  await visRead();
+  visPoll = setInterval(visRead, 30);
+  visLast = 0;
+  visRaf = requestAnimationFrame(visLoop);
+  visWake();
+  try { await v.requestFullscreen?.(); } catch {}
+  strobe.resize();
+}
+function closeVisuals() {
+  const v = $("vis");
+  if (v.hidden) return;
+  v.hidden = true;
+  cancelAnimationFrame(visRaf);
+  clearInterval(visPoll);
+  clearTimeout(visIdle);
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
+$("vis").addEventListener("pointermove", visWake);
+$("vis").addEventListener("dblclick", closeVisuals);
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && !$("vis").hidden) closeVisuals(); });
+addEventListener("resize", () => { if (strobe && !$("vis").hidden) strobe.resize(); });

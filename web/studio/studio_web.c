@@ -375,18 +375,29 @@ STU_EXPORT void stu_gen(uint32_t on)
     if ((int)on != player_playing())
         gen_toggle();
 }
-static int32_t stu_gs[8];
-/* the player's state (2026-10-18: TECHNO's, through the player's interface): {on, bar, step, 0, the roles' notes} */
+static int32_t stu_gs[12];
+/* the player's state (2026-10-18: TECHNO's, through the player's interface): {on, bar, step, section, the roles'
+ * notes; (2026-10-19, the studio's VISUALS: STROBE as ui_strobe.c follows it) the part, the piece, the tempo, the 1/16} */
 STU_EXPORT int32_t *stu_gen_state(void)
 {
     uint32_t r;
+    const player_t *p = player();
     stu_gs[0] = player_playing();
     stu_gs[1] = (int32_t)tc.s.bar;
     stu_gs[2] = (int32_t)tc.s.step;
     stu_gs[3] = (int32_t)tc.s.sect;
     for (r = 0; r < 4u; r++)
-        stu_gs[4 + r] = player() ? (int32_t)player()->notes(r) : 0;
+        stu_gs[4 + r] = p ? (int32_t)p->notes(r) : 0;
+    stu_gs[8] = p && p->part ? (int32_t)p->part() : 0;
+    stu_gs[9] = song.g[G_GPRE];
+    stu_gs[10] = song.g[G_BPM];
+    stu_gs[11] = p && p->step ? (int32_t)(p->step() % 16u) : 0;
     return stu_gs;
+}
+STU_EXPORT char *stu_gen_role(uint32_t r)            /* a role's name (the visuals follow them by name, as STROBE) */
+{
+    const player_t *p = player();
+    return stu_say(p && r < p->nroles ? p->roles[r] : "");
 }
 STU_EXPORT char *stu_gen_chord(void)                /* (the player's first status line: TECHNO's section) */
 {

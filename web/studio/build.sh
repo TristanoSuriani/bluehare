@@ -22,7 +22,7 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
     --no-entry -sSTANDALONE_WASM -sSTACK_SIZE=1048576 -sINITIAL_MEMORY=33554432 -sFILESYSTEM=0 \
     -o "$OUTD/bluehare.wasm" web/studio/studio_web.c
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@DIST@/$DIST/g" web/studio/index.html > "$OUTD/index.html"
-cp web/studio/studio.js web/studio/sysex.js web/emu/worklet.js web/emu/shell.js web/emu/shell.css "$OUTD/"
+cp web/studio/studio.js web/studio/strobe.js web/studio/sysex.js web/emu/worklet.js web/emu/shell.js web/emu/shell.css "$OUTD/"
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt "$OUTD/fonts/"   # (the shell's knob labels)
 cp "assets/fonts/PixelifySans[wght].ttf" "$OUTD/fonts/PixelifySans.ttf"   # (2026-10-19: the small labels, as the firmware's)
 cp assets/fonts/OFL-PixelifySans.txt "$OUTD/fonts/"

@@ -16,7 +16,7 @@ const bytes = fs.readFileSync(wasmPath);
 let fails = 0;
 const check = (what, ok) => { console.log(`studio: ${what.padEnd(80)} ${ok ? "ok" : "FAIL"}`); if (!ok) fails++; };
 
-for (const f of ["studio.js", "sysex.js"]) {
+for (const f of ["studio.js", "strobe.js", "sysex.js"]) {
   const r = spawnSync(process.execPath, ["--check", new URL("./" + f, import.meta.url).pathname], { encoding: "utf8" });
   check(`${f} parses`, !r.status);
   if (r.status) console.log(r.stderr);
