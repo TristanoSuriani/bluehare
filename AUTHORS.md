@@ -44,6 +44,7 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | HOOVER | engine | the early-90s rave lead: detuned saws, PWM, the hoover's dive | `firmware/baseline/eng_hoover.c` | Tristano Suriani |
 | SANDSTORM | engine | the late-90s trance lead: five saws, the pluck, the gate's repeat, the dive | `firmware/baseline/eng_sandstorm.c` | Tristano Suriani |
 | SPEECH | engine | words, as the LPC speech chips spoke them: a lattice filter, no recordings | `firmware/baseline/eng_speech.c` | Tristano Suriani |
+| ONYX | engine | phrases spoken by Kokoro TTS's am_onyx, kept as LPC frames (the vocabulary of electronic music) | `firmware/baseline/eng_onyx.c` | Tristano Suriani; the voice Kokoro-82M's (Apache 2.0) |
 | DUBSIREN | engine | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | `firmware/baseline/eng_dubsiren.c` | Tristano Suriani |
 | DUBSIREN8 | engine | the dub siren in 8 bits, its own gritty echo, on every patch | `firmware/baseline/eng_dubsiren8.c` | Tristano Suriani |
 | MODAL | engine | struck, plucked and bowed resonators | `firmware/baseline/eng_modal.c`, `firmware/baseline/shared/phys_dsp.c` | Tristano Suriani; its resonators DaisySP's (MIT) |

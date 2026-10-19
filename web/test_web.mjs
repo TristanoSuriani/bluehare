@@ -51,8 +51,8 @@ async function editorMock() {
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   {   /* the primary distribution's engines by id (HARE FM1), "-" for the rest: retired (0 .. 13, 27), archived, left out */
     const HARE = { 14: "WAVE", 17: "HOOVER", 21: "VOSIM", 24: "SID", 25: "DUBSIREN", 28: "KIT", 29: "BREAKS", 34: "MODAL", 62: "OBIE",
-                   18: "SPEECH", 31: "SIREN8", 44: "WAR", 59: "CHIPKIT", 60: "SANDSTRM", 54: "LINNKIT" };   /* (the five back 2026-10-18) */
-    ok(info.nengines === 63 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
+                   18: "SPEECH", 31: "SIREN8", 44: "WAR", 59: "CHIPKIT", 60: "SANDSTRM", 54: "LINNKIT", 63: "ONYX" };   /* (the five back 2026-10-18) */
+    ok(info.nengines === 64 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
   let descs = 0;
@@ -141,8 +141,8 @@ async function editorMock() {
   ok(!prefs.favorites[info.nengines][31] && !E.devicePresetRows(info, names, prefs).some((r) => r.user), "editor: erased slot disappears and loses star");
   {   /* the lists in the device's order (engines.c ENGINE_ORDER): SID first, WAVE second, MODAL last, "-" never; the ids stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]), o = E.engineOrder(info.engines);
-    ok(shown.join() === "SID,WAVE,VOSIM,SPEECH,OBIE,HOOVER,SANDSTRM,DUBSIREN,SIREN8,MODAL,KIT,LINNKIT,BREAKS,WAR,CHIPKIT" &&
-       o.join() === "24,14,21,18,62,17,60,25,31,34,28,54,29,44,59",
+    ok(shown.join() === "SID,WAVE,VOSIM,SPEECH,ONYX,OBIE,HOOVER,SANDSTRM,DUBSIREN,SIREN8,MODAL,KIT,LINNKIT,BREAKS,WAR,CHIPKIT" &&
+       o.join() === "24,14,21,18,63,62,17,60,25,31,34,28,54,29,44,59",
        "editor: engines listed SID first, CHIPKIT last (ids kept)");
     ok(E.engineOrder(["SID", "X", "-", "MODAL", "WAVE"]).join() === "0,4,3,1", "editor: an unknown engine follows the known ones");
     m.state.favorites[34][0] = m.state.favorites[14][0] = true;
@@ -500,7 +500,7 @@ async function editorLibrarian() {
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
   ok(file.format === "bluehare-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
     file.paramLabels[83] === "-#11" && file.paramLabels[90] === "-#18" && file.paramLabels[17] === "TIME" && file.paramLabels[18] === "FEED" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
-    file.engines.length === 63,
+    file.engines.length === 64,
     "library file: versioned, with P_COUNT, labels and engines");
   const back = E.readLibraryFile(file, ctx);
   ok(back.patches.length === 2 && !back.skipped && eq(back.patches[0].p, cap.p) && eq(back.patches[1].p, bass.p)

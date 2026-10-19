@@ -23,6 +23,7 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_dubsiren8.c"      /* DUBSIREN8: its 8-bit cousin, every patch (back 2026-10-18) */
 #include "eng_sandstorm.c"      /* SANDSTORM: the late-90s trance lead (back 2026-10-18) */
 #include "eng_speech.c"         /* SPEECH: LPC words (back 2026-10-18; tools/gen_speech.py) */
+#include "eng_onyx.c"           /* ONYX: Kokoro's am_onyx as LPC frames (2026-10-19; tools/gen_onyx_*.py) */
 #include "eng_war.c"            /* WAR: an industrial kit (back 2026-10-18) */
 #include "eng_linnkit.c"        /* LINNKIT: the 80s drum machine (back 2026-10-18) */
 #include "eng_chipkit.c"        /* CHIPKIT: the drums of the 8-bit consoles (back 2026-10-18) */

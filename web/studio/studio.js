@@ -170,6 +170,7 @@ const ENGINE_WORDS = {
   WAR: "An industrial kit: FM drums, driven",
   CHIPKIT: "The 8-bit consoles' drums",
   SPEECH: "Words, as the speech chips spoke them",
+  ONYX: "Phrases in Kokoro's Onyx voice, as LPC",
   SANDSTRM: "The trance lead: five saws, the gate",
   SIREN8: "The dub siren in 8 bits, any patch",
   BREAKS: "Breakbeats: a key starts a looping bar",

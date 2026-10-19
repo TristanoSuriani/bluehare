@@ -16,6 +16,7 @@ ENGINE  OBIE     baseline  eng_obie.c                         62  WAVE    | an e
 ENGINE  HOOVER   baseline  eng_hoover.c                       17  OBIE    | the early-90s rave lead: detuned saws, PWM, the hoover's dive | Tristano Suriani
 ENGINE  SANDSTORM baseline eng_sandstorm.c                    60  HOOVER  | the late-90s trance lead: five saws, the pluck, the gate's repeat, the dive | Tristano Suriani
 ENGINE  SPEECH   baseline  eng_speech.c                       18  VOSIM   | words, as the LPC speech chips spoke them: a lattice filter, no recordings | Tristano Suriani
+ENGINE  ONYX     baseline  eng_onyx.c                         63  SPEECH  | phrases spoken by Kokoro TTS's am_onyx, kept as LPC frames (the vocabulary of electronic music) | Tristano Suriani; the voice Kokoro-82M's (Apache 2.0)
 ENGINE  DUBSIREN baseline  eng_dubsiren.c                     25  DUBSIREN8 | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | Tristano Suriani
 ENGINE  DUBSIREN8 baseline eng_dubsiren8.c                    31  OBIE    | the dub siren in 8 bits, its own gritty echo, on every patch  | Tristano Suriani
 ENGINE  MODAL    baseline  eng_modal.c,shared/phys_dsp.c      34  WAVE    | struck, plucked and bowed resonators                      | Tristano Suriani; its resonators DaisySP's (MIT)

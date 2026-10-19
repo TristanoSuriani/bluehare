@@ -38,6 +38,9 @@ run "SWING: track + global at most 100, the song player's step lengths, the SWG 
 slow compile $CC -O2 -w $I -o "$OUT/speech_test" tests/baseline/speech_test.c -lm
 mkdir -p build/speech_demo
 slow run "SPEECH (back 2026-10-18): every word speaks and ends, pitch, RATE, FORM, END, WORDS keys; demos (each bank's words)" "$OUT/speech_test" build/speech_demo
+slow compile $CC -O2 -w $I -o "$OUT/onyx_test" tests/baseline/onyx_test.c -lm
+mkdir -p build/onyx_demo
+slow run "ONYX (2026-10-19, Kokoro's am_onyx as LPC frames): every phrase speaks and ends, RATE, HOLD, WORDS keys; demos (each bank's phrases)" "$OUT/onyx_test" build/onyx_demo
 compile $CC -O2 -w $I -o "$OUT/patchfx_test" tests/baseline/patchfx_test.c -lm
 run "the patches' delays (2026-10-18): the echo at TIME, FEED's next quieter, panned as the patch, one line each, asleep when silent, FEED 120 bounded, ringing on after a short note (through the mix)" "$OUT/patchfx_test"
 compile $CC -O1 -w $I -Itests/lib -o "$OUT/monolows_test" tests/baseline/monolows_test.c -lm

@@ -3215,13 +3215,13 @@ static int test_retired_engines(void)
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
         {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"},
-        {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"},
+        {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_ONYX, EID_ONYX, "ONYX"}, {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"},
         {ENGI_SANDSTORM, EID_SANDSTORM, "SANDSTRM"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"},
         {ENGI_DUBSIREN8, EID_DUBSIREN8, "SIREN8"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_KIT, EID_KIT, "KIT"},
         {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"}, {ENGI_BREAKS, EID_BREAKS, "BREAKS"}, {ENGI_WAR, EID_WAR, "WAR"}, {ENGI_CHIPKIT, EID_CHIPKIT, "CHIPKIT"}};
     static const uint8_t ARCH[10] = {EID_KARPLUS, EID_FMPERC, EID_WASP, EID_RISERS, EID_ECHOES, EID_CANYON, EID_WEST,
                                      EID_SH101, EID_BLISS, EID_STRINGS};   /* (archived, 2026-10-16 .. 17) */
-    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "SPEECH", "OBIE", "HOOVER", "SANDSTRM", "DUBSIREN", "SIREN8",
+    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "SPEECH", "ONYX", "OBIE", "HOOVER", "SANDSTRM", "DUBSIREN", "SIREN8",
                                         "MODAL", "KIT", "LINNKIT", "BREAKS", "WAR", "CHIPKIT"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
@@ -3292,7 +3292,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID WAVE VOSIM SPEECH OBIE HOOVER SANDSTRM DUBSIREN SIREN8 MODAL KIT LINNKIT BREAKS WAR CHIPKIT (ENGINES[]); PRESETS lists them so",
+    bad += check("engines shown SID WAVE VOSIM SPEECH ONYX OBIE HOOVER SANDSTRM DUBSIREN SIREN8 MODAL KIT LINNKIT BREAKS WAR CHIPKIT (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;

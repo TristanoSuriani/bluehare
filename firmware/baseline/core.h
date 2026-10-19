@@ -65,7 +65,7 @@ enum {                           /* the ids (an archived engine's too: its id is
 #undef ARCHIVED
 #undef ENGINE
 };
-#define EID_COUNT 63u            /* ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+#define EID_COUNT 64u            /* (64 since 2026-10-19: ONYX, 63) ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 /* retired: 1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE (Felucca 1.5), 27 ACID; 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO,
  * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Blue Hare removed them): ids 0 .. 13 but 14,
  * and 27 */
