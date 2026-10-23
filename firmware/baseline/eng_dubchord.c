@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* DUBCHORD (1.5): the dub-techno chord stab, a whole chord in one voice (Blue Hare's own): a key plays CHORD on its
+/* DUBCHORD (1.5; archived 2026-10-16, back 2026-10-19: the user's, for the dub pieces and the device's chords): the dub-techno chord stab, a whole chord in one voice (Blue Hare's own): a key plays CHORD on its
  * note, four notes through one filter, so a chord costs one voice of the budget, not four. The chord's quality stays
  * what CHORD says wherever the root goes (the genre's parallel chords): MIN7, MIN9 (0 3 10 14: the fifth left out),
  * MIN11 (0 3 10 17), MAJ7, SUS2, SUS4, 5THS (stacked fifths), MIN (with the octave). VOIC: CLOSE as listed, OPEN (the
@@ -78,38 +78,25 @@ static void dubchord_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, co
  * 1 OPEN 2 SPREAD; WAVE 0 SAW 1 SQR 2 SINE 3 ORGAN. The stabs short (SUS 0), the pads slow; the delay and reverb sends
  * high: the chord is half its echoes */
 static const preset_t DUBCHORD_PRESETS[] = {
+    /* (back 2026-10-19: the eleven that make bangers; the stabs first) */
     {"DUB STAB", {0, 0, 0, 15, 25, 70, 75, 28}, {0, 85, 0, 40}, 0, 0, FX(0, 10, 75, 45)},
     {"DEEP CHORD", {1, 1, 0, 20, 20, 40, 50, 45}, {0, 60, 30, 50}, 0, 0, FX(0, 20, 60, 55)},
     {"CHANNEL", {0, 2, 1, 10, 35, 85, 60, 20}, {0, 80, 0, 35}, 0, 0, FX(0, 0, 85, 50)},
-    {"FOG CHORD", {2, 1, 0, 30, 18, 30, 20, 90}, {60, 80, 100, 90}, 0, 0, FX(0, 40, 50, 80)},
     {"ECHO STAB", {1, 0, 1, 12, 40, 90, 85, 15}, {0, 78, 0, 25}, 0, 0, FX(0, 0, 95, 40)},
-    {"ORGAN DUB", {0, 0, 3, 0, 60, 20, 10, 40}, {0, 70, 80, 40}, 0, 0, FX(0, 30, 60, 50)},
-    {"SUS DRIFT", {5, 2, 0, 25, 25, 50, 40, 70}, {40, 80, 90, 80}, 0, 0, FX(0, 50, 50, 75)},
-    {"MAJ7 LIGHT", {3, 1, 2, 0, 70, 10, 20, 50}, {0, 70, 60, 60}, 0, 0, FX(0, 30, 40, 60)},
-    {"FIFTHS", {6, 0, 1, 8, 30, 60, 60, 35}, {0, 50, 20, 40}, 0, 0, FX(0, 10, 70, 45)},
-    {"TAPE CHORD", {1, 2, 0, 40, 30, 50, 40, 55}, {10, 60, 50, 60}, 0, 0, FX(10, 40, 70, 55)},
-    {"MINOR PAD", {7, 0, 0, 35, 22, 30, 25, 100}, {80, 90, 110, 100}, 0, 0, FX(0, 60, 30, 85)},
-    {"GLASS SUS", {4, 1, 2, 0, 90, 20, 30, 30}, {0, 80, 40, 70}, 0, 0, FX(0, 30, 50, 65)},
-    {"HOUSE ORGAN", {0, 1, 3, 4, 75, 30, 30, 20}, {0, 45, 30, 30}, 0, 0, FX(0, 20, 30, 35)},
-    {"DRONE FIFTHS", {6, 1, 0, 30, 15, 40, 10, 120}, {90, 90, 120, 110}, 0, 0, FX(0, 50, 40, 90)},
-    /* (FOUNDRY's clean side: sine and organ chords, soft stabs) */
-    {"CLEAN MAJ7", {3, 1, 2, 0, 80, 10, 10, 60}, {0, 80, 60, 70}, 0, 0, FX(0, 30, 30, 60)},
-    {"SINE PAD", {1, 2, 2, 10, 90, 0, 0, 100}, {90, 100, 120, 110}, 0, 0, FX(0, 60, 30, 85)},
-    {"ORGAN SUS", {4, 1, 3, 4, 80, 10, 10, 40}, {0, 40, 110, 40}, 0, 0, FX(0, 40, 20, 40)},
-    {"NINTHS", {1, 1, 0, 12, 45, 20, 30, 60}, {10, 70, 80, 70}, 0, 0, FX(0, 40, 40, 60)},
-    {"SOFT STAB", {0, 0, 2, 6, 60, 20, 50, 25}, {0, 70, 0, 40}, 0, 0, FX(0, 10, 60, 50)},
-    {"MINOR GLOW", {7, 1, 1, 20, 40, 15, 20, 80}, {50, 90, 100, 90}, 0, 0, FX(0, 50, 40, 75)},
-    {"ELEVENS", {2, 2, 2, 8, 70, 10, 30, 50}, {0, 80, 50, 70}, 0, 0, FX(0, 30, 50, 65)},
-    {"AIRY SUS", {5, 2, 2, 15, 85, 5, 10, 90}, {70, 90, 110, 100}, 0, 0, FX(0, 60, 40, 90)},
     {"DEEP STAB", {1, 0, 0, 10, 22, 60, 70, 22}, {0, 75, 0, 35}, 0, 0, FX(0, 0, 80, 45)},
-    {"WARM FIFTHS", {6, 2, 2, 10, 60, 5, 10, 80}, {40, 80, 110, 90}, 0, 0, FX(0, 40, 30, 75)},
+    {"FOG CHORD", {2, 1, 0, 30, 18, 30, 20, 90}, {60, 80, 100, 90}, 0, 0, FX(0, 40, 50, 80)},
+    {"TAPE CHORD", {1, 2, 0, 40, 30, 50, 40, 55}, {10, 60, 50, 60}, 0, 0, FX(10, 40, 70, 55)},
+    {"FIFTHS", {6, 0, 1, 8, 30, 60, 60, 35}, {0, 50, 20, 40}, 0, 0, FX(0, 10, 70, 45)},
+    {"HOUSE ORGAN", {0, 1, 3, 4, 75, 30, 30, 20}, {0, 45, 30, 30}, 0, 0, FX(0, 20, 30, 35)},
+    {"SUS DRIFT", {5, 2, 0, 25, 25, 50, 40, 70}, {40, 80, 90, 80}, 0, 0, FX(0, 50, 50, 75)},
+    {"MINOR PAD", {7, 0, 0, 35, 22, 30, 25, 100}, {80, 90, 110, 100}, 0, 0, FX(0, 60, 30, 85)},
 };
 
 static const engine_t ENG_DUBCHORD = {
     .name = "DUBCHORD",
     .id = EID_DUBCHORD,
     .cc = 0x56,                  /* CC74 CUT, CC71 RES */
-    .cats = "UKUPUKPKKKPKKPKPKPUPKPUP",
+    .cats = "UKUUUPKKKPP",
     .page_title = {"CHORD", "FILTER"},
     .edit = {
         {"CHORD", F_ENUM, 0, 7, 0, N_DC_CHORD, 0},

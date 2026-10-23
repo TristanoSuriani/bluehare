@@ -20,7 +20,10 @@
  * way: POS jumps from frame to frame (the nearest, no crossfade), the samples are read without interpolation and cut
  * to 8 bits (the steps and their images are the sound).
  * Voice state: ph[0] / ph[1] the oscillators' cycles, ph[2] / s[2] their synced reading phases, s[0] s[1] the
- * filter, s[3] the held sample, s[4] the hold count. */
+ * filter, s[3] the held sample, s[4] the hold count.
+ * (2026-10-19) WAVE is the native image's alone (the FM-1's flash went to the voices: ONYX, VOCODER), and there it has
+ * more: DTN is a unison of seven oscillators, spread evenly over +-DTN cents, each from its own phase (wv_uni), their
+ * sum kept at one oscillator's loudness (the supersaw's way, any table); SYNC keeps the two of the device. */
 #include "bluehare_wavetables.h"
 static const char *const N_WT_BANK[] = {WT_BANK_NAMES_INIT, 0};
 #define WT_NLVL 8u
@@ -59,8 +62,23 @@ static inline uint32_t wt_speed(uint32_t inc, uint32_t ratio)
     return (inc >> 8) >= WT_RMAX / ratio ? WT_RMAX : (inc >> 8) * ratio;
 }
 
+#ifdef BLUEHARE_NATIVE
+#define WV_UNI 7u
+static uint32_t wv_uni[NPART][NVOICE][WV_UNI];        /* the unison's phases (the native image's memory) */
+static uint32_t *wv_ph(track_t *t, voice_t *v)
+{
+    uint32_t i = (uint32_t)(v - t->v);
+    return t >= &trk[0] && t < &trk[NPART] && i < NVOICE ? wv_uni[t - trk][i] : 0;
+}
+#endif
+
 static void wave_note_on(track_t *t, voice_t *v)
 {
+#ifdef BLUEHARE_NATIVE
+    uint32_t *u = wv_ph(t, v), k;
+    for (k = 0; u && k < WV_UNI; k++)
+        u[k] = k * 0x9E3779B9u;                       /* (spread phases: the unison never starts as one click) */
+#endif
     (void)t;
     v->ph[0] = 0;
     v->ph[1] = 0x40000000u;                           /* the detuned one a quarter cycle on: no flam at the start */
@@ -99,8 +117,25 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     int32_t ic1 = v->s[0], ic2 = v->s[1], held = v->s[3], cnt = v->s[4];
     tsvf_t flt;
     tsvf_coef(&flt, cut, p[P_E5]);
+#ifdef BLUEHARE_NATIVE
+    uint32_t *uni = det && !sync ? wv_ph(t, v) : 0, uinc[WV_UNI], k;
+    for (k = 0; uni && k < WV_UNI; k++)               /* the seven: -DTN .. +DTN cents, evenly */
+        uinc[k] = cents_inc(m->pitch16, ((int32_t)k - 3) * (int32_t)det / 3, m->fine);
+#endif
     for (i = 0; i < n; i++) {
         int32_t a, b, s;
+#ifdef BLUEHARE_NATIVE
+        if (uni) {                                    /* the unison: seven readings, crossfaded frames, summed */
+            int32_t sum = 0;
+            for (k = 0; k < WV_UNI; k++) {
+                int32_t c = wt_read(fa + o1, l1, uni[k], stepped);
+                sum += c + (((wt_read(fb + o1, l1, uni[k], stepped) - c) * xf) >> 15);
+                uni[k] += uinc[k];
+            }
+            s = sum * 3 / 8;                          /* (~1 / sqrt(7): seven uncorrelated, one's loudness) */
+            goto shaped;
+        }
+#endif
         if (sync) {                                   /* read at the sync speed, restarted with the cycle, windowed */
             a = wt_read(fa + o1, l1, r0, stepped);
             a += ((wt_read(fb + o1, l1, r0, stepped) - a) * xf) >> 15;
@@ -127,6 +162,9 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
             a = (a + b) >> 1;
         }
         s = a;
+#ifdef BLUEHARE_NATIVE
+    shaped:
+#endif
         if (drv)
             s = softclip(((s >> 2) * (drive >> 2)) >> 11);
         s = soft_knee(tsvf_lp(&flt, s >> 1, &ic1, &ic2), 16000) << 1;

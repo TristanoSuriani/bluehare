@@ -23,10 +23,11 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_dubsiren8.c"      /* DUBSIREN8: its 8-bit cousin, every patch (back 2026-10-18) */
 #include "eng_sandstorm.c"      /* SANDSTORM: the late-90s trance lead (back 2026-10-18) */
 #include "eng_speech.c"         /* SPEECH: LPC words (back 2026-10-18; tools/gen_speech.py) */
-#include "eng_onyx.c"           /* ONYX: Kokoro's am_onyx as LPC frames (2026-10-19; tools/gen_onyx_*.py) */
+#include "eng_onyx.c"           /* ONYX: Kokoro's voices as LPC frames (2026-10-19; tools/gen_onyx_*.py) */
+#include "eng_vocoder.c"        /* VOCODER: ONYX's frames shaping a synth (2026-10-19) */
+#include "eng_dubchord.c"       /* DUBCHORD: the dub-techno chord (back 2026-10-19) */
 #include "eng_war.c"            /* WAR: an industrial kit (back 2026-10-18) */
 #include "eng_linnkit.c"        /* LINNKIT: the 80s drum machine (back 2026-10-18) */
-#include "eng_chipkit.c"        /* CHIPKIT: the drums of the 8-bit consoles (back 2026-10-18) */
 #include "eng_kit.c"            /* KIT: a drum kit (back 2026-10-18) */
 #include "eng_breaks.c"         /* BREAKS: synthesized breakbeats (back 2026-10-18) */
 #include "eng_obie.c"           /* OBIE: an analog polysynth after the OB-Xa (2026-10-17) */
@@ -153,18 +154,19 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
  * WARM PAD) and the bass (SID BASS), centred, the keys (MODAL's GRAND, left) and the bells (MODAL's BELL, right; KALIMBA
  * until the presets were cut, 2026-10-18); with 8, a choir (VOSIM's CHOIR AAH), strings (MODAL's BOWED STRING), a bell
  * (MODAL's CHIMES) and a lead (SID SYNC LEAD) after them. An engine the
- * build leaves out: the second pick, else its first engine, preset 0 */
+ * build leaves out: the second pick, else its first engine, preset 0. (2026-10-19) WAVE is the native image's alone: on
+ * the FM-1 the pad is OBIE's PWM PAD */
 #define TRK_PICK(X, p) {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : 0u, BLUEHARE_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
     {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : BLUEHARE_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      BLUEHARE_ENG_##X ? (uint8_t)(p) : BLUEHARE_ENG_##Y ? (uint8_t)(q) : 0u}
 #if NPART == 8
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 0), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 8, WAVE, 0),
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(WAVE, 0, OBIE, 3), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 8, WAVE, 0),
                                           TRK_PICK2(MODAL, 0, WAVE, 0), TRK_PICK2(VOSIM, 6, WAVE, 0),
                                           TRK_PICK2(MODAL, 7, WAVE, 1), TRK_PICK2(MODAL, 6, WAVE, 0), TRK_PICK(SID, 2)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24, -16, 16, -8, 8};
 #else
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK(WAVE, 0), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 8, WAVE, 0),
+static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(WAVE, 0, OBIE, 3), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 8, WAVE, 0),
                                           TRK_PICK2(MODAL, 0, WAVE, 0)};
 static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24};
 #endif

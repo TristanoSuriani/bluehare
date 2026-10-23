@@ -15,7 +15,7 @@ static uint32_t notes(uint32_t mode, uint32_t vmode, uint32_t sprd, uint8_t *sid
     int32_t o[2 * CTL];
     host_tracks_init();
     ml_bypass = 1;                                   /* (the track's own sides: MONO LOWS off) */
-    host_preset(&trk[2], ENGI_WAVE, 0);
+    host_preset(&trk[2], ENGI_HPAD, HPAD_PRESET);
     trk[2].p[P_CHOR] = trk[2].p[P_DLY] = trk[2].p[P_REV] = 0;
     trk[2].p[P_PAN] = 0;
     trk[2].p[P_SPRD] = (int16_t)sprd;

@@ -36,5 +36,7 @@ dubsiren8_render 300
 war_render 192
 chipkit_render 517
 linnkit_render 205
-onyx_render 18492
+onyx_render 10660
+vocoder_render 2750
+dubchord_render 840
 vosim_render 220

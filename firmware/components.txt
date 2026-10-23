@@ -10,13 +10,15 @@
 # (distributions/*.txt) picks: its engines by name, its FX, PLUGIN and UI on lines `FX <NAME>` .. (none of a kind: all
 # of it). The credits table in AUTHORS.md ("Components in the build") is generated from here (make tables).
 ENGINE  SID      baseline  eng_sid.c                          24  WAVE    | a C64 sound-chip voice: pulse, saw, noise, ring, sync          | Tristano Suriani
-ENGINE  WAVE     baseline  eng_wave.c                         14  MODAL   | wavetables, scanned and warped                                | Tristano Suriani
+ENGINE  WAVE     baseline  eng_wave.c                         14  OBIE    | wavetables, scanned and warped                                | Tristano Suriani
 ENGINE  VOSIM    baseline  eng_vosim.c                        21  WAVE    | two formants of pulse trains: voices, reeds, brass            | Tristano Suriani
 ENGINE  OBIE     baseline  eng_obie.c                         62  WAVE    | an eight-voice analog polysynth after the OB-Xa: two oscillators, 12 / 24 dB, slop | Tristano Suriani
 ENGINE  HOOVER   baseline  eng_hoover.c                       17  OBIE    | the early-90s rave lead: detuned saws, PWM, the hoover's dive | Tristano Suriani
 ENGINE  SANDSTORM baseline eng_sandstorm.c                    60  HOOVER  | the late-90s trance lead: five saws, the pluck, the gate's repeat, the dive | Tristano Suriani
 ENGINE  SPEECH   baseline  eng_speech.c                       18  VOSIM   | words, as the LPC speech chips spoke them: a lattice filter, no recordings | Tristano Suriani
-ENGINE  ONYX     baseline  eng_onyx.c                         63  SPEECH  | phrases spoken by Kokoro TTS's am_onyx, kept as LPC frames (the vocabulary of electronic music) | Tristano Suriani; the voice Kokoro-82M's (Apache 2.0)
+ENGINE  ONYX     baseline  eng_onyx.c                         63  SPEECH  | phrases spoken by Kokoro TTS's voices (Onyx, Heart, George, Nicole), kept as LPC frames: the vocabulary of electronic music, vowels to sing | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0)
+ENGINE  VOCODER  baseline  eng_vocoder.c                      64  ONYX    | a vocoder: the voices' phrases and vowels (ONYX's LPC frames) shaping a saw, a square, a supersaw | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0)
+ENGINE  DUBCHORD baseline  eng_dubchord.c                     32  OBIE    | the dub-techno chord stab: a whole chord in one voice, its filter's "pew" (back 2026-10-19) | Tristano Suriani
 ENGINE  DUBSIREN baseline  eng_dubsiren.c                     25  DUBSIREN8 | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | Tristano Suriani
 ENGINE  DUBSIREN8 baseline eng_dubsiren8.c                    31  OBIE    | the dub siren in 8 bits, its own gritty echo, on every patch  | Tristano Suriani
 ENGINE  MODAL    baseline  eng_modal.c,shared/phys_dsp.c      34  WAVE    | struck, plucked and bowed resonators                      | Tristano Suriani; its resonators DaisySP's (MIT)
@@ -24,7 +26,6 @@ ENGINE  KIT      baseline  eng_kit.c,shared/drum_map.c,shared/fmp_dsp.c 28  MODA
 ENGINE  BREAKS   baseline  eng_breaks.c,shared/fmp_dsp.c      29  KIT     | breakbeats, synthesized: a key starts a looping bar        | Tristano Suriani
 ENGINE  LINNKIT  baseline  eng_linnkit.c,shared/drum_map.c    54  KIT     | the 80s drum machine after the LinnDrum, synthesized: no samples | Tristano Suriani
 ENGINE  WAR      baseline  eng_war.c,shared/drum_map.c        44  KIT     | an industrial kit: FM drums through a folder into clipping | Tristano Suriani
-ENGINE  CHIPKIT  baseline  eng_chipkit.c,shared/drum_map.c    59  KIT     | the drums of the 8-bit consoles: NES, Game Boy, Master System, C64 | Tristano Suriani
 FX      PLATE    baseline  fx_amb.c,fastmath.h                -   -       | REVERB TYPE PLATE: Dattorro's plate, in float                 | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani
 FX      AMB      baseline  fx_amb.c,fastmath.h                -   -       | DELAY TYPE AMB: a tape echo with two wandering heads, an Echoplex | Charles Vestal (amb-1); ported by Tristano Suriani
 FX      EQ       baseline  fx.c,fastmath.h                    -   -       | the patch's EQ: four bands, in float                          | Tristano Suriani

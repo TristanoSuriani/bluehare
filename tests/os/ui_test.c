@@ -155,9 +155,9 @@ static int check(const char *what, int ok)
 /* (Blue Hare) the sounds these tests power on with: the layout they were written against (a bass on track 1, the
  * keys on 2, a lead on 3, the drums on 4: MODAL's WOOD DRUM since the kits were archived; 5..8 a chord, a pluck, a bell,
  * strings), every pan centred. The device's own power-on (engines.c TRK_DEF, TRK_PAN) is engines_test.c's to check */
-static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(WAVE, 0), TRK_PICK(SID, 2), TRK_PICK(MODAL, 7)
+static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK2(WAVE, 0, OBIE, 3), TRK_PICK(SID, 2), TRK_PICK(MODAL, 7)
 #if NPART == 8
-                                         , TRK_PICK(WAVE, 0), TRK_PICK(VOSIM, 14), TRK_PICK(MODAL, 2), TRK_PICK(WAVE, 3)
+                                         , TRK_PICK2(WAVE, 0, OBIE, 3), TRK_PICK(VOSIM, 14), TRK_PICK(MODAL, 2), TRK_PICK2(WAVE, 3, OBIE, 2)
 #endif
 };
 /* main.c bluehare_init, with these tests' sounds (UT_DEF) */
@@ -827,7 +827,7 @@ static int test_categories(void)
         ok &= okc;
     }
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
-                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_MODAL, 5) == CAT_DRUM && preset_cat(ENGI_WAVE, 1) == CAT_PAD &&
+                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_MODAL, 5) == CAT_DRUM && preset_cat(ENGI_HPAD, BLUEHARE_ENG_WAVE ? 1u : 3u) == CAT_PAD &&
                  preset_cat(ENGI_KIT, 0) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);   /* (MODAL's SUB DRUM; KIT's FM KIT) */
     {   /* (2026-10-17) archived engines' favourites refused: WEST (16) and SH101 (61) with KARPLUS (20) and BYTE (15) */
         favorites_t before = favorites;
@@ -1836,7 +1836,7 @@ static int test_product_ux(void)
     int bad = 0, ok = 1;
     uint32_t i, p, b;
     for (i = 0; i < NPAGES; i++) {
-        ui_power_on(); set_engine_of(TSEL, ENGI_WAVE);
+        ui_power_on(); set_engine_of(TSEL, ENGI_HPAD);
         ui.home = 0; ui.page = (uint8_t)i; page_entered();
         if (!page_visible(i))
             continue;
@@ -2765,9 +2765,9 @@ static int test_quick_layers(void)
     bad += check("  every engine one can pick has its white key from F3 (NENG_SHOWN, 16 at most; never a retired one)",
                  ok && a == LY_INIT && LY_INIT == (NENG_SHOWN < 16u ? NENG_SHOWN : 16u));
     set_engine_of(TSEL, 0);
-    lay_combo(B_EDIT, white(eng_rank(ENGI_WAVE))); key_up(white(eng_rank(ENGI_WAVE))); frame();
+    lay_combo(B_EDIT, white(eng_rank(ENGI_HPAD))); key_up(white(eng_rank(ENGI_HPAD))); frame();
     turn(EN_K2, 1);
-    ok = TSEL->eng_req == ENGI_WAVE && TSEL->preset == 1u;
+    ok = TSEL->eng_req == ENGI_HPAD && TSEL->preset == 1u;
     turn(EN_K3, 1);
     ok &= preset_favorite();
     oct_back();
@@ -3214,15 +3214,16 @@ static int test_retired_engines(void)
 {
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
-        {ENGI_SID, EID_SID, "SID"}, {ENGI_WAVE, EID_WAVE, "WAVE"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"},
-        {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_ONYX, EID_ONYX, "ONYX"}, {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"},
+        {ENGI_SID, EID_SID, "SID"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"},
+        {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_ONYX, EID_ONYX, "ONYX"}, {ENGI_VOCODER, EID_VOCODER, "VOCODER"},
+        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_DUBCHORD, EID_DUBCHORD, "DUBCHORD"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"},
         {ENGI_SANDSTORM, EID_SANDSTORM, "SANDSTRM"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"},
         {ENGI_DUBSIREN8, EID_DUBSIREN8, "SIREN8"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_KIT, EID_KIT, "KIT"},
-        {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"}, {ENGI_BREAKS, EID_BREAKS, "BREAKS"}, {ENGI_WAR, EID_WAR, "WAR"}, {ENGI_CHIPKIT, EID_CHIPKIT, "CHIPKIT"}};
+        {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"}, {ENGI_BREAKS, EID_BREAKS, "BREAKS"}, {ENGI_WAR, EID_WAR, "WAR"}};
     static const uint8_t ARCH[10] = {EID_KARPLUS, EID_FMPERC, EID_WASP, EID_RISERS, EID_ECHOES, EID_CANYON, EID_WEST,
                                      EID_SH101, EID_BLISS, EID_STRINGS};   /* (archived, 2026-10-16 .. 17) */
-    static const char *const ORDER[] = {"SID", "WAVE", "VOSIM", "SPEECH", "ONYX", "OBIE", "HOOVER", "SANDSTRM", "DUBSIREN", "SIREN8",
-                                        "MODAL", "KIT", "LINNKIT", "BREAKS", "WAR", "CHIPKIT"};
+    static const char *const ORDER[] = {"SID", "VOSIM", "SPEECH", "ONYX", "VOCODER", "OBIE", "DUBCHORD", "HOOVER", "SANDSTRM",
+                                        "DUBSIREN", "SIREN8", "MODAL", "KIT", "LINNKIT", "BREAKS", "WAR"};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3259,8 +3260,8 @@ static int test_retired_engines(void)
         memset(up_rec(9), 0, sizeof rec);
     }
     ui_power_on();
-    bad += check("power-on: track 2 is WAVE WARM PAD (these tests' UT_DEF)", trk[1].eng_req == ENGI_WAVE &&
-                 str_eq(ENGINES[ENGI_WAVE]->presets[trk[1].preset].name, "WARM PAD"));
+    bad += check("power-on: track 2 is the pad, WAVE's WARM PAD or OBIE's PWM PAD (these tests' UT_DEF)", trk[1].eng_req == ENGI_HPAD &&
+                 str_eq(ENGINES[ENGI_HPAD]->presets[trk[1].preset].name, BLUEHARE_ENG_WAVE ? "WARM PAD" : "PWM PAD"));
     preset_all_pos(&total);
     for (i = 0, seen = 0; i < total; i++) {
         e = preset_all_at(i, &k);
@@ -3277,8 +3278,8 @@ static int test_retired_engines(void)
         seen |= 1u << TSEL->eng_req;
     }
     bad += check("PRESETS KNOB 2: the engines in order, back to the first",
-                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_WAVE && eng_step(ENGI_WAVE, 1) == ENGI_VOSIM &&
-                 eng_step(ENGI_WAVE, -1) == 0u && eng_step(0, -1) == ENGI_CHIPKIT);
+                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_VOSIM && eng_step(ENGI_VOSIM, 1) == ENGI_SPEECH &&
+                 eng_step(ENGI_VOSIM, -1) == 0u && eng_step(0, -1) == ENGI_WAR);
     /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
     ok = NENG_SHOWN == NELEM(ORDER);
     for (i = 0; ok && i < NENG_SHOWN; i++)
@@ -3292,7 +3293,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID WAVE VOSIM SPEECH ONYX OBIE HOOVER SANDSTRM DUBSIREN SIREN8 MODAL KIT LINNKIT BREAKS WAR CHIPKIT (ENGINES[]); PRESETS lists them so",
+    bad += check("engines shown SID VOSIM SPEECH ONYX VOCODER OBIE DUBCHORD HOOVER SANDSTRM DUBSIREN SIREN8 MODAL KIT LINNKIT BREAKS WAR (ENGINES[]); PRESETS lists them so",
                  ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;

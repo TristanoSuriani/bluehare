@@ -18,7 +18,7 @@
  * Threads: the audio callback runs the device (web_render); the window's thread hands it the buttons and keys through
  * a queue (each change held HOLD_MS of the device's time, as worklet.js does: a click's down and up never fall within
  * one scan) and reads the screen and the LEDs with the audio device locked; MIDI arrives in a ring the callback empties.
- *   blue-hare [--selftest [FILE.bmp]]   --selftest: boots with dummy video and audio drivers, plays 3 s, checks the
+ *   blue-hare [--selftest [FILE.bmp]]   --selftest: boots with dummy video and audio drivers, plays 5 s, checks the
  *                              screen drew and the sound runs, exits 0 or 1 (tests/run_tests.sh); FILE.bmp: the
  *                              window as drawn, saved */
 #include <stdint.h>
@@ -580,7 +580,7 @@ static int selftest(const char *shot)
     uint32_t i, t = SDL_GetTicks(), ms0, ms1, draws, lit, cpu;
     int drag_ok, wheel_ok;
     double e = 0;
-    while (SDL_GetTicks() - t < 1500u)
+    while (SDL_GetTicks() - t < 3500u)                /* (past the 2.4 s splash, Niglio's since 2026-10-19) */
         SDL_Delay(10);
     kb_key = 1u << 12;                                /* (a key: F4) */
     sync_input();

@@ -24,7 +24,7 @@
 #endif
 
 static int bad;
-static uint32_t EA;                               /* track 1's engine: WAVE (WASP's until the engines were archived) */
+static uint32_t EA;                               /* track 1's engine: the pad, WAVE or OBIE (hostsim.c ENGI_HPAD) */
 static void check(const char *what, int ok)
 {
     printf("sound14: %-74s %s\n", what, ok ? "ok" : "FAIL");
@@ -408,7 +408,7 @@ static lr_t spread_run(int32_t sp, int32_t pan, uint32_t mode, const uint8_t *no
     track_t *t = &trk[0];
     lr_t a = {0};
     uint32_t k, i;
-    fresh(EA, preset_by_name(EA, "WARM PAD"));
+    fresh(EA, preset_by_name(EA, HPAD_NAME));
     dry(t);
     memset(cho_buf, 0, sizeof cho_buf);                   /* (Blue Hare: no tail of a render before: the buses are */
     memset(dly_buf, 0, sizeof dly_buf);                   /* stereo now, and a tail L != R) */
@@ -520,7 +520,7 @@ static void test_spread_fx(void)
         double side[2][2] = {{0}}, all[2][2] = {{0}};
         uint32_t ph, r;
         for (r = 0; r < 2u; r++) {
-            fresh(EA, preset_by_name(EA, "WARM PAD"));
+            fresh(EA, preset_by_name(EA, HPAD_NAME));
             dry(t);
             t->p[P_ATK] = 0;
             t->p[P_SPRD] = (int16_t)(r ? 127 : 0);
@@ -550,7 +550,7 @@ static void test_spread_fx(void)
         uint64_t hw[2];
         uint32_t r;
         for (r = 0; r < 2u; r++) {
-            fresh(EA, preset_by_name(EA, "WARM PAD"));
+            fresh(EA, preset_by_name(EA, HPAD_NAME));
             dry(t);
             t->p[P_REV] = 100;
             t->p[P_SPRD] = (int16_t)(r ? 127 : 0);
@@ -589,7 +589,7 @@ static double cost(uint32_t nv, int32_t sp, int mx, uint32_t wave)
     track_t *t = &trk[0];
     uint32_t i, rep;
     double best = 1e30;
-    fresh(EA, preset_by_name(EA, "WARM PAD"));
+    fresh(EA, preset_by_name(EA, HPAD_NAME));
     t->p[P_VOICE] = V_POLY;
     t->p[P_SUS] = 127;
     t->p[P_SPRD] = (int16_t)sp;
@@ -725,7 +725,7 @@ static int demos(const char *dir)
         n++;
     }
     /* SPREAD on a pad: two chords at SPRD 0, then the same at SPRD 100 */
-    fresh(EA, preset_by_name(EA, "WARM PAD"));
+    fresh(EA, preset_by_name(EA, HPAD_NAME));
     t->p[P_REV] = 50;
     if ((f = demo_open(dir, "spread_pad", 6u * (2u * FS / CTL) * CTL))) {
         uint32_t r;
@@ -765,7 +765,7 @@ static int demos(const char *dir)
 int main(int argc, char **argv)
 {
     ml_bypass = 1;                               /* (fx.c MONO LOWS: the tracks' own sides, not the master's) */
-    EA = eng_by_name("WAVE");
+    EA = ENGI_HPAD;                                    /* (the pad: WAVE, or OBIE where WAVE is not) */
     test_matrix();
     test_matrix_sound();
     test_spread();

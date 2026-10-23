@@ -73,7 +73,7 @@ async function device(sectors) {
 const d = await device({});
 const P = d.one("stu_pcount"), G = d.one("stu_gcount"), X = d.one("stu_xcount"), PE0 = d.one("stu_pe0"), NE = d.one("stu_nengines");
 const names = [...Array(NE).keys()].map((e) => d.str("stu_engine_name", e));
-check(`the engines: ${names.join(" ")}`, ["SID", "WAVE", "VOSIM", "MODAL"].every((n) => names.includes(n)));
+check(`the engines: ${names.join(" ")}`, ["SID", "OBIE", "VOSIM", "MODAL", "ONYX", "VOCODER"].every((n) => names.includes(n)));
 check("every engine has presets, each named", names.every((_, e) => {
   const n = d.one("stu_npresets", e);
   return n > 0 && [...Array(n).keys()].every((k) => d.str("stu_preset_name", e, k).length > 0);
@@ -95,16 +95,16 @@ const descOk = groups.every((g) => g.items.every(([s, id]) => {
 check("every parameter of the layout is described (label, range, default inside it)", descOk);
 
 // a preset, a parameter
-const WAVE = names.indexOf("WAVE");
-d.call([{ fn: "stu_set_engine", args: [WAVE] }, { fn: "stu_load_preset", args: [4] }]);   // (RESO LEAD: bright enough for the LPF below)
-check("an engine and a preset load on the selected track", d.one("stu_engine") === WAVE && d.one("stu_preset") === 4);
+const OBIE = names.indexOf("OBIE");   // (2026-10-19: WAVE the native image's alone; OBIE's SYNC LEAD in its place)
+d.call([{ fn: "stu_set_engine", args: [OBIE] }, { fn: "stu_load_preset", args: [5] }]);   // (SYNC LEAD: bright enough for the LPF below)
+check("an engine and a preset load on the selected track", d.one("stu_engine") === OBIE && d.one("stu_preset") === 5);
 const ATK = 1;
 check("a set is clamped to the range", d.one("stu_set", 0, ATK, 500, 7) === 127 && d.one("stu_get", 0, ATK) === 127);
 d.one("stu_set", 0, ATK, 0, 7);
 check(`a value is shown as the device shows it (ATK 0: "${d.str("stu_format", 0, ATK, 0)}")`, /ms$/.test(d.str("stu_format", 0, ATK, 0)));
 const dump = d.call([{ fn: "stu_dump", ret: ["i16", P + G + 4] }])[0];
 check("the dump holds the track's values, then the engine, preset, slot, selection",
-  dump[ATK] === 0 && dump[P + G] === WAVE && dump[P + G + 1] === 4 && dump[P + G + 3] === 0);
+  dump[ATK] === 0 && dump[P + G] === OBIE && dump[P + G + 1] === 5 && dump[P + G + 3] === 0);
 d.one("stu_set", 1, 9, 30, 0);     // (G_RSIZE)
 check("a global (the FX chain's) is set", d.one("stu_get", 1, 9) === 30);
 
@@ -176,11 +176,11 @@ check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)
 // TECHNO (2026-10-18, GEN's place): started and stopped as ARP does, its state; a piece picked loads its sounds and tempo
 {
   const G_GPRE = 12, G_BPM = 0;
-  d.one("stu_set", 1, G_GPRE, 1, 0);                 /* ACID: KIT, SID (FILTER ACID), OBIE, WAVE; 132 BPM */
+  d.one("stu_set", 1, G_GPRE, 1, 0);                 /* ACID: KIT, SID (FILTER ACID), OBIE, OBIE; 132 BPM */
   d.render(100);
   const eng = [0, 1, 2, 3].map((t) => names[d.one("stu_track_engine", t)]);
   check(`a TECHNO piece picked (ACID) loads its four sounds and tempo: ${eng.join(" ")}, ${d.one("stu_get", 1, G_BPM)} BPM`,
-    eng.join() === "KIT,SID,OBIE,WAVE" && d.one("stu_get", 1, G_BPM) === 132);
+    eng.join() === "KIT,SID,OBIE,OBIE" && d.one("stu_get", 1, G_BPM) === 132);
   d.one("stu_gen", 1);
   d.render(6000);
   const st = d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0], sect = d.str("stu_gen_chord");
@@ -200,7 +200,7 @@ check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)
   const at = d.one("stu_pcount") + d.one("stu_gcount");
   check(`a setup's import: the piece settled at once (${rave.join(" ")}), a patch staged over it stays (${names[d.one("stu_track_engine", 1)]}, preset ${dump[at + 1] + 1})`,
     rave.join() === "KIT,HOOVER,HOOVER,VOSIM" && names[d.one("stu_track_engine", 1)] === "OBIE" && dump[at + 1] === 8);
-  d.one("stu_select", 0); d.one("stu_set_engine", names.indexOf("WAVE"));   /* (patch 1 WAVE again: the checks after it) */
+  d.one("stu_select", 0); d.one("stu_set_engine", OBIE);   /* (patch 1 OBIE again: the checks after it) */
   d.render(6000);
 }
 
@@ -240,7 +240,7 @@ const want = d.call([{ fn: "stu_dump", ret: ["i16", P] }])[0];
 const rc = d.call([{ fn: "stu_up_store", args: [5, 3], str: "TEST PAD" }])[0];
 d.render(100);
 check("a sound is stored in a user slot", rc === 0 && d.one("stu_up_used", 5) === 1 && d.str("stu_up_name", 5) === "TEST PAD" &&
-  d.one("stu_up_cat", 5) === 3 && d.one("stu_up_engine", 5) === WAVE);
+  d.one("stu_up_cat", 5) === 3 && d.one("stu_up_engine", 5) === OBIE);
 check("a bad name is refused", d.call([{ fn: "stu_up_store", args: [6, 0], str: "" }])[0] === 1 && !d.one("stu_up_used", 6));
 const sectors = storeSectors(new Uint8Array(d.ex.memory.buffer, d.ex.web_nor(), d.ex.web_nor_size()));
 const d2 = await device(JSON.parse(JSON.stringify(sectors, (k, v) => v instanceof Uint8Array ? Array.from(v) : v)));
@@ -251,7 +251,7 @@ const before2 = d2.call([{ fn: "stu_dump", ret: ["i16", P] }])[0];
 d2.one("stu_up_load", 5);
 const got = d2.call([{ fn: "stu_dump", ret: ["i16", P + G + 4] }])[0];
 check("it loads onto track 2: its engine and sound, the track's own parameters kept",
-  got[P + G] === WAVE && got[P + G + 2] === 6 && got[P + G + 3] === 1 &&
+  got[P + G] === OBIE && got[P + G + 2] === 6 && got[P + G + 3] === 1 &&
   [...Array(P).keys()].every((i) => (kept.has(i) ? got[i] === before2[i] : got[i] === want[i])));
 
 // a sound file's values (studio.js loadSoundFile)
@@ -263,7 +263,7 @@ d2.call([{ fn: "stu_stage_begin" }, ...Object.entries(vals).map(([k, v]) => ({ f
 check("a sound file loads: engine and values; the track's LEVEL stays",
   d2.one("stu_engine") === SID && d2.one("stu_get", 0, ATK) === 55 && d2.one("stu_get", 0, PE0) === 2 && d2.one("stu_get", 0, 0) === 90);
 d2.one("stu_undo");
-check("the device's undo takes the load back", d2.one("stu_engine") === WAVE);
+check("the device's undo takes the load back", d2.one("stu_engine") === OBIE);
 
 // the FM-1's UP_PUT as the page builds it, through the firmware's parser
 const args = upPutArgs(9, d2.one("stu_engine_id", SID), "BASS ONE", want.slice(0, P), 1);

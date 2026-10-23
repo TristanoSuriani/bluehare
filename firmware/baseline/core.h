@@ -65,7 +65,7 @@ enum {                           /* the ids (an archived engine's too: its id is
 #undef ARCHIVED
 #undef ENGINE
 };
-#define EID_COUNT 64u            /* (64 since 2026-10-19: ONYX, 63) ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+#define EID_COUNT 65u            /* (65 since 2026-10-19: ONYX 63, VOCODER 64) ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 /* retired: 1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE (Felucca 1.5), 27 ACID; 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO,
  * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Blue Hare removed them): ids 0 .. 13 but 14,
  * and 27 */
@@ -84,9 +84,14 @@ enum {                           /* the indices: the distribution's engines in i
 #define X(N) ENGI_##N,
     BLUEHARE_DIST_ENGINES(X)
 #undef X
-    NENGINES                     /* engines in this build (1 .. 16) */
+    NENGINES                     /* engines in this build (1 .. 16; the native image's every component, 1 .. 24) */
 };                               /* (the ones left out: ENGI_<NAME> ENG_ABSENT, in the generated header) */
-typedef char eng_count_ok[NENGINES > 0 && NENGINES <= 16 ? 1 : -1];
+#ifdef BLUEHARE_NATIVE           /* (2026-10-19: WAVE the native image's alone, its 17th; the keys pick the first 16, */
+#define ENG_MAX 24u              /* PRESETS' knob every one) */
+#else
+#define ENG_MAX 16u              /* (a device's: tools/gen_dist.py MAX) */
+#endif
+typedef char eng_count_ok[NENGINES > 0 && NENGINES <= ENG_MAX ? 1 : -1];
 #define NENG_SHOWN NENGINES      /* (the engines one can pick: all of the build's, in their order) */
 /* engine index e is engine X (a uint8_t compared without the warning that an engine left out would raise: still false,
  * folded away) */

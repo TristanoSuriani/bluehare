@@ -321,7 +321,7 @@ static const char *eng_short(const char *name)
 {
     static const char *const A[][2] = {{"DUBSIREN", "SIREN"}, {"DUBCHORD", "DCHORD"}, {"PARTICLE", "PARTCL"},
                                        {"SCRATCH", "SCRTCH"}, {"KARPLUS", "KARPLS"},
-                                       {"SANDSTRM", "SANDST"}, {"CHIPKIT", "CHIPKT"}};   /* (SIREN8 fits) */
+                                       {"SANDSTRM", "SANDST"}, {"CHIPKIT", "CHIPKT"}, {"VOCODER", "VOCODR"}};   /* (SIREN8 fits) */
     uint32_t i;
     for (i = 0; i < sizeof A / sizeof A[0]; i++)
         if (str_eq(name, A[i][0]))
@@ -339,7 +339,7 @@ static const char *eng_abbr(const char *name)
                                        {"CHOKE", "CHOK"}, {"DRILL", "DRIL"}, {"ANVIL", "ANVL"},
                                        {"SCREAM", "SCRM"}, {"FLUIDS", "FLUD"}, {"SCRATCH", "SCRT"}, {"ABYSS", "ABYS"},
                                        {"SHRED", "SHRD"}, {"LINNKIT", "LINN"}, {"STRINGS", "STRG"}, {"FLOOR", "FLOR"},
-                                       {"NEBULA", "NEBL"}, {"CANYON", "CANY"}, {"CHIPKIT", "CHPK"}, {"SANDSTRM", "SAND"}};
+                                       {"NEBULA", "NEBL"}, {"CANYON", "CANY"}, {"CHIPKIT", "CHPK"}, {"SANDSTRM", "SAND"}, {"VOCODER", "VOCD"}};
     uint32_t i;
     for (i = 0; i < sizeof A / sizeof A[0]; i++)
         if (str_eq(name, A[i][0]))

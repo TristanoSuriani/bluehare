@@ -658,9 +658,9 @@ static void setup(int s)
     case S_EDIT_ANALOG: go_title("EDIT 1"); break;
     case S_EDIT_FM6: eng(ENGI_MODAL); go_title("EDIT 1"); break;   /* (MODAL: BLISS archived) */
     case S_EDIT_WHEEL: eng(ENGI_SID); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
-    case S_EDIT_WAVE_2: eng(ENGI_WAVE); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;
+    case S_EDIT_WAVE_2: eng(ENGI_HPAD); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;
     case S_EDIT_BYTE_2: eng(ENGI_MODAL); go_title("EDIT 2"); break;
-    case S_EDIT_WAVE: eng(ENGI_WAVE); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
+    case S_EDIT_WAVE: eng(ENGI_HPAD); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_BYTE: eng(ENGI_SID); TSEL->p[P_E6] = 9; go_title("EDIT 2"); break;
     case S_EDIT_WEST: eng(ENGI_VOSIM); TSEL->p[P_E6] = -20; go_title("EDIT 1"); break;   /* (WEST archived: VOSIM, a negative SWEEP) */
     case S_EDIT_WEST_2: eng(ENGI_VOSIM); go_title("EDIT 2"); break;

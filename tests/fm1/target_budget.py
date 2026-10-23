@@ -34,7 +34,7 @@ FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER
          "obie_render",                                     # (2026-10-17: after the OB-Xa)
          "hoover_render", "dubsiren_render", "kit_render", "breaks_render", "fmp_run",   # (back 2026-10-18)
          "sandstorm_render", "speech_render", "dubsiren8_render", "war_render", "chipkit_render", "linnkit_render",   # (back 2026-10-18)
-         "onyx_render",                                     # (2026-10-19)
+         "onyx_render", "vocoder_render", "dubchord_render",   # (2026-10-19; WAVE the native image's alone, CHIPKIT archived)
          "vosim_render"]                                    # (back from the archive 2026-10-16)
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a BLUEHARE_UAC_48K=0 or BLUEHARE_UAC=0 build)
@@ -44,7 +44,8 @@ ENGINE_OF = {"sid_render": "SID", "wave_render": "WAVE",
              "modal_render": "MODAL", "vosim_render": "VOSIM", "obie_render": "OBIE", "hoover_render": "HOOVER",
              "dubsiren_render": "DUBSIREN", "kit_render": "KIT", "breaks_render": "BREAKS",
              "sandstorm_render": "SANDSTORM", "speech_render": "SPEECH", "dubsiren8_render": "DUBSIREN8",
-             "war_render": "WAR", "chipkit_render": "CHIPKIT", "linnkit_render": "LINNKIT", "onyx_render": "ONYX"}
+             "war_render": "WAR", "chipkit_render": "CHIPKIT", "linnkit_render": "LINNKIT", "onyx_render": "ONYX",
+             "vocoder_render": "VOCODER", "dubchord_render": "DUBCHORD"}
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...

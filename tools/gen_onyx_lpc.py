@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Tristano Suriani (Blue Hare)
 # Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
-"""(2026-10-19) ONYX's voice, step 2 of 2: Kokoro's am_onyx WAVs (tools/gen_onyx_render.py) analysed into LPC frames,
+"""(2026-10-19) ONYX's voice, step 2 of 2: Kokoro's WAVs (am_onyx and the other voices) (tools/gen_onyx_render.py) analysed into LPC frames,
 as the speech chips of the late 70s kept speech (the TMS5220's economy: about 250 bytes a second), into
 firmware/baseline/onyx_lpc.h (committed: the build never runs Kokoro). Each phrase: resampled to 8820 Hz (the lattice's
 rate, as SPEECH's), its silences trimmed, pre-emphasised, cut in frames of 25 ms; a frame's ten reflection
@@ -12,7 +12,7 @@ Quantised and packed in bits, MSB first, frame after frame:
   E 4 bits (0: silence, the frame ends there) | R 1 (repeat: the previous frame's filter) | P 6 (0: unvoiced) |
   (not R) K1 5, K2 5, K3 4, K4 4 | (voiced, not R) K5 4, K6 4, K7 4, K8 3, K9 3, K10 3
 The tables (the levels of K's 5, 4 and 3 bits, E's gains, P's periods) are written with it.
-  gen_onyx_lpc.py WAV_DIR OUT.h"""
+  gen_onyx_lpc.py OUT.h WAV_DIR..   (a directory a voice: tools/gen_onyx_render.py's, the same phrases)"""
 import json
 import math
 import sys
@@ -155,44 +155,68 @@ def q(v, levels):
     return int(np.argmin([abs(v - l) for l in levels]))
 
 
-def main(wav_dir, out):
-    sign_check()
-    wav_dir = Path(wav_dir)
-    index = json.loads((wav_dir / "index.json").read_text())
-    all_frames = [analyse(read(wav_dir / p["file"])) for p in index]
-    gmax = max(f[0] for fr in all_frames for f in fr)
-    EL = [0] + [gmax * 10 ** (-(15 - i) * 2.5 / 20) for i in range(1, 16)]   # E's gains: 2.5 dB steps under the loudest
-    bits, phr = Bits(), []
-    for p, fr in zip(index, all_frames):
-        fr = trim(fr, gmax)
-        start, nf, prev = len(bits.b), 0, None
-        if bits.n % 8:
-            bits.put(0, 8 - bits.n % 8)
-            start = len(bits.b)
-        start = bits.n // 8
-        pers = [f[1] for f in fr]
-        pers = [int(np.median([pers[max(0, i - 1)], pers[i], pers[min(len(pers) - 1, i + 1)]])) for i in range(len(pers))]
-        for (g, _, k), per in zip(fr, pers):
-            e = q(g, EL) if g > EL[1] / 2 else 0
-            nf += 1
-            bits.put(e, 4)
-            if not e:
-                prev = None
-                continue
-            ki = [q(k[j], KL[KBITS[j]]) for j in range(P)]
-            voiced = per > 0
-            rep = prev is not None and prev[1] == voiced and sum(abs(a - b) for a, b in zip(ki[:4], prev[0][:4])) <= 1
-            bits.put(int(rep), 1)
-            bits.put(q(per, PL[1:]) + 1 if voiced else 0, 6)
-            if rep:
-                continue
-            for j in range(4):
+def sing_end(fr):
+    """(SING) the held vowels: the frames up to the last one within 6 dB of the loudest (the steady middle's end: HOLD
+    sustains it, not the fade)"""
+    g = max(f[0] for f in fr)
+    return max(i for i, f in enumerate(fr) if f[0] >= g * 10 ** (-6 / 20)) + 1
+
+
+def encode(bits, fr, EL):
+    """a phrase's frames into the stream (byte-aligned start) -> (start byte, frames)"""
+    if bits.n % 8:
+        bits.put(0, 8 - bits.n % 8)
+    start, nf, prev = bits.n // 8, 0, None
+    pers = [f[1] for f in fr]
+    pers = [int(np.median([pers[max(0, i - 1)], pers[i], pers[min(len(pers) - 1, i + 1)]])) for i in range(len(pers))]
+    for (g, _, k), per in zip(fr, pers):
+        e = q(g, EL) if g > EL[1] / 2 else 0
+        nf += 1
+        bits.put(e, 4)
+        if not e:
+            prev = None
+            continue
+        ki = [q(k[j], KL[KBITS[j]]) for j in range(P)]
+        voiced = per > 0
+        rep = prev is not None and prev[1] == voiced and sum(abs(a - b) for a, b in zip(ki[:4], prev[0][:4])) <= 1
+        bits.put(int(rep), 1)
+        bits.put(q(per, PL[1:]) + 1 if voiced else 0, 6)
+        if rep:
+            continue
+        for j in range(4):
+            bits.put(ki[j], KBITS[j])
+        if voiced:
+            for j in range(4, P):
                 bits.put(ki[j], KBITS[j])
-            if voiced:
-                for j in range(4, P):
-                    bits.put(ki[j], KBITS[j])
-            prev = (ki, voiced)
-        phr.append((p, start, nf))
+        prev = (ki, voiced)
+    return start, nf
+
+
+def main(out, wav_dirs):
+    """(2026-10-19) every voice's directory (the same phrases, each its own index.json with its "voice"): one stream,
+    each voice's phrases after the last's; the levels each voice's own (its loudest phrase E's top level, so the
+    voices speak equally loud: E's table the same for all); a voice's reference period the median of its voiced
+    frames (the firmware's WORDS pitch, TONE's C3)"""
+    sign_check()
+    bits, voices, index = Bits(), [], None
+    for d in map(Path, wav_dirs):
+        ix = json.loads((d / "index.json").read_text())
+        if index is not None and [(p["bank"], p["name"]) for p in ix] != [(p["bank"], p["name"]) for p in index]:
+            raise SystemExit(f"onyx: {d}: not the same phrases as {wav_dirs[0]}")
+        index = ix
+        all_frames = [analyse(read(d / p["file"])) for p in ix]
+        gmax = max(f[0] for fr in all_frames for f in fr)
+        EL = [0] + [gmax * 10 ** (-(15 - i) * 2.5 / 20) for i in range(1, 16)]   # E's gains: 2.5 dB steps under the loudest
+        phr, vper = [], []
+        for p, fr in zip(ix, all_frames):
+            fr = trim(fr, gmax)
+            if p["bank"] == "SING":
+                fr = fr[:sing_end(fr)]
+            vper += [f[1] for f in fr if f[1] and f[0] > gmax * .05]
+            phr.append(encode(bits, fr, EL))
+        name = ix[0].get("voice", d.name.upper())
+        voices.append((name, phr, float(np.median(vper)), sum(n for _, n in phr) * N / FS))
+        print(f"onyx: {name}: {len(phr)} phrases, {voices[-1][3]:.1f} s, its pitch {FS / voices[-1][2]:.0f} Hz")
     banks = []
     for p in index:
         if not banks or banks[-1][0] != p["bank"]:
@@ -205,16 +229,23 @@ def main(wav_dir, out):
             return n
         cut = n[:12].rsplit(" ", 1)[0]
         return cut if len(cut) >= 6 else n[:12]
-    lines = ["/* generated by tools/gen_onyx_lpc.py from Kokoro TTS's am_onyx (tools/gen_onyx_render.py): do not edit */",
+    nv = len(voices)
+    lines = ["/* generated by tools/gen_onyx_lpc.py from Kokoro TTS's voices (tools/gen_onyx_render.py): do not edit */",
              "#pragma once", f"#define ONYX_FS {FS}", f"#define ONYX_N {N}", f"#define ONYX_P {P}",
-             f"#define ONYX_NBANK {len(banks)}", f"#define ONYX_NPHRASE {len(phr)}",
+             f"#define ONYX_NBANK {len(banks)}", f"#define ONYX_NPHRASE {len(index)}", f"#define ONYX_NVOICE {nv}",
              "static const int16_t ONYX_K5[32] = {" + ", ".join(str(round(v * 32767)) for v in KL[5]) + "};",
              "static const int16_t ONYX_K4[16] = {" + ", ".join(str(round(v * 32767)) for v in KL[4]) + "};",
              "static const int16_t ONYX_K3[8] = {" + ", ".join(str(round(v * 32767)) for v in KL[3]) + "};",
-             "static const uint16_t ONYX_E[16] = {" + ", ".join(str(round(v / gmax * 20000)) for v in EL) + "};",
+             "static const uint16_t ONYX_E[16] = {" + ", ".join(str(round(20000 * 10 ** (-(15 - i) * 2.5 / 20)) if i else 0)
+                                                           for i in range(16)) + "};",
              "static const uint8_t ONYX_PER[64] = {" + ", ".join(str(round(v)) for v in PL) + "};",
-             "static const uint16_t ONYX_START[ONYX_NPHRASE] = {" + ", ".join(str(s) for _, s, _ in phr) + "};",
-             "static const uint16_t ONYX_FRAMES[ONYX_NPHRASE] = {" + ", ".join(str(n) for _, _, n in phr) + "};",
+             "static const char *const ONYX_VOICE_NAMES[ONYX_NVOICE + 1] = {" + ", ".join(f'"{v[0]}"' for v in voices) + ", 0};",
+             "static const float ONYX_REF[ONYX_NVOICE] = {" + ", ".join(f"{v[2]:.2f}f" for v in voices) +
+             "};   /* each voice's own period (filter samples) */",
+             "static const uint32_t ONYX_START[ONYX_NVOICE][ONYX_NPHRASE] = {" +
+             ", ".join("{" + ", ".join(str(s) for s, _ in v[1]) + "}" for v in voices) + "};",
+             "static const uint16_t ONYX_FRAMES[ONYX_NVOICE][ONYX_NPHRASE] = {" +
+             ", ".join("{" + ", ".join(str(n) for _, n in v[1]) + "}" for v in voices) + "};",
              "static const uint8_t ONYX_BANK_N[ONYX_NBANK] = {" + ", ".join(str(n) for _, n in banks) + "};",
              "static const char *const ONYX_BANK_NAMES[ONYX_NBANK + 1] = {" + ", ".join(f'"{b}"' for b, _ in banks) + ", 0};"]
     first = 0
@@ -230,10 +261,10 @@ def main(wav_dir, out):
         lines.append("    " + ", ".join(str(v) for v in bits.b[i:i + 24]) + ",")
     lines.append("};")
     Path(out).write_text("\n".join(lines) + "\n")
-    secs = sum(n for _, _, n in phr) * N / FS
-    print(f"onyx: {len(phr)} phrases in {len(banks)} banks, {secs:.1f} s of frames, {len(bits.b)} B "
+    secs = sum(v[3] for v in voices)
+    print(f"onyx: {len(index)} phrases in {len(banks)} banks, {nv} voices, {secs:.1f} s of frames, {len(bits.b)} B "
           f"({len(bits.b) / secs:.0f} B a second; the lattice's sign {SIGN:+.0f}) -> {out}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2:])

@@ -29,8 +29,9 @@ up next to them, not to make it a groovebox.
 ## What follows from it (2026-10-18)
 
 - Four patches, each its own sound on its own channel; no layer stacking.
-- Engines: SID WAVE VOSIM SPEECH OBIE HOOVER SANDSTORM DUBSIREN DUBSIREN8 MODAL KIT LINNKIT BREAKS WAR CHIPKIT
-  (SANDSTORM, SPEECH, DUBSIREN8, WAR, CHIPKIT and LINNKIT back on 2026-10-18).
+- Engines: SID VOSIM SPEECH ONYX VOCODER OBIE DUBCHORD HOOVER SANDSTORM DUBSIREN DUBSIREN8 MODAL KIT LINNKIT BREAKS WAR
+  (SANDSTORM, SPEECH, DUBSIREN8, WAR and LINNKIT back on 2026-10-18; 2026-10-19: ONYX in four Kokoro voices, VOCODER
+  and DUBCHORD in, WAVE the native image's alone, CHIPKIT archived: the device's sixteen).
 - The device's colours: the IDM palette (deep indigo, electric cyan, hot magenta), the studio's too.
 - One global reverb (DRY SPRING GATED PLATE) and a delay per patch; chorus and EQ as presets, full controls in EXPERT.
 - On ARP: TECHNO, evolving techno on the four patches, and its visuals.

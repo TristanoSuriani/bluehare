@@ -50,9 +50,10 @@ async function editorMock() {
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   {   /* the primary distribution's engines by id (HARE FM1), "-" for the rest: retired (0 .. 13, 27), archived, left out */
-    const HARE = { 14: "WAVE", 17: "HOOVER", 21: "VOSIM", 24: "SID", 25: "DUBSIREN", 28: "KIT", 29: "BREAKS", 34: "MODAL", 62: "OBIE",
-                   18: "SPEECH", 31: "SIREN8", 44: "WAR", 59: "CHIPKIT", 60: "SANDSTRM", 54: "LINNKIT", 63: "ONYX" };   /* (the five back 2026-10-18) */
-    ok(info.nengines === 64 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
+    const HARE = { 17: "HOOVER", 21: "VOSIM", 24: "SID", 25: "DUBSIREN", 28: "KIT", 29: "BREAKS", 34: "MODAL", 62: "OBIE",
+                   18: "SPEECH", 31: "SIREN8", 44: "WAR", 60: "SANDSTRM", 54: "LINNKIT", 63: "ONYX",   /* (the five back 2026-10-18) */
+                   64: "VOCODER", 32: "DUBCHORD" };   /* (2026-10-19: WAVE the native image's alone, CHIPKIT archived) */
+    ok(info.nengines === 65 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
   let descs = 0;
@@ -126,9 +127,9 @@ async function editorMock() {
   await rq(E.req.uiSet(3, 1));
   prefs = await E.readDevicePreferences(rq, info, names, prefs);
   ok(E.devicePresetRows(info, names, prefs).length === 1 && prefs.favorites[24][0], "editor: favorites filter follows device state");
-  m.state.favorites[24][0] = false; m.state.favorites[14][0] = true;
+  m.state.favorites[24][0] = false; m.state.favorites[21][0] = true;
   prefs = await E.readDevicePreferences(rq, info, names, prefs);
-  ok(!prefs.favorites[24][0] && prefs.favorites[14][0], "editor: panel-side favorite changes refresh");
+  ok(!prefs.favorites[24][0] && prefs.favorites[21][0], "editor: panel-side favorite changes refresh");
   await rq(E.req.upStore(31, "FAVORITE"));
   await rq(E.req.favSet(info.nengines, 31, true));
   prefs = await E.readDevicePreferences(rq, info, names, prefs);
@@ -139,17 +140,17 @@ async function editorMock() {
   await rq(E.req.upErase(31));
   prefs = await E.readDevicePreferences(rq, info, names, prefs);
   ok(!prefs.favorites[info.nengines][31] && !E.devicePresetRows(info, names, prefs).some((r) => r.user), "editor: erased slot disappears and loses star");
-  {   /* the lists in the device's order (engines.c ENGINE_ORDER): SID first, WAVE second, MODAL last, "-" never; the ids stay */
+  {   /* the lists in the device's order (engines.c ENGINE_ORDER): SID first, VOSIM second, WAR last, "-" never; the ids stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]), o = E.engineOrder(info.engines);
-    ok(shown.join() === "SID,WAVE,VOSIM,SPEECH,ONYX,OBIE,HOOVER,SANDSTRM,DUBSIREN,SIREN8,MODAL,KIT,LINNKIT,BREAKS,WAR,CHIPKIT" &&
-       o.join() === "24,14,21,18,63,62,17,60,25,31,34,28,54,29,44,59",
-       "editor: engines listed SID first, CHIPKIT last (ids kept)");
-    ok(E.engineOrder(["SID", "X", "-", "MODAL", "WAVE"]).join() === "0,4,3,1", "editor: an unknown engine follows the known ones");
-    m.state.favorites[34][0] = m.state.favorites[14][0] = true;
+    ok(shown.join() === "SID,VOSIM,SPEECH,ONYX,VOCODER,OBIE,DUBCHORD,HOOVER,SANDSTRM,DUBSIREN,SIREN8,MODAL,KIT,LINNKIT,BREAKS,WAR" &&
+       o.join() === "24,21,18,63,64,62,32,17,60,25,31,34,28,54,29,44",
+       "editor: engines listed SID first, WAR last (ids kept)");
+    ok(E.engineOrder(["SID", "X", "-", "MODAL", "VOSIM"]).join() === "0,4,3,1", "editor: an unknown engine follows the known ones");
+    m.state.favorites[34][0] = m.state.favorites[21][0] = true;
     await rq(E.req.uiSet(3, 0));
     prefs = await E.readDevicePreferences(rq, info, names, prefs);
     const rows = E.devicePresetRows(info, names, prefs).filter((r) => !r.user), eng = [...new Set(rows.map((r) => r.engine))];
-    ok(eng[0] === 24 && eng[1] === 14 && eng[eng.length - 1] === 59, "editor: device presets in the device's engine order");
+    ok(eng[0] === 24 && eng[1] === 21 && eng[eng.length - 1] === 44, "editor: device presets in the device's engine order");
   }
   const none = await E.readDevicePreferences(() => { throw new Error("unexpected request"); }, { uiCaps: 0 }, []);
   ok(none === null, "editor: old firmware receives no unsupported preference requests");
@@ -500,7 +501,7 @@ async function editorLibrarian() {
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
   ok(file.format === "bluehare-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
     file.paramLabels[83] === "-#11" && file.paramLabels[90] === "-#18" && file.paramLabels[17] === "TIME" && file.paramLabels[18] === "FEED" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
-    file.engines.length === 64,
+    file.engines.length === 65,
     "library file: versioned, with P_COUNT, labels and engines");
   const back = E.readLibraryFile(file, ctx);
   ok(back.patches.length === 2 && !back.skipped && eq(back.patches[0].p, cap.p) && eq(back.patches[1].p, bass.p)
@@ -717,8 +718,8 @@ async function editorTracks() {
   const { m, rq, ev, done } = attachMock({ watchMs: 1000 });
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const tr = E.parse[C.TRACK](await rq(E.req.track()));
-  ok(info.ntrk === 4 && tr.sel === 0 && tr.ntrk === 4 && tr.tracks[0].engine === 14 && tr.tracks[0].preset === 0
-    && tr.tracks[1].engine === 24 && tr.tracks[2].engine === 34, "tracks: INFO NTRK, TRACK lists 4 parts (track 1: WAVE WARM PAD)");
+  ok(info.ntrk === 4 && tr.sel === 0 && tr.ntrk === 4 && tr.tracks[0].engine === 62 && tr.tracks[0].preset === 3
+    && tr.tracks[1].engine === 24 && tr.tracks[2].engine === 34, "tracks: INFO NTRK, TRACK lists 4 parts (track 1: OBIE PWM PAD)");
   /* the v1 commands follow the selected track */
   const d0 = E.parse[C.DUMP](await rq(E.req.dump()), info);
   const t1 = E.parse[C.TRACK](await rq(E.req.track(2)));
@@ -726,7 +727,7 @@ async function editorTracks() {
   await rq(E.req.set(0, 1, 77));
   const td0 = E.parse[C.TRACK_DUMP](await rq(E.req.trackDump(0)), info);
   const td1 = E.parse[C.TRACK_DUMP](await rq(E.req.trackDump(2)), info);
-  ok(t1.sel === 2 && d1.engine === 34 && d0.engine === 14 && td1.p[1] === 77 && td0.p[1] === d0.p[1] && td0.p[1] !== 77,
+  ok(t1.sel === 2 && d1.engine === 34 && d0.engine === 62 && td1.p[1] === 77 && td0.p[1] === d0.p[1] && td0.p[1] !== 77,
     "tracks: TRACK selects; DUMP / SET act on it, TRACK_DUMP reads any track");
   /* steps of a track that is not selected */
   const w = E.parse[C.TRACK_STEP](await rq(E.req.trackStep(3, 5, { n: 2, notes: [60, 67, 0, 0], time: 0, flags: 1, vel: 99 })));
@@ -746,7 +747,7 @@ async function editorTracks() {
   const us = E.parse[C.UP_STORE](await rq(E.req.upStore(20, "X"), { timeout: 2500, retries: 0 }));
   const ul = E.parse[C.UP_LOAD](await rq(E.req.upLoad(1), { timeout: 2500, retries: 0 }));
   const dl = E.parse[C.DUMP](await rq(E.req.dump()), info);
-  ok(dd.engine === 14 && us.rc === 0 && ul.rc === 0 && dl.engine === 34, "tracks: track 1 selected -> DUMP engine WAVE, UP_STORE / UP_LOAD rc 0");
+  ok(dd.engine === 62 && us.rc === 0 && ul.rc === 0 && dl.engine === 34, "tracks: track 1 selected -> DUMP engine OBIE, UP_STORE / UP_LOAD rc 0");
   /* pushes carry the selected track */
   await rq(E.req.track(0));
   ok(await E.startWatch(rq), "tracks: WATCH on");
@@ -779,7 +780,7 @@ async function editorMixer() {
   const info = E.parse[C.INFO](await rq(E.req.info()));
   const PAN = 39, MUTE = 40;
   const m0 = await E.mixer.read(rq, info, { pan: PAN });
-  ok(m0.ntrk === 4 && m0.tracks.length === 4 && m0.tracks[2].pan === -24 && m0.tracks[3].pan === 24 && m0.tracks[0].engine === 14
+  ok(m0.ntrk === 4 && m0.tracks.length === 4 && m0.tracks[2].pan === -24 && m0.tracks[3].pan === 24 && m0.tracks[0].engine === 62
     && m0.tracks.every((x) => Number.isInteger(x.level) && (x.mute === 0 || x.mute === 1)), "mixer: read = TRACK + pan of every track (TRACK_DUMP)");
   /* level / mute of tracks that are not selected (clamped) */
   const a = await E.mixer.setMix(rq, 2, 70, 1);

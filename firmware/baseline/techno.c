@@ -31,15 +31,17 @@ typedef struct {
 } tc_piece_t;
 /* (2026-10-18: the presets cut to the ones that make bangers; MINIMAL's CLICKS and STEEL BAR, DEEP's PPG KEYS and GLASS
  * went: TIGHT FM, PLATE, OB KEYS, BOWED BELL) */
+/* (2026-10-19: WAVE is the native image's alone: ACID's lead OBIE's SYNC LEAD; DUB and DEEP have SID's bass and
+ * DUBCHORD's chords, the dub-techno stab back where it belongs) */
 static const tc_piece_t TC_PIECES[] = {
     {"WAREHOUSE", 128, 9, 2, 60, {EID_KIT, EID_OBIE, EID_OBIE, EID_VOSIM}, {"FM KIT", "POLY BASS", "FIFTHS STAB", "TALK LEAD"}, 3, 22},
-    {"ACID", 132, 9, 8, 80, {EID_KIT, EID_SID, EID_OBIE, EID_WAVE}, {"TIGHT FM", "FILTER ACID", "BIG STAB", "RESO LEAD"}, 2, 18},
+    {"ACID", 132, 9, 8, 80, {EID_KIT, EID_SID, EID_OBIE, EID_OBIE}, {"TIGHT FM", "FILTER ACID", "BIG STAB", "SYNC LEAD"}, 2, 18},
     {"RAVE", 140, 5, 2, 90, {EID_KIT, EID_HOOVER, EID_HOOVER, EID_VOSIM}, {"BOOM KIT", "REESE BASS", "RAVE STAB", "VOX LEAD"}, 3, 26},
-    {"DUB", 122, 2, 2, 50, {EID_KIT, EID_WAVE, EID_OBIE, EID_DUBSIREN}, {"DUB KIT", "SUB BASS", "OB KEYS", "CLASSIC SIREN"}, 1, 40},
+    {"DUB", 122, 2, 2, 50, {EID_KIT, EID_SID, EID_DUBCHORD, EID_DUBSIREN}, {"DUB KIT", "SID BASS", "DUB STAB", "CLASSIC SIREN"}, 1, 40},
     {"INDUSTRIAL", 135, 4, 8, 75, {EID_KIT, EID_OBIE, EID_VOSIM, EID_HOOVER}, {"INDUSTRIAL", "RESO SWEEP", "GROWL", "MENTAL"}, 2, 30},
     {"MINIMAL", 126, 0, 3, 40, {EID_KIT, EID_SID, EID_MODAL, EID_OBIE}, {"TIGHT FM", "SID BASS", "PLATE", "SQUARE LEAD"}, 3, 20},
     {"PEAK TIME", 134, 7, 7, 85, {EID_KIT, EID_OBIE, EID_OBIE, EID_OBIE}, {"HEAVY METAL", "POLY BASS", "OB BRASS", "SYNC LEAD"}, 3, 24},
-    {"DEEP", 124, 10, 3, 55, {EID_KIT, EID_WAVE, EID_OBIE, EID_MODAL}, {"DEEP KIT", "SUB BASS", "OB KEYS", "BOWED BELL"}, 3, 34},
+    {"DEEP", 124, 10, 3, 55, {EID_KIT, EID_SID, EID_DUBCHORD, EID_MODAL}, {"DEEP KIT", "SID BASS", "DEEP CHORD", "BOWED BELL"}, 3, 34},
 };
 #define TC_NPIECES (sizeof TC_PIECES / sizeof TC_PIECES[0])
 typedef char tc_names_fit[NELEM(N_TC_PIECE) == TC_NPIECES ? 1 : -1];   /* (params.c: the knob's names) */

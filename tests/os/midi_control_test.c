@@ -310,8 +310,8 @@ static int cc_map_test(void)
     };
     int bad = 0, ok = 1; uint32_t i, e; int16_t before[P_COUNT];
     midi_test_reset();
-    bad += check("power-on parts (ui_test.c UT_DEF): SID, WAVE, SID, MODAL", trk[0].eng_req == ENGI_SID &&
-                 trk[1].eng_req == ENGI_WAVE && trk[2].eng_req == ENGI_SID && trk[3].eng_req == ENGI_MODAL);
+    bad += check("power-on parts (ui_test.c UT_DEF): SID, the pad (WAVE or OBIE), SID, MODAL", trk[0].eng_req == ENGI_SID &&
+                 trk[1].eng_req == ENGI_HPAD && trk[2].eng_req == ENGI_SID && trk[3].eng_req == ENGI_MODAL);
     for (i = 0; i < NELEM(COMMON); i++) {
         queued(0xB0, COMMON[i].cc, 127, 1);
         ok &= trk[0].p[COMMON[i].id] == TP[COMMON[i].id].max;

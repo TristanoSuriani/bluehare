@@ -137,10 +137,10 @@ int main(void)
             int32_t v = d->def, n;
             if (d->fmt != F_ENUM || !d->names || d->max <= d->min)
                 continue;
-            for (n = 0; n < 64; n++)
+            for (n = 0; n < 256; n++)
                 v = param_turn(d, v, -1);
             printf("%s[%d,%d,[", e++ ? "," : "", k < (uint32_t)P_E0 ? 0 : 1, k < (uint32_t)P_E0 ? (int)k : (int)(k - P_E0));
-            for (n = 0; n < 64; n++) {
+            for (n = 0; n < 256; n++) {
                 int32_t w = param_turn(d, v, 1);
                 js_str(d->names[v - d->min]);
                 if (w == v)

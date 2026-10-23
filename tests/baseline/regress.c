@@ -220,7 +220,7 @@ static void job_song(const job_t *j)
     host_tracks_init();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, ENGI_WAVE, 0);                 /* (WAVE's WARM PAD; BLISS's E.PIANO until it was archived) */
+    host_preset(t2, ENGI_HPAD, HPAD_PRESET);       /* (the pad: WAVE's WARM PAD or OBIE's PWM PAD; BLISS's E.PIANO once) */
     host_preset(t3, ENGI_SID, 0);
     host_drums(td);
     for (i = 0; i < 16u; i++) {
@@ -403,7 +403,7 @@ static void midi_pkt(uint32_t st, uint32_t d1, uint32_t d2)   /* as usb.c: the q
  * fades within its one block), the VOICE part at most 4; then all off: every voice free */
 static int chk_budget(char *msg, uint32_t n)
 {
-    static const uint8_t E[NPART][2] = {{ENGI_SID, 1}, {ENGI_VOSIM, 1}, {ENGI_MODAL, 1}, {ENGI_WAVE, 0}};
+    static const uint8_t E[NPART][2] = {{ENGI_SID, 1}, {ENGI_VOSIM, 1}, {ENGI_MODAL, 1}, {ENGI_HPAD, HPAD_PRESET}};
     uint8_t held[NPART][128] = {{0}};
     uint32_t p, k, worst = 0, vworst = 0, fading = 0, kills0 = voice_kills;
     host_tracks_init();
@@ -750,7 +750,7 @@ static int chk_keep(char *msg, uint32_t n, uint32_t mode)
     trk[0].p[P_VOICE] = (int16_t)mode;
     trk[0].p[P_SUS] = 100;
     for (k = 1; k < NPART; k++) {
-        host_preset(&trk[k], ENGI_WAVE, 1);
+        host_preset(&trk[k], ENGI_HPAD, HPAD_PRESET);
         trk[k].p[P_VOICE] = V_POLY;
         trk[k].p[P_SUS] = 100;
     }
@@ -966,7 +966,7 @@ int main(int argc, char **argv)
     uint32_t jobs_at_once = getenv("JOBS") ? (uint32_t)atoi(getenv("JOBS")) : 8u;
     static const char *const MN[4] = {"POLY", "MONO", "LEGATO", "UNISON"};
     static const char *const SN[6] = {"dry", "chorus", "delay", "reverb", "all", "dist"};
-    static const uint8_t MODE_E[2][2] = {{ENGI_SID, 0}, {ENGI_WAVE, 0}};   /* engine, preset */
+    static const uint8_t MODE_E[2][2] = {{ENGI_SID, 0}, {ENGI_HPAD, HPAD_PRESET}};   /* engine, preset */
     static const uint8_t SEND_E[1][2] = {{0, 3}};
     static uint8_t cpu_parts[MAXJ][NPART][3];
     static kv_t gold[MAXKV], cpu[MAXKV];
@@ -1072,7 +1072,7 @@ checks_done:
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
         cpu_parts[ncpu][0][0] = ENGI_VOSIM, cpu_parts[ncpu][0][1] = 0, cpu_parts[ncpu][0][2] = 8;
         cpu_parts[ncpu][1][0] = ENGI_SID, cpu_parts[ncpu][1][1] = 0, cpu_parts[ncpu][1][2] = 8;
-        cpu_parts[ncpu][2][0] = ENGI_WAVE, cpu_parts[ncpu][2][1] = 0, cpu_parts[ncpu][2][2] = 4;
+        cpu_parts[ncpu][2][0] = ENGI_HPAD, cpu_parts[ncpu][2][1] = HPAD_PRESET, cpu_parts[ncpu][2][2] = 4;
         cpu_parts[ncpu][3][0] = ENGI_MODAL, cpu_parts[ncpu][3][1] = 7, cpu_parts[ncpu][3][2] = DRUM_HITS;
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
         j->e = 0xFF;

@@ -63,6 +63,11 @@ static void os_load_sound(uint32_t track, uint32_t engine, uint32_t preset)
 #include "../../native/target_host.c"   /* (2026-10-17: Native's side of target.h, out of the baseline) */
 #endif
 #define inst (trk[0])                   /* the single-part renders below: part 1 */
+/* (2026-10-19) the tests' pad: WAVE's WARM PAD where the build has WAVE (the native image's alone since 2026-10-19),
+ * else OBIE's PWM PAD (engines.c TRK_DEF's, the FM-1's track 1) */
+#define ENGI_HPAD (BLUEHARE_ENG_WAVE ? (uint8_t)ENGI_WAVE : (uint8_t)ENGI_OBIE)
+#define HPAD_PRESET (BLUEHARE_ENG_WAVE ? 0u : 3u)
+#define HPAD_NAME (BLUEHARE_ENG_WAVE ? "WARM PAD" : "PWM PAD")
 
 static void wav_hdr(FILE *f, uint32_t frames)
 {
@@ -297,7 +302,7 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
     host_tracks_init();
     song.g[G_BPM] = 120;
     host_preset(t1, 0, 4);
-    host_preset(t2, ENGI_WAVE, 0);                 /* (WAVE's WARM PAD; BLISS's E.PIANO until it was archived) */
+    host_preset(t2, ENGI_HPAD, HPAD_PRESET);       /* (the pad: WAVE's WARM PAD or OBIE's PWM PAD; BLISS's E.PIANO once) */
     host_preset(t3, ENGI_SID, 0);
     host_drums(td);
     for (i = 0; i < 16u; i++) {
@@ -499,7 +504,7 @@ static int xfade_test(const char *dir)
     /* switches: (a) in a release tail, (b) twice with a chord held, (c) with a note right after it */
     const uint32_t sw[4] = {11u * B, 23u * B, 29u * B + 7u * CTL, 33u * B};
     const uint32_t on[3] = {B, 15u * B, 25u * B}, sine[3] = {14u * B, 24u * B, 32u * B};
-    const uint8_t to[4] = {ENGI_VOSIM, 2, 3, ENGI_WAVE};
+    const uint8_t to[4] = {ENGI_VOSIM, 2, 3, ENGI_HPAD};
     char path[512];
     FILE *w;
     int32_t *L = calloc(frames + CTL, sizeof *L);               /* (the last block may run past frames) */
@@ -700,11 +705,11 @@ static int tracks_test(const char *dir)
     {   /* FM6, PHASE, VOICE (their heaviest presets) and drums on part 4 at once: 3 + 3 + 2 notes and the hits in the
          * budget of 8 */
         const uint8_t fm = ENGI_VOSIM;
-        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 3}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 2},
+        uint8_t parts[NPART][3] = {{fm, (uint8_t)heavy[fm], 3}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 3}, {ENGI_HPAD, (uint8_t)heavy[ENGI_HPAD], 2},
                                    {ENGI_MODAL, 7, DRUM_HITS}};
-        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 8}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 4},
+        uint8_t full[NPART][3] = {{fm, (uint8_t)heavy[fm], 8}, {ENGI_SID, (uint8_t)heavy[ENGI_SID], 8}, {ENGI_HPAD, (uint8_t)heavy[ENGI_HPAD], 4},
                                   {ENGI_MODAL, 7, DRUM_HITS}};
-        uint8_t vv[NPART][3] = {{ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 4}, {ENGI_WAVE, (uint8_t)heavy[ENGI_WAVE], 4}, {0, 0, 0}, {0, 0, 0}};
+        uint8_t vv[NPART][3] = {{ENGI_HPAD, (uint8_t)heavy[ENGI_HPAD], 4}, {ENGI_HPAD, (uint8_t)heavy[ENGI_HPAD], 4}, {0, 0, 0}, {0, 0, 0}};
         uint8_t idle[NPART][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {ENGI_MODAL, 7, DRUM_HITS}};
         uint32_t bm2 = 0, bm3 = 0;
         double two_voice, none;
