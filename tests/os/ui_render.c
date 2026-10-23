@@ -579,7 +579,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
 static void setup(int s)
 {
     memset(kb_chn, 0, sizeof kb_chn);               /* no key held (roll_playing holds one) */
-    memset(&tc, 0, sizeof tc);                      /* (TECHNO stopped: S_ARP plays it) */
+    memset(&ar, 0, sizeof ar);                      /* (the ARP stopped: S_ARP plays it) */
     state();
     switch (s) {
     case S_HOME: song.octave = 2; usb.config = 1; break;
@@ -608,16 +608,22 @@ static void setup(int s)
      * section counts T2's loop) */
     case S_MIXER:
         go_page(GR_TRK);
-        trk[0].p[P_LEVEL] = 100; trk[1].p[P_LEVEL] = 84; trk[2].p[P_LEVEL] = 64; trk[3].p[P_LEVEL] = 110;
-        trk[0].p[P_PAN] = -20; trk[1].p[P_PAN] = 24; trk[3].p[P_PAN] = -4; trk[1].p[P_REV] = 80;
-        trk[2].p[P_MUTE] = 1; trk[3].p[P_MUTE] = 1; trk[0].peak = 9000;
+        trk[0].p[P_LEVEL] = 100; trk[1].p[P_LEVEL] = 84; trk[2].p[P_LEVEL] = 64;
+        if (NTRK > 3u) { trk[3].p[P_LEVEL] = 110; }
+        trk[0].p[P_PAN] = -20; trk[1].p[P_PAN] = 24; trk[1].p[P_REV] = 80;
+        if (NTRK > 3u) { trk[3].p[P_PAN] = -4; }
+        trk[2].p[P_MUTE] = 1; trk[0].peak = 9000;
+        if (NTRK > 3u) { trk[3].p[P_MUTE] = 1; }
         break;
     case S_MIXER_HOME: go_home(); home_tap(); break;   /* 1.2: HOME tapped on HOME (its LED lit: MIXER is HOME's) */
     case S_MIXER_PAN:                           /* PAN just turned, the ends of each knob, OFF */
         go_page(GR_TRK); song.playing = 0; song.sel = 1;
-        trk[0].p[P_LEVEL] = 127; trk[1].p[P_LEVEL] = 0; trk[2].p[P_LEVEL] = 1; trk[3].p[P_LEVEL] = 104;
-        trk[0].p[P_PAN] = -64; trk[1].p[P_PAN] = 63; trk[2].p[P_PAN] = 0; trk[3].p[P_PAN] = 1;
-        trk[0].p[P_REV] = 127; trk[2].p[P_REV] = 1; trk[3].p[P_MUTE] = 1;
+        trk[0].p[P_LEVEL] = 127; trk[1].p[P_LEVEL] = 0; trk[2].p[P_LEVEL] = 1;
+        if (NTRK > 3u) { trk[3].p[P_LEVEL] = 104; }
+        trk[0].p[P_PAN] = -64; trk[1].p[P_PAN] = 63; trk[2].p[P_PAN] = 0;
+        if (NTRK > 3u) { trk[3].p[P_PAN] = 1; }
+        trk[0].p[P_REV] = 127; trk[2].p[P_REV] = 1;
+        if (NTRK > 3u) { trk[3].p[P_MUTE] = 1; }
         ui.hot_col = 3; ui.hot_t = 30;
         break;
     case S_ENV: go_title("ENV"); ui.hot_col = 2; ui.hot_t = 30; break;
@@ -638,15 +644,15 @@ static void setup(int s)
         break;
     }
     case S_CHORD_OFF: go_title("CHORD"); break;
-    case S_ARP:                                      /* (2026-10-18) ARP: TECHNO playing, its DROP, bar 3 */
-        tc.on = 1; tc.s.sect = TS_DROP; tc.s.bar = 2;
-        go_title("TECHNO");
+    case S_ARP:                                      /* (2026-10-23) ARP: the arpeggiator playing, bar 3 (its visuals) */
+        ar.on = 1; ar.bar = 2; ar.chords = 3;
+        go_title("ARP");
         break;
     case S_VOICE: go_title("VOICE"); break;
     case S_CLOCK: go_title("CLOCK"); break;          /* (1.2: HOME > MIXER > CLOCK; up to 1.1.5 GLO > GLOBAL) */
-    /* 1.2: the old SYSTEM page's items in the MENU: MIDI > MIDI IN (ROUT) on CH5-8; AUDIO > TUNE (-12 ct) selected;
-     * SYSTEM > INFO (the USB state, the CPU load) */
-    case S_MENU_MIDI: ui.menu = 1; ui.menu_sel = MI_MIDIIN; song.g[G_ROUTE] = 2; break;
+    /* (2026-10-23) GLO > MIDI IN, track 1 on channel 9 from USB (MENU > MIDI > MIDI IN gone); 1.2: AUDIO > TUNE (-12 ct)
+     * selected; SYSTEM > INFO (the USB state, the CPU load) */
+    case S_MENU_MIDI: trk[0].p[P_MCH] = 9; trk[0].p[P_MIN] = 1; go_title("MIDI IN"); break;
     case S_MENU_TUNE: ui.menu = 1; ui.menu_sel = MI_TUNE; song.g[G_TUNE] = -12; break;
     /* 1.3: HOME > TRACKS playing (T2 selected), stopped (T1 selected, its cursor's page), K2 just turned; the MENU's DISPLAY
      * tab with HOME TRACKS selected (8 rows) */
@@ -656,17 +662,17 @@ static void setup(int s)
         info.t = fm1_ms - INFO_CPU_MS;
         break;
     case S_EDIT_ANALOG: go_title("EDIT 1"); break;
-    case S_EDIT_FM6: eng(ENGI_MODAL); go_title("EDIT 1"); break;   /* (MODAL: BLISS archived) */
+    case S_EDIT_FM6: eng(ENGI_VA); go_title("EDIT 1"); break;   /* (MODAL: BLISS archived) */
     case S_EDIT_WHEEL: eng(ENGI_SID); go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_WAVE_2: eng(ENGI_HPAD); TSEL->p[P_E2] = 64; go_title("EDIT 2"); break;
-    case S_EDIT_BYTE_2: eng(ENGI_MODAL); go_title("EDIT 2"); break;
+    case S_EDIT_BYTE_2: eng(ENGI_VA); go_title("EDIT 2"); break;
     case S_EDIT_WAVE: eng(ENGI_HPAD); TSEL->p[P_E1] = 70; go_title("EDIT 1"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_BYTE: eng(ENGI_SID); TSEL->p[P_E6] = 9; go_title("EDIT 2"); break;
     case S_EDIT_WEST: eng(ENGI_VOSIM); TSEL->p[P_E6] = -20; go_title("EDIT 1"); break;   /* (WEST archived: VOSIM, a negative SWEEP) */
     case S_EDIT_WEST_2: eng(ENGI_VOSIM); go_title("EDIT 2"); break;
-    case S_EDIT_HOOVER: eng(ENGI_MODAL); go_title("EDIT 2"); break;
+    case S_EDIT_HOOVER: eng(ENGI_VA); go_title("EDIT 2"); break;
     case S_EDIT_HOOVER_2: eng(ENGI_SID); TSEL->p[P_E5] = -12; go_title("EDIT 2"); break;
-    case S_EDIT_PHYS: eng(ENGI_MODAL); go_title("EDIT 1"); break;
+    case S_EDIT_PHYS: eng(ENGI_VA); go_title("EDIT 1"); break;
     case S_CONFIRM_INIT: ui.confirm = CF_INIT_SOUND; ui.confirm_trk = 2; break;
     case S_CONFIRM_PROJ: ui.confirm = CF_OVR_PROJ; ui.confirm_trk = 0; break;
     case S_CONFIRM_USER: song.playing = 0; up_store(6, "A VERY LONG SOUND NAME"); ui.confirm = CF_OVR_USER; ui.confirm_trk = 6; break;
@@ -744,11 +750,11 @@ static void setup(int s)
         go_home(); ui.layer = LAYER_GLO; trk[1].p[P_MUTE] = 1; perf_solo = 4; trk[0].p[P_LEVEL] = 90;
         ui.hot_col = 0; ui.hot_t = 30;
         break;
-    case S_GLO_EXT: go_home(); ui.layer = LAYER_GLO; song.g[G_CLOCK] = 1; trk[0].p[P_MUTE] = trk[3].p[P_MUTE] = 1; break;
+    case S_GLO_EXT: go_home(); ui.layer = LAYER_GLO; song.g[G_CLOCK] = 1; trk[0].p[P_MUTE] = trk[NTRK - 1u].p[P_MUTE] = 1; break;
     case S_SCL_PEEK: go_title("ENV"); ui.layer = LAYER_SCL; break;
     case S_SCL_ACTIVE: go_home(); ui.layer = LAYER_SCL; TSEL->p[P_ROOT] = 3; TSEL->p[P_SCALE] = 2; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EDIT_PEEK: go_title("EDIT 1"); ui.layer = LAYER_EDIT; break;
-    case S_EDIT_ACTIVE: eng(ENGI_MODAL); apply_preset_to(TSEL, 2); favorite_set(EID_MODAL, 2, 1); go_home(); ui.layer = LAYER_EDIT;
+    case S_EDIT_ACTIVE: eng(ENGI_VA); apply_preset_to(TSEL, 2); favorite_set(EID_VA, 2, 1); go_home(); ui.layer = LAYER_EDIT;
         ui.hot_col = 0; ui.hot_t = 30; break;
     case S_EDIT_USER: song.playing = 0; eng(ENGI_VOSIM); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(EID_COUNT, 6, 1);
         go_home(); ui.layer = LAYER_EDIT; break;
@@ -1088,18 +1094,13 @@ static void align_sweeps(void)
                 draw_menu();
             }
         ui_prefs = 0; ui_rec_prefs = 0;
-        cur_name = st ? "sweep LINE: menu TUNE / MIDI IN" : "sweep FLAT: menu TUNE / MIDI IN";   /* (1.2: the project's) */
+        cur_name = st ? "sweep LINE: menu TUNE" : "sweep FLAT: menu TUNE";   /* (1.2: the project's) */
         for (k = 0; k < 2u * TUNE_N; k++) {             /* every TUNE (the cents, signed), selected or not, S and M */
             ui.menu_sel = (uint8_t)(k & 2u ? MI_TUNE : MI_LOWCUT); ui_prefs = k & 1u ? PREF_LARGE : 0u;
             song.g[G_TUNE] = (int16_t)((int32_t)(k / 2u) + TUNE_MIN); ui.force = 1;
             draw_menu();
         }
-        for (k = 0; k < 4u * NELEM(N_ROUTE); k++) {     /* every MIDI IN, selected or not, S and M */
-            ui.menu_sel = MI_MIDIIN; ui_prefs = k & 1u ? PREF_LARGE : 0u;
-            song.g[G_ROUTE] = (int16_t)(k / 4u); ui.force = 1;
-            draw_menu();
-        }
-        song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
+        song.g[G_TUNE] = 0;
         cur_name = st ? "sweep LINE: INFO" : "sweep FLAT: INFO";   /* (1.2: every USB state, the CPU 0..99 %, S and M) */
         {
             uint8_t up0 = usb.up, cf0 = usb.config;

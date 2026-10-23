@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* fel_resample.h. An output frame at pos (input frames, 32.32) is the taps around it, buf[i - taps/2 + 1 ..
  * i + taps/2] (i = floor(pos)), weighted by the kernel at pos's fraction. The input is pulled only as far as the
  * outputs asked for need it (no further: an event the host sends between two calls lands as late as any other). */

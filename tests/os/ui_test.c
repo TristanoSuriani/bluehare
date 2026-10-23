@@ -152,12 +152,12 @@ static int check(const char *what, int ok)
     return ok ? 0 : 1;
 }
 
-/* (Blue Hare) the sounds these tests power on with: the layout they were written against (a bass on track 1, the
- * keys on 2, a lead on 3, the drums on 4: MODAL's WOOD DRUM since the kits were archived; 5..8 a chord, a pluck, a bell,
- * strings), every pan centred. The device's own power-on (engines.c TRK_DEF, TRK_PAN) is engines_test.c's to check */
-static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK2(WAVE, 0, OBIE, 3), TRK_PICK(SID, 2), TRK_PICK(MODAL, 7)
+/* (Blue Hare) the sounds these tests power on with (2026-10-23, each track one of its own engines: a bass on track 1,
+ * the drums on 2, a voice on 3; 4..8 a lead, a pad, strings, a voice, a bass), every pan centred. The device's own
+ * power-on (engines.c TRK_DEF, TRK_PAN) is engines_test.c's to check */
+static const uint8_t UT_DEF[NPART][2] = {TRK_PICK(SID, 0), TRK_PICK(KIT, 0), TRK_PICK(VOSIM, 0)
 #if NPART == 8
-                                         , TRK_PICK2(WAVE, 0, OBIE, 3), TRK_PICK(VOSIM, 14), TRK_PICK(MODAL, 2), TRK_PICK2(WAVE, 3, OBIE, 2)
+                                         , TRK_PICK(SID, 2), TRK_PICK(OBIE, 3), TRK_PICK(OBIE, 2), TRK_PICK(VOSIM, 1), TRK_PICK(SID, 0)
 #endif
 };
 /* main.c bluehare_init, with these tests' sounds (UT_DEF) */
@@ -168,7 +168,7 @@ static void ui_power_on(void)
     memset(&song, 0, sizeof song);
     trk_mix_defaults();                           /* (nothing playing) */
     seq_hook = 0;                                 /* (the sequencer: a placeholder; no test song) */
-    memset(&tc, 0, sizeof tc);                    /* (TECHNO stopped, as at power-on: ARP started it in a test before) */
+    memset(&ar, 0, sizeof ar);                    /* (the ARP stopped, as at power-on: a test before started it) */
     memset(&ui, 0, sizeof ui);
     page_over = 0;                                /* (no layer's knobs; roll_settle's test page gone) */
     memset(&nm, 0, sizeof nm);                    /* NAME closed, no project name */
@@ -251,6 +251,22 @@ static void press(uint32_t label)                 /* a tap: down, a frame, up, a
     fm1_in.buttons &= ~(1u << panel.btn[label]);
     frame();
 }
+
+/* GLO, tapped until its MIDI IN page shows (GLOBAL first): 1 found */
+static int open_glo_midi(void)
+{
+    uint32_t n;
+    ui.home = 1;
+    for (n = 0; n < 4u; n++) {
+        press(B_GLO);
+        for (uint32_t f = 0; f < 20u; f++)              /* (slow taps cycle; two quick ones lock its layer) */
+            frame();
+        if (!ui.home && cur_page()->fam == FAM_GLO && cur_page()->id[0] == P_MIN)
+            return 1;
+    }
+    return 0;
+}
+
 static void frames(uint32_t ms) { uint32_t i; for (i = 0; i < ms / 16u; i++) frame(); }
 static void btn_down(uint32_t label) { fm1_in.buttons |= 1u << panel.btn[label]; host_pressed |= 1u << panel.btn[label]; }
 static void btn_up(uint32_t label) { fm1_in.buttons &= ~(1u << panel.btn[label]); }
@@ -337,8 +353,8 @@ static int test_sound_loads(void)
     uint32_t i;
     track_t *t = &trk[0], before;
     ui_power_on();
-    bad += check("power-on: the four sounds, no undo copy", undo.trk == 0 && undo_depth == 0 &&
-                 trk[3].eng_req == ENGI_MODAL && trk[3].preset == UT_DEF[3][1] && trk[0].preset == UT_DEF[0][1]);
+    bad += check("power-on: the tracks' sounds, no undo copy", undo.trk == 0 && undo_depth == 0 &&
+                 trk[1].eng_req == ENGI_KIT && trk[1].preset == UT_DEF[1][1] && trk[0].preset == UT_DEF[0][1]);
     t->p[P_E0 + 1] = 77;                          /* a sound edit */
     t->p[P_SCALE] = 2;                            /* and the track's own settings */
     t->p[P_ROOT] = 3;
@@ -348,10 +364,10 @@ static int test_sound_loads(void)
     before = *t;
     turn(EN_PRESET, 1);                           /* HOME: the next preset */
     bad += check("PRESETS on HOME loads the sound (DIV, kept in the formats, untouched)",
-                 t->preset == (uint8_t)((before.preset + 1u) % ENGINES[0]->npresets) && t->p[P_SDIV] == 1);
+                 t->preset == (uint8_t)((before.preset + 1u) % ENGINES[t->eng_req]->npresets) && t->p[P_SDIV] == 1);
     bad += check("..SCL and the mix stay the track's", t->p[P_ROOT] == 3 && t->p[P_SCALE] == 2 &&
                  t->p[P_TRANS] == 5 && t->p[P_LEVEL] == 90);
-    i = ENGINES[0]->npresets - 2u;                /* (ANALOG's RAVE until Blue Hare: a preset near the end) */
+    i = ENGINES[t->eng_req]->npresets - 2u;                /* (ANALOG's RAVE until Blue Hare: a preset near the end) */
     t->preset = (uint8_t)(i - 1u);
     turn(EN_PRESET, 1);
     bad += check("a factory preset loads", t->preset == i);
@@ -425,36 +441,31 @@ static int test_midi(void)
     song.sel = 2;
     midi_hint = 0;
     midi_event(0x90, 0, 60, 100); midi_event(0x90, 9, 61, 100);
-    bad += check("ROUT CH1-4 (default): channel 1 -> part 1, channel 10 ignored",
-                 song.g[G_ROUTE] == 0 && midi_sel_on[0][60] == 1u && !midi_sel_on[9][61] && !gated_notes(&trk[2]));
+    bad += check("GLO > MIDI IN (default): channel 1 -> track 1, channel 10 nobody's",
+                 midi_sel_on[0][60] == 1u && !midi_sel_on[9][61] && !gated_notes(&trk[2]));
     bad += check("a note into another track tells the UI", midi_hint == 1u);
     frame(); bad += check("MIDI IN -> T1 shown", msg_is("MIDI IN -> T1"));
-    song.g[G_ROUTE] = 1;
+    trk[0].p[P_MCH] = 5;                                /* (2026-10-23: channel 1 moved to track 3) */
+    trk[2].p[P_MCH] = 1;
     midi_event(0x80, 0, 60, 0); midi_event(0x90, 0, 62, 100);
-    bad += check("ROUT changes: note-off releases original owner, new note uses selection",
-                 !gated_notes(&trk[0]) && midi_sel_on[0][62] == 3u && midi_track(3) == &trk[2]);
-    song.sel = 1; midi_event(0x80, 0, 62, 0);
-    bad += check("note-off after selection follows the note-on's track", !midi_sel_on[0][62]);
+    bad += check("the map changes: note-off releases the original owner, a new note goes to the channel's new track",
+                 !gated_notes(&trk[0]) && midi_sel_on[0][62] == 3u && midi_track(0) == &trk[2]);
+    trk[2].p[P_MCH] = 0;                                /* (and on to track 2) */
+    trk[1].p[P_MCH] = 1;
+    midi_event(0x80, 0, 62, 0);
+    bad += check("a note-off after the map changed follows the note-on's track", !midi_sel_on[0][62]);
     midi_event(0x80, 9, 61, 0);
     ui_power_on();
-    song.g[G_ROUTE] = 1;
     midi_event(0x90, 0, 60, 100);
-    song.sel = 1;
+    trk[0].p[P_MCH] = 5;
+    trk[1].p[P_MCH] = 1;
     midi_event(0x90, 0, 60, 100);
-    bad += check("same MIDI channel/pitch on a new selected track releases its old owner",
+    bad += check("same MIDI channel/pitch on the channel's new track releases its old owner",
                  !gated_notes(&trk[0]) && gated_notes(&trk[1]) && midi_sel_on[0][60] == 2u);
     midi_event(0x80, 0, 60, 0);
     midi_event(0x80, 0, 60, 0);
     bad += check("both note-offs after a MIDI ownership change leave neither track held",
                  !gated_notes(&trk[0]) && !gated_notes(&trk[1]) && !midi_sel_on[0][60]);
-    ui_power_on();
-    song.sel = 2; song.g[G_ROUTE] = 1;
-    midi_event(0x90, 0, 61, 100);
-    song.g[G_ROUTE] = 0;
-    midi_event(0x90, 0, 61, 100);
-    midi_event(0x80, 0, 61, 0);
-    bad += check("same channel/pitch across a ROUT change cannot leave its previous part held",
-                 !gated_notes(&trk[2]) && !gated_notes(&trk[0]) && !midi_sel_on[0][61]);
     ui_power_on();
     midi_event(0x90, 0, 60, 100);
     midi_event(0x90, 1, 64, 100);
@@ -472,19 +483,26 @@ static int test_midi(void)
         events_block(CTL);
         bad += check("MIDI accepts a fresh note after overflow recovery", midi_sel_on[0][61] == 1u && trk[0].v[0].gate);
     }
-    {   /* 1.2: MENU > MIDI > MIDI IN (up to 1.1.5 GLO > SYSTEM K3 ROUT): the project's G_ROUTE, its names ROUT's */
+    {   /* (2026-10-23) GLO > MIDI IN: each track its input and channel (MENU > MIDI > MIDI IN's ROUT gone) */
         uint32_t k;
-        int16_t r0 = song.g[G_ROUTE];
-        int ok = MI_TAB[MI_MIDIIN] == MTAB_MIDI && str_eq(MI_NAME[MI_MIDIIN], "MIDI IN") &&
-                 menu_n(MI_MIDIIN) == (uint32_t)GP[G_ROUTE].max + 1u;
-        for (k = 0; k < menu_n(MI_MIDIIN); k++) {
-            menu_put(MI_MIDIIN, k);
-            ok &= song.g[G_ROUTE] == (int16_t)k && menu_get(MI_MIDIIN) == k && str_eq(menu_vname(MI_MIDIIN, k), GP[G_ROUTE].names[k]);
-        }
-        menu_put(MI_MIDIIN, 1u);
-        ok &= str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "SEL");
-        song.g[G_ROUTE] = r0;
-        bad += check("MENU > MIDI > MIDI IN: CH1-4 / SEL / CH5-8 .. CH13-16, the project's ROUT (G_ROUTE)", ok);
+        int ok = 1;
+        for (k = 0; k < NPAGES && !(PAGES[k].fam == FAM_GLO && PAGES[k].id[0] == P_MIN); k++)
+            ;
+        ok &= k < NPAGES && PAGES[k].scope == SC_TRACK && PAGES[k].id[1] == P_MCH && str_eq(TP[P_MIN].label, "IN") &&
+              str_eq(TP[P_MCH].label, "CH") && TP[P_MIN].def == 3 && TP[P_MCH].def == 0 && TP[P_MCH].max == 17;
+        for (k = 0; k < NPART; k++)
+            ok &= trk[k].p[P_MIN] == 3 && trk[k].p[P_MCH] == 0 && midi_trk_ch(k) == k % 16u;
+        trk[2].p[P_MCH] = 10;                           /* (track 3 on channel 10) */
+        midi_src = 1;
+        ok &= midi_match(9) == &trk[2] && midi_match(2) == 0 && midi_match(0) == &trk[0];
+        trk[2].p[P_MIN] = 2;                            /* (TRS alone: USB's channel 10 nobody's) */
+        ok &= midi_match(9) == 0;
+        midi_src = 0;
+        trk[2].p[P_MIN] = 3;
+        trk[2].p[P_MCH] = 0;
+        ok &= open_glo_midi() && cur_page()->id[0] == P_MIN;
+        bad += check("GLO > MIDI IN: each track's input (BOTH) and channel (its number) by default; a channel and an "
+                     "input of its own; the page GLO opens to", ok);
     }
     return bad;
 }
@@ -766,21 +784,21 @@ static int test_favorites(void)
                  !memcmp(TSEL, &before, sizeof before));
     bad += check("one favorite occupies one display row, without repeated copies",
                  preset_visible(pos, total, 0) == 0 && preset_visible(pos, total, 1) == total);
-    select_engine(ENGI_MODAL);
+    select_engine(ENGI_OBIE);
     before = *TSEL;
     turn(EN_K3, 1);
     bad += check("another engine's sound can be a favorite on any track", preset_favorite() &&
-                 favorite_has(EID_MODAL, 0) && !memcmp(TSEL, &before, sizeof before));
+                 favorite_has(EID_OBIE, 0) && !memcmp(TSEL, &before, sizeof before));
     turn(EN_PRESET, 1);
     bad += check("filtered browsing crosses engines while retaining the track's TRN",
-                 TSEL->eng_req == 0 && preset_favorite() &&
+                 TSEL->eng_req == ENGI_SID && preset_favorite() &&
                  TSEL->p[P_TRANS] == 2);
     turn(EN_K3, -1);
     pos = preset_pos(&total);
     bad += check("unmarking the current sound leaves it loaded even when outside the filtered list",
-                 !preset_favorite() && total == 1 && pos == total && TSEL->eng_req == 0);
+                 !preset_favorite() && total == 1 && pos == total && TSEL->eng_req == ENGI_SID);
     turn(EN_PRESET, -1);
-    bad += check("browsing from a nonfavorite selects the last favorite", TSEL->eng_req == ENGI_MODAL);
+    bad += check("browsing from a nonfavorite selects the last favorite", TSEL->eng_req == ENGI_OBIE);
     turn(EN_K3, -1);
     before = *TSEL;
     turn(EN_PRESET, 1);
@@ -827,8 +845,8 @@ static int test_categories(void)
         ok &= okc;
     }
     bad += check("categories: every factory preset of every engine has one (the table's strings == the preset counts)",
-                 ok && preset_cat(0, 0) == CAT_BASS && preset_cat(ENGI_MODAL, 5) == CAT_DRUM && preset_cat(ENGI_HPAD, BLUEHARE_ENG_WAVE ? 1u : 3u) == CAT_PAD &&
-                 preset_cat(ENGI_KIT, 0) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);   /* (MODAL's SUB DRUM; KIT's FM KIT) */
+                 ok && preset_cat(ENGI_SID, 0) == CAT_BASS && preset_cat(ENGI_VA, 4) == CAT_PLUCK && preset_cat(ENGI_HPAD, 3u) == CAT_PAD &&
+                 preset_cat(ENGI_KIT, 0) == CAT_DRUM && preset_cat(0, 99) == CAT_OTHER);   /* (VA's SAW PLUCK; KIT's FM KIT) */
     {   /* (2026-10-17) archived engines' favourites refused: WEST (16) and SH101 (61) with KARPLUS (20) and BYTE (15) */
         favorites_t before = favorites;
         ok = !favorite_set(EID_WEST, 0, 1) && !favorite_has(EID_WEST, 0) && !favorite_set(EID_SH101, 0, 1) &&
@@ -838,17 +856,17 @@ static int test_categories(void)
         memset(&favorites, 0, sizeof favorites);
     }
     go_page(GR_BROWSE);
-    select_engine(0);
+    select_engine(ENGI_SID);
     apply_preset(1);                                       /* SID LEAD (not a bass) */
     turn(EN_K4, 1);
     turn(EN_K4, 1);
     pos = preset_pos(&total);
-    for (n = 0, e = 0; e < NENGINES; e++)
-        for (k = 0; eng_ok(e) && k < preset_shown(e); k++)
+    for (n = 0, e = 0; e < NENGINES; e++)                  /* (2026-10-23: the selected track's engines) */
+        for (k = 0; eng_sel_ok(e) && k < preset_shown(e); k++)
             n += preset_cat(e, k) == CAT_BASS;
     bad += check("  KNOB 4: ALL, FAV, then BASS: the list holds the factory basses only, the sound not loaded",
                  list_mode() == 2u && str_eq(list_name(list_mode()), "BASS") && !favorites.filter && ui_lcat == CAT_BASS &&
-                 total == n && n >= 6u && pos == total && TSEL->eng_req == 0u && TSEL->preset == 1u);
+                 total == n && n >= 3u && pos == total && TSEL->eng_req == ENGI_SID && TSEL->preset == 1u);
     ok = 1;
     for (i = 0; i < total; i++) {
         turn(EN_PRESET, 1);
@@ -859,9 +877,10 @@ static int test_categories(void)
     bad += check("  .. right to OTHER and no further (no wrap)", list_mode() == LIST_N - 1u && str_eq(list_name(list_mode()), "OTHER"));
     {
         track_t before = *TSEL;
+        list_set(1u + CAT_DRUM);                        /* (2026-10-23: the synths' track has no drum: DRUM empty there) */
         ui.msg_t = 0;
         turn(EN_PRESET, 1);
-        bad += check("  OTHER is empty (no factory sound): NO SOUNDS IN LIST, the sound stays",
+        bad += check("  DRUM is empty on the synths' track (no factory sound): NO SOUNDS IN LIST, the sound stays",
                      msg_is("NO SOUNDS IN LIST") && !memcmp(TSEL, &before, sizeof before));
     }
     {   /* the settings: the category's byte, unknown = none; FAV clears it */
@@ -880,7 +899,7 @@ static int test_categories(void)
         turn(EN_K4, -1);
     }
     /* NAME: USER SAVE takes the sound's category; KNOB 3 changes it; written with the name */
-    select_engine(0);
+    select_engine(ENGI_SID);
     apply_preset(0);                                       /* SID BASS */
     song.playing = 0;
     go_page(GR_USER);
@@ -910,7 +929,7 @@ static int test_categories(void)
     press(B_OCTUP);
     up_name(4, b);
     bad += check("  a rename starts at the slot's own category and writes the new one, the sound as it was",
-                 ok && up_cat(4) == CAT_KEYS && up_engine(4) == 0u);
+                 ok && up_cat(4) == CAT_KEYS && up_engine(4) == ENGI_SID);
     up_load(4);
     name_open(NK_USER_SAVE, 5);
     ok = name_on() && nm.cat == CAT_KEYS;
@@ -931,9 +950,9 @@ static int test_categories(void)
         up_values(r, v1);
         bad += check("  a version 2 record: listed by its engine (OTHER); a rename with a category makes it version 4, same sound",
                      c0 == CAT_OTHER && ok && r->ver == UP_VER && up_cat(9) == CAT_FX && !memcmp(v0, v1, sizeof v0));
-        r->ver = 1; r->engine = EID_MODAL;
+        r->ver = 1; r->engine = EID_VA;
         bad += check("  a version 1 PHYS record keeps its version (MODEL 2 = DUST): no category",
-                     (up_set_cat(r, CAT_PAD), r->ver == 1u && up_cat(9) == cat_of_engine(EID_MODAL)));
+                     (up_set_cat(r, CAT_PAD), r->ver == 1u && up_cat(9) == cat_of_engine(EID_VA)));
         memset(r, 0, sizeof *r);
     }
     /* PROJECT: KNOB 3 a random name */
@@ -1042,12 +1061,12 @@ static int test_menu_tabs(void)
             }
     }
     ui_prefs = 0;
-    bad += check("MENU tabs: DISPLAY CONTROL AUDIO MIDI SYSTEM (8 6 5 1 5 rows), 1..8 each in a run, fit the page; tab gaps "
-                 "constant (S, LARGE)",
-                 ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
+    bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM (8 6 5 5 rows; MIDI's gone 2026-10-23), 1..8 each in a run, fit "
+                 "the page; tab gaps constant (S, LARGE)",
+                 ok && MTAB_COUNT == 4u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_SYSTEM], "SYSTEM") &&
                  mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 6u && MI_TAB[MI_EXPERT] == MTAB_CONTROL && mtab_rows(MTAB_AUDIO) == 5u &&
-                 mtab_rows(MTAB_MIDI) == 1u && mtab_rows(MTAB_SYSTEM) == 5u && MI_TAB[MI_TUNE] == MTAB_AUDIO &&
-                 MI_TAB[MI_MIDIIN] == MTAB_MIDI && MI_TAB[MI_INFO] == MTAB_SYSTEM && MI_INFO >= MI_VALUES);
+                 mtab_rows(MTAB_SYSTEM) == 5u && MI_TAB[MI_TUNE] == MTAB_AUDIO &&
+                 MI_TAB[MI_INFO] == MTAB_SYSTEM && MI_INFO >= MI_VALUES);
 
     ui_power_on();
     hold(B_HOME);
@@ -1061,10 +1080,8 @@ static int test_menu_tabs(void)
     turn(EN_ALGO, 1); ok = ui.menu_sel == MI_HOLD && menu_tab() == MTAB_CONTROL;
     turn(EN_PRESET, 1); turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_LATCH;
     turn(EN_ALGO, 1); ok &= ui.menu_sel == MI_LOWCUT && menu_tab() == MTAB_AUDIO;
-    turn(EN_ALGO, 1); ok &= ui.menu_sel == MI_MIDIIN && menu_tab() == MTAB_MIDI;   /* (1.2) */
-    turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_MIDIIN;  /* (its only row) */
     turn(EN_ALGO, 1); ok &= ui.menu_sel == MI_SERIAL && menu_tab() == MTAB_SYSTEM;
-    turn(EN_ALGO, -1); turn(EN_ALGO, -1); ok &= ui.menu_sel == MI_LOWCUT;
+    turn(EN_ALGO, -1); ok &= ui.menu_sel == MI_LOWCUT;
     turn(EN_ALGO, -1); ok &= ui.menu_sel == MI_LATCH;   /* (back at the row left there) */
     turn(EN_ALGO, -1); ok &= ui.menu_sel == MI_LEDS;
     turn(EN_ALGO, -1); ok &= ui.menu_sel == MI_SERIAL && menu_tab() == MTAB_SYSTEM;   /* (wraps) */
@@ -1119,7 +1136,7 @@ static int test_menu_tabs(void)
     }
     ui_prefs = 0; settings_hold = HOLD_DEF; settings_leds = LEDS_DIM; ui_style = ST_FLAT;
     settings.lowcut = 0; fx_lowcut = 0; menu_put(MI_COLOR, UI_GREY_INDEX);
-    song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
+    song.g[G_TUNE] = 0;
     bad += check("MENU: OCT+ / OCT- step every value row up / down (COLOR wraps, the rest stop), the menu stays", ok);
     {   /* the ON / OFF rows: up (a knob right, OCT+) is ON, the switch's knob to the right, whichever bit it is */
         static const uint8_t SW[] = {MI_LARGE, MI_ANIM, MI_ACCEL, MI_LATCH, MI_BPMLOCK, MI_SERIAL, MI_RESTORE};
@@ -1151,7 +1168,7 @@ static int test_menu_tabs(void)
     hold(B_HOME);
     bad += check("MENU: HOME pressed closes it, held too (no reopen); held opens it again at the same tab and row",
                  ok && ui.menu == 1 && ui.menu_sel == MI_USB);
-    turn(EN_ALGO, 1); turn(EN_ALGO, 1); turn(EN_PRESET, -1);   /* (MIDI,) SYSTEM: ABOUT */
+    turn(EN_ALGO, 1); turn(EN_PRESET, -1);               /* SYSTEM (the MIDI tab gone, 2026-10-23): ABOUT */
     ok = ui.menu_sel == MI_ABOUT;
     frame();
     ok &= oct_leds() == OCT_BREATH;                     /* (OCT+ opens, OCT- does nothing: dark) */
@@ -1249,31 +1266,26 @@ static int test_menu_project_rows(void)
     turn(EN_K4, 200); ok &= song.g[G_TUNE] == 50 && str_eq(menu_vname(MI_TUNE, menu_get(MI_TUNE)), "+50");
     turn(EN_K4, -31); ok &= song.g[G_TUNE] == 19;
     bad += check("MENU > AUDIO > TUNE: the project's G_TUNE, -50 .. +50 cents (OCT one, a knob as far as it turned)", ok);
-    ui.menu_sel = MI_MIDIIN;
-    ok = menu_tab() == MTAB_MIDI && song.g[G_ROUTE] == 0 && str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), NTRK == 8 ? "CH1-8" : "CH1-4");
-    press(B_OCTUP); ok &= song.g[G_ROUTE] == 1;
-    if (NTRK == 8) {                                    /* (TRACKS 8: blocks of 8, CH1-8 SEL CH9-16) */
-        turn(EN_K1, 1); turn(EN_K1, 1); ok &= song.g[G_ROUTE] == 2 && str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "CH9-16");
-    } else {
-        turn(EN_K1, 1); turn(EN_K1, 1); ok &= song.g[G_ROUTE] == 3 && str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), "CH9-12");
-    }
-    bad += check("MENU > MIDI > MIDI IN: the project's G_ROUTE (ROUT), its names", ok);
     menu_close();
     settings_export(&p1);
     ok = !memcmp(&p0, &p1, sizeof p0) && autosave_sig() != sig;
-    bad += check("TUNE / MIDI IN: nothing in the settings record; the autosave sees the change (the music's)", ok);
+    bad += check("TUNE: nothing in the settings record; the autosave sees the change (the music's)", ok);
+    trk[2].p[P_MCH] = 10;                                /* (2026-10-23: a track's MIDI IN, GLO's, is the song's too) */
+    trk[2].p[P_MIN] = 2;
     project_save(2);                                     /* (PROJECT C) */
-    song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
+    song.g[G_TUNE] = 0;
+    trk[2].p[P_MCH] = 0;
+    trk[2].p[P_MIN] = 3;
     project_load(2);
-    ok = song.g[G_TUNE] == 19 && song.g[G_ROUTE] == (NTRK == 8 ? 2 : 3) && menu_get(MI_TUNE) == 69u &&
-         menu_get(MI_MIDIIN) == (NTRK == 8 ? 2u : 3u);
-    song.g[G_TUNE] = -7; song.g[G_ROUTE] = NTRK == 8 ? 2 : 4;   /* (another song's values: the rows follow the load) */
+    ok = song.g[G_TUNE] == 19 && menu_get(MI_TUNE) == 69u && trk[2].p[P_MCH] == 10 && trk[2].p[P_MIN] == 2;
+    song.g[G_TUNE] = -7;                                 /* (another song's values: the rows follow the load) */
+    trk[2].p[P_MCH] = 0;
     project_save(0);
-    song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
+    song.g[G_TUNE] = 0;
+    trk[2].p[P_MCH] = 5;
     project_load(0);
-    ok &= song.g[G_TUNE] == -7 && song.g[G_ROUTE] == (NTRK == 8 ? 2 : 4) && str_eq(menu_vname(MI_TUNE, menu_get(MI_TUNE)), "-7") &&
-          str_eq(menu_vname(MI_MIDIIN, menu_get(MI_MIDIIN)), NTRK == 8 ? "CH9-16" : "CH13-16");
-    bad += check("TUNE / MIDI IN: saved with the song and loaded back (round trip; saved again, the new values)", ok);
+    ok &= song.g[G_TUNE] == -7 && str_eq(menu_vname(MI_TUNE, menu_get(MI_TUNE)), "-7") && trk[2].p[P_MCH] == 0;
+    bad += check("TUNE, a track's MIDI IN: saved with the song and loaded back (round trip; saved again, the new values)", ok);
     ui_power_on();
     return bad;
 }
@@ -1755,8 +1767,8 @@ static int test_presets_knob(void)
     return bad;
 }
 
-/* 1.2 (Discussion #153): the pages by button. HOME: HOME > MIXER > CLOCK; SEQ and GLO: the sequencer's placeholder
- * (TODO); SAVE: USER -> PROJECT -> TOOLS -> PRESETS; a remembered page that left its family */
+/* 1.2 (Discussion #153): the pages by button. HOME: HOME > MIXER > CLOCK; SEQ: the sequencer's placeholder (TODO);
+ * GLO (2026-10-23): GLOBAL, MIDI IN; SAVE: USER -> PROJECT -> TOOLS -> PRESETS; a remembered page that left its family */
 static int test_page_cycles(void)
 {
     static const char *const SAVE_CYC[5] = {"USER", "PROJECT", "TOOLS", "PRESETS", "USER"};
@@ -1773,7 +1785,7 @@ static int test_page_cycles(void)
     for (i = 0; i < NPAGES; i++) {                       /* every page in a family its button reaches, and its LED */
         uint32_t f = PAGES[i].fam;
         ok &= f != FAM_SEQ || PAGES[i].graph == GR_TODO;   /* (the sequencer's placeholder) */
-        ok &= f != FAM_GLO;                                /* (GLO opens SEQ's page) */
+        ok &= f != FAM_GLO || str_eq(PAGES[i].title, "GLOBAL") || str_eq(PAGES[i].title, "MIDI IN");   /* (2026-10-23) */
         ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || str_eq(PAGES[i].title, "CLOCK");   /* HOME's: MIXER CLOCK */
         ok &= PAGES[i].graph != GR_TRK || f == FAM_TRK;
         ui_power_on(); ui.home = 0; ui.page = (uint8_t)i; page_entered();
@@ -1782,25 +1794,27 @@ static int test_page_cycles(void)
     }
     for (i = 0; i < NPAGES; i++)
         ok &= !str_eq(PAGES[i].title, "STEP") && !str_eq(PAGES[i].title, "AUTOMATION") && !str_eq(PAGES[i].title, "PHRASES");
-    bad += check("SEQ has its placeholder alone (TODO); no STEP, AUTOMATION, PHRASES; MIXER and CLOCK HOME's (their LED "
-                 "HOME)", ok);
-    {   /* 1.2: GLOBAL and SYSTEM are gone; their knobs: BPM SWG CLK on HOME > CLOCK, TUNE and ROUT on no page (the MENU's),
-         * MIDI SYNC CPU on none (INFO shows the USB state and the CPU) */
-        uint32_t k, clock = 0;
+    bad += check("SEQ has its placeholder alone (TODO); GLO GLOBAL and MIDI IN; no STEP, AUTOMATION, PHRASES; MIXER and "
+                 "CLOCK HOME's (their LED HOME)", ok);
+    {   /* (2026-10-23) GLO > GLOBAL: BPM SWG CLK TUNE (1.2's GLOBAL gone, back on GLO); no SYSTEM; ROUT on no page;
+         * HOME > CLOCK still BPM SWG CLK */
+        uint32_t k, clock = 0, glob = 0;
         ok = 1;
         for (i = 0; i < NPAGES; i++) {
-            ok &= !str_eq(PAGES[i].title, "GLOBAL") && !str_eq(PAGES[i].title, "SYSTEM");
+            ok &= !str_eq(PAGES[i].title, "SYSTEM");
             for (k = 0; k < 4u && PAGES[i].scope == SC_GLOBAL; k++)
-                ok &= PAGES[i].id[k] != G_TUNE && PAGES[i].id[k] != G_ROUTE &&
-                      (str_eq(PAGES[i].title, "TECHNO") || (PAGES[i].id[k] != G_GPRE && PAGES[i].id[k] != G_GSCL &&
-                                                         PAGES[i].id[k] != G_GROOT));   /* (2026-10: GEN's ids) */
+                ok &= PAGES[i].id[k] != G_ROUTE && PAGES[i].id[k] != G_GPRE && PAGES[i].id[k] != G_GSCL &&
+                      PAGES[i].id[k] != G_GROOT;       /* (inert ids) */
             if (str_eq(PAGES[i].title, "CLOCK"))
                 clock = i + 1u;
+            if (str_eq(PAGES[i].title, "GLOBAL"))
+                glob = i + 1u;
         }
         ok &= clock && PAGES[clock - 1u].fam == FAM_TRK && PAGES[clock - 1u].scope == SC_GLOBAL &&
               PAGES[clock - 1u].id[0] == G_BPM && PAGES[clock - 1u].id[1] == G_SWING && PAGES[clock - 1u].id[2] == G_CLOCK &&
-              PAGES[clock - 1u].id[3] == 0xFFu;
-        bad += check("1.2: no GLOBAL, no SYSTEM page; HOME > CLOCK has BPM SWG CLK (three knobs), TUNE and ROUT on no page", ok);
+              PAGES[clock - 1u].id[3] == 0xFFu && glob && PAGES[glob - 1u].fam == FAM_GLO &&
+              PAGES[glob - 1u].id[0] == G_BPM && PAGES[glob - 1u].id[3] == G_TUNE;
+        bad += check("GLO > GLOBAL: BPM SWG CLK TUNE; no SYSTEM page; HOME > CLOCK BPM SWG CLK; ROUT on no page", ok);
     }
     /* remembered pages: one that left its family, or out of range, gives the family's first (1.2: GLO's whatever it was,
      * GLOBAL and SYSTEM too, now SEQ's; HOME's never remembered: from HOME the MIXER) */
@@ -1809,22 +1823,22 @@ static int test_page_cycles(void)
         if (PAGES[i].graph == GR_TRK) ui.fam_last[FAM_GLO] = (uint8_t)i;
     ui.fam_last[FAM_SAVE] = 200u;
     ui.fam_last[FAM_ENV] = 250u;
-    open_family(FAM_GLO); ok = cur_page()->graph == GR_TODO && cur_page()->fam == FAM_SEQ;
+    open_family(FAM_GLO); ok = cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "GLOBAL");
     open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TODO;   /* (its only page) */
     go_home();
     open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TODO;
     open_family(FAM_ENV); ok &= str_eq(cur_page()->title, "ENV");
     open_family(FAM_SAVE); ok &= str_eq(cur_page()->title, "USER");
-    open_family(FAM_GLO); open_family(FAM_GLO);          /* TODO again (its only page) */
-    ok &= cur_page()->graph == GR_TODO;
-    go_home(); open_family(FAM_GLO); ok &= cur_page()->graph == GR_TODO;
+    open_family(FAM_GLO); open_family(FAM_GLO);          /* GLOBAL, MIDI IN, GLOBAL again */
+    ok &= str_eq(cur_page()->title, "MIDI IN") || str_eq(cur_page()->title, "GLOBAL");
+    go_home(); open_family(FAM_GLO); ok &= cur_page()->fam == FAM_GLO;
     for (i = 0; i < 256u; i++) {                         /* any remembered index (the old GLOBAL 25, SYSTEM 27, ..) */
         go_home(); ui.fam_last[FAM_GLO] = (uint8_t)i; open_family(FAM_GLO);
-        ok &= cur_page()->graph == GR_TODO && ui.fam_last[FAM_GLO] == ui.page;
+        ok &= cur_page()->fam == FAM_GLO && ui.fam_last[FAM_GLO] == ui.page;
         go_home(); ui.fam_last[FAM_TRK] = (uint8_t)i; press(B_HOME);
         ok &= cur_page()->graph == GR_TRK && !ui.home;
     }
-    bad += check("1.2: a remembered page no longer in its family (or none) lands on the family's first; GLO always SEQ's, "
+    bad += check("1.2: a remembered page no longer in its family (or none) lands on the family's first; GLO its own, "
                  "HOME always the MIXER first", ok);
 
     return bad;
@@ -1887,10 +1901,11 @@ static int test_product_ux(void)
     bad += check("1.2: HOME held still opens the menu", ui.menu == 1);
     ui_power_on();
     frames(320);                                       /* (taps further apart than a double tap: #83) */
-    press(B_GLO); frames(320); ok = cur_page()->graph == GR_TODO && str_eq(cur_page()->title, "SEQ");
-    press(B_GLO); frames(320); ok &= cur_page()->graph == GR_TODO && !ui.home;
-    go_title("CLOCK"); press(B_GLO); frames(320); ok &= cur_page()->graph == GR_TODO;
-    bad += check("GLO opens SEQ's placeholder directly, again the same (no GLOBAL, no SYSTEM, no MIXER)", ok);
+    press(B_GLO); frames(320); ok = cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "GLOBAL");
+    press(B_GLO); frames(320); ok &= cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "MIDI IN") && !ui.home;
+    press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "GLOBAL");
+    go_title("CLOCK"); press(B_GLO); frames(320); ok &= cur_page()->fam == FAM_GLO;
+    bad += check("GLO opens GLOBAL, again MIDI IN, round (2026-10-23: the global settings; no SYSTEM, no MIXER)", ok);
     go_home(); press(B_SEQ); frames(320);
     ok = cur_page()->graph == GR_TODO && !ui.home && !ui.layer;
     go_home(); btn_down(B_SEQ); frames(500);
@@ -2216,7 +2231,7 @@ static int test_layer(void)
     /* release-act: every page button acts when let go */
     {
         static const uint8_t PB[6] = {B_ENV, B_LFO, B_SCL, B_ARP, B_GLO, B_EDIT};
-        static const uint8_t PF[6] = {FAM_ENV, FAM_LFO, FAM_SCL, FAM_ARP, FAM_SEQ, FAM_EDIT};   /* (GLO: SEQ's placeholder) */
+        static const uint8_t PF[6] = {FAM_ENV, FAM_LFO, FAM_SCL, FAM_ARP, FAM_GLO, FAM_EDIT};   /* (GLO: its own, 2026-10-23) */
         ok = 1;
         for (i = 0; i < 6u; i++) {
             ui_power_on();
@@ -2518,7 +2533,7 @@ static int test_edit_cycle(void)
     for (i = 0; i < NPAGES; i++)
         ok &= !str_eq(PAGES[i].title, "ENGINE");
     bad += check("no ENGINE page (engines are the EDIT layer's)", ok);
-    set_engine_of(TSEL, 0);
+    set_engine_of(TSEL, ENGI_SID);
     bad += check("EDIT cycle (SID, EXPERT OFF): SOUND VOICE VOICE 2 VOICE 3 SOUND", engine_cycle(CYC_P, NELEM(CYC_P)));
     menu_put(MI_EXPERT, 1);
     bad += check("EDIT cycle (SID, EXPERT ON): EDIT 1 EDIT 2 VOICE VOICE 2 VOICE 3 EDIT 1", engine_cycle(CYC_A, NELEM(CYC_A)));
@@ -2527,14 +2542,14 @@ static int test_edit_cycle(void)
     bad += check("EDIT remembers its last page (as every family)", str_eq(cur_page()->title, "EDIT 2"));
     menu_put(MI_EXPERT, 0);
     bad += check("  EXPERT OFF on EDIT 2: SOUND shown", str_eq(cur_page()->title, "SOUND"));
-    {   /* (2026-10-17) the plain pages: SID's quick knobs; VOSIM's VOWEL SIZE SWEEP BRTH, MODAL's MATRL EXCIT DECAY
-         * BRIGHT. VOWEL and SIZE write F1 F2 and read back from them; not momentary */
+    {   /* (2026-10-17) the plain pages: SID's quick knobs; VOSIM's VOWEL SIZE SWEEP BRTH, OBIE's CUT RES DTN SLOP. VOWEL and SIZE write F1 F2 and read back from them; not momentary */
         const param_desc_t *d;
         int16_t *vp;
         int32_t f1, f2;
         go_title("SOUND");
         d = page_desc(cur_page(), 0, &vp);
-        ok = d == track_desc(TSEL, ENGINES[0]->knob[0]) && vp == &TSEL->p[ENGINES[0]->knob[0]];
+        ok = d == track_desc(TSEL, ENGINES[ENGI_SID]->knob[0]) && vp == &TSEL->p[ENGINES[ENGI_SID]->knob[0]];
+        song.sel = 2;                                   /* (2026-10-23: VOSIM is the voices' track's) */
         set_engine_of(TSEL, ENGI_VOSIM);
         go_title("SOUND");
         page_title(ti);
@@ -2553,11 +2568,13 @@ static int test_edit_cycle(void)
         i = (uint32_t)TSEL->p[P_E1];
         turn(EN_K1, -40);                                /* KNOB 1: VOWEL down to U */
         ok &= TSEL->p[P_E1] != (int16_t)i && vosim_macro_get(TSEL, 0) < 115;
-        set_engine_of(TSEL, ENGI_MODAL);
+        song.sel = 0;
+        set_engine_of(TSEL, ENGI_OBIE);
         go_title("SOUND");
-        ok &= page_desc(cur_page(), 0, &vp) == track_desc(TSEL, P_E0) && page_desc(cur_page(), 1, &vp) == track_desc(TSEL, P_E1) &&
-              page_desc(cur_page(), 2, &vp) == track_desc(TSEL, P_E4) && page_desc(cur_page(), 3, &vp) == track_desc(TSEL, P_E6);
-        bad += check("  the plain pages: SID's quick knobs; VOSIM VOCAL: VOWEL (writes F1 F2, reads them back) SIZE SWEEP BRTH; MODAL", ok);
+        ok &= page_desc(cur_page(), 0, &vp) == track_desc(TSEL, P_E4) && page_desc(cur_page(), 1, &vp) == track_desc(TSEL, P_E5) &&
+              page_desc(cur_page(), 2, &vp) == track_desc(TSEL, P_E2) && page_desc(cur_page(), 3, &vp) == track_desc(TSEL, P_E7);
+        bad += check("  the plain pages: SID's quick knobs; VOSIM VOCAL: VOWEL (writes F1 F2, reads them back) SIZE SWEEP BRTH; OBIE "
+                     "CUT RES DTN SLOP", ok);
     }
     {   /* (2026-10-18) FX with EXPERT OFF: REVERB (TYPE SIZE MIX, the global reverb) and DELAY (MIX FEED TIME, the
          * patch's), a second tap the other; a preset load leaves the patch's delay as it is */
@@ -2615,7 +2632,7 @@ static int test_quick_layers(void)
         btn_down(LB[i]);
         for (flash = 0, k = 0; k < 20u; k++) { frame(); flash |= ui.layer; }      /* 0.32 s */
         btn_up(LB[i]); frame();
-        ok &= !flash && !ui.home && (LB[i] == B_GLO ? cur_page()->graph == GR_TODO :
+        ok &= !flash && !ui.home && (LB[i] == B_GLO ? cur_page()->fam == FAM_GLO :
                                      LB[i] == B_SCL ? cur_page()->fam == FAM_SCL : str_eq(cur_page()->title, "EDIT 1"));
         hint &= msg_is(HINT[i]);
         go_home(); frame();
@@ -2764,18 +2781,18 @@ static int test_quick_layers(void)
     btn_up(B_EDIT); frame();
     bad += check("  every engine one can pick has its white key from F3 (NENG_SHOWN, 16 at most; never a retired one)",
                  ok && a == LY_INIT && LY_INIT == (NENG_SHOWN < 16u ? NENG_SHOWN : 16u));
-    set_engine_of(TSEL, 0);
+    set_engine_of(TSEL, ENGI_SID);
     lay_combo(B_EDIT, white(eng_rank(ENGI_HPAD))); key_up(white(eng_rank(ENGI_HPAD))); frame();
     turn(EN_K2, 1);
     ok = TSEL->eng_req == ENGI_HPAD && TSEL->preset == 1u;
     turn(EN_K3, 1);
     ok &= preset_favorite();
     oct_back();
-    ok &= TSEL->eng_req == 0u;
+    ok &= TSEL->eng_req == ENGI_SID;
     btn_up(B_EDIT); frame();
     bad += check("  KNOB 2: the engine's next sound, KNOB 3 FAV; OCT-: the sound as the layer opened", ok && ui.home);
     btn_down(B_EDIT); frame(); turn(EN_K1, 1);
-    ok = TSEL->eng_req == eng_step(0, 1);
+    ok = TSEL->eng_req == eng_step(ENGI_SID, 1);
     btn_up(B_EDIT); frame();
     bad += check("  KNOB 1: the next engine", ok);
 
@@ -2789,7 +2806,7 @@ static int test_quick_layers(void)
     TSEL->p[P_E0] = (int16_t)(TSEL->p[P_E0] + 5);
     press(B_OCTUP);
     bad += check("EDIT + the key after the engines: INITIALIZE SOUND? dialog (closes the layer, no tap); OCT+ inits", ok && !ui.confirm &&
-                 msg_is("SOUND INIT") && TSEL->p[P_E0] == ENGINES[eng_step(0, 1)]->presets[0].e[0]);
+                 msg_is("SOUND INIT") && TSEL->p[P_E0] == ENGINES[eng_step(ENGI_SID, 1)]->presets[0].e[0]);
 
     /* no layer in the menu or a dialog: GLO + a key plays */
     ui_power_on(); hold(B_HOME);
@@ -2811,22 +2828,22 @@ static int test_quick_layers(void)
     ok &= gates() > 0 && !ui.layer;
     key_up(white(1)); btn_up(B_EDIT); frame();
     bad += check("GLO then EDIT: GLO's layer; EDIT ignored (no layer, no page, its keys notes)", ok && ui.home);
-    /* (2026-10-17) ARP: GEN starts, GEN MIX shown (the roles' densities), STROBE on it (2026-10-18, the ocean's place):
-     * a bass note raises its bars, another role tears it; ARP again: GEN stops, GEN's page */
+    /* (2026-10-23) ARP: the arpeggiator starts, its page shown with STROBE (TECHNO's visuals, kept): a note of the
+     * BASS track raises its bars, the VOICE track's tears it; ARP again: it stops, its page stays (its rows) */
     ui_power_on();
     btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
     {
         static int32_t ab[2 * CTL];
         uint32_t i, k2, before = 0, after = 0, lit = 0;   /* (lit: the floor's pixels off the black) */
-        for (i = 0; i < 64u; i++)                       /* (the audio side: GEN takes the start, plays its first steps) */
+        for (i = 0; i < 64u; i++)                       /* (the audio side: the ARP takes the start) */
             mix_block(ab, CTL);
         frames(40);
         const page_t *pg = cur_page();
-        ok = tc.on && pg->fam == FAM_ARP && pg->id[0] == G_GDPAD && pg->id[3] == G_GDTEX && st.ready;
+        ok = ar.on && pg->fam == FAM_ARP && pg->id[0] == P_AMODE && pg->id[3] == P_AGATE && st.ready;
         for (i = 0; i < ST_NBAR; i++)
             before += (uint32_t)st.bar[i];
-        tc.s.played[TR_BASS]++;
-        tc.s.played[TR_STAB]++;
+        ar.t[0].played++;
+        ar.t[2].played++;
         for (k2 = 0; k2 < 2u; k2++) {                  /* (a frame of it alone, both halves: its bars up, the tear on) */
             cv_begin(240, ST_H / 2, 0);
             st_frame_half(k2);
@@ -2838,24 +2855,25 @@ static int test_quick_layers(void)
         ok &= after > before && (st.glitch > 0 || st_gn) && lit > 500u;
         btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
         mix_block(ab, CTL);
-        ok &= !tc.on && cur_page()->id[0] == G_GPRE;
-        bad += check("ARP: TECHNO plays, TECHNO MIX shown with STROBE (a bass note raises its bars, a stab tears it); ARP again: stopped", ok);
+        ok &= !ar.on && cur_page()->fam == FAM_ARP && cur_page()->id[0] == P_AMODE;
+        bad += check("ARP: the arpeggiator plays, its page with STROBE (a bass note raises its bars, a voice's tears it); "
+                     "ARP again: stopped", ok);
         /* (2026-10-18, the user's bug) playing, another page, ARP: back to its visuals, still playing; ARP there: stops */
         btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
         mix_block(ab, CTL);
-        ok = tc.on;
+        ok = ar.on;
         go_title("ENV"); frame();
         btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
         mix_block(ab, CTL);
-        ok &= tc.on && cur_page()->fam == FAM_ARP && cur_page()->id[0] == G_GDPAD && !ui.home;
+        ok &= ar.on && cur_page()->fam == FAM_ARP && cur_page()->id[0] == P_AMODE && !ui.home;
         btn_down(B_HOME); frame(); btn_up(B_HOME); frame();
         btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
         mix_block(ab, CTL);
-        ok &= tc.on && cur_page()->fam == FAM_ARP;
+        ok &= ar.on && cur_page()->fam == FAM_ARP;
         btn_down(B_ARP); frame(); btn_up(B_ARP); frame();
         mix_block(ab, CTL);
-        ok &= !tc.on;
-        bad += check("ARP while TECHNO plays, from ENV or HOME: back to its visuals, playing on; ARP there: stopped", ok);
+        ok &= !ar.on;
+        bad += check("ARP while the arpeggiator plays, from ENV or HOME: back to its visuals, playing on; ARP there: stopped", ok);
         {   /* (2026-10-18) safe to watch: drum hits every few frames for 2 s, every scene and scheme: the strip's mean
              * brightness never jumps more than 6 % of white between two frames (no flash); every scene draws */
             uint32_t sc, sch, f, k2, drawn = 0, worst = 0;
@@ -2863,15 +2881,15 @@ static int test_quick_layers(void)
             for (sc = 0; sc < ST_NSCENE; sc++)
                 for (sch = 0; sch < 6u; sch++) {
                     uint32_t prev = 0, lit2 = 0;
-                    tc.on = 1;
+                    ar.on = 1;
                     st.scene = (uint8_t)sc;
                     st.scheme = (uint8_t)sch;
                     for (f = 0; f < 66u; f++) {
                         uint32_t sum = 0;
                         if (f % 7u == 0u)
-                            tc.s.played[TR_DRUMS]++;
+                            ar.t[1].played++;
                         if (f % 11u == 0u)
-                            tc.s.played[TR_BASS]++;
+                            ar.t[0].played++;
                         uint32_t hf;
                         st.part = 0;                    /* (the scene held: no part change mid-test) */
                         st.scene = (uint8_t)sc;
@@ -2892,7 +2910,7 @@ static int test_quick_layers(void)
                     }
                     drawn += lit2 > 200u;
                 }
-            tc.on = 0;
+            ar.on = 0;
             snprintf(dbg, sizeof dbg, "  safe to watch: every scene x scheme drawn (%u of %u), the brightness's largest step "
                      "between frames %u of 255 (no flash)", drawn, ST_NSCENE * 6u, worst);
             bad += check(dbg, drawn == ST_NSCENE * 6u && worst <= 15u);
@@ -3214,16 +3232,17 @@ static int test_retired_engines(void)
 {
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
-        {ENGI_SID, EID_SID, "SID"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"},
-        {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_ONYX, EID_ONYX, "ONYX"}, {ENGI_VOCODER, EID_VOCODER, "VOCODER"},
-        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_DUBCHORD, EID_DUBCHORD, "DUBCHORD"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"},
-        {ENGI_SANDSTORM, EID_SANDSTORM, "SANDSTRM"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"},
-        {ENGI_DUBSIREN8, EID_DUBSIREN8, "SIREN8"}, {ENGI_MODAL, EID_MODAL, "MODAL"}, {ENGI_KIT, EID_KIT, "KIT"},
-        {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"}, {ENGI_BREAKS, EID_BREAKS, "BREAKS"}, {ENGI_WAR, EID_WAR, "WAR"}};
-    static const uint8_t ARCH[10] = {EID_KARPLUS, EID_FMPERC, EID_WASP, EID_RISERS, EID_ECHOES, EID_CANYON, EID_WEST,
-                                     EID_SH101, EID_BLISS, EID_STRINGS};   /* (archived, 2026-10-16 .. 17) */
-    static const char *const ORDER[] = {"SID", "VOSIM", "SPEECH", "ONYX", "VOCODER", "OBIE", "DUBCHORD", "HOOVER", "SANDSTRM",
-                                        "DUBSIREN", "SIREN8", "MODAL", "KIT", "LINNKIT", "BREAKS", "WAR"};
+        {ENGI_VA, EID_VA, "VA"}, {ENGI_SANDSTORM, EID_SANDSTORM, "SANDSTRM"}, {ENGI_SID, EID_SID, "SID"},
+        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_KIT, EID_KIT, "KIT"}, {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"},
+        {ENGI_WAR, EID_WAR, "WAR"}, {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_ONYX, EID_ONYX, "ONYX"},
+        {ENGI_VOCODER, EID_VOCODER, "VOCODER"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"}};
+    static const uint8_t ARCH[17] = {EID_KARPLUS, EID_FMPERC, EID_WASP, EID_RISERS, EID_ECHOES, EID_CANYON, EID_WEST,
+                                     EID_SH101, EID_BLISS, EID_STRINGS,   /* (archived, 2026-10-16 .. 17) */
+                                     EID_MODAL, EID_WAVE, EID_HOOVER, EID_DUBCHORD, EID_DUBSIREN8, EID_BREAKS,
+                                     EID_CHIPKIT};                        /* (2026-10-19 .. 23) */
+    /* (2026-10-23) each track its own: 1 the synths, 2 the kits, 3 the voices */
+    static const char *const ORDER[3][6] = {{"VA", "SANDSTRM", "SID", "OBIE", 0}, {"KIT", "LINNKIT", "WAR", 0},
+                                            {"SPEECH", "ONYX", "VOCODER", "VOSIM", "DUBSIREN", 0}};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3241,10 +3260,10 @@ static int test_retired_engines(void)
     for (i = 0, ok = 1; i < NELEM(ARCH); i++)
         ok &= EID_RETIRED(ARCH[i]) && eng_of_id(ARCH[i]) == ENG_NO && eng_load_id(ARCH[i], &sub) == ENG_NO &&
               eng_by_id(ARCH[i]) == &ENG_NONE && str_eq(N_ENGNAME[ARCH[i]], "-");
-    ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_MODAL) && !EID_RETIRED(EID_VOSIM);
-    bad += check("archived engines (KARPLUS FMPERC WASP RISERS ECHOES CANYON WEST SH101 BLISS STRINGS ..): retired as those, their ids kept; the kept ones not", ok);
+    ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_VA) && !EID_RETIRED(EID_VOSIM);
+    bad += check("archived engines (KARPLUS .. STRINGS, MODAL WAVE HOOVER DUBCHORD DUBSIREN8 BREAKS CHIPKIT): retired as those, their ids kept; the kept ones not", ok);
     for (i = 0; i < NENGINES; i++)
-        all |= (uint32_t)eng_ok(i) << i;
+        all |= (uint32_t)eng_sel_ok(i) << i;           /* (the selected track's, track 1's: the list's) */
     /* (a project naming one is refused: tests/os/robust_test.c, which crafts the stored stream) */
     {   /* a user preset stored with one (an older firmware's bank): not valid, the slot empty */
         up_rec_t rec;
@@ -3254,36 +3273,43 @@ static int test_retired_engines(void)
         for (k = 0; k < P_COUNT; k++)
             up_set_value(&rec, k, TSEL->p[k]);
         *up_rec(9) = rec;
-        set_engine_of(TSEL, ENGI_MODAL);
+        set_engine_of(TSEL, ENGI_OBIE);
         bad += check("  a user preset of one: the slot shows empty, a load does nothing", !up_used(9) && up_load(9) == 1 &&
-                     TSEL->eng_req == ENGI_MODAL);
+                     TSEL->eng_req == ENGI_OBIE);
         memset(up_rec(9), 0, sizeof rec);
     }
     ui_power_on();
-    bad += check("power-on: track 2 is the pad, WAVE's WARM PAD or OBIE's PWM PAD (these tests' UT_DEF)", trk[1].eng_req == ENGI_HPAD &&
-                 str_eq(ENGINES[ENGI_HPAD]->presets[trk[1].preset].name, BLUEHARE_ENG_WAVE ? "WARM PAD" : "PWM PAD"));
+    bad += check("power-on: track 2 KIT's first kit (these tests' UT_DEF)", trk[1].eng_req == ENGI_KIT && trk[1].preset == 0u);
     preset_all_pos(&total);
     for (i = 0, seen = 0; i < total; i++) {
         e = preset_all_at(i, &k);
         if (e < NENGINES)
             seen |= 1u << e;
     }
-    bad += check("PRESETS: the list holds every engine's presets, none of a retired one", seen == all);
+    bad += check("PRESETS: the list holds the selected track's engines' presets, none of a retired one", seen == all);
     go_page(GR_BROWSE);
-    set_engine_of(TSEL, 0);
-    song.sel = NTRK - 1u;                               /* (the last patch: every engine, DUBSIREN too) */
-    set_engine_of(TSEL, 0);
+    song.sel = 2;                                       /* (the voices' track; DUBSIREN its own on the last only) */
+    set_engine_of(TSEL, ENGI_SPEECH);
+    for (i = 0, all = 0; i < NENGINES; i++)
+        if (eng_sel_ok(i))
+            all |= 1u << eng_for_track(TSEL, i);
     for (i = 0, seen = 0; i < NENG_SHOWN; i++) {
         turn(EN_K2, 1);
         seen |= 1u << TSEL->eng_req;
     }
-    bad += check("PRESETS KNOB 2: the engines in order, back to the first",
-                 seen == all && TSEL->eng_req == 0u && eng_step(0, 1) == ENGI_VOSIM && eng_step(ENGI_VOSIM, 1) == ENGI_SPEECH &&
-                 eng_step(ENGI_VOSIM, -1) == 0u && eng_step(0, -1) == ENGI_WAR);
-    /* the display order (engines.c ENGINES[]): every engine one can pick once; the PRESETS list follows it */
-    ok = NENG_SHOWN == NELEM(ORDER);
-    for (i = 0; ok && i < NENG_SHOWN; i++)
-        ok &= str_eq(ENGINES[eng_vis(i)]->name, ORDER[i]) && eng_rank(eng_vis(i)) == i && eng_ok(eng_vis(i));
+    bad += check("PRESETS KNOB 2: the track's engines in order, back to the first",
+                 (NTRK > 3u || (seen == all && TSEL->eng_req == ENGI_SPEECH)) &&   /* (8 tracks: DUBSIREN off the last
+                                                                                     * loads VOSIM: no round trip) */
+                 eng_step(ENGI_SPEECH, 1) == ENGI_ONYX && eng_step(ENGI_SPEECH, -1) == ENGI_DUBSIREN && NENG_SHOWN == 5u);
+    /* the display order (engines.c ENGINES[]), each track its own: every engine one can pick there once */
+    for (k = 0, ok = 1; k < NTRK && k < 3u; k++) {
+        song.sel = (uint8_t)k;
+        for (i = 0; ok && ORDER[k][i]; i++)
+            ok &= str_eq(ENGINES[eng_vis(i)]->name, ORDER[k][i]) && eng_rank(eng_vis(i)) == i && eng_sel_ok(eng_vis(i));
+        ok &= NENG_SHOWN == i;
+    }
+    song.sel = 0;
+    preset_all_pos(&total);
     for (i = 0; i < total; i++) {                      /* the list's engines, each once, in that order */
         e = preset_all_at(i, &k);
         if (e >= NENGINES || e == last)
@@ -3293,8 +3319,8 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown SID VOSIM SPEECH ONYX VOCODER OBIE DUBCHORD HOOVER SANDSTRM DUBSIREN SIREN8 MODAL KIT LINNKIT BREAKS WAR (ENGINES[]); PRESETS lists them so",
-                 ok && r == NENG_SHOWN);
+    bad += check("engines shown, a track's own: 1 VA SANDSTRM SID OBIE, 2 KIT LINNKIT WAR, 3 SPEECH ONYX VOCODER VOSIM "
+                 "DUBSIREN (ENGINES[]); PRESETS lists track 1's so", ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;
 }
@@ -3322,27 +3348,27 @@ static int test_midi_leds(void)
     usb_note(0, 60, 100);                              /* channel 1 -> T1 (ROUT CH1-4) */
     bad += check("#81 USB MIDI C4 into the selected track lights key 8 (C4)", midi_sel_on[0][60] == 1u &&
                  key_leds(0) == 1u << 7 && midi_leds(TSEL) == 1u << 7);
-    usb_note(1, 67, 100);                              /* channel 2 -> T2: not the selected track */
+    usb_note(2, 67, 100);                              /* channel 3 -> T3: not the selected track */
     ok = key_leds(0) == 1u << 7;
-    song.sel = 1;
+    song.sel = 2;
     ok &= key_leds(0) == 1u << 14;
     song.sel = 0;
     bad += check("  another track's MIDI notes light nothing; selected, its G4 lights key 15", ok);
-    usb_note(1, 67, 0);
+    usb_note(2, 67, 0);
     usb_note(0, 60, 0);
     bad += check("  note-off: dark", key_leds(0) == 0u && !midi_owners[0]);
     trs_note(0x90, 64, 90);                           /* TRS: E4 on channel 1 */
     ok = key_leds(0) == 1u << 11;
     trs_note(0x80, 64, 0);
     bad += check("  TRS MIDI IN: E4 lights key 12 while held", ok && key_leds(0) == 0u);
-    song.g[G_ROUTE] = 1;                               /* ROUT SEL: every channel to the selected track */
+    trk[2].p[P_MCH] = 17;                              /* (2026-10-23: track 3 on ALL: channel 10 its) */
     song.sel = 2;
     usb_note(9, 62, 100);
     ok = midi_sel_on[9][62] == 3u && key_leds(0) == 1u << 9;
     usb_note(9, 62, 0);
-    song.g[G_ROUTE] = 0;
+    trk[2].p[P_MCH] = 0;
     song.sel = 0;
-    bad += check("  ROUT SEL: channel 10 into the selected track lights its key", ok && key_leds(0) == 0u);
+    bad += check("  track 3 on ALL: channel 10 into it lights its key", ok && key_leds(0) == 0u);
     usb_note(0, 60, 100);
     song.octave = -1;
     ok = key_leds(0) == 1u << 19;
@@ -4257,8 +4283,8 @@ static int test_layer_knob_race(void)
                          !perf_k[0] && !perf_k[1] && !perf_k[2] && !perf_k[3];
                     if (LL[l] == LAYER_FX)                  /* the layer's own control moved */
                         ok &= a1.k[k] == 3;
-                    else if (LL[l] == LAYER_GLO)
-                        ok &= a1.p[k][P_LEVEL] == lk_p[k][P_LEVEL] - 3;
+                    else if (LL[l] == LAYER_GLO)            /* (a track's level; past the last track: nothing) */
+                        ok &= k >= NTRK || a1.p[k][P_LEVEL] == lk_p[k][P_LEVEL] - 3;
                     else if (LL[l] == LAYER_SCL)
                         ok &= a1.p[0][LY_SCL.id[k]] != lk_p[0][LY_SCL.id[k]];
                     else if (k < 2u)                        /* (EDIT KNOB 3 FAV: a mark, KNOB 4 nothing) */
@@ -4478,12 +4504,12 @@ static int test_layer_lock(void)
     press(B_SEQ); frames(16); press(B_SEQ); frames(400);  /* (a double tap: no layer to lock) */
     ok &= cur_page()->graph == GR_TODO && !ui.lock && !ui.layer;
     press(B_GLO); frames(400);
-    ok &= cur_page()->graph == GR_TODO && !ui.lock;
+    ok &= cur_page()->fam == FAM_GLO && !ui.lock;
     press(B_GLO);
     btn_down(B_GLO); frames(500);
     ok &= ui.layer == LAYER_GLO && !ui.lock;
     btn_up(B_GLO); frame();
-    ok &= !ui.layer && !ui.lock && cur_page()->graph == GR_TODO;
+    ok &= !ui.layer && !ui.lock && cur_page()->fam == FAM_GLO;
     press(B_SCL);
     lay_combo(B_SCL, white(2));
     key_up(white(2)); btn_up(B_SCL); frame(); frames(400);
@@ -4494,7 +4520,7 @@ static int test_layer_lock(void)
     press(B_GLO); frames(16);
     press(B_LFO); frames(16);
     press(B_GLO); frames(400);
-    ok = !ui.lock && cur_page()->graph == GR_TODO;     /* (another button between the taps: two taps) */
+    ok = !ui.lock && cur_page()->fam == FAM_GLO;     /* (another button between the taps: two taps) */
     ui_power_on();
     go_title("ENV"); frame();
     press(B_FX); press(B_FX); frames(100);
@@ -5311,7 +5337,7 @@ static int test_large(void)
     go_page(GR_TODO); frame();
     ok &= large_kind() == LK_LABEL;
     go_page(GR_TRK); frame();
-    ok &= play_view() == (NTRK == 4u ? PV_MIX : PV_NONE);   /* (2026-10-18: MIXER a play view, LARGE or not; 8 tracks:
+    ok &= play_view() == (NTRK <= 4u ? PV_MIX : PV_NONE);   /* (2026-10-18: MIXER a play view, LARGE or not; 8 tracks:
                                                            * its strips) */
     go_cards("ENV"); frame();
     btn_down(B_GLO); frames(800);
@@ -5753,13 +5779,11 @@ static int test_eight_tracks(void)
     ok = (perf_held >> (PF_M1 + 4u)) & 1u;
     key_up(black(4)); btn_up(B_FX); frame();
     bad += check("  FX + black key 5 (D#4): T5 muted while held", ok && !((perf_held >> (PF_M1 + 4u)) & 1u));
-    song.g[G_ROUTE] = 0;
-    ok = midi_track(5) == &trk[5] && midi_track(7) == &trk[7] && midi_track(8) == TSEL;
-    song.g[G_ROUTE] = 2;
-    ok &= midi_track(13) == &trk[5] && midi_track(5) == TSEL && trk_midi_ch(5) == 13u;
-    song.g[G_ROUTE] = 0;
-    bad += check("  MIDI IN CH1-8: channel 6 plays track 6, 9 the selected; CH9-16: channel 14 track 6", ok &&
-                 str_eq(N_ROUTE[0], "CH1-8") && str_eq(N_ROUTE[2], "CH9-16") && GP[G_ROUTE].max == 2);
+    ok = midi_track(5) == &trk[5] && midi_track(7) == &trk[7] && midi_match(8) == 0;   /* (2026-10-23: each its own) */
+    trk[5].p[P_MCH] = 14;
+    ok &= midi_track(13) == &trk[5] && midi_match(5) == 0 && trk_midi_ch(5) == 13u;
+    trk[5].p[P_MCH] = 0;
+    bad += check("  MIDI IN, 8 tracks: channel 6 plays track 6, 9 nobody; track 6 on channel 14: 14 plays it, 6 nobody", ok);
     return bad;
 }
 #endif

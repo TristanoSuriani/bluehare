@@ -146,7 +146,7 @@ static void st_part(void)
     if (st.ready && part == st.part)
         return;
     st.part = part;
-    h = (part * 2654435761u) ^ ((uint32_t)song.g[G_GPRE] * 40503u);
+    h = (part * 2654435761u) ^ ((uint32_t)song.sel * 40503u);   /* (the track: its own scenes) */
     st.scene = (uint8_t)((part + (h >> 7)) % ST_NSCENE);
     st.scheme = (uint8_t)((h >> 13) % 6u);
 }

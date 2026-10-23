@@ -99,9 +99,9 @@ int main(void)
         host_tracks_init();
         song.g[G_BPM] = 120;
         song.g[G_RMIX] = 0;
-        const uint32_t be = BLUEHARE_ENG_WAVE ? ENGI_WAVE : ENGI_SID;   /* (WAVE's SUB BASS, else SID's SID BASS: */
-        for (k = 0; k < ENGINES[be]->npresets; k++)                      /* a mono bass, its release short) */
-            if (!strcmp(ENGINES[be]->presets[k].name, BLUEHARE_ENG_WAVE ? "SUB BASS" : "SID BASS"))
+        const uint32_t be = ENGI_SID;                 /* (SID's SID BASS: a mono bass, its release short) */
+        for (k = 0; k < ENGINES[be]->npresets; k++)
+            if (!strcmp(ENGINES[be]->presets[k].name, "SID BASS"))
                 e = k;
         host_preset(&trk[0], be, e);
         trk[0].p[P_DLY] = 100;

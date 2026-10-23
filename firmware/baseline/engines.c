@@ -4,9 +4,8 @@
 /* Engine table (this build's engines in display order: the indices; their ids: core.h) and the parts' sounds at
  * power-on. */
 #include "dsp.c"
-#include "shared/phys_dsp.c"   /* the resonators MODAL plays (PHYS's, DaisySP's: MIT) */
 #include "shared/drum_map.c"   /* (2026-10-18) the drums' lanes and General MIDI map (KIT's) */
-#include "shared/fmp_dsp.c"    /* (2026-10-18) FMPERC's drum voice (KIT's, BREAKS') */
+#include "shared/fmp_dsp.c"    /* (2026-10-18) FMPERC's drum voice (KIT's) */
 /* (Blue Hare) the engines' own memory of a track (a cavern, a ring, a voice's grains), one block a track that every
  * such engine borrows: a track plays one engine at a time (voice.c: the old one's voices fade and go before the new one
  * takes the track), so the block is as big as the largest of this build's engines needs, not their sum. An engine
@@ -15,31 +14,24 @@
  * track is no part, or the engine needs more than the block (a build without it): it plays nothing */
 enum { SLAB_NONE, SLAB_MODAL, SLAB_STRINGS, SLAB_SIREN8, SLAB_SANDSTORM };
 static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
-#include "eng_wave.c"           /* WAVE: wavetables (1.5) */
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
-#include "eng_hoover.c"         /* HOOVER: the rave lead (back 2026-10-18) */
 #include "eng_dubsiren.c"       /* DUBSIREN: the dub siren (back 2026-10-18) */
-#include "eng_dubsiren8.c"      /* DUBSIREN8: its 8-bit cousin, every patch (back 2026-10-18) */
 #include "eng_sandstorm.c"      /* SANDSTORM: the late-90s trance lead (back 2026-10-18) */
 #include "eng_speech.c"         /* SPEECH: LPC words (back 2026-10-18; tools/gen_speech.py) */
 #include "eng_onyx.c"           /* ONYX: Kokoro's voices as LPC frames (2026-10-19; tools/gen_onyx_*.py) */
 #include "eng_vocoder.c"        /* VOCODER: ONYX's frames shaping a synth (2026-10-19) */
-#include "eng_dubchord.c"       /* DUBCHORD: the dub-techno chord (back 2026-10-19) */
 #include "eng_war.c"            /* WAR: an industrial kit (back 2026-10-18) */
 #include "eng_linnkit.c"        /* LINNKIT: the 80s drum machine (back 2026-10-18) */
 #include "eng_kit.c"            /* KIT: a drum kit (back 2026-10-18) */
-#include "eng_breaks.c"         /* BREAKS: synthesized breakbeats (back 2026-10-18) */
+#include "eng_va.c"             /* VA: the virtual analogue, and the core OBIE is a flavour of (2026-10-23) */
 #include "eng_obie.c"           /* OBIE: an analog polysynth after the OB-Xa (2026-10-17) */
-#include "eng_modal.c"          /* MODAL: a modal resonator, struck, plucked, bowed (1.5) */
 
 /* the block's size: the largest this build's engines ask for (core.h BLUEHARE_ENG_*) */
 #define SLAB_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define SLAB_IF(on, sz) ((on) ? (uint32_t)(sz) : 0u)
 #define ENG_SLAB_BYTES                                                                                                  \
-    SLAB_MAX(SLAB_IF(BLUEHARE_ENG_MODAL, sizeof(md_voice_t) * MD_POLY),   /* (STRINGS' ensemble archived, 2026-10-17) */ \
-             SLAB_MAX(SLAB_IF(BLUEHARE_ENG_DUBSIREN8, sizeof(ds8_echo_t)),                                              \
-                      SLAB_IF(BLUEHARE_ENG_SANDSTORM, sizeof(ss_voice_t) * SS_POLY)))
+    SLAB_MAX(SLAB_IF(BLUEHARE_ENG_SANDSTORM, sizeof(ss_voice_t) * SS_POLY), 4u)   /* (MODAL, DUBSIREN8 archived 2026-10-23) */
 #define ENG_SLAB_WORDS ((ENG_SLAB_BYTES + 3u) / 4u + 1u)
 static uint32_t eng_slab_mem[NPART][ENG_SLAB_WORDS] __attribute__((section(".pool")));
 static uint8_t eng_slab_key[NPART];
@@ -126,48 +118,96 @@ static uint32_t eng_load_id(uint32_t id, int *sub)
     return n < EID_COUNT ? eng_of_id(id) : trk_def_engine(NPART > 2u ? 2u : 0u);
 }
 
-/* (Blue Hare) engine e as track t may play it: one on the last track alone (engine_t.last_track: DUBSIREN) is its
- * substitute anywhere else (DUBSIREN8: the same controls and preset order, so the sound carries over), or itself
- * when the build has none (it then plays as it can: DUBSIREN dry). Every load goes through this: a pick, a preset, a
+/* (2026-10-23) the tracks each engine may play on (the distribution's TRACK lines: gen_dist.py BLUEHARE_TMASK_*):
+ * HARE FM1's track 1 the synths, 2 the kits, 3 the voices. A track past the distribution's TRACKS (a test's 8-track
+ * build) takes every engine */
+static const uint8_t ENG_TMASK[NENGINES] = {
+#define X(N) (uint8_t)BLUEHARE_TMASK_##N,
+    BLUEHARE_DIST_ENGINES(X)
+#undef X
+};
+static int eng_on(uint32_t e, uint32_t k)
+{
+    return e < NENGINES && (k >= BLUEHARE_TRACKS || ((ENG_TMASK[e] >> k) & 1u));
+}
+
+/* (Blue Hare) engine e as track t may play it. One the track may not play (2026-10-23): down its substitutes
+ * (engine_ids.h) to one it may, else the track's first engine (a kit's sound on the synth track: its first synth).
+ * One on the last track alone (engine_t.last_track: DUBSIREN) is its substitute anywhere else, or itself when the
+ * build has none (it then plays as it can: DUBSIREN dry). Every load goes through this: a pick, a preset, a
  * project, an instrument, a user preset */
 static uint32_t eng_for_track(const track_t *t, uint32_t e)
 {
-    uint32_t s;
-    if (e >= NENGINES || !ENGINES[e]->last_track || t == &trk[NPART - 1])
+    uint32_t k = t >= &trk[0] && t < &trk[NPART] ? (uint32_t)(t - trk) : 0u, s, n, id;
+    if (e >= NENGINES)
         return e;
-    s = eng_of_id(EID_SUB[ENGINES[e]->id]);
-    return s != ENG_NO ? s : e;
+    if (ENGINES[e]->last_track && t != &trk[NPART - 1]) {
+        s = eng_of_id(EID_SUB[ENGINES[e]->id]);
+        e = s != ENG_NO ? s : e;
+    }
+    for (n = 0, id = ENGINES[e]->id; n < EID_COUNT && !eng_on(e, k); n++) {
+        id = EID_SUB[id];
+        s = eng_of_id(id);
+        e = s != ENG_NO ? s : e;
+    }
+    for (s = 0; !eng_on(e, k) && s < NENGINES; s++)
+        e = s;
+    return e;
 }
 
-/* the engines one can pick (all of the build's), in display order: eng_ok(e), the n-th of them eng_vis(n), e's place
- * among them eng_rank(e), the next / previous one eng_step(e, dir) (wraps). (The table is in display order: these are
- * the index itself) */
-static int eng_ok(uint32_t e) { return e < NENGINES; }
-static uint32_t eng_vis(uint32_t n) { return n % NENGINES; }
-static uint32_t eng_rank(uint32_t e) { return e < NENGINES ? e : 0u; }
+/* the engines one can pick on the selected track (2026-10-23: its own list), in display order: eng_sel_ok(e) (eng_ok: any track's), how many
+ * eng_shown(), the n-th of them eng_vis(n), e's place among them eng_rank(e), the next / previous one eng_step(e, dir)
+ * (wraps) */
+static uint32_t eng_sel_trk(void) { return (uint32_t)song.sel % NPART; }
+static int eng_ok(uint32_t e) { return e < NENGINES; }   /* (an engine of the build) */
+static int eng_sel_ok(uint32_t e) { return eng_on(e, eng_sel_trk()); }
+static uint32_t eng_shown(void)
+{
+    uint32_t e, n = 0;
+    for (e = 0; e < NENGINES; e++)
+        n += (uint32_t)eng_sel_ok(e);
+    return n ? n : 1u;
+}
+static uint32_t eng_vis(uint32_t n)
+{
+    uint32_t e, i = 0;
+    n %= eng_shown();
+    for (e = 0; e < NENGINES; e++)
+        if (eng_sel_ok(e) && i++ == n)
+            return e;
+    return 0;
+}
+static uint32_t eng_rank(uint32_t e)
+{
+    uint32_t i, r = 0;
+    if (!eng_sel_ok(e))
+        return 0;
+    for (i = 0; i < e; i++)
+        r += (uint32_t)eng_sel_ok(i);
+    return r;
+}
 static uint32_t eng_step(uint32_t e, int32_t dir)
 {
-    return (eng_rank(e) + (dir > 0 ? 1u : NENGINES - 1u)) % NENGINES;
+    uint32_t n = eng_shown();
+    return eng_vis((eng_rank(e) + (dir > 0 ? 1u : n - 1u)) % n);
 }
 
-/* the parts at power-on (engine index, preset). (Blue Hare, 2026-10-16: Milestone 1) a role a track: the pad (WAVE's
- * WARM PAD) and the bass (SID BASS), centred, the keys (MODAL's GRAND, left) and the bells (MODAL's BELL, right; KALIMBA
- * until the presets were cut, 2026-10-18); with 8, a choir (VOSIM's CHOIR AAH), strings (MODAL's BOWED STRING), a bell
- * (MODAL's CHIMES) and a lead (SID SYNC LEAD) after them. An engine the
- * build leaves out: the second pick, else its first engine, preset 0. (2026-10-19) WAVE is the native image's alone: on
- * the FM-1 the pad is OBIE's PWM PAD */
+/* the parts at power-on (engine index, preset). (2026-10-23) HARE FM1's three: the synth track VA's WARM PAD, the
+ * kits' KIT, the voices' ONYX (OBEY); 4 or 8 (test builds): then SID's bass, VOSIM, again round. An engine the build
+ * leaves out: the second pick, else its first engine, preset 0 */
 #define TRK_PICK(X, p) {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : 0u, BLUEHARE_ENG_##X ? (uint8_t)(p) : 0u}
 #define TRK_PICK2(X, p, Y, q)                                                                                          \
     {BLUEHARE_ENG_##X ? (uint8_t)ENGI_##X : BLUEHARE_ENG_##Y ? (uint8_t)ENGI_##Y : 0u,                                  \
      BLUEHARE_ENG_##X ? (uint8_t)(p) : BLUEHARE_ENG_##Y ? (uint8_t)(q) : 0u}
+#define TRK_DEF3 TRK_PICK2(VA, 7, OBIE, 3), TRK_PICK2(KIT, 0, LINNKIT, 0), TRK_PICK2(ONYX, 0, SPEECH, 0)
 #if NPART == 8
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(WAVE, 0, OBIE, 3), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 8, WAVE, 0),
-                                          TRK_PICK2(MODAL, 0, WAVE, 0), TRK_PICK2(VOSIM, 6, WAVE, 0),
-                                          TRK_PICK2(MODAL, 7, WAVE, 1), TRK_PICK2(MODAL, 6, WAVE, 0), TRK_PICK(SID, 2)};
-static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24, -16, 16, -8, 8};
+static const uint8_t TRK_DEF[NPART][2] = {TRK_DEF3, TRK_PICK(SID, 0), TRK_PICK2(VOSIM, 0, SPEECH, 0), TRK_DEF3};
+static const int8_t TRK_PAN[NPART] = {0, 0, 0, -24, 24, -16, 16, 8};
+#elif NPART == 4
+static const uint8_t TRK_DEF[NPART][2] = {TRK_DEF3, TRK_PICK(SID, 0)};
+static const int8_t TRK_PAN[NPART] = {0, 0, 0, 0};
 #else
-static const uint8_t TRK_DEF[NPART][2] = {TRK_PICK2(WAVE, 0, OBIE, 3), TRK_PICK(SID, 0), TRK_PICK2(MODAL, 8, WAVE, 0),
-                                          TRK_PICK2(MODAL, 0, WAVE, 0)};
-static const int8_t TRK_PAN[NPART] = {0, 0, -24, 24};
+static const uint8_t TRK_DEF[NPART][2] = {TRK_DEF3};
+static const int8_t TRK_PAN[NPART] = {0, 0, 0};
 #endif
 static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }

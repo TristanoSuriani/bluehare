@@ -153,7 +153,7 @@ int main(void)
     sec = run(FS / CTL, &en);
     snprintf(msg, sizeof msg, "%u tracks full: %u voices sound (the pitched ones each its engine's cap), none taken; "
              "1 s in %.1f ms (%.0fx real time)", NPART, all, sec * 1e3, 1.0 / sec);
-    ck(msg, got == want && all > 2u * 12u && voice_kills == kills && en > 0);
+    ck(msg, got == want && all >= want && all > 8u && voice_kills == kills && en > 0);   /* (3 tracks: VA 6, ONYX 4, the kit) */
     all_off();
 
     /* the device's engines keep the device's caps (a sound plays as on the FM-1) */

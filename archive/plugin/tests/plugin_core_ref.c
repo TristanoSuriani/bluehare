@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The plugin core's reference: web/emu/felucca_web.c built as the native image builds it (FELUCCA_NATIVE), linked in,
  * playing the emulator's heavy song with web/emu/native_check.c's gestures and render calls: float32 L R to OUT.
  * tests/plugin_core_test.c holds a loaded core (plugin/core) to it, sample for sample.

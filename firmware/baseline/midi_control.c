@@ -314,7 +314,7 @@ static void __attribute__((noinline)) midi_ctl_layers(uint32_t st, uint32_t ch, 
 }
 static void __attribute__((noinline)) midi_event(uint32_t st, uint32_t ch, uint32_t d1, uint32_t d2)
 {
-    if (song.g[G_ROUTE] != 1 && !midi_in_block(ch))
+    if (!midi_in_block(ch))                           /* (2026-10-23: no track listens: GLO > MIDI IN) */
         return;
     if (st == 0x90u || st == 0x80u)
         midi_note_event(ch, d1, st == 0x90u ? d2 : 0);

@@ -49,8 +49,14 @@ static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL",
 };   /* G_DTYPE: the delay bus's (fx.c
                                                                    * dly_tape; PING, DUAL: Blue Hare's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
-/* (2026-10-18) TECHNO's pieces (techno.c TC_PIECES, in that order: the names the knob shows, five letters at most) */
-static const char *const N_TC_PIECE[] = {"WARE", "ACID", "RAVE", "DUB", "INDUS", "MINML", "PEAK", "DEEP"};
+/* (2026-10-23) the arpeggiator's modes (arp.c AM_*, append-only: a stored value keeps its meaning) and ORD */
+static const char *const N_AMODE[] = {"OFF", "UP", "DN", "UPDN", "RND", "ORD", "REPEAT", "DNUP", "UP+8", "CONV",
+                                      "DIVG", "PINKY", "THUMB", "WALK", "CHORD"};
+static const char *const N_ORDER[] = {"NOTE", "PLAY"};
+/* (2026-10-23) a track's MIDI IN (seq.c midi_match): OFF, USB, TRS or BOTH; channel 1..16 or ALL */
+static const char *const N_MIN[] = {"OFF", "USB", "TRS", "BOTH"};
+static const char *const N_MCH[] = {"TRK", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
+                                    "14", "15", "16", "ALL"};   /* (TRK: the track's number, its default) */
 /* modulation matrix (mod.c): sources, destinations (E1..E8 = P_E0..P_E7: shown with the engine's labels).
  * Append-only (stored values keep their meaning): S&H SLEW and DEPTH (#132) came after EXPR and E8 */
 static const char *const N_MSRC[] = {"OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"};
@@ -92,8 +98,8 @@ static const param_desc_t TP[P_COUNT] = {
     [P_LD_AMP] = PD("AMP", F_PCT, 0, 127, 0),
     [P_RSV17] = PE("TIME", N_DIV, 1),                 /* (2026-10-18) P_DTIME: the patch delay's time (17 .. 24: the */
     [P_RSV18] = PD("FEED", F_PCT, 0, 120, 45),        /* arpeggiator's until 2026-10) P_DFDBK: its feedback */
-    [P_RSV19] = PD("-", F_INT, 0, 0, 0),
-    [P_RSV20] = PD("-", F_INT, 0, 0, 0),
+    [P_MIN] = PE("IN", N_MIN, 3),                    /* (2026-10-23) GLO > MIDI: the track's input and channel */
+    [P_MCH] = PE("CH", N_MCH, 0),
     [P_RSV21] = PD("-", F_INT, 0, 0, 0),
     [P_RSV22] = PD("-", F_INT, 0, 0, 0),
     [P_RSV23] = PD("-", F_INT, 0, 0, 0),
@@ -139,14 +145,15 @@ static const param_desc_t TP[P_COUNT] = {
 #undef FMOP
     [P_CHRD] = PE("CHRD", N_CHRD, 0),
     [P_VOIC] = PE("VOIC", N_VOIC, 0),
-    [P_RSV25] = PD("-", F_INT, 0, 0, 0),              /* (25 .. 32: the kits' lane levels until 2026-10-16; inert) */
-    [P_RSV26] = PD("-", F_INT, 0, 0, 0),
-    [P_RSV27] = PD("-", F_INT, 0, 0, 0),
-    [P_RSV28] = PD("-", F_INT, 0, 0, 0),
-    [P_RSV29] = PD("-", F_INT, 0, 0, 0),
-    [P_RSV30] = PD("-", F_INT, 0, 0, 0),
-    [P_RSV31] = PD("-", F_INT, 0, 0, 0),
-    [P_RSV32] = PD("-", F_INT, 0, 0, 0),
+    /* (2026-10-23) the arpeggiator's (arp.c): 25 .. 32 were the kits' lane levels until 2026-10-16 */
+    [P_AMODE] = PE("MODE", N_AMODE, 1),
+    [P_ARATE] = PE("RATE", N_DIV, 2),
+    [P_AOCT] = PD("OCT", F_INT, 1, 4, 1),
+    [P_AGATE] = PD("GATE", F_PCT, 1, 127, 64),
+    [P_ASWING] = PD("SWG", F_PCT, 0, 100, 0),
+    [P_APROB] = PD("PROB", F_PCT, 0, 127, 127),
+    [P_AHOLD] = PE("HOLD", N_ONOFF, 0),
+    [P_AORDER] = PE("ORD", N_ORDER, 0),
     [P_LSYNC] = PE("SYNC", N_LSYNC, 0),
     [P_LTRIG] = PE("TRIG", N_LTRIG, 0),
     [P_LPOL] = PE("POL", N_LPOL, 0),
@@ -170,12 +177,12 @@ static const param_desc_t GP[G_COUNT] = {
     /* (Blue Hare, 2026-10) the GEN page's (gen.c): the preset, the scale, the root, MOTION; ids 12, 13, 15 and 26 were
      * the old SYSTEM page's MIDI, SYNC and CPU (on no page since 1.2) and the GM drum part's reverb send (inert since
      * 1.0). Their defaults: the first piece's (GARDEN: D dorian) and MOTION at its middle */
-    [G_GPRE] = PE("PIECE", N_TC_PIECE, 0),         /* (2026-10-18: TECHNO's, in GEN's ids) */
-    [G_GSCL] = PE("SCL", N_SCALE, 2),
+    [G_GPRE] = PD("-", F_INT, 0, 0, 0),           /* (TECHNO's piece, scale and root until 2026-10-23: inert) */
+    [G_GSCL] = PD("-", F_INT, 0, 0, 0),
     /* MIDI IN's routing, edited on MENU > MIDI > MIDI IN (1.2: menu_items.c MI_MIDIIN; up to 1.1.5 GLO > SYSTEM ROUT),
      * stored with the project as before. (was "--": stored 0 = CH1-4, as MIDI IN always was) */
     [G_ROUTE] = PE("ROUT", N_ROUTE, 0),
-    [G_GROOT] = PD("ROOT", F_NOTE, 0, 11, 2),
+    [G_GROOT] = PD("-", F_INT, 0, 0, 0),
     [G_SLOT] = PD("SLOT", F_INT, 1, 1, 1),   /* (1.5: one song; 1.4 had four projects) */
     [G_NAME] = PE("NAME", N_DASH, 0),
     [G_LOAD] = PE("LOAD", N_GO, 0),
@@ -191,10 +198,10 @@ static const param_desc_t GP[G_COUNT] = {
     [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
     [G_GMOT] = PD("MOTN", F_PCT, 0, 127, 64),
     /* (2026-10-17) GEN's densities, a role each (the GEN MIX page, while it plays) */
-    [G_GDPAD] = PD("DRUM", F_PCT, 0, 127, 64),   /* (2026-10-18) TECHNO's roles' DENSITY: DRUMS BASS STAB LEAD */
-    [G_GDBASS] = PD("BASS", F_PCT, 0, 127, 64),
-    [G_GDBELL] = PD("STAB", F_PCT, 0, 127, 64),
-    [G_GDTEX] = PD("LEAD", F_PCT, 0, 127, 64),
+    [G_GDPAD] = PD("-", F_INT, 0, 0, 0),          /* (TECHNO's roles' densities until 2026-10-23: inert) */
+    [G_GDBASS] = PD("-", F_INT, 0, 0, 0),
+    [G_GDBELL] = PD("-", F_INT, 0, 0, 0),
+    [G_GDTEX] = PD("-", F_INT, 0, 0, 0),
     /* (2026-10-17) the patch's EQ (fx.c eq_block) */
     [G_EQLO] = {"LOW", F_INT, -12, 12, 0, 0, "dB"},
     [G_EQLM] = {"LMID", F_INT, -12, 12, 0, 0, "dB"},
@@ -417,13 +424,16 @@ static const page_t PAGES[] = {
     {"USER", FAM_SAVE, SC_GLOBAL, GR_USER, {0xFF, 0xFF, 0xFF, 0xFF}},       /* user presets: SLOT LOAD ERASE SAVE */
     {"PROJECT", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {0xFF, 0xFF, G_LOAD, G_SAVE}},   /* the song store (1.5: one song) */
     {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},
-    /* (Blue Hare, 2026-10) ARP: the generative engine (gen.c); ARP starts and stops it (ui_input.c page_tap) */
-#if BLUEHARE_PLUGIN_TECHNO
-    {"TECHNO", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GPRE, G_GSCL, G_GROOT, G_GMOT}},
-    /* (2026-10-17) while GEN plays: how busy each role is (ARP starting it opens this page, stopping it GEN's) */
-    {"TECHNO MIX", FAM_ARP, SC_GLOBAL, GR_GEN, {G_GDPAD, G_GDBASS, G_GDBELL, G_GDTEX}},
+    /* (2026-10-23) ARP: the arpeggiator (arp.c), the selected track's; ARP starts and stops it (ui_input.c page_tap),
+     * its pages the visuals while it plays (GR_GEN: ui_strobe.c) */
+#if BLUEHARE_PLUGIN_ARP
+    {"ARP", FAM_ARP, SC_TRACK, GR_GEN, {P_AMODE, P_ARATE, P_AOCT, P_AGATE}},
+    {"ARP 2", FAM_ARP, SC_TRACK, GR_GEN, {P_ASWING, P_APROB, P_AHOLD, P_AORDER}},
 #endif
-    /* (Blue Hare) the sequencer's placeholder: SEQ (and GLO, which opened the song) shows TODO */
+    /* (2026-10-23) GLO: the global settings (the tempo, the clock, the tuning) and the selected track's MIDI IN */
+    {"GLOBAL", FAM_GLO, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_CLOCK, G_TUNE}},
+    {"MIDI IN", FAM_GLO, SC_TRACK, GR_NONE, {P_MIN, P_MCH, 0xFF, 0xFF}},
+    /* (Blue Hare) the sequencer's placeholder: SEQ shows TODO */
     {"SEQ", FAM_SEQ, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5
      * GLO > GLOBAL; its TUNE is MENU > AUDIO's now), again HOME (ui.c home_tap) */

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The plugin's cores and instances (plugin/core: fel_core.h, fel_loader.c), with no host:
  *   a loaded core plays as the native image's build of its distribution, sample for sample (tests/plugin_core_ref.c);
  *   instances are independent: two playing different things, rendered in turn block by block, each give exactly

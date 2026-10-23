@@ -53,7 +53,7 @@ static void fresh(void)
     memset(&song, 0, sizeof song);
     memset(&midi_clock, 0, sizeof midi_clock);
     host_tracks_init();
-    for (p = 0; p < NPART; p++) host_preset(&trk[p], 0, 0);
+    for (p = 0; p < NPART; p++) host_preset(&trk[p], ENGI_SID, 0);
     for (p = 0; p < NPART; p++)
         trk[p].p[P_DIST] = trk[p].p[P_CHOR] = trk[p].p[P_DLY] = trk[p].p[P_REV] = 0;
     transport_req = panic_req = 0;

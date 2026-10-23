@@ -15,7 +15,8 @@ static int param_kept(uint32_t i)
 {
     return i == P_LEVEL || i == P_PAN || i == P_MUTE || (i >= P_RSV17 && i <= P_SGATE) ||
            (i >= P_RSV33 && i <= P_RSV36) || i == P_CHRD || i == P_VOIC || i == P_SQNT ||
-           i == P_DLY;                                /* (2026-10-18: the patch's delay MIX, TIME, FEED: the patch's) */
+           i == P_DLY ||                              /* (2026-10-18: the patch's delay MIX, TIME, FEED: the patch's) */
+           (i >= P_AMODE && i <= P_AORDER);           /* (2026-10-23: the track's arp, as its MIDI IN, 19 and 20) */
 }
 
 /* preset pi of the engine the track asked for (eng_req): the sound only (not param_kept); its notes released (MONO /
@@ -43,7 +44,9 @@ static void patch_preset(track_t *t, uint32_t pi)
     t->p[P_SUS] = pr->env[2];
     t->p[P_REL] = pr->env[3];
     t->p[P_ED_FLT] = pr->fenv;
-    t->p[P_VOICE] = pr->mono ? V_LEGATO : V_POLY;    /* mono presets keep the legato feel */
+    t->p[P_VOICE] = pr->vmode ? (int16_t)(pr->vmode - 1u) : pr->mono ? V_LEGATO : V_POLY;   /* (mono: legato) */
+    t->p[P_DETUNE] = pr->det ? (int16_t)(pr->det - 1u) : TP[P_DETUNE].def;
+    t->p[P_GLIDE] = pr->glide ? (int16_t)(pr->glide - 1u) : TP[P_GLIDE].def;
     t->p[P_OCT] = pr->oct;                            /* the sound's octave */
     t->p[P_ED_SHP] = pr->eshp;                        /* (a moving shape: ENV and LFO -> SHAPE, the LFO's rate, wave) */
     t->p[P_LD_SHP] = pr->lshp;

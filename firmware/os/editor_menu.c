@@ -29,7 +29,7 @@ static const uint8_t ED_MENU[][2] = {
     {MI_SCOPE, 18},                                    /* 1.2 (Discussion #165), a row of DISPLAY */
                                                        /* (19: STEP PREVIEW, 1.2 .. the tracker; retired with it) */
                                                        /* (20: CHORD ENTRY, 1.2 .. 1.4.1; retired with the steps in 1.5) */
-    {MI_MIDIIN, 21},                                   /* 1.2: the project's G_ROUTE (was GLO > SYSTEM ROUT), MIDI */
+                                                       /* (21: MIDI IN, 1.2 .. 2026-10-23; retired: GLO > MIDI IN) */
     {MI_TUNE, 22},                                     /* 1.2: the project's G_TUNE (was GLO > GLOBAL), AUDIO */
     {MI_HOME, 23},                                     /* 1.3 (Discussions #112, #134): HOME SCOPE / TRACKS, DISPLAY */
 };

@@ -20,7 +20,7 @@
  *    sample printed for information. A count over the budget fails, one far under it only warns.
  * 4. voices: the shared budget of 8 across 4 parts (Blue Hare: 8 under load, as the host runs; 12 while the load
  *    allows: chk_load_budget), stolen voices fade (no step), MONO / LEGATO /
- *    UNISON keep their note under pressure, an engine's 4-voice cap (MODAL), release frees voices, and
+ *    UNISON keep their note under pressure, an engine's voice cap (VA), release frees voices, and
  *    no hanging note after the note-offs on any routing (USB channels 1..4, others while the
  *    selected track changes, the keys while the selected track changes, with the voice modes).
  * env: GOLDEN_UPDATE=1 rewrites GOLDEN_FILE, BUDGET_UPDATE=1 rewrites CPU_FILE (on purpose: review the
@@ -212,25 +212,20 @@ static void job_song(const job_t *j)
 {
     static const uint8_t ACID[16] = {45, 45, 57, 45, 0, 48, 45, 55, 45, 0, 57, 52, 45, 48, 0, 50};
     static const uint8_t ACIDF[16] = {1, 0, 2, 0, 0, 0, 1, 2, 0, 0, 1, 0, 0, 2, 0, 1};
-    static const uint8_t AM[4] = {57, 60, 64, 67}, FMI[4] = {53, 57, 60, 64};
     static const uint8_t LEAD[12] = {76, 0, 0, 79, 0, 0, 81, 0, 79, 0, 76, 0};
-    track_t *t1 = &trk[0], *t2 = &trk[1], *t3 = &trk[2], *td = &trk[3];
+    track_t *t1 = &trk[0], *td = &trk[1], *t3 = &trk[2];   /* (2026-10-23: three tracks, HARE FM1's: the bass, the
+                                                          * drums, the lead on the voices' track) */
     uint32_t i;
     (void)j;
     host_tracks_init();
     song.g[G_BPM] = 120;
-    host_preset(t1, 0, 4);
-    host_preset(t2, ENGI_HPAD, HPAD_PRESET);       /* (the pad: WAVE's WARM PAD or OBIE's PWM PAD; BLISS's E.PIANO once) */
-    host_preset(t3, ENGI_SID, 0);
+    host_preset(t1, ENGI_SID, 4);
     host_drums(td);
+    host_preset(t3, ENGI_SID, 0);
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i];
         put_step(t1, i, n ? 1u : 0u, &n, n ? ST_NOTE : ST_REST, ACIDF[i]);
     }
-    t2->p[P_SLEN] = 32;
-    t2->p[P_SGATE] = 120;
-    for (i = 0; i < 32u; i++)
-        put_step(t2, i, i % 16u == 0u ? 4u : 0u, i < 16u ? AM : FMI, i % 16u == 0u ? ST_NOTE : i % 16u < 14u ? ST_TIE : ST_REST, 0);
     t3->p[P_SLEN] = 12;
     for (i = 0; i < 12u; i++) {
         uint8_t n = LEAD[i];
@@ -274,7 +269,7 @@ static void job_cpu(const job_t *j)
     static const uint8_t NOTES[8] = {48, 52, 55, 59, 60, 64, 67, 71};
     static const uint8_t KIT[8] = {36, 38, 39, 42, 46, 45, 37, 56};   /* KICK SNARE CLAP HAT CL HAT OP TOM RIM BELL */
     const uint8_t (*parts)[3] = j->parts;
-    uint32_t p, i, k, nb = FS / CTL, drums_on = parts[3][2] == DRUM_HITS;
+    uint32_t p, i, k, nb = FS / CTL, drums_on = parts[DRUM_PART][2] == DRUM_HITS;
     uint64_t i0, t0;
     host_tracks_init();
     for (p = 0; p < NPART; p++) {
@@ -398,12 +393,12 @@ static void midi_pkt(uint32_t st, uint32_t d1, uint32_t d2)   /* as usb.c: the q
     midi_in_q[mi_w++ % MQ] = (st >> 4) | st << 8 | d1 << 16 | d2 << 24;
 }
 
-/* the shared budget: 4 POLY parts (ANALOG, FM6 BELL, VOICE, WAVE DUB CHORD) play random notes on and off for
- * 6 s, up to 8 held each; after every block: at most 8 part voices active, none still fading (a stolen voice
- * fades within its one block), the VOICE part at most 4; then all off: every voice free */
+/* the shared budget: the POLY parts (SID, VOSIM, VA: 2026-10-23, three) play random notes on and off for 6 s, up to
+ * 8 held each; after every block: at most the budget's voices active, none still fading (a stolen voice fades within
+ * its one block), the capped part (VA, 6) within its cap; then all off: every voice free */
 static int chk_budget(char *msg, uint32_t n)
 {
-    static const uint8_t E[NPART][2] = {{ENGI_SID, 1}, {ENGI_VOSIM, 1}, {ENGI_MODAL, 1}, {ENGI_HPAD, HPAD_PRESET}};
+    static const uint8_t E[NPART][2] = {{ENGI_SID, 1}, {ENGI_VOSIM, 1}, {ENGI_VA, 1}};
     uint8_t held[NPART][128] = {{0}};
     uint32_t p, k, worst = 0, vworst = 0, fading = 0, kills0 = voice_kills;
     host_tracks_init();
@@ -441,10 +436,10 @@ static int chk_budget(char *msg, uint32_t n)
                 trk_note_off(&trk[p], k);
     rel_at = fpos;
     finish();
-    snprintf(msg, n, "4 POLY parts, random notes: at most %u voices active (budget %u), MODAL part at most %u (cap %u), "
-             "%u voices taken, %u still fading after their block, all free %.2f s after the note-offs",
-             worst, VOICE_BASE, vworst, (unsigned)MD_POLY, voice_kills - kills0, fading, R.free_s);
-    return worst <= VOICE_BASE && vworst <= MD_POLY && !fading && R.free_s >= 0 && voice_kills > kills0;
+    snprintf(msg, n, "%u POLY parts, random notes: at most %u voices active (budget %u), VA part at most %u (cap %u), "
+             "%u voices taken, %u still fading after their block, all free %.2f s after the note-offs", (unsigned)NPART,
+             worst, VOICE_BASE, vworst, (unsigned)VA_POLY, voice_kills - kills0, fading, R.free_s);
+    return worst <= VOICE_BASE && vworst <= VA_POLY && !fading && R.free_s >= 0 && voice_kills > kills0;
 }
 
 /* MIDI packets in one audio block can reuse a voice before its stolen tail fades. */
@@ -456,7 +451,7 @@ static int chk_load_budget(char *msg, uint32_t n)
     host_tracks_init();
     for (p = 0; p < NPART; p++) {
         memset(trk[p].v, 0, sizeof trk[p].v);
-        host_preset(&trk[p], 0, 0);
+        host_preset(&trk[p], ENGI_SID, 0);
         trk[p].p[P_VOICE] = V_POLY;
         trk[p].p[P_SUS] = 127;
     }
@@ -495,7 +490,8 @@ static int chk_retrigger_budget(char *msg, uint32_t n)
         host_tracks_init();
         for (p = 0; p < NPART; p++) {
             memset(trk[p].v, 0, sizeof trk[p].v);
-            host_preset(&trk[p], p == 0 && round ? (uint32_t)ENGI_MODAL : 0u, 0);   /* (round 2: a capped engine, MODAL) */
+            host_preset(&trk[p], p == 0 && round ? (uint32_t)ENGI_VA : (uint32_t)ENGI_SID, 0);   /* (round 2: a capped
+                                                                                                     * engine, VA) */
             trk[p].p[P_VOICE] = p >= 2u ? V_MONO : V_POLY;
             trk[p].p[P_SUS] = 127;
         }
@@ -503,13 +499,13 @@ static int chk_retrigger_budget(char *msg, uint32_t n)
             trk_note_on(&trk[0], NOTES[i], 100);
         for (i = 0; i < 3u; i++)
             trk_note_on(&trk[1], 64u + 3u * i, 100);
-        trk_note_on(&trk[2], 74, 100);
+        trk_note_on(&trk[2], 74, 100);              /* (4 + 3 + 1: the budget's 8) */
         blk();
         for (i = 0; i < NVOICE; i++)
             if (trk[0].v[i].active && trk[0].v[i].note == 52u)
                 old = &trk[0].v[i];
         trk_note_off(&trk[0], 52);
-        trk_note_on(&trk[3], 79, 100);
+        trk_note_on(&trk[1], 79, 100);
         bad += !old || old->stage != 4u || voices_busy() != VOICE_BASE;
         /* Same pitch, then a new pitch with all four local VOICE slots still active. */
         trk_note_on(&trk[0], round ? 57u : 52u, 100);
@@ -517,7 +513,7 @@ static int chk_retrigger_budget(char *msg, uint32_t n)
         worst = i > worst ? i : worst;
         bad += i != VOICE_BASE;
         blk();
-        bad += voices_busy() != VOICE_BASE || !trk[2].v[0].gate || !trk[3].v[0].gate;
+        bad += voices_busy() != VOICE_BASE || !trk[2].v[0].gate;
         for (p = 0; p < NPART; p++)
             trk_all_off(&trk[p]);
         for (i = 0; i < 4u * FS / CTL && !parts_free(); i++)
@@ -525,7 +521,7 @@ static int chk_retrigger_budget(char *msg, uint32_t n)
         bad += !parts_free();
     }
     snprintf(msg, n, "same-note retrigger and full local-cap replacement before the fade: at most %u voices, "
-             "both MONO parts kept, all released", worst);
+             "the MONO part kept, all released", worst);
     return !bad;
 }
 
@@ -539,7 +535,7 @@ static int chk_cap_mode_budget(char *msg, uint32_t n)
         for (p = 0; p < NPART; p++) {
             memset(trk[p].v, 0, sizeof trk[p].v);
             trk[p].rr = 0;                              /* (the chord from slot 0: the lead's, v[0]) */
-            host_preset(&trk[p], 0, 0);
+            host_preset(&trk[p], ENGI_SID, 0);
             trk[p].p[P_VOICE] = p ? V_MONO : V_POLY;
             trk[p].p[P_SUS] = 127;
         }
@@ -548,7 +544,7 @@ static int chk_cap_mode_budget(char *msg, uint32_t n)
         trk[0].p[P_VOICE] = MODE[round];
         if (round == 2u) {
             /* A lower cap must not protect old upper slots while the lower extras fade. */
-            host_preset(&trk[0], ENGI_MODAL, 0);
+            host_preset(&trk[0], ENGI_VA, 0);
             trk[0].p[P_VOICE] = V_UNISON;
             for (i = 1; i < trk_nvoice(&trk[0]); i++)
                 voice_kill(&trk[0].v[i]);
@@ -589,7 +585,7 @@ static int chk_mode_budget(char *msg, uint32_t n)
             for (p = 0; p < NPART; p++) {
                 memset(trk[p].v, 0, sizeof trk[p].v);
                 trk[p].rr = 0;                          /* (the chord from slot 0: the lead's, v[0]) */
-                host_preset(&trk[p], 0, 0);
+                host_preset(&trk[p], ENGI_SID, 0);
                 trk[p].p[P_VOICE] = V_MONO;
             }
             trk[0].p[P_VOICE] = initial ? V_UNISON : V_POLY;
@@ -618,7 +614,7 @@ static void mode_release_reset(uint32_t engine, uint32_t mode)
     memset(&song, 0, sizeof song);
     host_tracks_init();
     for (p = 0; p < NPART; p++) {
-        host_preset(&trk[p], p ? 0u : engine, 0);
+        host_preset(&trk[p], p ? (uint32_t)ENGI_SID : engine, 0);
         trk[p].p[P_VOICE] = p ? V_POLY : mode;
         trk[p].p[P_REL] = 0;
         trk[p].p[P_SUS] = 127;
@@ -640,7 +636,7 @@ static int chk_mode_release(char *msg, uint32_t n)
         for (from = V_POLY; from <= V_UNISON; from++)
             for (to = V_POLY; to <= V_UNISON; to++)
                 for (order = 0; order < 2u; order++) {
-                    mode_release_reset(engine ? (uint32_t)ENGI_MODAL : 0u, from);   /* (MODAL: a cap of 4) */
+                    mode_release_reset(engine ? (uint32_t)ENGI_VA : (uint32_t)ENGI_SID, from);   /* (VA: a cap of 6) */
                     trk_note_on(&trk[0], 60, 100);
                     trk_note_on(&trk[0], 64, 100);
                     for (i = 0; i < 8u; i++) blk();
@@ -653,7 +649,7 @@ static int chk_mode_release(char *msg, uint32_t n)
                     cases++;
                 }
     for (mode = V_MONO; mode <= V_UNISON; mode++) {
-        mode_release_reset(0, mode);
+        mode_release_reset(ENGI_SID, mode);
         trk_note_on(&trk[0], 60, 100);
         trk_note_on(&trk[0], 64, 100);
         trk[0].p[P_VOICE] = V_POLY;
@@ -667,7 +663,7 @@ static int chk_mode_release(char *msg, uint32_t n)
         for (priority = 0; priority < 3u; priority++) {
             uint32_t lead = priority == 1u ? 72u : 80u, other = priority == 1u ? 80u : 72u;
             uint32_t want = mode == V_UNISON ? UNISON_MAX : 1u;
-            mode_release_reset(0, V_POLY);
+            mode_release_reset(ENGI_SID, V_POLY);
             trk_note_on(&trk[0], 48, 100);
             trk_note_on(&trk[0], 64, 100);
             trk[0].p[P_VOICE] = (int16_t)mode;
@@ -686,7 +682,7 @@ static int chk_mode_release(char *msg, uint32_t n)
             cases++;
         }
     }
-    snprintf(msg, n, "%u cases: all 16 VCE pairs, both key-up orders and caps 8 / 4; no stale fallback, "
+    snprintf(msg, n, "%u cases: all 16 VCE pairs, both key-up orders and caps 12 / 6; no stale fallback, "
              "MONO / LEGATO / UNISON priority leads and fallback preserved", cases);
     return !bad;
 }
@@ -746,7 +742,7 @@ static int chk_keep(char *msg, uint32_t n, uint32_t mode)
     static const char *const MN[4] = {"POLY", "MONO", "LEGATO", "UNISON"};
     uint32_t k, lost = 0, kills0 = voice_kills;
     host_tracks_init();
-    host_preset(&trk[0], 0, 0);
+    host_preset(&trk[0], ENGI_SID, 0);
     trk[0].p[P_VOICE] = (int16_t)mode;
     trk[0].p[P_SUS] = 100;
     for (k = 1; k < NPART; k++) {
@@ -772,15 +768,16 @@ static int chk_keep_mono(char *m, uint32_t n) { return chk_keep(m, n, V_MONO); }
 static int chk_keep_legato(char *m, uint32_t n) { return chk_keep(m, n, V_LEGATO); }
 static int chk_keep_unison(char *m, uint32_t n) { return chk_keep(m, n, V_UNISON); }
 
-/* an engine's voice cap (MODAL's MD_POLY, 8 since 2026-10-17; the VOICE engine's once): 12 keys in POLY and in UNISON
- * (alone: the budget does not limit it) */
+/* an engine's voice cap (VA's VA_POLY, 6, and its UNISON's 6 with UNI 6; MODAL's 8 until it was archived): 12 keys in
+ * POLY and in UNISON (alone: the budget does not limit it) */
 static int chk_voice_cap(char *msg, uint32_t n)
 {
     uint32_t mode, k, i, most[2] = {0, 0};
     for (mode = 0; mode < 2u; mode++) {
         track_t *t = &trk[0];
         host_tracks_init();
-        host_preset(t, ENGI_MODAL, 0);
+        host_preset(t, ENGI_VA, 0);
+        t->p[P_E7] = 1;                             /* (UNI 6) */
         t->p[P_VOICE] = mode ? V_UNISON : V_POLY;
         for (k = 0; k < 12u; k++)
             trk_note_on(t, 60u + 2u * k, 100);
@@ -798,9 +795,9 @@ static int chk_voice_cap(char *msg, uint32_t n)
         if (!parts_free())
             most[mode] = 99;
     }
-    snprintf(msg, n, "MODAL, 12 keys: at most %u voices in POLY, %u in UNISON (cap %u); freed after release",
-             most[0], most[1], (unsigned)MD_POLY);
-    return most[0] == MD_POLY && most[1] == MD_POLY;
+    snprintf(msg, n, "VA, 12 keys: at most %u voices in POLY, %u in UNISON (cap %u); freed after release",
+             most[0], most[1], (unsigned)VA_POLY);
+    return most[0] == VA_POLY && most[1] == VA_POLY;
 }
 
 /* no hanging notes: 6 s of random MIDI note-ons / offs on channels 1..4 (the parts), 5, 10 and 16 (ignored
@@ -962,7 +959,7 @@ int main(int argc, char **argv)
     int cinfo = getenv("CPU_INFO") != 0;          /* (an 8-track test build: the 4-track baselines for information only) */
     /* a distribution other than the default (BLUEHARE_DIST): its presets' renders and costs only, against the same
      * files (the mixes and the checks are written for the default's engines); nothing there is "gone" */
-    const int dist = !BLUEHARE_DIST_REFERENCE || NPART != 4;   /* (the full set: the host tests' reference build, distributions/ref.txt, with the 4 parts its shared checks are for) */
+    const int dist = !BLUEHARE_DIST_REFERENCE || NPART != 3;   /* (the reference build, HARE FM1, with the 3 parts its shared checks are for) */
     uint32_t jobs_at_once = getenv("JOBS") ? (uint32_t)atoi(getenv("JOBS")) : 8u;
     static const char *const MN[4] = {"POLY", "MONO", "LEGATO", "UNISON"};
     static const char *const SN[6] = {"dry", "chorus", "delay", "reverb", "all", "dist"};
@@ -1055,8 +1052,8 @@ checks_done:
             j->e = (uint8_t)e;
             j->pi = (uint8_t)pi;
         }
-    {   /* mixes: idle (subtracted from the presets' counts), idle + drums (part 4: hostsim's, MODAL's WOOD DRUM), BLISS +
-         * SID + WAVE asking 8 + 8 + 4 + the drums (the budget keeps 8) */
+    {   /* mixes: idle (subtracted from the presets' counts), idle + drums (track 2: hostsim's, KIT's), VOSIM + the drums
+         * + VA asking 8 + 4 (the budget keeps 8) */
         job_t *j = add(J_CPU, "cpu/mix/idle");
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
@@ -1065,15 +1062,14 @@ checks_done:
             goto mixes_done;
         j = add(J_CPU, "cpu/mix/idle_drums");
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
-        cpu_parts[ncpu][3][0] = ENGI_MODAL, cpu_parts[ncpu][3][1] = 7, cpu_parts[ncpu][3][2] = DRUM_HITS;
+        cpu_parts[ncpu][DRUM_PART][0] = ENGI_KIT, cpu_parts[ncpu][DRUM_PART][1] = 0, cpu_parts[ncpu][DRUM_PART][2] = DRUM_HITS;
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
         j->e = 0xFF;
         j = add(J_CPU, "cpu/mix/3parts_full_drums");
         memset(cpu_parts[ncpu], 0, sizeof cpu_parts[ncpu]);
-        cpu_parts[ncpu][0][0] = ENGI_VOSIM, cpu_parts[ncpu][0][1] = 0, cpu_parts[ncpu][0][2] = 8;
-        cpu_parts[ncpu][1][0] = ENGI_SID, cpu_parts[ncpu][1][1] = 0, cpu_parts[ncpu][1][2] = 8;
-        cpu_parts[ncpu][2][0] = ENGI_HPAD, cpu_parts[ncpu][2][1] = HPAD_PRESET, cpu_parts[ncpu][2][2] = 4;
-        cpu_parts[ncpu][3][0] = ENGI_MODAL, cpu_parts[ncpu][3][1] = 7, cpu_parts[ncpu][3][2] = DRUM_HITS;
+        cpu_parts[ncpu][0][0] = ENGI_VA, cpu_parts[ncpu][0][1] = 7, cpu_parts[ncpu][0][2] = 8;
+        cpu_parts[ncpu][DRUM_PART][0] = ENGI_KIT, cpu_parts[ncpu][DRUM_PART][1] = 0, cpu_parts[ncpu][DRUM_PART][2] = DRUM_HITS;
+        cpu_parts[ncpu][2][0] = ENGI_VOSIM, cpu_parts[ncpu][2][1] = 0, cpu_parts[ncpu][2][2] = 4;
         j->parts = (const uint8_t (*)[3])cpu_parts[ncpu++];
         j->e = 0xFF;
         j = add(J_CPU, "cpu/mix/idle_click");          /* idle + the metronome's click (click.c) never silent */

@@ -69,6 +69,11 @@ async function loadConstants() {
     i++;
     fw.layout.push(g);
   }
+  // (2026-10-23) each track its own engines: fw.engOn[t][e]
+  const nt = await one("stu_ntracks"), oq = [];
+  for (let t = 0; t < nt; t++) for (let e = 0; e < ne; e++) oq.push({ fn: "stu_engine_on", args: [t, e] });
+  const on = await call(oq);
+  fw.engOn = [...Array(nt).keys()].map((t) => on.slice(t * ne, t * ne + ne).map((v) => !!v));
   // the presets' names and categories
   const pq = [];
   for (const e of fw.engines)
@@ -108,12 +113,13 @@ async function loadDescs(items) {
 // columns, the ones MENU > EXPERT shows), then a few groups of the studio's own (layout keys: the patch insert, the
 // matrix, the processing, the performance holds, the master). The families (params.c FAM_*): 1 ENV, 2 LFO, 3 FX,
 // 4 SCL, 5 EDIT, 8 ARP, 10 the TRK pages (CLOCK)
-const FAM = { ENV: 1, LFO: 2, FX: 3, SCL: 4, EDIT: 5, ARP: 8, TRK: 10 };
+const FAM = { ENV: 1, LFO: 2, FX: 3, SCL: 4, EDIT: 5, GLO: 6, ARP: 8, TRK: 10 };
 const GR = { ADSR: 1, MOD: 9, TRK: 8, GEN: 13 };
 // (2026-10-19) named as the device's buttons; the title line says more
 const TABS = [["sound", "EDIT", [FAM.EDIT], "F", "Edit · the sound"], ["env", "ENV", [FAM.ENV], "", "Envelopes"],
               ["lfo", "LFO", [FAM.LFO], "M", "LFO · modulation"], ["keys", "SCL", [FAM.SCL], "", "Scale · keys"],
-              ["fx", "FX", [FAM.FX], "XPQ", "Effects"], ["gen", "TECHNO", [FAM.ARP, FAM.TRK], "", "Techno · generative"]];
+              ["fx", "FX", [FAM.FX], "XPQ", "Effects"], ["gen", "ARP", [FAM.ARP], "", "Arpeggiator · visuals"],
+              ["glo", "GLO", [FAM.GLO, FAM.TRK], "", "Global · MIDI IN · clock"]];   // (2026-10-23: TECHNO's tab the ARP's)
 let expert = pref("bluehare-studio-expert") === "1";
 fw.pages = [];
 async function loadPages() {             // the device's pages as they are now (the engine's titles, its plain page's columns)
@@ -155,31 +161,25 @@ const GROUPS = {
   P: { title: "Performance", names: ["Filter", "Crush", "Throw", "Depth"], fx: true,
        note: "Hold a button, or latch it, as a white key with FX held on the FM-1. FILTER: LPF left, HPF right; CRUSH: fewer bits; THROW: the dry mix into the delay and reverb; DEPTH: the hold effects' level (OCT UP / DN: the shimmer)." },
   Q: { title: "Master", names: ["Speaker EQ", "Master"], fx: true },
-  G: { title: "Techno", names: ["Piece", "Scale", "Root", "Motion", "Tempo"], wide: true,
-       note: "Evolving techno on the first four patches: DRUMS (KIT), BASS, STAB, LEAD, in phrases of 8 bars that move through intro, groove, build, drop and break. A piece loads the four sounds, the tempo, the key and the reverb; ROOT and SCALE change the key at once; MOTION how often the sections change and how much the patterns mutate. On the FM-1: ARP starts and stops it; a key played while it runs moves the key." },
-  H: { title: "Density", names: ["Drums", "Bass", "Stab", "Lead"], wide: true,
-       note: "Each role's density: 64 the piece's own, 0 silent, 127 every hit." },
+  G: { title: "Arpeggiator", names: ["Mode", "Rate", "Octaves", "Gate", "Swing", "Probability", "Hold", "Order", "Tempo"], track: true, wide: true,
+       note: "Each patch its own arp: with ARP playing, the keys held on a patch whose MODE is not OFF play one after another at RATE, over OCT octaves, GATE long; HOLD latches the chord, ORDER NOTE sorts it low to high, PLAY keeps the order pressed. On the FM-1: ARP starts and stops it, its visuals on the screen while it plays." },
+  H: { title: "MIDI IN", names: ["Input", "Channel"], track: true,
+       note: "What this patch listens to: USB, TRS, both or nothing, on its own channel (TRK: its number), a channel 1..16, or ALL (the channels no other patch has). GLO > MIDI IN on the FM-1." },
   K: { title: "Keys", names: ["Root", "Scale", "Snap", "Transpose", "Chord", "Voicing"], track: true },
 };
 const ENGINE_WORDS = {
   SID: "The C64's chip voice: pulse, saw, noise, ring, sync",
-  WAVE: "Wavetables, scanned and warped",
   VOSIM: "Two formants of pulse trains: voices, reeds, brass",
-  MODAL: "Struck, plucked and bowed resonators",
-  OBIE: "An eight-voice analog poly: two oscillators, slop",
-  HOOVER: "The rave lead: detuned saws, the dive",
+  VA: "The virtual analogue: two oscillators, a sub, noise, oversampled",
+  OBIE: "The OB-Xa's flavour of VA: sync, 12 / 24 dB, slop",
   DUBSIREN: "The dub siren and its echo (patch 4)",
   KIT: "A drum kit on the General MIDI notes",
   LINNKIT: "The 80s drum machine, after the LinnDrum",
   WAR: "An industrial kit: FM drums, driven",
-  CHIPKIT: "The 8-bit consoles' drums",
   SPEECH: "Words, as the speech chips spoke them",
   ONYX: "Phrases in four Kokoro voices, as LPC",
   VOCODER: "The voices' words and vowels shaping a synth",
-  DUBCHORD: "The dub-techno chord stab, one voice",
   SANDSTRM: "The trance lead: five saws, the gate",
-  SIREN8: "The dub siren in 8 bits, any patch",
-  BREAKS: "Breakbeats: a key starts a looping bar",
 };
 
 // ------------------------------------------------------------------ history (every change can be taken back)
@@ -505,11 +505,13 @@ async function meterPoll() {
 
 // (2026-10-19) the screen's tabs: HOME and SAVE (the studio's own views) round the families; SOUNDS (the engines and
 // presets) a tab of its own on a narrow screen. The shell's buttons open them as the device's open its pages; a tab
-// clicked presses the device's button (its screen, on HOME, follows), not ARP (it starts TECHNO) nor SAVE
+// clicked presses the device's button (its screen, on HOME, follows), not ARP (it starts the arpeggiator) nor SAVE
 const VIEWS = [["home", "HOME", "Home", B.HOME], ["sound", "EDIT", "", B.EDIT], ["env", "ENV", "", B.ENV], ["lfo", "LFO", "", B.LFO],
-               ["keys", "SCL", "", B.SCL], ["fx", "FX", "", B.FX], ["gen", "TECHNO", "", -1], ["save", "SAVE", "Save · files · USB", -1],
+               ["keys", "SCL", "", B.SCL], ["fx", "FX", "", B.FX], ["gen", "ARP", "", -1], ["glo", "GLO", "", B.GLO],
+               ["save", "SAVE", "Save · files · USB", -1],
                ["lib", "SOUNDS", "Engines · presets", -1]];
-const BUTTON_TAB = { [B.HOME]: "home", [B.EDIT]: "sound", [B.ENV]: "env", [B.LFO]: "lfo", [B.SCL]: "keys", [B.FX]: "fx", [B.ARP]: "gen", [B.SAVE]: "save" };
+const BUTTON_TAB = { [B.HOME]: "home", [B.EDIT]: "sound", [B.ENV]: "env", [B.LFO]: "lfo", [B.SCL]: "keys", [B.FX]: "fx", [B.ARP]: "gen",
+                     [B.GLO]: "glo", [B.SAVE]: "save" };
 let tabNow = pref("bluehare-studio-tab") || "home";
 function showTab(id, press = false) {
   tabNow = VIEWS.some((t) => t[0] === id) ? id : "home";
@@ -525,7 +527,6 @@ function showTab(id, press = false) {
   const bit = VIEWS.find((t) => t[0] === tabNow)[3];
   if (press && node && bit >= 0) tap(bit);
   if ($("fx-actions")) $("fx-actions").hidden = tabNow !== "fx";
-  if ($("gen-actions")) $("gen-actions").hidden = tabNow !== "gen";
   drawEnv();
 }
 async function buildGroups() {
@@ -555,7 +556,7 @@ async function buildGroups() {
     root.append(panel);
   }
   $("acts").textContent = "";
-  $("acts").append(fxActions(), genActions());
+  $("acts").append(fxActions());
   showTab(tabNow);
   $("expert").setAttribute("aria-pressed", String(expert));
   $("normal").setAttribute("aria-pressed", String(!expert));
@@ -602,28 +603,18 @@ function fxActions() {
     h("button", { class: "btn small", type: "button", onclick: () => download("effects.bluehare-fx.json", JSON.stringify(fxFile(), null, 1)) }, "Export effects"),
     h("button", { class: "btn small", type: "button", onclick: () => pickFile(file, loadFxFile) }, "Import effects"), file);
 }
-// TECHNO's setup file: at the top of the TECHNO tab
-function genActions() {
-  const file = h("input", { type: "file", accept: ".json,application/json", hidden: true });
-  return h("div", { id: "gen-actions", class: "tabacts", title: "The piece, the four patches with every setting, the effects and the performance effects: to improve the generative tracks' sound." },
-    h("button", { class: "btn small", type: "button", onclick: async () => {
-      const j = await setupFile();
-      download(`${fileBase("techno " + (j.piece || "setup"))}.bluehare-techno.json`, JSON.stringify(j, null, 1));
-      say("save-msg", "TECHNO setup exported.", "ok");
-    } }, "Export setup"),
-    h("button", { class: "btn small", type: "button", onclick: () => pickFile(file, loadSetupFile) }, "Import setup"), file);
-}
-// GEN: play / stop, the chord, the bar, a light for each role as it plays
+// the ARP: play / stop, the selected patch's MODE, the bar, a light for each track as its arp plays
+const ARP_ROLES = ["BASS", "DRUMS", "VOICE"];
 let genOn = false, genPlayed = [0, 0, 0, 0];
 function genBar() {
   const play = h("button", { class: "btn primary play", type: "button", id: "gen-play", onclick: async () => {
     await one("stu_gen", genOn ? 0 : 1);
     await genPoll();
   } }, "▶ Play");
-  const vis = h("button", { class: "btn", type: "button", title: "TECHNO's visuals on the whole screen (Esc leaves)", onclick: () => openVisuals() }, "◼ Visuals");
+  const vis = h("button", { class: "btn", type: "button", title: "The visuals on the whole screen (Esc leaves)", onclick: () => openVisuals() }, "◼ Visuals");
   return h("div", { class: "genbar" }, play, vis, h("span", { class: "chord", id: "gen-chord" }, "—"),
     h("span", { class: "where", id: "gen-where" }, "stopped"),
-    h("span", { class: "roles" }, ["DRUMS", "BASS", "STAB", "LEAD"].map((n, i) => h("span", { class: "role", id: "gen-r" + i }, n))));
+    h("span", { class: "roles" }, ARP_ROLES.map((n, i) => h("span", { class: "role", id: "gen-r" + i }, `${i + 1} ${n}`))));
 }
 async function genPoll() {
   if (!node || !$("gen-play")) return;
@@ -632,9 +623,9 @@ async function genPoll() {
   $("gen-play").textContent = genOn ? "■ Stop" : "▶ Play";
   $("gen-play").classList.toggle("on", genOn);
   $("gen-chord").textContent = genOn ? chord || "—" : "—";
-  $("gen-where").textContent = genOn ? `bar ${st[1] + 1} · step ${st[2] + 1}` : "stopped";   // (the chord line: TECHNO's section)
+  $("gen-where").textContent = genOn ? `bar ${st[1] + 1} · step ${st[2] + 1}` : "stopped";
   $("gen-live").hidden = !genOn;
-  for (let r = 0; r < 4; r++) {
+  for (let r = 0; r < ARP_ROLES.length; r++) {
     $("gen-r" + r).classList.toggle("hit", genOn && st[4 + r] !== genPlayed[r]);
     genPlayed[r] = st[4 + r];
   }
@@ -731,7 +722,7 @@ async function poll(force = false) {
     if (!engineMoved && !force && changed.some((c) => c.scope === 1)) await refreshTracks();   // (a piece: the other patches' sounds)
     Object.assign(S, { engine, preset, user, sel });
     if (selMoved && ctl[0].size && !engineMoved) await buildGroups();   // (the groups name the patch: "patch 2")
-    if (engineMoved || force) {
+    if (engineMoved || force || selMoved) {
       renderEngines();
       renderPresets();
       await refreshTracks();
@@ -780,7 +771,7 @@ async function selectTrack(t) {
 function renderEngines() {
   const box = $("engines");
   box.textContent = "";
-  for (const e of fw.engines)
+  for (const e of fw.engines.filter((x) => !fw.engOn || fw.engOn[S.sel]?.[x.index]))   // (the patch's own engines)
     box.append(h("button", { class: "eng", type: "button", "aria-pressed": String(e.index === S.engine),
       title: ENGINE_WORDS[e.name] || e.name, onclick: () => pickEngine(e.index) }, e.name));
 }
@@ -974,78 +965,6 @@ async function loadFxFile(j) {
   }
   await call(q);
   await poll(true);
-}
-// (2026-10-18) TECHNO's setup: everything the generative tracks sound with, to improve them and make bangers of them.
-// The piece and TECHNO's settings, the four patches whole (the engine, the preset or user sound it came from, every
-// parameter, the patch's insert and delay), the shared effects (reverb, chorus, EQ), the performance effects, the
-// processing and the master. Every value with the device's label and its text as the device shows it, so the file
-// reads as a list of settings too; the values alone are what an import sets.
-const SX_PATCH = LAYER_LABELS;                                    // (the studio's effects that are each patch's own)
-const NO_SET = ["ENG", "ENGGO", "ROUT", "SLOT"];                  // (the editor's switches, MIDI routing, the project slot)
-async function setupFile() {
-  const sel = S.sel, piece = fw.pages.filter((pg) => pg.fam === FAM.ARP || pg.fam === FAM.TRK).flatMap((pg) => pg.items)
-    .filter((it) => it.scope === 1).map((it) => it.id);
-  const entry = async (scope, ids) => {           // {id: {label, value, text}} as the firmware has them now
-    const q = [];
-    for (const id of ids) q.push({ fn: "stu_desc_label", args: [scope, id], ret: "str" }, { fn: "stu_get", args: [scope, id] });
-    const r = await call(q), tq = ids.map((id, i) => ({ fn: "stu_format", args: [scope, id, r[2 * i + 1]], ret: "str" }));
-    const t = await call(tq), out = {};
-    ids.forEach((id, i) => { if (r[2 * i]) out[id] = { label: r[2 * i], value: r[2 * i + 1], text: t[i] }; });
-    return out;
-  };
-  const sxIds = [...Array(fw.X).keys()], perPatch = sxIds.filter((i) => SX_PATCH.includes(desc[2][i]?.label));
-  const patches = [], roles = ["DRUMS", "BASS", "STAB", "LEAD"];
-  for (let t = 0; t < fw.ntrk; t++) {
-    await one("stu_select", t);
-    const [d] = await call([{ fn: "stu_dump", ret: ["i16", fw.P + fw.G + 4 + fw.X] }]);
-    const [eng, preset, user] = d.slice(fw.P + fw.G, fw.P + fw.G + 3), e = fw.engines[eng];
-    const from = user ? { user: user, name: await str("stu_up_name", user - 1) } : { preset: preset + 1, name: e.presets[preset]?.name };
-    patches.push({ patch: t + 1, role: roles[t] || "-", engine: e.name, engineId: e.id, from,
-                   params: await entry(0, [...Array(fw.P).keys()]), insert: await entry(2, perPatch) });
-  }
-  await one("stu_select", sel);
-  const all = await entry(1, [...Array(fw.G).keys()]), techno = {}, effects = {};
-  for (const [id, v] of Object.entries(all))       // (not the project's actions, "--", nor the switches)
-    if (v.text !== "--" && !NO_SET.includes(v.label)) (piece.includes(+id) ? techno : effects)[id] = v;
-  const pieceId = Object.keys(techno).find((id) => techno[id].label === "PIECE");
-  return { format: "blue-hare-techno-setup", version: 1, exported: new Date().toISOString(),
-           firmware: document.querySelector(".brand span")?.textContent.replace(/^STUDIO · /, "") || "",
-           piece: pieceId ? techno[pieceId].text : "", techno, patches, effects,
-           performance: await entry(2, sxIds.filter((i) => !perPatch.includes(i))) };
-}
-async function loadSetupFile(j) {
-  if (j.format !== "blue-hare-techno-setup") throw new Error("not a Blue Hare TECHNO setup file");
-  remember(0);
-  const sel = S.sel, g = Object.entries({ ...(j.techno || {}), ...(j.effects || {}) });
-  const pieceAt = g.find(([, v]) => v.label === "PIECE");
-  if (pieceAt) {                                  // (the piece first: its sounds, then the file's over them)
-    await one("stu_set", 1, +pieceAt[0], pieceAt[1].value | 0, 0);
-    await one("stu_gen_settle");
-  }
-  for (const P of (j.patches || []).slice(0, fw.ntrk)) {
-    const t = P.patch - 1, e = fw.engines.find((x) => x.id === P.engineId) || fw.engines.find((x) => x.name === P.engine);
-    if (!e || t < 0) continue;
-    const q = [{ fn: "stu_select", args: [t] }, { fn: "stu_stage_begin" }];
-    for (const [k, v] of Object.entries(P.params || {})) if (+k < fw.P) q.push({ fn: "stu_stage_set", args: [+k, v.value | 0] });
-    q.push({ fn: "stu_stage_load", args: [e.index] });
-    for (const [k, v] of Object.entries(P.params || {})) if (+k < fw.P) q.push({ fn: "stu_set", args: [0, +k, v.value | 0, 7777] });
-    for (const v of Object.values(P.insert || {})) if (sxId(v.label) >= 0) q.push({ fn: "stu_set", args: [2, sxId(v.label), v.value | 0, 0] });
-    const f = P.from || {};
-    q.push({ fn: "stu_stage_from", args: [f.preset ? f.preset - 1 : 0, f.user | 0] });
-    await call(q);
-  }
-  await one("stu_select", sel);
-  const isPre = ([, v]) => v.label === "CHO" || v.label === "EQ";   // (G_CPRE, G_EQPRE)
-  const q = [];                                   // (the chorus and EQ presets before their own values: a preset sets them)
-  for (const pass of [true, false])
-    for (const [id, v] of g)
-      if (v.label !== "PIECE" && !NO_SET.includes(v.label) && +id < fw.G && isPre([id, v]) === pass)
-        q.push({ fn: "stu_set", args: [1, +id, v.value | 0, 0] });
-  for (const v of Object.values(j.performance || {})) if (sxId(v.label) >= 0) q.push({ fn: "stu_set", args: [2, sxId(v.label), v.value | 0, 0] });
-  await call(q);
-  await poll(true);
-  await refreshTracks();
-  setSound(cleanName(j.piece || "TECHNO"), "a TECHNO setup");
 }
 function pickFile(input, then) {
   input.onchange = async () => {
@@ -1393,10 +1312,10 @@ new ResizeObserver(() => {
   if (!narrow && tabNow === "lib") showTab("home");
 }).observe(ui);
 
-// ------------------------------------------------------------------ VISUALS (2026-10-19): TECHNO's STROBE, full screen
+// ------------------------------------------------------------------ VISUALS (2026-10-19): STROBE, full screen
 // the firmware's visuals (ui_strobe.c) drawn again at the screen's resolution (strobe.js), following the same signals:
 // the player's part, piece, tempo, 1/16 and the roles' notes, read ~30 times a second. Esc (or leaving full screen)
-// closes it; Space starts and stops TECHNO; the shell's keys still play along
+// closes it; Space starts and stops the ARP (2026-10-23, TECHNO's before); the shell's keys still play along
 const visState = { on: 0, step: 0, part: 0, piece: 0, bpm: 120, notes: [0, 0, 0, 0], roles: ["", "", "", ""], name: "" };
 let strobe = null, visRaf = 0, visPoll = 0, visBusy = false, visLast = 0, visIdle = 0;
 async function visRead() {
@@ -1405,7 +1324,7 @@ async function visRead() {
   try {
     const [g] = await call([{ fn: "stu_gen_state", ret: ["i32", 12] }]);
     Object.assign(visState, { on: g[0], notes: g.slice(4, 8), part: g[8], piece: g[9], bpm: g[10], step: g[11] });
-    if (!visState.on || !visState.name) visState.name = await str("stu_gen_preset_name", Math.max(0, g[9]));
+    visState.name = "ARP";
   } finally { visBusy = false; }
 }
 function visLoop(t) {

@@ -45,6 +45,8 @@ STU_EXPORT uint32_t stu_engine(void) { return eng_idx(TSEL->eng_req); }   /* the
 STU_EXPORT uint32_t stu_preset(void) { return TSEL->preset; }
 STU_EXPORT uint32_t stu_user(void) { return TSEL->user; }                  /* user slot + 1, 0 a factory preset */
 STU_EXPORT uint32_t stu_track_engine(uint32_t t) { return eng_idx(trk[t % NTRK].eng_req); }
+/* (2026-10-23) whether track t may play engine e (the distribution's TRACK lines: each track its own) */
+STU_EXPORT uint32_t stu_engine_on(uint32_t t, uint32_t e) { return (uint32_t)eng_on(e, t % NTRK); }
 /* an engine on the selected track: its defaults and first preset (the device's engine jump, editor.c G_ENGSEL) */
 STU_EXPORT void stu_set_engine(uint32_t e)
 {
@@ -340,8 +342,9 @@ static const uint8_t STU_LAYOUT[] = {
     'P', X2(SX_FILTER), X2(SX_CRUSH), X2(SX_THROW), X2(SX_DEPTH), 0xFF,
     'Q', X2(SX_SPKEQ), X2(SX_MASTER), 0xFF,
     'K', 0, P_ROOT, 0, P_SCALE, 0, P_QUANT, 0, P_TRANS, 0, P_CHRD, 0, P_VOIC, 0xFF,
-    'G', G1(G_GPRE), G1(G_GSCL), G1(G_GROOT), G1(G_GMOT), G1(G_BPM), 0xFF,   /* GEN (gen.c), the tempo */
-    'H', G1(G_GDPAD), G1(G_GDBASS), G1(G_GDBELL), G1(G_GDTEX), 0xFF,   /* GEN's densities, a role each */
+    'G', 0, P_AMODE, 0, P_ARATE, 0, P_AOCT, 0, P_AGATE, 0, P_ASWING, 0, P_APROB, 0, P_AHOLD, 0, P_AORDER, G1(G_BPM), 0xFF,
+                                                                      /* (2026-10-23) the ARP (arp.c), the tempo */
+    'H', 0, P_MIN, 0, P_MCH, 0xFF,                                    /* (2026-10-23) the track's MIDI IN (GLO's) */
     0,
 };
 #undef G1
@@ -368,28 +371,28 @@ STU_EXPORT void stu_perf_off(void)               /* every effect off, the macros
 /* the ids of the effects a key can hold, in the layer's order (PF_DEF), then PF_N: LPF HPF FREEZE OCT UP OCT DN */
 STU_EXPORT const uint8_t *stu_perf_ids(void) { return PF_DEF; }
 
-/* -------------------------------------------------------------------- GEN --- */
-/* GEN (gen.c): start (1) or stop (0), as ARP does; its state {on, bar, step, chords, notes played by the four roles} */
+/* -------------------------------------------------------------------- ARP --- */
+/* the player (2026-10-23: the ARP, arp.c): start (1) or stop (0), as the ARP button does */
 STU_EXPORT void stu_gen(uint32_t on)
 {
     if ((int)on != player_playing())
         gen_toggle();
 }
 static int32_t stu_gs[12];
-/* the player's state (2026-10-18: TECHNO's, through the player's interface): {on, bar, step, section, the roles'
- * notes; (2026-10-19, the studio's VISUALS: STROBE as ui_strobe.c follows it) the part, the piece, the tempo, the 1/16} */
+/* the player's state (through the player's interface): {on, bar, step, the chords played, the roles' (the tracks')
+ * notes; (2026-10-19, the studio's VISUALS: STROBE as ui_strobe.c follows it) the part, 0, the tempo, the 1/16} */
 STU_EXPORT int32_t *stu_gen_state(void)
 {
     uint32_t r;
     const player_t *p = player();
     stu_gs[0] = player_playing();
-    stu_gs[1] = (int32_t)tc.s.bar;
-    stu_gs[2] = (int32_t)tc.s.step;
-    stu_gs[3] = (int32_t)tc.s.sect;
+    stu_gs[1] = (int32_t)ar.bar;
+    stu_gs[2] = (int32_t)ar.step;
+    stu_gs[3] = (int32_t)ar.chords;
     for (r = 0; r < 4u; r++)
         stu_gs[4 + r] = p ? (int32_t)p->notes(r) : 0;
     stu_gs[8] = p && p->part ? (int32_t)p->part() : 0;
-    stu_gs[9] = song.g[G_GPRE];
+    stu_gs[9] = 0;
     stu_gs[10] = song.g[G_BPM];
     stu_gs[11] = p && p->step ? (int32_t)(p->step() % 16u) : 0;
     return stu_gs;
@@ -399,7 +402,7 @@ STU_EXPORT char *stu_gen_role(uint32_t r)            /* a role's name (the visua
     const player_t *p = player();
     return stu_say(p && r < p->nroles ? p->roles[r] : "");
 }
-STU_EXPORT char *stu_gen_chord(void)                /* (the player's first status line: TECHNO's section) */
+STU_EXPORT char *stu_gen_chord(void)                /* (the player's first status line: the selected track's MODE) */
 {
     char a[8], b[8];
     a[0] = 0;
@@ -407,11 +410,7 @@ STU_EXPORT char *stu_gen_chord(void)                /* (the player's first statu
         player()->status(a, b);
     return stu_say(a);
 }
-/* (2026-10-18) the piece knob set by a TECHNO setup file: its sounds loaded now (ui.c gen_poll, as the main loop
- * would), so the file's patches, set after, are not replaced by the piece's at the next poll */
-STU_EXPORT void stu_gen_settle(void) { gen_poll(); }
-STU_EXPORT uint32_t stu_gen_npresets(void) { return player() ? player()->npieces : 0u; }
-STU_EXPORT char *stu_gen_preset_name(uint32_t k) { return stu_say(player() ? player()->piece_name(k) : ""); }
+
 
 /* ------------------------------------------------------------ the master --- */
 /* the master's always-on stages, now: the bus compressor's gain (Q15), the limiter's level over its threshold (Q15:

@@ -8,7 +8,7 @@ archive's commit). The build scripts here still name the paths as they were (`pl
 What it was, from BUILDING.md:
 
 
-Fel-Tracker as a VST3 / AU / CLAP plugin for Ableton Live and Renoise. Its core:
+Blue Hare as a VST3 / AU / CLAP plugin for Ableton Live and Renoise. Its core:
 
 ```
 ./build.sh
@@ -21,7 +21,7 @@ the native engines in IDM NATIVE) as a shared library exporting a single table, 
 and knobs, the screen and the LEDs. The plugin will offer all four (its distribution chooser).
 
 The firmware keeps its state in globals, so an instance is a library of its own (`plugin/core/fel_loader.c`): each
-opens a copy no other instance holds, its globals its own. The copies are kept in `~/Library/Caches/Fel-Tracker/cores`
+opens a copy no other instance holds, its globals its own. The copies are kept in `~/Library/Caches/Blue Hare/cores`
 and reused, a lock on each while an instance has it: a Mac checks a new executable file the first time it opens it
 (some 0.2 s, more with an endpoint scanner), a known one opens at once. `tests/plugin_core_test.c`: a loaded core
 plays the native image's build sample for sample (`tests/plugin_core_ref.c`); two instances rendered in turn, or on
@@ -31,7 +31,7 @@ side by side; the copies are reused and replaced when the core is rebuilt.
 The plugin itself (`plugin/src`), built by DPF (`plugin/dpf`, a git submodule: `git submodule update --init --recursive`):
 
 ```
-plugin/build.sh                # -> build/plugin/Fel-Tracker.vst3, .component (AU), .clap; universal on macOS
+plugin/build.sh                # -> build/plugin/BlueHare.vst3, .component (AU), .clap; universal on macOS
 plugin/get_pluginval.sh        # (once) pluginval, which tests/run_tests.sh then runs on the VST3
 ```
 
@@ -60,7 +60,7 @@ block of 32 samples it starts in (0 .. 0.7 ms early, as on the FM-1).
 state (saved, loaded into another instance, played); `tests/plugin_clap_test.c` loads the built CLAP as a host does;
 pluginval (strictness 8) the VST3.
 
-Its window (`plugin/src/FelTrackerUI.cpp`, DPF's NanoVG): the device's screen at twice its size, the knobs (dragged
+Its window (`plugin/src/BlueHareUI.cpp`, DPF's NanoVG): the device's screen at twice its size, the knobs (dragged
 up or down, or the wheel over one; MASTER is the parameter), the buttons and the keys (held while the mouse button is
 down), lit as the device lights them; above them the distribution (a click: the chooser, then a question; the song goes
 with it, its sounds of engines the new one lacks on their substitutes) and the eight tracks' outputs (M main, O own).

@@ -35,6 +35,14 @@ ARCHIVED(KARPLUS, 20)
 ARCHIVED(PARTICLE, 22)
 ARCHIVED(CHAOS, 23)
 ARCHIVED(RISERS, 30)
+/* (2026-10-23: the user's, after the FM-1 itself: MODAL sounds good on a laptop only; the loops, HOOVER, DUBCHORD,
+ * DUBSIREN8 and WAVE out of the three tracks' lists) */
+ARCHIVED(WAVE, 14)
+ARCHIVED(HOOVER, 17)
+ARCHIVED(DUBCHORD, 32)
+ARCHIVED(DUBSIREN8, 31)
+ARCHIVED(MODAL, 34)
+ARCHIVED(BREAKS, 29)
 ARCHIVED(CHIPKIT, 59)         /* (2026-10-19: the weakest kit; the distribution's sixteen went to VOCODER and DUBCHORD) */
 ARCHIVED(WASP, 33)
 ARCHIVED(VECTOR, 35)

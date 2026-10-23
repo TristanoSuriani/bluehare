@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The plugin's core (fel_core.h): the simulated FM-1 of the browser emulator and the native image
  * (web/emu/felucca_web.c), built FELUCCA_NATIVE, behind one exported table. Only fel_core_api is exported
  * (plugin/build_core.sh: the linker's export list), so two loaded copies never bind to each other's functions.

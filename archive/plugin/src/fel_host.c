@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* fel_host.h. The core playing sits behind a lock the audio thread only tries (a block that finds it taken plays
  * silence: a distribution being swapped in), so the host's main thread never waits on the audio, nor the audio on a
  * core being loaded. Events: the block is cut at each event's frame; the frames before it rendered, then the message

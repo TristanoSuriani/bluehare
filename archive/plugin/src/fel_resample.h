@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* fel_resample: the core's 44.1 kHz (up to FEL_RS_MAXCH channels: the main and the track outputs) to the host's rate, a windowed sinc (Kaiser) of FEL_RS_TAPS taps, read at
  * FEL_RS_PHASES phases between two input samples (linearly interpolated). Pulled: the output asks for input as it goes
  * (pull(ctx, in, nch, n) fills n frames of nch channels), so the core renders only what the host's block needs. Its pass band is flat

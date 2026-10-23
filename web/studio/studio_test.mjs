@@ -73,7 +73,12 @@ async function device(sectors) {
 const d = await device({});
 const P = d.one("stu_pcount"), G = d.one("stu_gcount"), X = d.one("stu_xcount"), PE0 = d.one("stu_pe0"), NE = d.one("stu_nengines");
 const names = [...Array(NE).keys()].map((e) => d.str("stu_engine_name", e));
-check(`the engines: ${names.join(" ")}`, ["SID", "OBIE", "VOSIM", "MODAL", "ONYX", "VOCODER"].every((n) => names.includes(n)));
+check(`the engines: ${names.join(" ")}`, ["VA", "SID", "OBIE", "KIT", "VOSIM", "ONYX", "VOCODER"].every((n) => names.includes(n)) &&
+  !names.includes("MODAL") && !names.includes("WAVE"));
+check("each track its own engines (2026-10-23): 1 VA .. OBIE, 2 the kits, 3 the voices",
+  d.one("stu_engine_on", 0, names.indexOf("VA")) && !d.one("stu_engine_on", 0, names.indexOf("KIT")) &&
+  d.one("stu_engine_on", 1, names.indexOf("KIT")) && !d.one("stu_engine_on", 1, names.indexOf("SID")) &&
+  d.one("stu_engine_on", 2, names.indexOf("ONYX")) && !d.one("stu_engine_on", 2, names.indexOf("OBIE")));
 check("every engine has presets, each named", names.every((_, e) => {
   const n = d.one("stu_npresets", e);
   return n > 0 && [...Array(n).keys()].every((k) => d.str("stu_preset_name", e, k).length > 0);
@@ -173,35 +178,28 @@ check(`OCT UP latched: on after a press, off after the next (peak ${oup.ref.toFi
 const mt = d.call([{ fn: "stu_meters", ret: ["i32", 2] }])[0];
 check(`the master's meters read (compressor ${mt[0]}, limiter ${mt[1]} of 32768)`, mt[0] > 0 && mt[0] <= 32768 && mt[1] > 0 && mt[1] <= 32768);
 
-// TECHNO (2026-10-18, GEN's place): started and stopped as ARP does, its state; a piece picked loads its sounds and tempo
+// the ARP (2026-10-23, in TECHNO's place): started and stopped as the ARP button does; a held note on track 1 (MODE UP)
+// steps; its state (the bar, the tracks' notes, the selected track's MODE)
 {
-  const G_GPRE = 12, G_BPM = 0;
-  d.one("stu_set", 1, G_GPRE, 1, 0);                 /* ACID: KIT, SID (FILTER ACID), OBIE, OBIE; 132 BPM */
-  d.render(100);
-  const eng = [0, 1, 2, 3].map((t) => names[d.one("stu_track_engine", t)]);
-  check(`a TECHNO piece picked (ACID) loads its four sounds and tempo: ${eng.join(" ")}, ${d.one("stu_get", 1, G_BPM)} BPM`,
-    eng.join() === "KIT,SID,OBIE,OBIE" && d.one("stu_get", 1, G_BPM) === 132);
+  const P_AMODE = 25;
+  d.one("stu_select", 0);
+  d.one("stu_set", 0, P_AMODE, 1, 0);
   d.one("stu_gen", 1);
-  d.render(6000);
-  const st = d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0], sect = d.str("stu_gen_chord");
-  check(`TECHNO plays: bar ${st[1] + 1}, notes (drums bass stab lead) ${st.slice(4).join(" ")}, the section ${sect}`,
-    st[0] === 1 && st[4] > 0 && sect.length > 0);
+  d.render(50);
+  d.one("stu_note", 60, 100);
+  d.one("stu_note", 64, 100);
+  d.render(2000);
+  const st = d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0], mode = d.str("stu_gen_chord");
+  check(`the ARP plays: bar ${st[1] + 1}, notes (the tracks) ${st.slice(4, 7).join(" ")}, MODE ${mode}`,
+    st[0] === 1 && st[4] >= 8 && mode === "UP");
+  d.one("stu_note", 60, 0);
+  d.one("stu_note", 64, 0);
   d.one("stu_gen", 0);
   d.render(100);
-  check("TECHNO stops", d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0][0] === 0);
-  /* (2026-10-18) a TECHNO setup file's import: the piece settled at once (its sounds now, not at the next poll), then a
-   * patch staged over it keeps the file's sound and names the preset it came from */
-  d.one("stu_set", 1, G_GPRE, 2, 0);                 /* RAVE: KIT HOOVER HOOVER VOSIM */
-  d.one("stu_gen_settle");
-  const rave = [0, 1, 2, 3].map((t) => names[d.one("stu_track_engine", t)]);
-  d.one("stu_select", 1); d.one("stu_stage_begin"); d.one("stu_stage_load", names.indexOf("OBIE")); d.one("stu_stage_from", 8, 0);
-  d.render(200);
-  const dump = d.call([{ fn: "stu_dump", ret: ["i16", d.one("stu_pcount") + d.one("stu_gcount") + 4 + d.one("stu_xcount")] }])[0];
-  const at = d.one("stu_pcount") + d.one("stu_gcount");
-  check(`a setup's import: the piece settled at once (${rave.join(" ")}), a patch staged over it stays (${names[d.one("stu_track_engine", 1)]}, preset ${dump[at + 1] + 1})`,
-    rave.join() === "KIT,HOOVER,HOOVER,VOSIM" && names[d.one("stu_track_engine", 1)] === "OBIE" && dump[at + 1] === 8);
-  d.one("stu_select", 0); d.one("stu_set_engine", OBIE);   /* (patch 1 OBIE again: the checks after it) */
-  d.render(6000);
+  check("the ARP stops", d.call([{ fn: "stu_gen_state", ret: ["i32", 8] }])[0][0] === 0);
+  check("its roles, for the visuals: BASS DRUMS VOICE", [0, 1, 2].map((r) => d.str("stu_gen_role", r)).join() === "BASS,DRUMS,VOICE");
+  d.one("stu_set_engine", OBIE);
+  d.render(500);
 }
 
 // amb-1's processing (fx_amb.c) against Blue Hare's, on the same note with its sends: both sound, they differ, the
@@ -245,13 +243,13 @@ check("a bad name is refused", d.call([{ fn: "stu_up_store", args: [6, 0], str: 
 const sectors = storeSectors(new Uint8Array(d.ex.memory.buffer, d.ex.web_nor(), d.ex.web_nor_size()));
 const d2 = await device(JSON.parse(JSON.stringify(sectors, (k, v) => v instanceof Uint8Array ? Array.from(v) : v)));
 check("the slot is back in a fresh instance (the flash as the page keeps it)", d2.str("stu_up_name", 5) === "TEST PAD");
-d2.one("stu_select", 1);
+d2.one("stu_select", 0);                 // (2026-10-23: track 1, the synths': OBIE plays there; track 2 the kits')
 const kept = new Set([...Array(P).keys()].filter((i) => d2.one("stu_kept", i)));
 const before2 = d2.call([{ fn: "stu_dump", ret: ["i16", P] }])[0];
 d2.one("stu_up_load", 5);
 const got = d2.call([{ fn: "stu_dump", ret: ["i16", P + G + 4] }])[0];
-check("it loads onto track 2: its engine and sound, the track's own parameters kept",
-  got[P + G] === OBIE && got[P + G + 2] === 6 && got[P + G + 3] === 1 &&
+check("it loads onto track 1 of a fresh instance: its engine and sound, the track's own parameters kept",
+  got[P + G] === OBIE && got[P + G + 2] === 6 && got[P + G + 3] === 0 &&
   [...Array(P).keys()].every((i) => (kept.has(i) ? got[i] === before2[i] : got[i] === want[i])));
 
 // a sound file's values (studio.js loadSoundFile)

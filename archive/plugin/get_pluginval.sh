@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
-# Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
+# Copyright (C) 2026 Tristano Suriani (Blue Hare)
+# Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 # pluginval (Tracktion, GPL-3.0), the plugin validator tests/run_tests.sh runs on the VST3 when it is there:
 #   plugin/get_pluginval.sh -> build/tools/pluginval-dl/pluginval.app (macOS)
 set -e

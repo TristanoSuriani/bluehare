@@ -185,30 +185,6 @@ static uint32_t str_hash(uint32_t h, const char *s)
 }
 
 
-/* WAVE (eng_wave.c): the frame POS plays (its two neighbours crossfaded, the fullest copy), one cycle across */
-static void graph_wave(const track_t *t, uint16_t c)
-{
-    int32_t pos = clamp(t->p[P_E1], 0, 127) << 8, fq = pos * 7 / 127, xf = (fq & 255) << 7, x, py = 48;
-    uint32_t tbl = (uint32_t)t->p[P_E0] % (2u * WT_NBANK), fi;
-    if (tbl >= WT_NBANK) {                           /* stepped: the nearest frame */
-        fq = (fq + 128) & ~255;
-        xf = 0;
-    }
-    fi = (uint32_t)fq >> 8;
-    const int16_t *fa = WT_DATA + (tbl % WT_NBANK * WT_NFRAME + fi) * WT_FRAME_LEN;
-    const int16_t *fb = fi + 1u < WT_NFRAME ? fa + WT_FRAME_LEN : fa;
-    cv_rect(PANEL_X0, 48, PANEL_W, 1, T_RAISE);
-    for (x = 0; x <= 216; x += 2) {
-        uint32_t k = (uint32_t)x * 1023u / 216u;          /* (the top level: 1024 samples) */
-        int32_t v = fa[k] + (((fb[k] - fa[k]) * xf) >> 15), y = 48 - v * 38 / 32767;
-        if (x)
-            cv_line(12 + x - 2, py, 12 + x, y, c);
-        py = y;
-    }
-}
-
-
-
 /* the stored song (project.c proj_good, kept up to date by its saves and loads): used, its name */
 static char graph_pname[13];
 static uint32_t graph_pname_sig;
@@ -863,11 +839,11 @@ static void draw_graph(void)
             break;
         case GR_GEN:                                    /* (Blue Hare) the player (GEN): stopped, or the ocean */
             cv_oy = 0;
-            panel_note("TECHNO", "[ARP] PLAY", 0);      /* (2026-10-18: ui_play.c draws these pages, the whole screen) */
+            panel_note("ARP", "[ARP] PLAY", 0);         /* (2026-10-18: ui_play.c draws these pages, the whole screen) */
             break;
         default:
-            if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_WAVE) graph_wave(t, c);
-            else { cv_oy = 0; graph_scope(c); }
+            cv_oy = 0;
+            graph_scope(c);
             break;
         }
     }

@@ -85,7 +85,7 @@ static int user_presets(void)
     r->note[3] = 200; r->flags[3] = 0x43;
     r->note[4] = 0; r->flags[4] = 0x03;                     /* a rest with flags */
     r = &bk->r[1];                                          /* a drum grid: accents where there is no hit */
-    r->used = UP_USED; r->ver = UP_VER_GRID; r->engine = EID_MODAL; r->np = 8; r->name[0] = 'G';
+    r->used = UP_USED; r->ver = UP_VER_GRID; r->engine = EID_KIT; r->np = 8; r->name[0] = 'G';
     r->note[0] = 0x05; r->flags[0] = 0xFF;
     up_bank_check(0, sizeof *bk);
     bad += check("a bank from flash: a note pattern's note inside 0..127, its flags inside their fields",

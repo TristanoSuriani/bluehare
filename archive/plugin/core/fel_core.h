@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* The plugin's core: one distribution of Fel-Tracker, the native image's build of it (FELUCCA_NATIVE: 16 voices a
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* The plugin's core: one distribution of Blue Hare, the native image's build of it (FELUCCA_NATIVE: 16 voices a
  * track, the native reverbs, the native engines in a NATIVE distribution), as a shared library that exports one thing,
  * fel_core_api(): this table. The firmware keeps its state in globals, so an instance is a library loaded on its own
  * (plugin/core/fel_loader.c: a private copy each, its globals its own). Every call but the ones marked is the

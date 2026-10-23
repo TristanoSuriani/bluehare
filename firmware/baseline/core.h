@@ -8,13 +8,10 @@
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
 
-#ifndef BLUEHARE_DIST             /* (not given: a host test's build, the shipped distribution with 4 tracks (Blue Hare,
-                                  * 2026-10-16: one distribution); their 8-track builds set BLUEHARE_NTRK; every image
-                                  * and the emulator name their distribution) */
+#ifndef BLUEHARE_DIST             /* (not given: a host test's build, the shipped distribution with its tracks (3 since
+                                  * 2026-10-23); their 8-track builds set BLUEHARE_NTRK; every image and the emulator
+                                  * name their distribution) */
 #define BLUEHARE_DIST hare_fm1
-#ifndef BLUEHARE_NTRK
-#define BLUEHARE_NTRK 4
-#endif
 #endif
 #define DIST_H2(f) #f
 #define DIST_H1(n) DIST_H2(dist_##n.h)
@@ -45,9 +42,9 @@
 #ifndef BLUEHARE_NTRK             /* (a test build may set it: tests/run_tests.sh's 8-track one) */
 #define BLUEHARE_NTRK BLUEHARE_TRACKS
 #endif
-#define NPART BLUEHARE_NTRK       /* synth parts: tracks 1..4, or 1..8 (Blue Hare: a distribution's TRACKS) */
+#define NPART BLUEHARE_NTRK       /* synth parts: tracks 1..3, 1..4 or 1..8 (Blue Hare: a distribution's TRACKS) */
 #define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
-typedef char ntrk_ok[NTRK == 4 || NTRK == 8 ? 1 : -1];
+typedef char ntrk_ok[NTRK == 3 || NTRK == 4 || NTRK == 8 ? 1 : -1];   /* (3: HARE FM1's since 2026-10-23) */
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
 /* ---- the engines. The tree holds every engine (engine_ids.h); a distribution (distributions/<name>.txt, at most 16) is
  * the set one build holds, BLUEHARE_DIST=<name> (build.py; default: "default"). Two numbers name an engine:
@@ -65,7 +62,7 @@ enum {                           /* the ids (an archived engine's too: its id is
 #undef ARCHIVED
 #undef ENGINE
 };
-#define EID_COUNT 65u            /* (65 since 2026-10-19: ONYX 63, VOCODER 64) ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
+#define EID_COUNT 66u            /* (66 since 2026-10-23: ONYX 63, VOCODER 64, VA 65) ids 0 .. EID_COUNT - 1 (the protocol's NENGINES; EID_COUNT: a user preset) */
 /* retired: 1 DIGITAL, 4 SAMPLE, 8 GRAIN, 13 SLICE (Felucca 1.5), 27 ACID; 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO,
  * 7 WHEEL, 9 PHYS, 10 DRUM, 11 NOISE, 12 FM6 (Felucca's own engines: Blue Hare removed them): ids 0 .. 13 but 14,
  * and 27 */
@@ -92,7 +89,7 @@ enum {                           /* the indices: the distribution's engines in i
 #define ENG_MAX 16u              /* (a device's: tools/gen_dist.py MAX) */
 #endif
 typedef char eng_count_ok[NENGINES > 0 && NENGINES <= ENG_MAX ? 1 : -1];
-#define NENG_SHOWN NENGINES      /* (the engines one can pick: all of the build's, in their order) */
+#define NENG_SHOWN eng_shown()   /* (the engines one can pick on the selected track, in their order: engines.c) */
 /* engine index e is engine X (a uint8_t compared without the warning that an engine left out would raise: still false,
  * folded away) */
 #define ENG_IS(e, X) ((uint32_t)(e) == (uint32_t)ENGI_##X)
@@ -149,6 +146,19 @@ enum {                          /* per-track parameters */
 /* (2026-10-18) the patch's own delay (fx.c pdl_block): MIX is the old delay send P_DLY, TIME and FEED two inert ids */
 #define P_DTIME P_RSV17
 #define P_DFDBK P_RSV18
+/* (2026-10-23) a track's MIDI IN (GLO > MIDI: seq.c midi_match): its input (0 OFF, 1 USB, 2 TRS, 3 BOTH: the sources'
+ * bits) and channel (0 the track's number, 1..16, 17 ALL), in two of the arpeggiator's old ids */
+#define P_MIN P_RSV19
+#define P_MCH P_RSV20
+/* (2026-10-23) the arpeggiator's (arp.c), a track's own, in the ids of the kits' old lane levels */
+#define P_AMODE P_RSV25
+#define P_ARATE P_RSV26
+#define P_AOCT P_RSV27
+#define P_AGATE P_RSV28
+#define P_ASWING P_RSV29
+#define P_APROB P_RSV30
+#define P_AHOLD P_RSV31
+#define P_AORDER P_RSV32
 
 enum {                          /* global parameters */
     G_BPM, G_SWING, G_CLOCK, G_TUNE,
@@ -232,6 +242,8 @@ typedef struct {
     int8_t eshp, lshp;           /* (Blue Hare) ENV -> SHAPE and LFO -> SHAPE (P_ED_SHP, P_LD_SHP; -64 .. 63, 0 none):
                                   * a preset that moves its shape (WAVE: a scan through the table) */
     uint8_t lrate, lwave;        /* (Blue Hare) the LFO's RATE and WAVE, + 1 (0: the default) */
+    uint8_t vmode, det, glide;   /* (2026-10-23) VOICE (V_*), UNISON's DETUNE, GLIDE, + 1 (0: VOICE from mono, the rest
+                                  * the defaults): VA's supersaws are UNISON */
 } preset_t;
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}
 
@@ -285,6 +297,8 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
     /* (Blue Hare) 1 = on the last track alone (DUBSIREN: its echo is that track's): a sound of it loaded on another
      * track becomes its substitute (engines.c eng_for_track) */
     uint8_t last_track;
+    /* (2026-10-23) optional: UNISON's voice count (VA: 3 or 6), 0 = the voice cap (voice.c mono_play) */
+    uint32_t (*unison)(const struct track *t);
 } engine_t;
 
 /* ------------------------------------------------- tracks, the song --- */

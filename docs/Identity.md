@@ -28,11 +28,12 @@ up next to them, not to make it a groovebox.
 
 ## What follows from it (2026-10-18)
 
-- Four patches, each its own sound on its own channel; no layer stacking.
-- Engines: SID VOSIM SPEECH ONYX VOCODER OBIE DUBCHORD HOOVER SANDSTORM DUBSIREN DUBSIREN8 MODAL KIT LINNKIT BREAKS WAR
-  (SANDSTORM, SPEECH, DUBSIREN8, WAR and LINNKIT back on 2026-10-18; 2026-10-19: ONYX in four Kokoro voices, VOCODER
-  and DUBCHORD in, WAVE the native image's alone, CHIPKIT archived: the device's sixteen).
+- Three tracks (2026-10-23, after the FM-1 itself), each with its own engines and its own MIDI input and channel
+  (GLO > MIDI IN); no layer stacking.
+- Engines, a track's own: 1 the synths VA SANDSTORM SID OBIE (VA the virtual analogue, OBIE a flavour of it); 2 the
+  kits KIT LINNKIT WAR; 3 the voices SPEECH ONYX VOCODER VOSIM DUBSIREN. (2026-10-23: MODAL, BREAKS, HOOVER, DUBCHORD,
+  DUBSIREN8 and WAVE archived: what sounds good on the device decides.)
 - The device's colours: the IDM palette (deep indigo, electric cyan, hot magenta), the studio's too.
 - One global reverb (DRY SPRING GATED PLATE) and a delay per patch; chorus and EQ as presets, full controls in EXPERT.
-- On ARP: TECHNO, evolving techno on the four patches, and its visuals.
-- The sound design studio follows the FM-1's structure, normal and EXPERT, with the same TECHNO.
+- On ARP: the arpeggiator, a track's own, and its visuals while it plays (TECHNO archived 2026-10-23).
+- The sound design studio follows the FM-1's structure, normal and EXPERT, with the same ARP and GLO.

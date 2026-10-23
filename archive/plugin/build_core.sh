@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
-# Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
+# Copyright (C) 2026 Tristano Suriani (Blue Hare)
+# Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md
 # The plugin's cores (plugin/core/fel_core.c): one shared library a distribution, the native image's build of it,
 # exporting only fel_core_api (plugin/core/fel_core.h). The plugin offers them all (its distribution chooser).
 #   plugin/build_core.sh [DIST ..]   (none: idm foundry warehouse chip idm_native)

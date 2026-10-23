@@ -5,8 +5,8 @@
  * I am playing I don't need more than an oscilloscope, the name of the patch and the number of the track"; after Baud
  * Girl's screens: big clean type, a label left and its value right over a thin bar). No header, no cards, no footer.
  *   HOME: the scope across the middle; at the bottom the patch's number (the accent) and its sound's name, in L (M when
- *   L lacks a glyph or it is too wide). TECHNO (the ARP pages) while it plays: STROBE's picture, the whole screen, no
- *   text; stopped: the piece's name and how to start it.
+ *   L lacks a glyph or it is too wide). The ARP pages while the arpeggiator plays (2026-10-23, TECHNO's before):
+ *   STROBE's picture, the whole screen, no text; stopped: its settings in rows, as the knob pages.
  *   Both: the top band is empty until something happens there: a knob turned shows its label and value (and a bar
  *   when it has a range) for as long as its card would have lit (ui.hot_t), a notice its text (ui.msg_t), then it is
  *   empty again. MENU > HOME TRACKS keeps the four tracks' page.
@@ -31,15 +31,17 @@ static uint32_t play_view(void)
     if (cur_page() >= &PAGES[0] && cur_page() < &PAGES[NPAGES] && cur_page()->fam == FAM_TRK && cur_page()->scope == SC_GLOBAL &&
         cur_page()->id[0] == G_BPM)
         return PV_CLOCK;                                /* (the CLOCK page itself, not a page the tests put over it) */
-    if (cur_page()->graph == GR_GEN)
-        return PV_GEN;
+    if (cur_page()->graph == GR_GEN && player_playing())
+        return PV_GEN;                                  /* (2026-10-23: the ARP's visuals while it plays; stopped, its rows) */
     if (cur_page()->graph == GR_TRK)
-        return NTRK == 4u ? PV_MIX : PV_NONE;
+        return NTRK <= 4u ? PV_MIX : PV_NONE;
     if (cur_page() >= &PAGES[0] && cur_page() < &PAGES[NPAGES] && !act_cols() &&
         (cur_page()->fam == FAM_EDIT || cur_page()->fam == FAM_ENV || cur_page()->fam == FAM_LFO ||
-         cur_page()->fam == FAM_FX || cur_page()->fam == FAM_SCL) &&
+         cur_page()->fam == FAM_FX || cur_page()->fam == FAM_SCL || cur_page()->fam == FAM_ARP ||
+         cur_page()->fam == FAM_GLO) &&
         (cur_page()->graph == GR_NONE || cur_page()->graph == GR_ADSR || cur_page()->graph == GR_LFO ||
-         cur_page()->graph == GR_SCALE || cur_page()->graph == GR_FX || cur_page()->graph == GR_CHORD))
+         cur_page()->graph == GR_SCALE || cur_page()->graph == GR_FX || cur_page()->graph == GR_CHORD ||
+         cur_page()->graph == GR_GEN))
         return PV_ROWS;
     return PV_NONE;
 }
@@ -189,7 +191,7 @@ static void play_gen(void)
     }
 }
 
-/* MIXER: the band, then the four rows (two canvases of two rows) */
+/* MIXER: the band, then a row a track (two canvases of two rows: 3 or 4 tracks) */
 #define PV_ROW 49
 static void play_mix_row(uint32_t k, int32_t y0)
 {
@@ -260,11 +262,13 @@ static void play_mix(void)
     if (s == rows_sig)
         return;
     rows_sig = s;
-    for (k = 0; k < 2u; k++) {
+    for (k = 0; k < 2u; k++) {                         /* (three tracks: the last row empty) */
         cv_begin(240, 2 * PV_ROW, T_BG);
         cv_bg = T_BG;
-        play_mix_row(2u * k, 0);
-        play_mix_row(2u * k + 1u, PV_ROW);
+        if (2u * k < NTRK)
+            play_mix_row(2u * k, 0);
+        if (2u * k + 1u < NTRK)
+            play_mix_row(2u * k + 1u, PV_ROW);
         cv_blit(0, (uint32_t)(PV_TOP + 2 * PV_ROW * (int32_t)k));
     }
 }

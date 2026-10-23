@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The built plugin, through its CLAP entry, as a host loads it (the formats share one wrapper, DPF's, and one
  * fel_host: the CLAP is the one a test can drive without a DAW): the bundle opens, one plugin, an instrument;
  * activated at 48 kHz it reports the resampler's latency; MIDI notes sound, and silence without them; its parameters
@@ -33,7 +33,7 @@ static void ck(const char *what, int ok)
 
 static const void *h_ext(const clap_host_t *h, const char *id) { (void)h; (void)id; return 0; }
 static void h_nop(const clap_host_t *h) { (void)h; }
-static const clap_host_t HOST = {CLAP_VERSION_INIT, 0, "fel-tracker test", "Fel-Tracker", "", "1", h_ext, h_nop, h_nop, h_nop};
+static const clap_host_t HOST = {CLAP_VERSION_INIT, 0, "blue-hare test", "Blue Hare", "", "1", h_ext, h_nop, h_nop, h_nop};
 
 /* events: a list the process reads */
 typedef struct { uint32_t n; union { clap_event_header_t h; clap_event_midi_t m; clap_event_param_value_t p; } e[8]; } evlist_t;
@@ -162,9 +162,9 @@ int main(int argc, char **argv)
         return 2;
     }
 #ifdef __APPLE__
-    snprintf(bin, sizeof bin, "%s/Contents/MacOS/Fel-Tracker", argv[1]);
+    snprintf(bin, sizeof bin, "%s/Contents/MacOS/Blue Hare", argv[1]);
 #else
-    snprintf(bin, sizeof bin, "%s/Fel-Tracker.clap", argv[1]);
+    snprintf(bin, sizeof bin, "%s/BlueHare.clap", argv[1]);
 #endif
     lib = dlopen(bin, RTLD_NOW | RTLD_LOCAL);
     entry = lib ? dlsym(lib, "clap_entry") : 0;
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
     f = entry->get_factory(CLAP_PLUGIN_FACTORY_ID);
     d = f && f->get_plugin_count(f) == 1u ? f->get_plugin_descriptor(f, 0) : 0;
     snprintf(what, sizeof what, "one plugin: \"%s\" (%s), an instrument", d ? d->name : "?", d ? d->id : "?");
-    ck(what, d && !strcmp(d->name, "Fel-Tracker") && d->features && d->features[0] && !strcmp(d->features[0], "instrument"));
+    ck(what, d && !strcmp(d->name, "Blue Hare") && d->features && d->features[0] && !strcmp(d->features[0], "instrument"));
     if (!d)
         return 1;
     p = f->create_plugin(f, &HOST, d->id);

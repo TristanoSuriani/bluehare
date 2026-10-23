@@ -402,7 +402,7 @@ static void page_entered(void)
     ui.force = 1;
 }
 
-/* a page button tapped (1.2, Discussion #153; SEQ and GLO the sequencer's placeholder, SAVE USER -> PROJECT ->
+/* a page button tapped (1.2, Discussion #153; SEQ the sequencer's placeholder, GLO the global settings (2026-10-23), SAVE USER -> PROJECT ->
  * TOOLS -> PRESETS; HOME: home_tap). From another
  * family the family's page shown last (SAVE: USER); one that is not the family's any more (a page that moved, as GLOBAL
  * and SYSTEM in 1.2), or not shown for this track, gives the family's first */
@@ -415,8 +415,8 @@ static void open_family(uint32_t fam)
             if (PAGES[i].fam == fam && page_visible(i)) break;
         }
         ui.page = (uint8_t)i;
-    } else if (fam == FAM_SEQ || fam == FAM_GLO) {       /* SEQ; GLO (no page of its own; it opened the song): the */
-        ui.page = (uint8_t)page_first(FAM_SEQ);          /* sequencer's placeholder */
+    } else if (fam == FAM_SEQ) {                        /* SEQ: the sequencer's placeholder */
+        ui.page = (uint8_t)page_first(FAM_SEQ);
     } else if (fam == FAM_SAVE) {
         uint32_t i;
         for (i = 0; i < NPAGES; i++)

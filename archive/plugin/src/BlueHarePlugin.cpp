@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The plugin (DPF): fel_host.h behind the plugin formats.
  *   Parameters: MASTER (the device's pot); DISTRIBUTION (the chooser; not automatable; the song goes with it); TRACK 1 .. 8 OUTPUT, MAIN or
  *   OWN (its own pair: out of the main mix, dry; not automatable).
@@ -65,24 +65,24 @@ static std::vector<uint8_t> from_base64(const char* s)
 enum { P_MASTER, P_DIST, P_OUT1, P_COUNT = P_OUT1 + 8 };
 enum { S_DIST, S_SONG, S_COUNT };
 
-class FelTrackerPlugin : public Plugin
+class BlueHarePlugin : public Plugin
 {
 public:
-    FelTrackerPlugin()
+    BlueHarePlugin()
         : Plugin(P_COUNT, 0, S_COUNT)
     {
         char err[512] = "";
         std::string dir = coresDir();
         host = fel_host_new(dir.c_str(), getSampleRate(), err, sizeof err);
         if (!host)
-            d_stderr2("Fel-Tracker: %s", err);
+            d_stderr2("Blue Hare: %s", err);
         else
             setLatency(fel_host_latency(host));
         vst3 = !std::strcmp(getPluginFormatName(), "VST3");
         worker = std::thread([this] { work(); });
     }
 
-    ~FelTrackerPlugin() override
+    ~BlueHarePlugin() override
     {
         quit = true;
         worker.join();
@@ -90,10 +90,10 @@ public:
     }
 
 protected:
-    const char* getLabel() const override { return "FelTracker"; }
+    const char* getLabel() const override { return "BlueHare"; }
     const char* getDescription() const override
     {
-        return "Fel-Tracker: the FM-1 tracker's distributions as an instrument";
+        return "Blue Hare: the FM-1 tracker's distributions as an instrument";
     }
     const char* getMaker() const override { return "Tristano Suriani"; }
     const char* getHomePage() const override { return DISTRHO_PLUGIN_URI; }
@@ -251,7 +251,7 @@ protected:
             char err[512] = "";
             std::lock_guard<std::mutex> g(applying);
             if (fel_host_load(host, wanted.load(), blob.data(), blob.size(), err, sizeof err))
-                d_stderr2("Fel-Tracker: %s", err);
+                d_stderr2("Blue Hare: %s", err);
         }
     }
 
@@ -326,19 +326,19 @@ private:
                 std::lock_guard<std::mutex> g(applying);
                 const uint32_t w = wanted.load();
                 if (w != fel_host_dist(host) && fel_host_switch(host, w, err, sizeof err))   /* (the song goes too) */
-                    d_stderr2("Fel-Tracker: %s", err);
+                    d_stderr2("Blue Hare: %s", err);
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
     }
 
     friend fel_host_t* felPluginHost(void* plugin);
-    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FelTrackerPlugin)
+    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BlueHarePlugin)
 };
 
-Plugin* createPlugin() { return new FelTrackerPlugin(); }
+Plugin* createPlugin() { return new BlueHarePlugin(); }
 
 /* (the window: the plugin's host, DISTRHO_PLUGIN_WANT_DIRECT_ACCESS) */
-fel_host_t* felPluginHost(void* plugin) { return plugin ? static_cast<FelTrackerPlugin*>(plugin)->host : nullptr; }
+fel_host_t* felPluginHost(void* plugin) { return plugin ? static_cast<BlueHarePlugin*>(plugin)->host : nullptr; }
 
 END_NAMESPACE_DISTRHO

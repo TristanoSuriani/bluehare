@@ -545,17 +545,11 @@ static int page_tap(uint32_t b)
         name_rename();                                  /* SAVE > USER / PROJECT: EDIT renames the slot */
         return 1;
     }
-    if (b == B_ARP && BLUEHARE_PLUGIN_TECHNO) {         /* (Blue Hare) ARP: the player (TECHNO) starts or stops; starting shows */
-        uint32_t i, mix = !player_playing();            /* GEN MIX (the roles' densities), stopping it GEN */
-        if (player_playing() && (ui.home || cur_page()->fam != FAM_ARP))
-            mix = 1;                                    /* (2026-10-18) playing, from another page: back to its visuals,
-                                                         * it plays on; ARP there stops it */
-        else
-            gen_toggle();
-        for (i = 0; i < NPAGES; i++)
-            if (PAGES[i].fam == FAM_ARP && (PAGES[i].id[0] == G_GDPAD) == mix)
-                break;
-        ui.page = (uint8_t)(i < NPAGES ? i : page_first(FAM_ARP));
+    if (b == B_ARP && BLUEHARE_PLUGIN_ARP) {            /* (2026-10-23) ARP: the arpeggiator starts or stops; its page shows */
+        if (!(player_playing() && (ui.home || cur_page()->fam != FAM_ARP)))
+            gen_toggle();                               /* (playing, from another page: back to its visuals, it plays on;
+                                                         * ARP there stops it) */
+        ui.page = (uint8_t)(ui.home || cur_page()->fam != FAM_ARP ? page_first(FAM_ARP) : ui.page);
         ui.fam_last[FAM_ARP] = ui.page;
         ui.home = 0;
         page_entered();

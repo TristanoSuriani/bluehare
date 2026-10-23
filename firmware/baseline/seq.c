@@ -38,16 +38,33 @@ static volatile uint8_t midi_hint;       /* MIDI IN played track n - 1, which is
 
 static uint32_t trk_index(const track_t *t) { return (uint32_t)(t - trk); }
 
-/* MENU > MIDI > MIDI IN (G_ROUTE, up to 1.1.5 GLO > SYSTEM ROUT): the first channel (0..15) of the block of four that
- * plays tracks 1..4, -1 with SEL. Stored
- * 0 CH1-4, 1 SEL, then (1.2, Discussion #143) 2 CH5-8, 3 CH9-12, 4 CH13-16 */
-static int32_t midi_base(void)
+/* (2026-10-23) GLO > MIDI IN: each track its input (P_MIN: 1 USB, 2 TRS, 3 BOTH, 0 OFF; the sources' bits) and its
+ * channel (P_MCH: 0 its number, 1..16, 17 ALL: midi_trk_ch), in place of MENU > MIDI > MIDI IN's blocks (G_ROUTE, inert since). An event of
+ * channel ch from midi_src (1 USB, 2 TRS; 0: any, outside an event) plays the first track that listens to both */
+static uint8_t midi_src;
+static uint32_t midi_trk_ch(uint32_t k)            /* track k's channel 0..15, 16 ALL */
 {
-    uint32_t r = (uint32_t)song.g[G_ROUTE];
-    return r == 1u ? -1 : r ? (int32_t)(r - 1u) * NPART : 0;   /* (a block a track count wide: 4, or 8 with TRACKS 8) */
+    uint32_t c = (uint32_t)trk[k].p[P_MCH];
+    return c == 0u ? k % 16u : c <= 16u ? c - 1u : 16u;
 }
-/* MIDI channel 0..15 of track i (keys -> MIDI out): its channel in ROUT's block (SEL, CH1-4: 1..4) */
-static uint32_t trk_midi_ch(uint32_t i) { return (midi_base() > 0 ? (uint32_t)midi_base() : 0u) + i % NTRK; }
+static track_t *midi_match(uint32_t ch)           /* (a track on the channel itself first, then one on ALL) */
+{
+    uint32_t k, in, c, pass;
+    for (pass = 0; pass < 2u; pass++)
+        for (k = 0; k < NPART; k++) {
+            in = (uint32_t)trk[k].p[P_MIN];
+            c = midi_trk_ch(k);
+            if (in && (!midi_src || (in & midi_src)) && (pass ? c == 16u : c == ch))
+                return &trk[k];
+        }
+    return 0;
+}
+/* MIDI channel 0..15 of track i (keys -> MIDI out): its own (ALL: its number) */
+static uint32_t trk_midi_ch(uint32_t i)
+{
+    uint32_t c = midi_trk_ch(i % NTRK);
+    return c < 16u ? c : i % NTRK;
+}
 
 /* a track of hits (engine_t.oneshot: no bend, no sustain pedal) */
 static int drum_track(const track_t *t) { return ENGINES[eng_idx(t->eng_req)]->oneshot; }
@@ -85,8 +102,8 @@ static uint32_t click_beat_len(void) { return 4u * div_samples(2); }   /* DIV 2:
 static int click_wanted(void) { return click_mode == CLICK_ON; }
 
 /* -------------------------------------------------------- note input --- */
-static int player_key_on(uint32_t note, uint32_t vel);   /* (player.c: a player's keys, GEN's PLAY ALONG) */
-static int player_key_off(uint32_t note);
+static int player_key_on(track_t *t, uint32_t note, uint32_t vel);   /* (player.c: a player's keys: the ARP's) */
+static int player_key_off(track_t *t, uint32_t note);
 /* (2026-10-17) what the baseline asks of the instrument around it (Blue Hare OS: keyboard.c; a host without keys: none):
  * the keys' block (scanned, played through input_on / input_off, once a block in events_block) and whether a key holds a
  * note on track t (MIDI's All Notes Off leaves it) */
@@ -96,7 +113,7 @@ static int os_keys_hold_note(uint32_t track, uint32_t note);   /* (a key held on
 static void input_on(track_t *t, uint32_t note, uint32_t vel)   /* (2026-10-18: the patch played; no layers) */
 {
     last_note = (uint8_t)note;
-    if (player_key_on(note, vel))                  /* (2026-10-17) a player playing (TECHNO): the key its way */
+    if (player_key_on(t, note, vel))               /* (2026-10-17) a player playing (the ARP): the key its way */
         return;
     trk_note_on(t, note, vel);
 }
@@ -107,14 +124,14 @@ static void input_off(track_t *t, uint32_t note)
 {
     if (midi_note_held(t, note))
         return;
-    if (player_key_off(note))
+    if (player_key_off(t, note))
         return;
     trk_note_off(t, note);
 }
 
 
 #include "patch.c"                 /* (Blue Hare, 2026-10-17) a sound loaded into a layer */
-#include "techno.c"                /* (2026-10-18) TECHNO: evolving techno on the ARP button (GEN archived) */
+#include "arp.c"                   /* (2026-10-23) the arpeggiator on the ARP button (TECHNO archived) */
 #include "player.c"                /* (2026-10-17) the players' interface: GEN the first */
 
 /* -------------------------------------------------------- sequencer --- */
@@ -142,16 +159,22 @@ static void seq_stop(void)
     song.playing = 0;
 }
 
-/* MIDI in: the track a channel plays (0..15): G_ROUTE CH1-4 (0) channels 1..4 their parts (5..16 never get
- * here: midi_event drops them), SEL (1) every channel the selected track; CH5-8 .. CH13-16 (2..4) as CH1-4 on
- * their four channels (midi_base) */
-static uint8_t midi_route;                 /* the G_ROUTE events_block last saw (a change to a block: midi_route_block) */
-static int midi_in_block(uint32_t ch)      /* ch is one of ROUT's block (not with SEL) */
+/* MIDI in: the track channel ch plays (midi_match; none: the event is dropped, midi_event). The map's signature
+ * events_block last saw: a change lets go of what the channels no longer heard hold (midi_route_block) */
+static uint32_t midi_route = 0xFFFFFFFFu;
+static uint32_t midi_route_sig(void)
 {
-    int32_t b = midi_base();
-    return b >= 0 && ch - (uint32_t)b < NPART;
+    uint32_t k, h = 0;
+    for (k = 0; k < NPART; k++)
+        h = h * 131u + (uint32_t)trk[k].p[P_MIN] * 17u + (uint32_t)trk[k].p[P_MCH];
+    return h;
 }
-static track_t *midi_track(uint32_t ch) { return midi_in_block(ch) ? &trk[ch - (uint32_t)midi_base()] : TSEL; }
+static int midi_in_block(uint32_t ch) { return midi_match(ch) != 0; }
+static track_t *midi_track(uint32_t ch)
+{
+    track_t *t = midi_match(ch);
+    return t ? t : TSEL;
+}
 
 #include "midi_control.c"
 #include "midi_clock.c"
@@ -214,10 +237,9 @@ static void events_block(uint32_t n)
         }
         transport_req = 0;
     }
-    if (midi_route != (uint8_t)song.g[G_ROUTE]) {     /* ROUT changed: a block lets go of the other channels */
-        midi_route = (uint8_t)song.g[G_ROUTE];
-        if (midi_route != 1u)
-            midi_route_block();
+    if (midi_route != midi_route_sig()) {              /* the map changed: the channels no longer heard let go */
+        midi_route = midi_route_sig();
+        midi_route_block();
     }
     pr = panic_req;
     panic_req = 0;
@@ -254,8 +276,11 @@ static void events_block(uint32_t n)
                 else
                     midi_clock_transport(status, ms);
             }
-        } else
+        } else {
+            midi_src = (uint8_t)source;              /* (the event's input: midi_match) */
             midi_event(st, ch, d1, d2);
+            midi_src = 0;
+        }
     }
     if (clock_mode) {
         seq_n = 0;
@@ -269,7 +294,7 @@ static void events_block(uint32_t n)
         }
     }
     if (player())
-        player()->block(n);                           /* (Blue Hare) the player (GEN): its own clock, transport or not */
+        player()->block(clock_mode ? seq_n : n, n);   /* (the player, the ARP: the clock's samples, and time's) */
     if (seq_hook)
         seq_hook(song.playing ? seq_n : 0u);
     if (song.playing)

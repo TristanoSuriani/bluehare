@@ -122,7 +122,8 @@ static int preferences(void)
         host_wire[m - 14] == 0x4d && host_wire[m - 13] == 1 && host_wire[m - 12] == 64u && host_wire[m - 11] == 1 &&
         host_wire[m - 10] == 0x42 && host_wire[m - 9] == 1 && host_wire[m - 8] == 3 &&
         host_wire[m - 7] == 0x53 && host_wire[m - 6] == 1 && host_wire[m - 5] == 3 &&   /* (no FM6 tags 46 50 56: FM6 gone) */
-        host_wire[m - 4] == 0x4E && host_wire[m - 3] == 1 && host_wire[m - 2] == 21);   /* MENU settings: 21 items */
+        host_wire[m - 4] == 0x4E && host_wire[m - 3] == 1 && host_wire[m - 2] == 20);   /* MENU settings: 20 items (MIDI IN
+                                                                                    * gone, 2026-10-23) */
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 7 && T_BG == UI_PALETTES[7].bg);
@@ -133,9 +134,9 @@ static int preferences(void)
         host_wire[5] == 2 && host_wire[8] == 9 && host_wire[10] == 127);
     a[0] = 2; request(ED_UI_SET, a, 2);
     bad += check("unsupported preference is reported without applying it", host_wire[5] == 2);
-    a[0] = EID_MODAL; a[1] = 0; a[2] = 64; a[3] = 1;
+    a[0] = EID_VA; a[1] = 0; a[2] = 64; a[3] = 1;
     request(ED_FAV_SET, a, 4);
-    bad += check("FAV_SET marks a factory sound (MODAL's first)", host_wire[5] == 3 && favorite_has(EID_MODAL, 0));
+    bad += check("FAV_SET marks a factory sound (VA's first)", host_wire[5] == 3 && favorite_has(EID_VA, 0));
     request(ED_FAV_GET, a, 4);
     bad += check("FAV_GET reads the bounded favorite range", host_wire[5] == 0 && host_wire[10] == 1);
     a[0] = EID_COUNT; a[1] = 31; request(ED_FAV_SET, a, 4);
@@ -442,14 +443,14 @@ static int live_sync(void)
                  TSEL->preset == 2 && !wire_frames(ED_RELOAD, 0) && wire_frames(ED_CHANGED, &x) == 1u &&
                  x[1] == P_LEVEL && !sync_pass());
     for (i = 0; i < 3u; i++) {                           /* any preset of any engine */
-        a[0] = (uint8_t)(i ? EID_VOSIM : EID_WAVE); a[1] = (uint8_t)i;
+        a[0] = (uint8_t)(i ? EID_VOSIM : EID_VA); a[1] = (uint8_t)i;
         request(ED_PRESET, a, 2);
         other += sync_pass() != 0;
     }
     bad += check("PRESET of other engines: no push at all", !other && ed_w.eng == ed_eng(TSEL));
-    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_MODAL) & 127; a[3] = (8192 + EID_MODAL) >> 7;
+    a[0] = 1; a[1] = G_ENGSEL; a[2] = (8192 + EID_VA) & 127; a[3] = (8192 + EID_VA) >> 7;
     request(ED_SET, a, 4);
-    bad += check("SET of G_ENGSEL: no RELOAD", ed_eng(TSEL) == EID_MODAL && !sync_pass());
+    bad += check("SET of G_ENGSEL: no RELOAD", ed_eng(TSEL) == EID_VA && !sync_pass());
     sync_reload = 1;                                     /* a load on the device, not pushed yet */
     a[0] = EID_SID; a[1] = 1;
     request(ED_PRESET, a, 2);
@@ -586,7 +587,7 @@ static uint32_t menu_set(uint32_t id, int32_t v)            /* -> rc; host_wire[
 }
 static int menu_protocol(void)
 {
-    static const char *const WANT[21][2] = {
+    static const char *const WANT[20][2] = {
         {"COLOR", 0}, {"STYLE", "FLAT,LINE,LED"}, {"LARGE", "OFF,ON"}, {"ANIM", "ON,OFF,IDLE"}, {"LEDS", "OFF,DIM LO,DIM HI,INV"},
         {"HOLD", "0.3 s,0.4 s,0.5 s,0.6 s"}, {"KNOB ACCEL", "OFF,ON"}, {"FX LATCH", "OFF,ON"}, {"BPM LOCK", "OFF,ON"},
         {"SPEAKER EQ", "FLAT,LOWCUT,BASS+"}, {"USB LEVEL", "MASTER,FIXED"}, {"USB SERIAL", "ON,OFF"},
@@ -594,12 +595,12 @@ static int menu_protocol(void)
         {"RESTORE LAST", "ON,OFF"}, {"SCALE LEDS", "OFF,ON"},                                        /* (1.2) */
         {"SCREEN OFF", "NEVER,5 MIN,15 MIN,30 MIN,60 MIN"},
         {"SCOPE", "OUT,MIX"},             /* (1.2; STEP PREVIEW, id 19, gone with the tracker; CHORD ENTRY, id 20, in 1.5) */
-        {"MIDI IN", "CH1-4,SEL,CH5-8,CH9-12,CH13-16"}, {"TUNE", 0},   /* (1.2: the project's ROUT and TUNE; TUNE a number) */
+        {"TUNE", 0},                      /* (1.2: the project's TUNE, a number; MIDI IN, id 21, gone 2026-10-23) */
         {"HOME", "SCOPE,TRACKS"}};                                                                    /* (1.3) */
-    static const int32_t DEF[21] = {-1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};   /* (COLOR: the default palette) */
-    static const uint8_t TAB[21] = {0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 4, 2, 2, 4, 1, 0, 0, 3, 2, 0};   /* DISPLAY CONTROL AUDIO
-                                                                                                         * MIDI SYSTEM (1.2) */
-    static const char *const TABN[5] = {"DISPLAY", "CONTROL", "AUDIO", "MIDI", "SYSTEM"};
+    static const int32_t DEF[20] = {-1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0};   /* (COLOR: the default palette) */
+    static const uint8_t TAB[20] = {0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 2, 2, 3, 1, 0, 0, 2, 0};   /* DISPLAY CONTROL AUDIO
+                                                                                                     * SYSTEM (MIDI's gone) */
+    static const char *const TABN[4] = {"DISPLAY", "CONTROL", "AUDIO", "SYSTEM"};
     int bad = 0, ok = 1;
     uint32_t i, k, n;
     menu_item_t it;
@@ -608,8 +609,9 @@ static int menu_protocol(void)
     FILE *jf = json ? fopen(json, "w") : 0;
     reset();
     if (jf) fprintf(jf, "[");
-    for (i = 0; i < 21u; i++) {
-        uint32_t id = i < 14u ? i : i < 18u ? i + 1u : i + 3u;   /* (ids 14 COUNT-IN, 19 STEP PREVIEW, 20 CHORD ENTRY gone) */
+    for (i = 0; i < 20u; i++) {
+        uint32_t id = i < 14u ? i : i < 18u ? i + 1u : i + 4u;   /* (ids 14 COUNT-IN, 19 STEP PREVIEW, 20 CHORD ENTRY, 21
+                                                                   * MIDI IN gone) */
         n = menu_desc(i, &it);
         joined[0] = 0;
         for (k = 0; k < it.nnames; k++) { if (k) strcat(joined, ","); strcat(joined, it.names[k]); }
@@ -631,8 +633,8 @@ static int menu_protocol(void)
         }
     }
     if (jf) { fprintf(jf, "]\n"); fclose(jf); }
-    bad += check("MENU_DESC: 21 items (1.0.4's 12 in the menu's order, then 1.1's CLICK, CLICK LEVEL, 1.2's RESTORE LAST, SCALE LEDS, SCREEN OFF, 1.2's SCOPE, MIDI IN, TUNE, 1.3's HOME), ids 0..23 without 14, 19 and 20 (COUNT-IN, STEP PREVIEW, CHORD ENTRY gone), names, defaults; TUNE a number -50..50 ct", ok);
-    bad += check("MENU_DESC (1.0.5): after the names (TUNE: the unit) each item's tab, index and name (DISPLAY CONTROL AUDIO MIDI SYSTEM)", ok);
+    bad += check("MENU_DESC: 20 items (1.0.4's 12 in the menu's order, then 1.1's CLICK, CLICK LEVEL, 1.2's RESTORE LAST, SCALE LEDS, SCREEN OFF, 1.2's SCOPE, TUNE, 1.3's HOME), ids 0..23 without 14, 19, 20 and 21 (COUNT-IN, STEP PREVIEW, CHORD ENTRY, MIDI IN gone), names, defaults; TUNE a number -50..50 ct", ok);
+    bad += check("MENU_DESC (1.0.5): after the names (TUNE: the unit) each item's tab, index and name (DISPLAY CONTROL AUDIO SYSTEM)", ok);
     {   /* an older editor reads the names and stops: the tab is past them, nothing it reads moved */
         uint32_t m = menu_desc(4, &it), p = 14, q;
         for (q = 0; q < 1u + it.nnames; q++) { while (host_wire[p]) p++; p++; }   /* name, the names */
@@ -641,12 +643,12 @@ static int menu_protocol(void)
         bad += check("MENU_DESC: the tab comes after every byte of the 1.0.4 reply (older editors ignore it)", ok);
     }
     ok = 1;
-    for (i = 0; i < 21u; i++) {
+    for (i = 0; i < 20u; i++) {
         menu_desc(i, &it);
         ok &= strcmp(it.name, "CALIBRATION") && strcmp(it.name, "ABOUT") && strcmp(it.name, "INFO");
     }
-    n = menu_desc(21, &it);
-    ok &= n == 2u && it.index == 21 && it.id == 127;
+    n = menu_desc(20, &it);
+    ok &= n == 2u && it.index == 20 && it.id == 127;
     n = menu_desc(127, &it);
     bad += check("MENU_DESC: no CALIBRATION / INFO / ABOUT; an index past the list answers index, 127 (no item)",
                  ok && n == 2u && it.index == 127 && it.id == 127);
@@ -682,11 +684,11 @@ static int menu_protocol(void)
     ok &= menu_set(18, 1) == 3 && ui_prefs2 == 1u && scope_mix;                                    /* (1.2: their own byte) */
     ok &= menu_set(19, 1) == 1 && ui_prefs2 == 1u && menu_set(20, 1) == 1 && ui_prefs2 == 1u;   /* (19: STEP PREVIEW's
                                                          * id, 20: CHORD ENTRY's, gone, unknown) */
-    ok &= menu_set(21, 2) == 0 && song.g[G_ROUTE] == 2 && menu_set(22, -13) == 0 && song.g[G_TUNE] == -13;   /* (1.2: the
-                                                         * project's, rc 0: in the music, no settings record) */
+    ok &= menu_set(21, 2) == 1 && menu_set(22, -13) == 0 && song.g[G_TUNE] == -13;   /* (21: MIDI IN's id, gone, unknown;
+                                                         * TUNE the project's, rc 0: in the music, no settings record) */
     ok &= menu_set(23, 1) == 3 && ui_home_view == HV_TRACKS && ui_prefs2 == 1u && ui_scr == 1u;   /* (1.3: its own byte) */
-    for (i = 0; i < 21u; i++) {                         /* MENU_DESC reads them back */
-        static const int32_t SET[21] = {2, 1, 1, 1, 1, 3, 1, 1, 1, 2, 1, 0, 1, 0, 1, 1, 2, 1, 2, -13, 1};
+    for (i = 0; i < 20u; i++) {                         /* MENU_DESC reads them back */
+        static const int32_t SET[20] = {2, 1, 1, 1, 1, 3, 1, 1, 1, 2, 1, 0, 1, 0, 1, 1, 2, 1, -13, 1};
         menu_desc(i, &it);
         ok &= it.value == SET[i];
     }
@@ -702,7 +704,6 @@ static int menu_protocol(void)
     ok &= menu_set(5, 8191) == 3 && ed_rv(host_wire + 7) == 3 && settings_hold == 3u;
     ok &= menu_set(2, 7) == 3 && ed_rv(host_wire + 7) == 1 && (ui_prefs & PREF_LARGE);
     ok &= menu_set(12, -1) == 3 && ed_rv(host_wire + 7) == 0 && click_mode == CLICK_OFF;
-    ok &= menu_set(21, 9) == 0 && ed_rv(host_wire + 7) == 4 && song.g[G_ROUTE] == 4;
     ok &= menu_set(22, -99) == 0 && ed_rv(host_wire + 7) == -50 && song.g[G_TUNE] == -50;
     ok &= menu_set(22, 51) == 0 && ed_rv(host_wire + 7) == 50 && song.g[G_TUNE] == 50;
     bad += check("MENU_SET: out-of-range values clamped, the reply says the value the device took (TUNE -50..50)", ok);

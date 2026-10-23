@@ -104,11 +104,11 @@ int main(void)
         }
         printf("]}");
     }
-    printf("],\n\"ORDER\":[");                      /* the engines as shown (engines.c ENGINES[]), by name */
-    for (k = 0; k < NENG_SHOWN; k++) {
+    printf("],\n\"ORDER\":[");                      /* the engines as shown (engines.c ENGINES[]: every track's, in */
+    for (k = 0; k < NENGINES; k++) {                    /* turn), by name */
         if (k)
             putchar(',');
-        js_str(ENGINES[eng_vis(k)]->name);
+        js_str(ENGINES[k]->name);
     }
     printf("],\n\"TRK_DEF\":[");
     for (k = 0; k < NPART; k++)

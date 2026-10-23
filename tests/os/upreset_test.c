@@ -111,7 +111,7 @@ int main(void)
     }
 
     /* bank round trip through storage.c */
-    n = put_frame(a, 17, EID_WAVE, "Keys", 7);
+    n = put_frame(a, 17, EID_VA, "Keys", 7);
     up_parse(a, n, &r, &slot);
     up_bank[1].magic = UP_BANK_MAGIC;
     up_bank[1].rsize = sizeof(up_rec_t);
@@ -146,7 +146,7 @@ int main(void)
     /* a drum grid by UP_PUT: kind 1, then bit 7 of each step's hits (bit 0) and accents (bit 1) */
     {
         uint8_t g[640];
-        uint32_t k, m = put_frame(g, 9, EID_MODAL, "My Beat", 0), at = m - 32u;
+        uint32_t k, m = put_frame(g, 9, EID_KIT, "My Beat", 0), at = m - 32u;
         for (k = 0; k < 16u; k++) {
             g[at + 2u * k] = (uint8_t)(k % 4u ? 0x08u : 0x09u);    /* HAT CL, the kick on the beats */
             g[at + 2u * k + 1u] = (uint8_t)(k == 0u ? 0x7Fu : 0u);  /* step 1: every lane's accent (one too many) */
@@ -157,7 +157,7 @@ int main(void)
         ok = up_parse(g, m, &got, &slot) == 0 && slot == 9u && got.ver == UP_VER_GRID && up_valid(&got) &&
              got.note[0] == 0x09u && got.flags[0] == 0x09u && got.note[1] == 0x08u && !got.flags[1] &&
              got.note[2] == 0x88u && got.flags[2] == 0x80u && got.note[5] == 0x08u && !got.flags[5] &&
-             got.engine == EID_MODAL;
+             got.engine == EID_KIT;
         bad += check("UP_PUT kind 1: a grid record, accents only on hits", ok);
         g[m - 17u] = 0;                                     /* kind 0: the notes and flags as before */
         ok = up_parse(g, m, &got, &slot) == 0 && got.ver == UP_VER && got.note[2] == 0x08u && got.flags[0] == 4u;   /* (flags 0x7F: a tie) */
@@ -276,7 +276,7 @@ int main(void)
         ok = !up_parse(a, n, &r, &slot) && up_cat_of(&r) == CAT_KEYS && UP_CAT_AT >= P_COUNT && r.np == P_COUNT;
         a[n - 1u] = CAT_N;
         ok &= up_parse(a, n, &got, &slot) == 1;
-        n = put_frame(a, 17, EID_MODAL, "MODAL", 0);
+        n = put_frame(a, 17, EID_KIT, "MODAL", 0);
         ok &= !up_parse(a, n, &got, &slot) && up_cat_of(&got) == CAT_OTHER && !got.packed[UP_CAT_AT];
         bad += check("category: UP_PUT's last byte, none = the engine's", ok);
         memset(&up_bank[1], 0, sizeof up_bank[1]);
@@ -287,7 +287,7 @@ int main(void)
         up_bank_check(1, st_load(OBJ_UPRESET0 + 1, &up_bank[1], sizeof up_bank[1]));
         bad += check("category: kept through the bank on flash", up_used(17) && up_cat_of(up_rec(17)) == CAT_KEYS);
         memset(&r, 0, sizeof r);
-        r.used = UP_USED; r.ver = 3; r.engine = EID_MODAL; r.np = 60;
+        r.used = UP_USED; r.ver = 3; r.engine = EID_KIT; r.np = 60;
         memcpy(r.name, "GRID", 4);
         for (i = 0; i < 60u; i++) r.p[i] = (int16_t)(i * 3u) - 64;
         r.note[0] = 0x81; r.flags[0] = 0x80;

@@ -65,7 +65,8 @@ static const page_t *ly_page(uint32_t l) { return l == LAYER_SCL ? &LY_SCL : 0; 
 #define LY_INIT ((uint32_t)(NENG_SHOWN < 16 ? NENG_SHOWN : 16))
 #define LY_INIT_BK (NENG_SHOWN >= 16)                   /* INIT on the last black key (F#5: place 10) */
 #define LY_INIT_P 10u
-typedef char ly_init_fits[LY_INIT <= 16u ? 1 : -1];   /* (the white keys F3 .. G5: 16) */
+typedef char ly_init_fits[NENGINES <= 24u ? 1 : -1];  /* (LY_INIT: the white keys F3 .. G5, 16 at most; since 2026-10-23
+                                                        * the selected track's engines, counted as it is drawn) */
 #define layer_seen (favorites.factory[15][31])   /* bit l: layer l opened once (a byte no engine uses) */
 static const khint_t FX_LATCH_FOOT[3] = {{KC_KEYS, "ON / OFF"}, {KC_K14, "MACROS"}, {KC_OCTDN, "ALL OFF"}};
 static const khint_t FX_KEY_FOOT[3] = {{KC_PRESETS, "ASSIGN"}, {KC_EDIT, "DEFAULT"}, {KC_K14, "MACROS"}};   /* (a key held) */

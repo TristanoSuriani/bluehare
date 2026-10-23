@@ -66,11 +66,11 @@ for n in 4 8; do
 done
 compile $CC -w $I -o "$OUT/panmode_test" tests/os/panmode_test.c -lm
 run "PAN MODE: ALT at power-on (SPREAD in turn), RND a side at random (POLY, and MONO at half width), the store" "$OUT/panmode_test"
-compile $CC -w -DBLUEHARE_DIST=test_subset -DBLUEHARE_NTRK=4 $I -o "$OUT/engines_test4" tests/os/engines_test.c -lm
-run "a build without some engines and PLATE (TEST SUBSET, 4 tracks): ids, substitutes, components, protocol, projects, presets; a 4-track project for the next" "$OUT/engines_test4"
+compile $CC -w -DBLUEHARE_DIST=test_subset $I -o "$OUT/engines_test4" tests/os/engines_test.c -lm
+run "a build without some engines and PLATE (TEST SUBSET, 3 tracks): ids, substitutes, each track's engines, components, protocol, projects, presets; a 3-track project for the next" "$OUT/engines_test4"
 compile $CC -w -DBLUEHARE_DIST=test_subset -DBLUEHARE_NTRK=8 $I -o "$OUT/engines_test" tests/os/engines_test.c -lm
 AFTER=$nj                                           # (it reads the 4-track run's song_4trk.bin)
-run "a build without some engines, 8 tracks: the same checks, its power-on, a 4-track project on it" "$OUT/engines_test"
+run "a build without some engines, 8 tracks: the same checks, its power-on, a 3-track project on it" "$OUT/engines_test"
 $CC -w $I -o "$OUT/descdump" tests/os/descdump.c -lm
 echo "== parameter and engine tables as JSON (for the editor mock test)"
 "$OUT/descdump" > "$OUT/desc.json" || fail=1

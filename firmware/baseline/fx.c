@@ -989,8 +989,9 @@ static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_
  * send into it, the echoes back at unity, panned as the patch; FEED (P_DFDBK) up to 120 (past 100 it grows, the
  * clamp holds it); TIME (P_DTIME) a division of the tempo, at most the line. A line no patch feeds runs until a line's
  * worth of half-samples has been silent, then sleeps */
-#define PDL_LEN (DLY_LEN / NTRK)
-#define PDL_SLEEP (65536u / NTRK)   /* (asleep after this many silent half-samples, or TIME's if longer: the device's line
+#define PDL_NT (NTRK <= 2u ? 2u : NTRK <= 4u ? 4u : 8u)   /* (the tracks, rounded up to a power of two: 3 -> 4) */
+#define PDL_LEN (DLY_LEN / PDL_NT)
+#define PDL_SLEEP (65536u / PDL_NT)   /* (asleep after this many silent half-samples, or TIME's if longer: the device's line
                                      * length, so the Native image's longer lines sleep as the device's do, the renders
                                      * the same, golden.txt shared; its longer TIMEs still ring) */
 typedef char pdl_pow2[(PDL_LEN & (PDL_LEN - 1u)) == 0 ? 1 : -1];

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* fel_host: what the plugin does, apart from the plugin format (the DPF wrapper, FelTrackerPlugin.cpp, only passes it
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+/* fel_host: what the plugin does, apart from the plugin format (the DPF wrapper, BlueHarePlugin.cpp, only passes it
  * on; the tests drive it directly). An instance of a distribution's core (fel_loader.h), the distribution chosen among
  * the cores next to the plugin, the core's 44.1 kHz resampled to the host's rate (fel_resample.h), MIDI events played
  * at their frame, the host's transport followed (tempo, play, the beat), the tracks' own outputs, the song saved and

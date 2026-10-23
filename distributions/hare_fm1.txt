@@ -1,32 +1,21 @@
 # Blue Hare: Copyright (C) 2026 Tristano Suriani, GPL-3.0-only (AUTHORS.md)
-# HARE FM1: Blue Hare's one distribution for the M-VAVE FM-1 (2026-10-16, Milestone 1, docs/Milestones.md): the base
-# synthesizer engines: the little monosynth, the C64 chip's voice, wavetables, formant voices (VOSIM), FM keys, west coast, struck and bowed
-# resonators, string ensembles.
-# The engines in display order, one a line (names: firmware/baseline/engine_ids.h). TRACKS: the build's track count;
-# PALETTE: the one a device starts with (IDM since 2026-10-18: the user's, "techno vibes"; ICE before); VOICES 12: the voice budget 12 always (without the line: 8, 12 while the load
-# allows). The other distributions are in archive/distributions/; the build still takes any number of them.
-TRACKS 4
+# HARE FM1: Blue Hare's one distribution for the M-VAVE FM-1 (2026-10-16, Milestone 1, docs/Milestones.md). Since
+# 2026-10-23 three tracks, each with its own engines (the TRACK lines below): the synths, the kits, the voices.
+# TRACKS: the build's track count; TRACK <n>: the engines track n may play, in display order (names:
+# firmware/baseline/engine_ids.h); PALETTE: the one a device starts with (IDM since 2026-10-18: the user's, "techno
+# vibes"); VOICES 12: the voice budget 12 always (without the line: 8, 12 while the load allows). The other
+# distributions are in archive/distributions/; the build still takes any number of them.
+TRACKS 3
 PALETTE IDM
 STYLE LED
 # STYLE: MENU > STYLE a device starts with (LED since 2026-10-18: the fourteen-segment face, the user's "everywhere")
 # its components besides the engines (firmware/components.txt; none of a kind listed would mean all of it)
 FX PLATE
 FX EQ
-PLUGIN TECHNO
+PLUGIN ARP
 UI STROBE
-SID
-VOSIM
-SPEECH
-ONYX
-VOCODER
-OBIE
-DUBCHORD
-HOOVER
-SANDSTORM
-DUBSIREN
-DUBSIREN8
-MODAL
-KIT
-LINNKIT
-BREAKS
-WAR
+# (2026-10-23, the user's, after the FM-1 itself) three tracks, each its own engines: 1 the synths, 2 the kits,
+# 3 the voices (DUBSIREN, the last track's, too). The engines' display order is the tracks' in turn.
+TRACK 1 VA SANDSTORM SID OBIE
+TRACK 2 KIT LINNKIT WAR
+TRACK 3 SPEECH ONYX VOCODER VOSIM DUBSIREN

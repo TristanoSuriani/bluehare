@@ -318,7 +318,8 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
  * engine's voice cap, spread by DETUNE over the same width) */
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
-    uint32_t mode = (uint32_t)t->p[P_VOICE], nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
+    uint32_t mode = (uint32_t)t->p[P_VOICE], i,
+             nv = mode != V_UNISON ? 1u : ENGINES[t->engine]->unison ? ENGINES[t->engine]->unison(t) : trk_nvoice(t);
     if (nv > UNISON_MAX)
         nv = UNISON_MAX;                                /* (Blue Hare: UNISON stays 8, as made) */
     for (i = 0; i < nv; i++) {

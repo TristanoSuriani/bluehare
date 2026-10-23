@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The plugin's window (DPF, NanoVG): the device as the native image shows it. The screen at twice its size, the
  * knobs (dragged up or down, or the wheel over one; MASTER the parameter), the 14 buttons and the 27 keys (held while
  * the mouse button is down), lit as the device lights them; above, the distribution (a click: the chooser, then a
@@ -26,9 +26,9 @@ extern "C" {
 
 START_NAMESPACE_DISTRHO
 
-fel_host_t* felPluginHost(void* plugin);                 /* (FelTrackerPlugin.cpp) */
+fel_host_t* felPluginHost(void* plugin);                 /* (BlueHarePlugin.cpp) */
 
-enum { P_MASTER, P_DIST, P_OUT1 };                       /* (as FelTrackerPlugin.cpp) */
+enum { P_MASTER, P_DIST, P_OUT1 };                       /* (as BlueHarePlugin.cpp) */
 static const char* const BTN_NAME[14] = {"FX", "SCL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE", "ARP", "SEQ", "PLAY",
                                          "REC", "OCT-", "OCT+"};    /* (panel.c's labels: bit = index) */
 static const char* const KNOB_NAME[8] = {"MASTER", "SELECT", "PRESETS", "ALGO", "KNOB 1", "KNOB 2", "KNOB 3", "KNOB 4"};
@@ -65,10 +65,10 @@ static Box keyBox(int k)                                 /* key k (0 F3 .. 26 G5
 static Box distBox() { return {SX, 20.0f, 240.0f, 40.0f}; }
 static Box outBox(int t) { return {SX + 260.0f + (float)t * 30.0f, 28.0f, 26.0f, 26.0f}; }
 
-class FelTrackerUI : public UI
+class BlueHareUI : public UI
 {
 public:
-    FelTrackerUI()
+    BlueHareUI()
         : UI(W, H)
     {
         loadSharedResources();
@@ -118,7 +118,7 @@ protected:
         if (!host) {
             fontSize(18);
             fillColor(220, 220, 228);
-            text(40, 60, "Fel-Tracker: no core found (the bundle's Contents/Resources/cores)", nullptr);
+            text(40, 60, "Blue Hare: no core found (the bundle's Contents/Resources/cores)", nullptr);
             return;
         }
         drawScreen();
@@ -333,7 +333,7 @@ private:
         fontSize(14);
         fillColor(150, 150, 160);
         textAlign(ALIGN_RIGHT | ALIGN_MIDDLE);
-        text(W - 20, 40, view.playing ? "FEL-TRACKER  PLAYING" : "FEL-TRACKER", nullptr);
+        text(W - 20, 40, view.playing ? "BLUE HARE  PLAYING" : "BLUE HARE", nullptr);
     }
 
     void drawKnob(int i)
@@ -447,9 +447,9 @@ private:
         }
     }
 
-    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FelTrackerUI)
+    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BlueHareUI)
 };
 
-UI* createUI() { return new FelTrackerUI(); }
+UI* createUI() { return new BlueHareUI(); }
 
 END_NAMESPACE_DISTRHO

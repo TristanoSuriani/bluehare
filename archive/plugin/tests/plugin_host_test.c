@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* The plugin's own part (plugin/src: fel_resample.c, fel_host.c), with no plugin format around it:
  *   the resampler: 44.1 kHz to 48, 88.2, 96 and 32 kHz; a tone keeps its level (pass band) and comes out clean (no
  *   image, no alias above -70 dB), DC passes whole, an impulse lands at the latency it reports, and the output is the

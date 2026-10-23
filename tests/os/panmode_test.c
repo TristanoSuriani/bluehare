@@ -68,12 +68,12 @@ int main(void)
 
     /* the store */
     reset();
-    trk_pmode[3] = TP_RND;
+    trk_pmode[NTRK - 1u] = TP_RND;
     ok = !project_save(0);
     trk_mix_defaults();
-    ok &= trk_pmode[3] == TP_ALT;
+    ok &= trk_pmode[NTRK - 1u] == TP_ALT;
     project_load(0);
-    ok &= proj_ram[0][PROJ_HDR] == PROJ_VER && trk_pmode[3] == TP_RND;
+    ok &= proj_ram[0][PROJ_HDR] == PROJ_VER && trk_pmode[NTRK - 1u] == TP_RND;
     bad += check("the store keeps PAN MODE; the power-on values have none", ok);
     printf("%s\n", bad ? "PAN MODE TEST FAILED" : "pan mode test passed");
     return bad != 0;

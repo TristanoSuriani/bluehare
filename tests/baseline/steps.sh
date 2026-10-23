@@ -16,16 +16,15 @@ run "the baseline alone (firmware/baseline only on the include path): every engi
 slow compile $CC -O2 -w $I -o "$OUT/hostsim" tests/lib/hostsim.c -lm
 slow run "DSP render (ANALOG preset 0)" "$OUT/hostsim" 0 0 1 "$OUT/render.wav"
 mkdir -p build/tracks_demo
-slow run "TRACKS: 4-track pattern, voice budget, engine switch, cost" env TRACKS=build/tracks_demo "$OUT/hostsim" 0 0 1 "$OUT/tracks.wav"
+slow run "TRACKS: 3-track pattern, voice budget, engine switch, cost" env TRACKS=build/tracks_demo "$OUT/hostsim" 0 0 1 "$OUT/tracks.wav"
 compile $CC -O2 -w $I -o "$OUT/speaker_test" tests/baseline/speaker_test.c -lm
 run "SPEAKER EQ: FLAT / LOWCUT / BASS+ responses, BASS+ harmonics of the bass, the sub cut, no offset after, headroom on a full-scale kick (#180)" "$OUT/speaker_test"
 compile $CC -O2 -w $I -o "$OUT/click_test" tests/baseline/click_test.c -lm
 run "metronome: beats sample for sample (internal and external clock), accent, level, MASTER, not in USB, PLAY at once (no count-in)" "$OUT/click_test"
 compile $CC -O2 -w $I -o "$OUT/float_fx_test" tests/baseline/float_fx_test.c -lm
 run "floating point (2026-10-17): fastmath against libm, the EQ's bands, PLATE; the global reverb's types (2026-10-18)" "$OUT/float_fx_test"
-compile $CC -O2 -w $I -o "$OUT/techno_test" tests/baseline/techno_test.c -lm
-mkdir -p build/techno_demo
-run "TECHNO, the player on ARP (2026-10-18): the arrangement to the DROP, every role, the scale, four on the floor, MOTION, DENSITY, a key, stop, the seed, every piece (demos)" "$OUT/techno_test" build/techno_demo
+compile $CC -O2 -w $I -o "$OUT/arp_test" tests/baseline/arp_test.c -lm
+run "ARP (2026-10-23, the arpeggiator back): ARP starts and stops it, each track its own list, the modes, RATE, GATE, HOLD, OCT, CHORD, the visuals' roles" "$OUT/arp_test"
 slow compile $CC -O2 -w $I -o "$OUT/mod_test" tests/baseline/mod_test.c -lm
 mkdir -p build/mod_demo
 slow run "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" "$OUT/mod_test" build/mod_demo
@@ -48,4 +47,4 @@ run "MONO LOWS: the master's side under ~120 Hz in mono (40 Hz hard left on both
 compile $CC -O2 -w $I -Itests/lib -o "$OUT/gated_test" tests/baseline/gated_test.c -lm
 run "REVERB TYPE GATED: HALL's level while it holds, cut after SIZE's hold, a longer SIZE longer, a hit opens it again" "$OUT/gated_test"
 slow compile $CC -O2 -w $I -o "$OUT/regress" tests/baseline/regress.c -lm
-slow run "regression, HARE FM1 (the primary) built with 4 tracks: golden renders, health, voices, CPU budget" "$OUT/regress" tests/baseline/golden.txt tests/baseline/cpu_baseline.txt
+slow run "regression, HARE FM1 (the primary) built with 3 tracks: golden renders, health, voices, CPU budget" "$OUT/regress" tests/baseline/golden.txt tests/baseline/cpu_baseline.txt

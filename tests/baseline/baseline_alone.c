@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
-/* (2026-10-17) The baseline on its own: the sound (firmware/baseline: engines, voices, modulation, effects, GEN, note
+/* (2026-10-17) The baseline on its own: the sound (firmware/baseline: engines, voices, modulation, effects, the ARP, note
  * input and the layers, MIDI's meaning) built with only its own directory on the include path, nothing of Blue Hare OS
  * (firmware/os) or the FM-1 port (firmware/fm1), and run: a note on every engine, MIDI in through the baseline's ring,
- * a GEN piece loaded and played. What the baseline asks of the instrument around it are the hooks below (Blue Hare
+ * the ARP playing a held chord. What the baseline asks of the instrument around it are the hooks below (Blue Hare
  * OS: keyboard.c's three, ui.c's os_load_sound), here a host without keys that loads at once. A build that fails here means a baseline file reached into a layer above
  *   cc -Ibuild/gen -Ifirmware/baseline tests/baseline/baseline_alone.c -lm   (run_tests.sh) */
 #include <stdio.h>
@@ -263,22 +263,28 @@ int main(void)
     midi_enqueue(0x08u | 0x80u << 8 | 64u << 16, 1u);
     run(400);
     check("MIDI IN through the baseline's ring (midi_in.c) plays and releases", i > 300u && mi_r == mi_w);
-    check("the player interface (player.c): TECHNO, its four roles by name, its pieces",
-          player() && !strcmp(player()->name, "TECHNO") && player()->nroles == 4u && player_role("DRUMS") == 0 &&
-          player_role("BASS") == 1 && player()->npieces == TC_NPIECES && !strcmp(player()->piece_name(0), "WAREHOUSE"));
-    tc_load_piece(0);                                   /* WAREHOUSE: its sounds through os_load_sound */
-    tc.seed = 7u;
-    tc.req = 1;
+    check("the player interface (player.c): the ARP, a role a track (BASS DRUMS VOICE)",
+          player() && !strcmp(player()->name, "ARP") && player()->nroles == NPART && player_role("BASS") == 0 &&
+          player_role("DRUMS") == 1);
+    player()->request(1);                               /* (2026-10-23) the arpeggiator on the baseline alone */
+    run(64);
+    input_on(&trk[0], 60, 100);
+    input_on(&trk[0], 64, 100);
     i = (uint32_t)run(3000);
-    check("a TECHNO piece loaded (its sounds, key, tempo) and played on the baseline alone",
-          tc.on && i > 300u && tc.s.played[TR_DRUMS] > 0u && song.g[G_BPM] == TC_PIECES[0].bpm &&
-          trk[0].eng_req == ENGI_KIT);    /* (WAREHOUSE's drums: KIT's FM KIT) */
+    input_off(&trk[0], 60);
+    input_off(&trk[0], 64);
+    player()->request(0);
+    run(400);
+    check("the ARP started, a chord held: its steps played on the baseline alone, stopped again",
+          i > 300u && ar.t[0].played >= 4u && !ar.on);
     {   /* the song: written into RAM, the music changed, read back: as it was (song.c, nothing of the OS's store) */
         pw_t w;
         pr_t r;
         char name[PROJ_NAME_LEN + 1u];
         int16_t atk = trk[2].p[P_ATK], bpm;
-        uint32_t eng = trk[1].eng_req;
+        uint32_t eng;
+        patch_engine(&trk[1], ENGI_KIT);                /* (2026-10-23: an engine track 2 plays: a load keeps it) */
+        eng = trk[1].eng_req;
         song.g[G_BPM] = 97;
         pins.ftype[1] = LF_BP;                          /* (2026-10-18: a patch's insert filter, the layers deleted) */
         pins.fcut[1] = 70;

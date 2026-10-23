@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* fel_loader.h: an instance is its own copy of the core library. The dynamic loader keeps one image of a file however
  * many times it is opened (the same globals), so each instance opens a copy no other instance has open.
  * The copies are kept, a few numbered slots a core in the cache directory (FEL_CACHE_DIR, else
- * ~/Library/Caches/Fel-Tracker/cores, ~/.cache/fel-tracker/cores on Linux), and reused: the system checks a new
+ * ~/Library/Caches/Blue Hare/cores, ~/.cache/blue-hare/cores on Linux), and reused: the system checks a new
  * executable file the first time it is opened (Gatekeeper, an endpoint scanner: some 0.2 s on a Mac), a known one
  * opens at once, so a session's instances load fast after the first time. A slot is an instance's while it holds the
  * slot's lock (flock: exclusive across loaders and processes, so two plugin formats in one host never share one);
@@ -25,10 +25,10 @@
 
 #ifdef __APPLE__
 #define LIB_EXT ".dylib"
-#define CACHE_SUB "Library/Caches/Fel-Tracker/cores"
+#define CACHE_SUB "Library/Caches/Blue Hare/cores"
 #else
 #define LIB_EXT ".so"
-#define CACHE_SUB ".cache/fel-tracker/cores"
+#define CACHE_SUB ".cache/blue-hare/cores"
 #endif
 #define SLOTS 64u                        /* instances of one core at once (more: temporary copies) */
 

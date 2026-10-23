@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Tristano Suriani (Fel-Tracker)
- * Part of Fel-Tracker, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
+ * Copyright (C) 2026 Tristano Suriani (Blue Hare)
+ * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* An instance of a core (fel_core.h): a private copy of its library, loaded on its own, so its globals (the whole
  * device: tracks, song, FX, UI) are this instance's alone. Load and unload on the host's main thread. */
 #ifndef FEL_LOADER_H

@@ -215,16 +215,15 @@ static void song_setup(void)
 {
     static const uint8_t ACID[16] = {45, 45, 57, 45, 0, 48, 45, 55, 45, 0, 57, 52, 45, 48, 0, 50};
     static const uint8_t AM[4] = {57, 60, 64, 67};
-    track_t *t1 = &trk[0], *t2 = &trk[1], *td = &trk[3];
+    track_t *t1 = &trk[0], *t2 = &trk[2], *td = &trk[1];   /* (2026-10-23: three tracks; the drums track 2) */
     uint32_t i;
     memset(trk, 0, sizeof trk);
     host_tracks_init();
     perf_reset();
     song.playing = 0;                              /* (a test before may leave the transport running) */
     song.g[G_BPM] = 120;
-    host_preset(t1, 0, 4);
-    host_preset(t2, ENGI_MODAL, (uint32_t)patch_find_preset(ENGI_MODAL, "GLASS"));   /* MODAL's GLASS (BLISS's GLASS BELL
-                                                    * until archived) */
+    host_preset(t1, ENGI_SID, 4);
+    host_preset(t2, ENGI_HPAD, HPAD_PRESET);       /* (the pad: OBIE's PWM PAD; MODAL's GLASS until archived) */
     host_drums(td);                                /* hostsim's drums */
     for (i = 0; i < 16u; i++) {
         uint8_t n = ACID[i], d[4], k = 0;
@@ -313,8 +312,8 @@ static int test_keys(void)
             ok &= !kb_layer && !perf_held && mo_w == mo0;
         }
         fm1_in.buttons = 0;
-        bad += check("the keys without an effect (11 white from D4, 7 black from D#4): silent, nothing held",
-                     ok && assigned == 0x1FFu);     /* F3 .. C4 */
+        bad += check("the keys without an effect (11 white from D4, the black past the tracks' mutes): silent, nothing held",
+                     ok && assigned == (NTRK >= 4u ? 0x1FFu : 0xFFu));   /* F3 .. C4 (C#4: track 4's mute) */
         kb_mask = perf_mask = 0;
     }
     usb.config = 0;
@@ -456,7 +455,7 @@ static int test_misc(void)
         song_setup();
         {                                                    /* only track 1 plays, dry */
             uint32_t r;
-            for (r = 0; r < HS_ROWS; r++) host_song[r][1] = host_song[r][2] = host_song[r][3] = 0;
+            for (r = 0; r < HS_ROWS; r++) for (uint32_t c = 1; c < NTRK; c++) host_song[r][c] = 0;
         }
         trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = 0;
         transport_req = 1;
@@ -857,7 +856,7 @@ static void harm_demos(const char *dir)
         host_tracks_init();
         perf_reset();
         song.g[G_BPM] = 110;
-        host_preset(&trk[0], 0, 2);                       /* SID SYNC LEAD */
+        host_preset(&trk[0], ENGI_SID, 2);                       /* SID SYNC LEAD */
         for (i = 0; i < 16u; i++)
             put_step(&trk[0], i, MEL[i] ? 1u : 0u, &MEL[i], MEL[i] ? ST_NOTE : ST_REST, 0);
         hd_mode = m + 1u;

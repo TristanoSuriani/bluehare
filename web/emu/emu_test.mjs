@@ -110,16 +110,19 @@ check("PLAY: the sequencer runs, PLAY's green LED", a.ex.web_playing() === 1 && 
 a.tap(B.PLAY);
 a.render(300);
 check("PLAY again stops it", a.ex.web_playing() === 0);
-a.render(3000);                                               // (Blue Hare, 2026-10) ARP: GEN plays its four tracks
+a.render(3000);                                               // (2026-10-23) ARP: the arpeggiator plays a held key
 a.peak = 0;
 a.tap(B.ARP);
-a.render(4000);
+a.render(200);
+a.ex.web_keys(1 << 7);                                        // (C4 held: the arp steps it)
+a.render(3000);
 const genPeak = a.peak;
+a.ex.web_keys(0);
 a.tap(B.ARP);
 a.render(6000);
 a.peak = 0;
 a.render(500);
-check(`ARP: TECHNO plays (peak ${genPeak.toFixed(3)}); ARP again stops it (then ${a.peak.toFixed(4)})`, genPeak > 0.02 && a.peak < genPeak / 10);
+check(`ARP: the arpeggiator plays a held key (peak ${genPeak.toFixed(3)}); ARP again stops it (then ${a.peak.toFixed(4)})`, genPeak > 0.02 && a.peak < genPeak / 10);
 a.ex.web_buttons(1 << B.FX);                                  // #119: FX held, its map: the effects breathe
 a.render(800);
 const brK = a.ex.web_breath_keys(), brB = a.ex.web_breath_buttons(), litK = a.ex.web_lit_keys();
@@ -193,6 +196,6 @@ for (let i = 0; i < 3; i++) {
   best = Math.min(best, performance.now() - t0);
 }
 const ratio = best / 1000, max = +(process.env.BENCH_MAX || 0.5);
-check(`1 s of the heavy song (VOSIM, KARPLUS, WAVE chords + KIT) in ${best.toFixed(1)} ms: ${(ratio * 100).toFixed(1)} % of real time`, ratio < max);
+check(`1 s of the heavy song (VA and VOSIM chords + KIT) in ${best.toFixed(1)} ms: ${(ratio * 100).toFixed(1)} % of real time`, ratio < max);
 console.log(fails ? `emu: ${fails} FAILED` : "emu: all ok");
 process.exit(fails ? 1 : 0);

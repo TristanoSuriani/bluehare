@@ -43,7 +43,7 @@ static void fresh(void)
     memset(trk, 0, sizeof trk);
     memset(&song, 0, sizeof song);
     host_tracks_init();
-    for (p = 0; p < NPART; p++) host_preset(&trk[p], 0, 0);
+    for (p = 0; p < NPART; p++) host_preset(&trk[p], ENGI_SID, 0);
     memset(&bluehare_dbg, 0, sizeof bluehare_dbg);
     audio_cpu_rem = audio_halves = audio_max_us = 0;
     shed_req = 0; shed_count = 0; shed_over = 0;

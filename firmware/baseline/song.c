@@ -173,11 +173,11 @@ static int song_read(pr_t *r, int apply, char *name)
         song.sel = (uint8_t)(b[0] < NTRK ? b[0] : 0u);
     pr_get(r, nm, sizeof nm, 0);
     ntr = (uint8_t)pr_u8(r);                        /* the track count */
-    if (ntr != 4u && ntr != 8u)
+    if (ntr != 3u && ntr != 4u && ntr != 8u)        /* (3: HARE FM1's since 2026-10-23) */
         return 1;
     if (ntr > NTRK)
         return 2;
-    for (k = ntr; apply && k < NTRK; k++)           /* (a 4-track song on 8 tracks: 5 .. 8 as at power-on) */
+    for (k = ntr; apply && k < NTRK; k++)           /* (a 3-track song on 8 tracks: 4 .. 8 as at power-on) */
         proj_track_default(k);
     for (k = 0; k < ntr; k++) {
         track_t *t = &trk[k];
