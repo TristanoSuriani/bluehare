@@ -6,10 +6,10 @@
  * The core (va_run): per voice two oscillators and a sub-oscillator, band-limited (polyBLEP saw and pulse; sine;
  * the triangle naive: its images fall at -12 dB an octave), then the input saturating (a rational tanh) into a
  * zero-delay filter, the four-pole ladder (24 dB, its feedback solved for the sample, RES to self-oscillation) or
- * the state-variable low-pass (12 dB, OBIE's), the whole voice run VA_OS times the sample rate (2 on the FM-1, 8 in
- * the native image) and brought down through a fourth-order Butterworth (two biquads at 18 kHz): the saturation and
- * the resonance stay clean up the keyboard. Each voice a little off, as analog voices are: its oscillators and its
- * filter offset as it starts, and a slow drift on top (SLOP: OBIE's knob, VA's fixed and small).
+ * the state-variable low-pass (12 dB, OBIE's), the whole voice run VA_OS times the sample rate (8 in the native image,
+ * brought down through a fourth-order Butterworth, two biquads at 18 kHz: there the saturation and the resonance stay
+ * clean up the keyboard; 1 on the FM-1 since 2026-10-23, its CPU's limit). Each voice a little off, as analog voices
+ * are: its oscillators and its filter offset as it starts, and a slow drift on top (SLOP: OBIE's knob, VA's fixed and small).
  * VA: W1 W2 the oscillators' waves (SAW PULSE SINE TRI; PULSE's width moved by the SHAPE routings: PWM; or a noise,
  * WHITE PINK BROWN: the user's), DTN them apart (0 .. +-25 cents), SUB the sub-oscillator's level (an octave under
  * osc 1), SUBW its wave (a noise there: the noise's level is SUB: saws and a little pink, say); CUT, RES the
@@ -23,9 +23,12 @@
                                                  * resonant ladder and the sync ~10 dB cleaner than 2x (C6 .. C7), ~4.5 %
                                                  * of a laptop's core at full power; its own renders (tests/native) */
 #else
-#define VA_OS 2u                                /* the device: what the FM-1 has room for */
+#define VA_OS 1u                                /* the device: at the rate (2026-10-23, the user's, on the FM-1: at 2x six
+                                                 * voices became two, stolen with clicks; SID did not) */
 #endif
 #endif
+/* the decimator to the rate (VA_OS 1: none, the voice already at it) */
+#define VA_DOWN(x) (VA_OS > 1u ? va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, (x))) : (x))
 #define VA_POLY 6
 enum { VA_LP12, VA_LADDER, VA_BP, VA_HP };      /* (va_cfg_t.ladder) */
 enum { VA_SAW, VA_PULSE, VA_SINE, VA_TRI, VA_WHITE, VA_PINK, VA_BROWN,   /* (the noises: the user's, 2026-10-23) */
@@ -277,7 +280,7 @@ static inline __attribute__((always_inline)) void va_run_k(va_voice_t *restrict 
                 vv = (yy - s2) * G; yy = vv + s2; s2 = yy + vv;
                 vv = (yy - s3) * G; yy = vv + s3; s3 = yy + vv;
                 vv = (yy - s4) * G; yy = vv + s4; s4 = yy + vv;
-                o = va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, yy));
+                o = VA_DOWN(yy);
             }
             y[i] = o;
         }
@@ -292,7 +295,7 @@ static inline __attribute__((always_inline)) void va_run_k(va_voice_t *restrict 
                 s1 = 2.0f * v1 - s1;
                 s2 = 2.0f * v2 - s2;
                 v3 = c->ladder == VA_BP ? v1 * (2.0f - 1.95f * c->res) : c->ladder == VA_HP ? x - kk * v1 - v2 : v2;
-                o = va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, v3));
+                o = VA_DOWN(v3);
             }
             y[i] = o;
         }
@@ -369,7 +372,7 @@ static void va_run_out(va_voice_t *s, int32_t *out, uint32_t n, const vmod_t *m,
                 vv = (yy - s2) * G; yy = vv + s2; s2 = yy + vv;
                 vv = (yy - s3) * G; yy = vv + s3; s3 = yy + vv;
                 vv = (yy - s4) * G; yy = vv + s4; s4 = yy + vv;
-                y = va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, yy));
+                y = VA_DOWN(yy);
             }
             out[i] += voice_amp((int32_t)fm_clampf(y * outg, -32767.0f, 32767.0f), m, i) << 1;
         }
@@ -408,7 +411,7 @@ static void va_run_out(va_voice_t *s, int32_t *out, uint32_t n, const vmod_t *m,
                 v2 = s2 + a2 * s1 + a3 * v3;
                 s1 = 2.0f * v1 - s1;
                 s2 = 2.0f * v2 - s2;
-                y = va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, v2));
+                y = VA_DOWN(v2);
             }
             out[i] += voice_amp((int32_t)fm_clampf(y * outg, -32767.0f, 32767.0f), m, i) << 1;
         }
