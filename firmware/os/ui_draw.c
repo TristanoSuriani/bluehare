@@ -971,17 +971,6 @@ static void style_apply(void)
 }
 
 /* SEQ (and GLO): the sequencer's placeholder, TODO in L across the page between the header and the footer */
-static void draw_todo(void)
-{
-    uint32_t c;
-    for (c = 0; c < 4u; c++)                           /* (no cards here: a card's rolling digits are over) */
-        ui.roll[c].from[0] = 0;
-    if (!ui.force)
-        return;
-    lcd_fill(0, H_HEAD, 240, Y_FOOT - H_HEAD, T_BG);
-    draw_text_box(0, 102, 240, &AF_L, "TODO", T_THEME, 1);
-}
-
 #include "ui_play.c"                                    /* (Blue Hare, 2026-10-18) the play views: HOME, TECHNO */
 static void ui_draw_page(void);
 static void ui_draw(void)
@@ -1042,11 +1031,6 @@ static void ui_draw_page(void)
     draw_play(play_view());                             /* (into or out of a play view: ui.force) */
     if (play_view() != PV_NONE) {                       /* the play views: the whole screen, nothing else */
         bluehare_dbg.stage = 5;
-    } else if (cur_page()->graph == GR_TODO) {          /* SEQ's placeholder: no cards, no panel */
-        bluehare_dbg.stage = 3;
-        draw_head();
-        bluehare_dbg.stage = 5;
-        draw_todo();
     } else {
         if (ui.force)
             draw_frame();

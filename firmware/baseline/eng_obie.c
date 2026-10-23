@@ -12,7 +12,7 @@
  * follows the keyboard, the velocity opens it (-1.5 .. +0.5 octave around 100: the original had none; MODAL showed
  * what a touch does). SLOP: the analog's spread, per voice: each oscillator a little off (up to ~6 cents) and the filter
  * (up to ~3 semitones), set as the voice starts, and a slow drift on top: a chord breathes, no two notes the same.
- * Voice state: ph[0] / ph[1] the oscillators; the rest VA's core's (va_v: the filter, the offsets, the drift, the
+ * Voice state: VA's core's (va_v: the oscillators' phases, the filter, the offsets, the drift, the
  * synced oscillator's sample not yet out) */
 static const char *const N_PO_WAVE[] = {"SAW", "PULSE", "SAW+P", "SYNC", 0};
 static const char *const N_PO_FILT[] = {"12 dB", "24 dB", 0};
@@ -33,24 +33,25 @@ static void obie_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     if (!s)
         return;
     ct = va_drift(s, slop);                           /* (up to ~+-4 cents with SLOP at 127) */
-    c.inc1 = cents_inc(m->pitch16, ct + s->o1 * slop / 2600 - p[P_E2] / 10, m->fine);
+    c.nosc = 2;
+    c.sync = wave == 3u;                              /* SYNC: osc 2 a saw synced to osc 1, osc 1 unheard */
+    c.inc[0] = cents_inc(m->pitch16, ct + s->o1 * slop / 2600 - p[P_E2] / 10, m->fine);
     ivl = p[P_E3] * 100;
     if (wave == 3u)                                   /* SYNC: the SHAPE routings sweep the synced pitch up */
         ivl += (sh > 0 ? sh : 0) * 3600 / (64 << 8);
-    c.inc2 = cents_inc(m->pitch16, ct + ivl + s->o2 * slop / 2600 + p[P_E2] / 10, m->fine);
+    c.inc[1] = cents_inc(m->pitch16, ct + ivl + s->o2 * slop / 2600 + p[P_E2] / 10, m->fine);
     c.incs = 0;
-    c.w1 = W[wave];
-    c.w2 = wave == 3u ? (uint8_t)VA_SYNC : W[wave];
+    c.w[0] = c.w[1] = W[wave];
     c.ws = VA_SAW;
-    c.g1 = wave == 3u ? 0.0f : 0.5f;
-    c.g2 = wave == 3u ? 1.0f : 0.5f;
+    c.g[0] = wave == 3u ? 0.0f : 0.5f;
+    c.g[1] = wave == 3u ? 1.0f : 0.5f;
     c.gs = 0.0f;
     c.pw = 0.5f - 0.45f / (127.0f * 256.0f) * (float)clamp((p[P_E1] << 8) + (wave == 3u ? 0 : sh), 0, 127 << 8);
     c.cut = va_cut(v, m, p[P_E4], s->of, slop);
     c.res = (float)p[P_E5] * (1.0f / 127.0f);
     c.ladder = (uint8_t)(p[P_E6] & 1);
     c.drive = c.ladder ? 1.0f : 1.2f;
-    va_run(v, s, out, n, m, &c);
+    va_run_out(s, out, n, m, &c);
 }
 static uint32_t obie_unison(const track_t *t) { (void)t; return 6u; }
 

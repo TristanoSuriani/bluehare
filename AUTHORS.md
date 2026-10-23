@@ -41,12 +41,14 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | VOSIM | engine | two formants of pulse trains: voices, reeds, brass | `firmware/baseline/eng_vosim.c` | Tristano Suriani |
 | VA | engine | the virtual analogue: two oscillators and a sub, a ladder, oversampled; six voices, UNISON 3 or 6 | `firmware/baseline/eng_va.c` | Tristano Suriani |
 | OBIE | engine | the OB-Xa's flavour of VA's core: two oscillators, 12 / 24 dB, slop | `firmware/baseline/eng_obie.c` | Tristano Suriani |
-| SANDSTORM | engine | the late-90s trance lead: five saws, the pluck, the gate's repeat, the dive | `firmware/baseline/eng_sandstorm.c` | Tristano Suriani |
+| SANDSTORM | engine | the late-90s trance lead on VA's core: five saws, the pluck, the gate's repeat, the dive | `firmware/baseline/eng_sandstorm.c` | Tristano Suriani |
+| HOOVER | engine | the rave lead on VA's core: two PWM saws, the sub, the bend into the note | `firmware/baseline/eng_hoover.c` | Tristano Suriani |
 | SPEECH | engine | words, as the LPC speech chips spoke them: a lattice filter, no recordings | `firmware/baseline/eng_speech.c` | Tristano Suriani |
 | ONYX | engine | phrases spoken by Kokoro TTS's voices (Onyx, Heart, George, Nicole), kept as LPC frames: the vocabulary of electronic music, vowels to sing | `firmware/baseline/eng_onyx.c` | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0) |
 | VOCODER | engine | a vocoder: the voices' phrases and vowels (ONYX's LPC frames) shaping a saw, a square, a supersaw | `firmware/baseline/eng_vocoder.c` | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0) |
 | DUBSIREN | engine | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | `firmware/baseline/eng_dubsiren.c` | Tristano Suriani |
 | KIT | engine | a drum kit on one patch: 8 lanes on the General MIDI notes | `firmware/baseline/eng_kit.c`, `firmware/baseline/shared/drum_map.c`, `firmware/baseline/shared/fmp_dsp.c` | Tristano Suriani |
+| RHYTHM | engine | the 808 and the 909, synthesized as their circuits made their drums: no samples | `firmware/baseline/eng_rhythm.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | LINNKIT | engine | the 80s drum machine after the LinnDrum, synthesized: no samples | `firmware/baseline/eng_linnkit.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | WAR | engine | an industrial kit: FM drums through a folder into clipping | `firmware/baseline/eng_war.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | PLATE | fx | REVERB TYPE PLATE: Dattorro's plate, in float | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani |

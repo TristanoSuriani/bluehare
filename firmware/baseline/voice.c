@@ -615,6 +615,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (!v->active)
             continue;
         {
+            if (e->ownenv && e->oneshot && v->stage == 3u)   /* (RHYTHM: a hit plays to its end, a note-off or not) */
+                v->stage = 2;
             env = env_tick(t, v);
             if (e->ownenv && v->active) {               /* the engine's envelopes (FM6): they end the voice */
                 if (e->done(t, v)) {

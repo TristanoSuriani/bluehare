@@ -35,10 +35,9 @@ ARCHIVED(KARPLUS, 20)
 ARCHIVED(PARTICLE, 22)
 ARCHIVED(CHAOS, 23)
 ARCHIVED(RISERS, 30)
-/* (2026-10-23: the user's, after the FM-1 itself: MODAL sounds good on a laptop only; the loops, HOOVER, DUBCHORD,
- * DUBSIREN8 and WAVE out of the three tracks' lists) */
+/* (2026-10-23: the user's, after the FM-1 itself: MODAL sounds good on a laptop only; the loops, DUBCHORD,
+ * DUBSIREN8 and WAVE out of the three tracks' lists; HOOVER back the same day on VA's core) */
 ARCHIVED(WAVE, 14)
-ARCHIVED(HOOVER, 17)
 ARCHIVED(DUBCHORD, 32)
 ARCHIVED(DUBSIREN8, 31)
 ARCHIVED(MODAL, 34)

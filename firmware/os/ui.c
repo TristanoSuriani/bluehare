@@ -317,7 +317,7 @@ static uint32_t large_kind(void)
     if (ui.home)                                        /* (HOME > TRACKS: its rows need the panel, the cards as on */
         return home_tracks() ? LK_LABEL : LK_TALL;      /* a list page; the rows' names in M: draw_home_tracks) */
     g = cur_page()->graph;
-    return g == GR_BROWSE || g == GR_SLOTS || g == GR_USER || g == GR_TODO ? LK_LABEL : LK_TALL;
+    return g == GR_BROWSE || g == GR_SLOTS || g == GR_USER || g == GR_LOOP ? LK_LABEL : LK_TALL;
 }
 /* the geometry of the page shown: the cards' height, the panel's top and height */
 static uint32_t card_h(void) { return large_kind() == LK_TALL ? LG_CARD_H : CARD_H; }
@@ -912,7 +912,7 @@ static uint32_t trk_view(void) { return NTRK > VIEW_N ? song.sel / VIEW_N * VIEW
 /* Pages whose purpose is an action (SAVE > USER, PROJECT, TOOLS): the knobs pick,
  * OCT+ does it, OCT- cancels the picked action or goes HOME (ui_input.c). There OCT- / OCT+ do not
  * shift the octave */
-static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_INITSND; }
+static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_INITSND || id == G_CLRSEQ || id == G_GROOT; }
 
 static uint32_t act_cols(void)                   /* the columns that are actions, a bit each; 0 = not such a page */
 {
@@ -938,7 +938,7 @@ static const char *act_name(uint32_t c)          /* column c's action (the foote
     uint32_t id = cur_page()->id[c & 3u];
     if (cur_page()->graph == GR_USER)
         return UP_GO[(c + 2u) % 3u];
-    return id == G_INITSND ? "INIT" : id == G_LOAD ? "LOAD" : "SAVE";
+    return id == G_INITSND ? "INIT" : id == G_LOAD ? "LOAD" : id == G_CLRSEQ ? "CLEAR" : id == G_GROOT ? "CLR ALL" : "SAVE";
 }
 
 /* the picked action would do something now (OCT+ breathes): a used slot, stopped for a flash write */
@@ -954,5 +954,9 @@ static int act_ready(void)
         return project_used((uint32_t)song.g[G_SLOT] - 1u);
     if (id == G_SAVE)
         return !song.playing;
+    if (id == G_CLRSEQ)
+        return rec_loop_bars(song.sel) != 0u;
+    if (id == G_GROOT)
+        return rec_any();
     return 1;
 }

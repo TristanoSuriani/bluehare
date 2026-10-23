@@ -49,6 +49,8 @@ static const char *const N_DTYPE[] = {"CLEAN", "TAPE", "WORN", "PING", "DUAL",
 };   /* G_DTYPE: the delay bus's (fx.c
                                                                    * dly_tape; PING, DUAL: Blue Hare's, stereo) */
 static const char *const N_GO[] = {"--", "GO"};
+static const char *const N_RLEN[] = {"1", "2", "4", "8", "16"};   /* (2026-10-23) REC's loop, in bars (rec.c) */
+static const char *const N_RQNT[] = {"OFF", "1/16", "1/32"};
 /* (2026-10-23) the arpeggiator's modes (arp.c AM_*, append-only: a stored value keeps its meaning) and ORD */
 static const char *const N_AMODE[] = {"OFF", "UP", "DN", "UPDN", "RND", "ORD", "REPEAT", "DNUP", "UP+8", "CONV",
                                       "DIVG", "PINKY", "THUMB", "WALK", "CHORD"};
@@ -177,19 +179,20 @@ static const param_desc_t GP[G_COUNT] = {
     /* (Blue Hare, 2026-10) the GEN page's (gen.c): the preset, the scale, the root, MOTION; ids 12, 13, 15 and 26 were
      * the old SYSTEM page's MIDI, SYNC and CPU (on no page since 1.2) and the GM drum part's reverb send (inert since
      * 1.0). Their defaults: the first piece's (GARDEN: D dorian) and MOTION at its middle */
-    [G_GPRE] = PD("-", F_INT, 0, 0, 0),           /* (TECHNO's piece, scale and root until 2026-10-23: inert) */
-    [G_GSCL] = PD("-", F_INT, 0, 0, 0),
+    /* (2026-10-23) REC's loop (rec.c, the LOOP page): its length in bars, QNT; TECHNO's piece and scale until then */
+    [G_GPRE] = PE("BARS", N_RLEN, 2),
+    [G_GSCL] = PE("QNT", N_RQNT, 0),
     /* MIDI IN's routing, edited on MENU > MIDI > MIDI IN (1.2: menu_items.c MI_MIDIIN; up to 1.1.5 GLO > SYSTEM ROUT),
      * stored with the project as before. (was "--": stored 0 = CH1-4, as MIDI IN always was) */
     [G_ROUTE] = PE("ROUT", N_ROUTE, 0),
-    [G_GROOT] = PD("-", F_INT, 0, 0, 0),
+    [G_GROOT] = PE("ALL", N_GO, 0),               /* (2026-10-23) LOOP: clear every loop (TECHNO's root until then) */
     [G_SLOT] = PD("SLOT", F_INT, 1, 1, 1),   /* (1.5: one song; 1.4 had four projects) */
     [G_NAME] = PE("NAME", N_DASH, 0),
     [G_LOAD] = PE("LOAD", N_GO, 0),
     [G_SAVE] = PE("SAVE", N_GO, 0),
     [G_ENGSEL] = PE("ENG", N_ENGNAME, 0),
     [G_ENGGO] = PE("SET", N_GO, 0),
-    [G_CLRSEQ] = PE("CLRSQ", N_GO, 0),          /* (unused: the sequencer is a placeholder; the id stays, as G_ENGGO) */
+    [G_CLRSEQ] = PE("CLEAR", N_GO, 0),          /* (2026-10-23) LOOP: clear the selected track's loop (rec.c) */
     [G_INITSND] = PE("INIT", N_GO, 0),
     /* the reverb's model on the REVERB page: the id of the old GM drum channel (G_DRCH, inert since 1.0) */
     [G_RTYPE] = PE("TYPE", N_RTYPE, BLUEHARE_FX_PLATE ? 3 : 2),   /* (2026-10-18) PLATE (GATED without it) */
@@ -378,7 +381,7 @@ enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE,
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_TRK };   /* SC_TRK: the TRACKS page (ui_input.c tracks_edit) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_SCALE, GR_FX, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
        GR_MOD, GR_TOOLS, GR_CHORD,
-       GR_TODO,                    /* (GR_TODO: SEQ's placeholder, ui_draw.c draw_todo) */
+       GR_LOOP,                    /* (2026-10-23) SEQ's LOOP: REC's loops (ui_graph.c graph_loop; the placeholder's id) */
        GR_GEN };                   /* (Blue Hare, 2026-10) the GEN page: playing or not, the chord, the bar */
 
 #define PX_PLAIN 0xF0u           /* (a page's column: the engine's plain[] column k is PX_PLAIN + k) */
@@ -433,8 +436,8 @@ static const page_t PAGES[] = {
     /* (2026-10-23) GLO: the global settings (the tempo, the clock, the tuning) and the selected track's MIDI IN */
     {"GLOBAL", FAM_GLO, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_CLOCK, G_TUNE}},
     {"MIDI IN", FAM_GLO, SC_TRACK, GR_NONE, {P_MIN, P_MCH, 0xFF, 0xFF}},
-    /* (Blue Hare) the sequencer's placeholder: SEQ shows TODO */
-    {"SEQ", FAM_SEQ, SC_GLOBAL, GR_TODO, {0xFF, 0xFF, 0xFF, 0xFF}},
+    /* (2026-10-23) SEQ: REC's loops (rec.c): the take's bars, QNT, CLEAR the selected track's, ALL (OCT+ does it) */
+    {"LOOP", FAM_SEQ, SC_GLOBAL, GR_LOOP, {G_GPRE, G_GSCL, G_CLRSEQ, G_GROOT}},
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5
      * GLO > GLOBAL; its TUNE is MENU > AUDIO's now), again HOME (ui.c home_tap) */
     {"MIXER", FAM_TRK, SC_TRK, GR_TRK, {0, 1, 2, 3}},

@@ -285,6 +285,11 @@ static uint32_t graph_signature(void)
         for (i = 0; i < 8u; i++)
             h = (h ^ (uint8_t)a[i] ^ (uint32_t)(uint8_t)b[i] << 8) * 16777619u;
     }
+    if (pg->graph == GR_LOOP) {                      /* (2026-10-23) the loops: their bars, REC, the playhead */
+        h = (h ^ (rec_state() * 31u + rec_take_bar() * 977u + (uint32_t)song.playing * 7u)) * 16777619u;
+        for (i = 0; i < NPART; i++)
+            h = (h ^ (rec_loop_bars(i) * 131u + (rec_loop_pos(i) >> 3) * 7919u)) * 16777619u;
+    }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < 4u; i++)
             h ^= (uint32_t)graph_project_used(i) << (20u + i);
@@ -460,6 +465,38 @@ static void graph_user(void)
     }
 }
 /* project slots: the name (none: USED) / EMPTY, the selected one filled */
+/* (2026-10-23) SEQ > LOOP: a row a track, its loop's bars and its playhead; under them REC's state */
+static void graph_loop(void)
+{
+    static const char *const TAG[8] = {"T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"};
+    uint32_t k, st = rec_state(), k0 = song.sel < 3u ? 0u : song.sel - 2u;   /* (three rows: more tracks, the selected's) */
+    char a[16], b[8];
+    for (k = k0; k < NPART && k < k0 + 3u; k++) {
+        int32_t y = 4 + (int32_t)(k - k0) * 20, bars = (int32_t)rec_loop_bars(k);
+        int rec = st == RC_REC && ((rl.taken >> k) & 1u);
+        if (rec)
+            str_cpy(a, "REC", sizeof a);
+        else if (bars) {
+            fmt_int(a, bars);
+            str_cpy(a + str_len(a), bars == 1 ? " BAR" : " BARS", sizeof a - str_len(a));
+        } else
+            str_cpy(a, "--", sizeof a);
+        list_row(y, k == song.sel, TAG[k], T_MID, a, rec ? T_REC : bars ? T_TEXT : T_DIM, 150);
+        cv_rect(156, y + 6, 72, 4, T_RAISE);
+        if (bars && song.playing)
+            cv_rect(156, y + 6, (int32_t)(rec_loop_pos(k) * 72u / 256u) + 1, 4, rec ? T_REC : T_THEME);
+    }
+    if (st == RC_REC) {
+        str_cpy(a, "REC BAR ", sizeof a);
+        fmt_int(a + 8, (int32_t)rec_take_bar());
+        str_cpy(b, "/", sizeof b);
+        fmt_int(b + 1, (int32_t)rec_take_bars());
+        str_cpy(a + str_len(a), b, sizeof a - str_len(a));
+        note_line(72, a, T_REC);
+    } else
+        note_line(72, st == RC_ARMED ? (song.playing ? "ARMED: NEXT BAR" : "ARMED: ON PLAY") : "[REC] ARM A TAKE",
+                  st == RC_ARMED ? T_REC : T_MID);
+}
 static void graph_slots(void)                         /* SAVE > PROJECT: the song store (one song, project.c) */
 {
     uint32_t used = graph_project_used(0);
@@ -832,6 +869,10 @@ static void draw_graph(void)
         case GR_USER:
             cv_oy = 0;
             graph_user();
+            break;
+        case GR_LOOP:
+            cv_oy = 0;
+            graph_loop();
             break;
         case GR_TOOLS:
             cv_oy = 0;

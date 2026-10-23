@@ -168,7 +168,7 @@ STU_EXPORT int32_t stu_pg_item(uint32_t i, uint32_t k)
     const page_t *pg = &PAGES[i % NPAGES];
     uint32_t id = pg->id[k & 3u];
     if (id == 0xFFu || pg->scope == SC_TRK || pg->graph == GR_BROWSE || pg->graph == GR_USER || pg->graph == GR_SLOTS ||
-        pg->graph == GR_TOOLS || pg->graph == GR_TODO || (pg->graph == GR_MOD))
+        pg->graph == GR_TOOLS || pg->graph == GR_LOOP || (pg->graph == GR_MOD))
         return -1;
     if (pg->scope == SC_GLOBAL)
         return (int32_t)(1u << 8 | id);

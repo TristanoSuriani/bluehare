@@ -2,44 +2,22 @@
  * Copyright (C) 2026 Tristano Suriani (Blue Hare)
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* SANDSTORM (1.5, WAREHOUSE): the late-90s trance lead, named after Darude's track of 1999 (Blue Hare's own: no
- * samples, nothing of the record). Five band-limited saws, SPRD apart (0 .. 50 cents, the outer two the widest),
- * into two resonant low-passes in a row (24 dB, CUT and RES, the key half tracked) that every note opens by ENV and
- * lets close over DEC: the pluck. GATE (OFF, 1/8, 1/16, 1/32 at the song's tempo) plucks it again on every step
- * while the key is held, its level chopped short each step: the riff's machine-gun repeat. DIVE: let go, the pitch
- * falls, up to two octaves over ~400 ms (the drop at a phrase's end: a long release lets it be heard). DRIVE at the
- * end. The ADSR shapes the level.
- * Voice state: the track's block (engines.c eng_slab: the saws' phases, the filters'); s[0] the pluck (Q15), s[1]
- * samples into the gate's step, s[2] the dive (1/16 semitone, Q8), s[3] the step's chop (Q15). */
-#define SS_POLY 8
-typedef struct {
-    uint32_t ph[5];
-    int32_t f[4];                /* the two filters' integrators */
-} ss_voice_t;
+ * samples, nothing of the record). Since 2026-10-23 a flavour of VA's core (eng_va.c): six voices, UNISON of six,
+ * the voice at twice the rate. Five band-limited saws, SPRD apart (0 .. 50 cents, the outer two the widest), into
+ * the core's four-pole ladder (CUT, RES, the key half tracked) that every note opens by ENV and lets close over DEC:
+ * the pluck. GATE (OFF, 1/8, 1/16, 1/32 at the song's tempo) plucks it again on every step while the key is held, its
+ * level chopped short each step: the riff's machine-gun repeat. DIVE: let go, the pitch falls, up to two octaves over
+ * ~400 ms (the drop at a phrase's end: a long release lets it be heard). DRIVE at the end. The ADSR shapes the level.
+ * Voice state: VA's core's (va_v: the saws, the filter); s[0] the pluck (Q15), s[1] samples into the gate's step,
+ * s[2] the dive (1/16 semitone, Q8), s[3] the step's chop (Q15). */
 static uint32_t beat_samples(void);                   /* (fx.c) */
 static const char *const N_SS_GATE[] = {"OFF", "1/8", "1/16", "1/32", 0};
 static const int8_t SS_DET[5] = {-64, -26, 0, 26, 64};   /* the saws' place in the spread (64: all of SPRD) */
 
-static ss_voice_t *ss_voice(track_t *t, voice_t *v)
-{
-    ss_voice_t *a = eng_slab(t, SLAB_SANDSTORM, sizeof(ss_voice_t) * SS_POLY);
-    uint32_t i = (uint32_t)(v - t->v);
-    return a && i < SS_POLY ? &a[i] : 0;
-}
-
 static void sandstorm_note_on(track_t *t, voice_t *v)
 {
-    ss_voice_t *s = ss_voice(t, v);
-    uint32_t k, r = 0x9E3779B9u ^ (v->age * 2654435761u);
-    if (s) {
-        for (k = 0; k < 5u; k++) {                    /* (each saw somewhere in its cycle: no flam, no phasing start) */
-            r ^= r << 13;
-            r ^= r >> 17;
-            r ^= r << 5;
-            s->ph[k] = r;
-        }
-        memset(s->f, 0, sizeof s->f);
-    }
-    v->s[0] = 32767;
+    va_start(t, v);
+    v->s[0] = 32767;                                  /* the pluck: open */
     v->s[1] = 0;
     v->s[2] = 0;
     v->s[3] = 32767;
@@ -47,13 +25,13 @@ static void sandstorm_note_on(track_t *t, voice_t *v)
 
 static void sandstorm_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
-    os2_t *os = os2_of(t, v);                         /* (Blue Hare 2026-10: the shaper's 2x, dsp.c) */
     const int16_t *p = t->p;
-    ss_voice_t *s = ss_voice(t, v);
-    int32_t pluck = v->s[0], into = v->s[1], dive = v->s[2], chop = v->s[3], k, cut, drive = p[P_E7];
-    uint32_t inc[5], i, step = 0;
-    tsvf_t flt;
-    if (!s)
+    va_voice_t *s = va_of(t, v);
+    int32_t pluck = v->s[0], into = v->s[1], dive = v->s[2], chop = v->s[3], k, drive = p[P_E7];
+    uint32_t i, step = 0;
+    va_cfg_t c;
+    float y[CTL];
+    if (!s || n > CTL)
         return;
     if (p[P_E5]) {                                    /* GATE: a step of 1/8, 1/16, 1/32 */
         static const uint8_t DEN[4] = {1, 2, 4, 8};
@@ -63,15 +41,27 @@ static void sandstorm_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, c
     if (!v->gate && p[P_E6])                          /* DIVE: let go, the pitch falls (~400 ms to its depth) */
         dive += (p[P_E6] * 24 * 16 * 256 / 127) * (int32_t)n / 17640;
     dive = dive > 24 * 16 * 256 ? 24 * 16 * 256 : dive;
-    for (k = 0; k < 5; k++)
-        inc[k] = cents_inc(m->pitch16 - (dive >> 8), SS_DET[k] * p[P_E0] * 50 / (64 * 127), m->fine);
+    c.nosc = 5;
+    c.sync = 0;
+    for (k = 0; k < 5; k++) {
+        c.inc[k] = cents_inc(m->pitch16 - (dive >> 8), SS_DET[k] * p[P_E0] * 50 / (64 * 127), m->fine);
+        c.w[k] = VA_SAW;
+        c.g[k] = 0.2f;                                /* (a fifth each) */
+    }
+    c.incs = 0;
+    c.ws = VA_SAW;
+    c.gs = 0.0f;
+    c.pw = 0.5f;
     /* the pluck: ENV of the cutoff, closing over DEC (~15 ms .. ~2 s) */
-    cut = (p[P_E1] << 8) + m->cutoff + (v->pitch16 - 60 * 16) * 4 + ((pluck >> 7) * p[P_E3] >> 1);
-    tsvf_coef(&flt, cut, p[P_E2]);
+    c.cut = (float)((p[P_E1] << 8) + m->cutoff + (v->pitch16 - 60 * 16) * 4 + ((pluck >> 7) * p[P_E3] >> 1)) *
+            (1.0f / 256.0f);
+    c.res = (float)p[P_E2] * (0.85f / 127.0f);
+    c.ladder = 1;
+    c.drive = 1.0f;
     pluck -= pluck * (int32_t)n / (64 + p[P_E4] * p[P_E4] * 6);   /* (32767 x 32: no 64 bits) */
+    va_run(s, y, n, &c);
     for (i = 0; i < n; i++) {
-        int32_t x = 0, y;
-        if (step && ++into >= (int32_t)step) {        /* a step of the gate: plucked again, opened again */
+        if (step && ++into >= (int32_t)step) {        /* a step of the gate: plucked again (the next block), opened */
             into = 0;
             pluck = 32767;
             chop = 0;
@@ -79,32 +69,18 @@ static void sandstorm_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, c
         if (step) {                                   /* the chop: open for the step's first half, closing after */
             int32_t tg = into < (int32_t)step / 2 ? 32767 : 2000;
             chop += (tg - chop) >> 6;
+            y[i] *= (float)chop * (1.0f / 32768.0f);
         }
-        for (k = 0; k < 5; k++) {
-            x += osc_saw(s->ph[k], inc[k]);
-            s->ph[k] += inc[k];
-        }
-        x = (x * 6554) >> 15;                         /* (a fifth each) */
-        y = tsvf_lp(&flt, x >> 1, &s->f[0], &s->f[1]);
-        y = tsvf_lp(&flt, y, &s->f[2], &s->f[3]);
-        if (drive && os2_off)
-            y = softclip(y * (64 + drive) >> 6);
-        else if (drive) {                             /* (Blue Hare 2026-10: the drive at twice the rate, dsp.c os2) */
-            int32_t ya, yb;
-            os2_up(os, y, &ya, &yb);
-            y = os2_down(os, softclip(ya * (64 + drive) >> 6), softclip(yb * (64 + drive) >> 6));
-        }
-        else
-            y = soft_knee(y, 16000);
-        if (step)
-            y = (y * chop) >> 15;
-        out[i] += voice_amp(clamp(y << 1, -32767, 32767), m, i) << 1;
+        if (drive)                                    /* DRIVE: into the core's saturation, at the end */
+            y[i] = po_sat(y[i] * (1.0f + (float)drive * (1.0f / 64.0f)));
     }
+    va_out(out, n, m, y);
     v->s[0] = pluck;
     v->s[1] = into;
     v->s[2] = dive;
     v->s[3] = chop;
 }
+static uint32_t sandstorm_unison(const track_t *t) { (void)t; return 6u; }
 
 /* {SPRD, CUT, RES, ENV, DEC, GATE, DIVE, DRIVE} */
 static const preset_t SANDSTORM_PRESETS[] = {
@@ -141,8 +117,9 @@ static const engine_t ENG_SANDSTORM = {
     },
     .presets = SANDSTORM_PRESETS,
     .npresets = NELEM(SANDSTORM_PRESETS),
-    .poly = SS_POLY,
+    .poly = VA_POLY,
     .note_on = sandstorm_note_on,
     .render = sandstorm_render,
+    .unison = sandstorm_unison,
     .knob = {P_E1, P_E3, P_E5, P_E6},
 };

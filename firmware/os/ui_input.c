@@ -253,6 +253,10 @@ static void ui_leds(void)
         led_put(nb, panel.btn[B_ARP], 1);
     if (ui.layer)                                       /* the layer's button breathes while its map is up */
         led_put(nb, panel.btn[layer_btn()], 1);
+    if (rec_state() == RC_REC)                          /* (2026-10-23) REC: lit in the take, breathing armed */
+        led_put(nl, panel.btn[B_REC], 1);
+    else if (rec_state() == RC_ARMED)
+        led_put(nb, panel.btn[B_REC], 1);
     k = oct_leds();
     led_put(nl, panel.btn[B_OCTDN], (int)(k & 1u));
     led_put(nl, panel.btn[B_OCTUP], (int)((k >> 1) & 1u));
@@ -449,6 +453,14 @@ static void act_do(void)
             confirm_open(CF_OVR_PROJ, k);
         else
             name_open(NK_PROJ_SAVE, k);
+        break;
+    case G_CLRSEQ:                                        /* (2026-10-23) LOOP: the selected track's loop, */
+        rc_req = 2;
+        ui_message("LOOP CLEARED");
+        break;
+    case G_GROOT:                                         /* every loop */
+        rc_req = 3;
+        ui_message("LOOPS CLEARED");
         break;
     default:                                              /* G_INITSND (TOOLS): the dialog first */
         confirm_open(CF_INIT_SOUND, song.sel);
@@ -740,7 +752,10 @@ static void ui_input(void)
                 break;
             transport_req = song.playing ? 2u : 1u;
             break;
-        case B_REC:                                     /* (nothing: there is no recording yet) */
+        case B_REC:                                     /* (2026-10-23) REC: arm the take, or end it (rec.c) */
+            rc_req = 1;
+            ui_message(rec_state() == RC_IDLE ? "REC ARMED" : rec_state() == RC_ARMED ? "REC OFF" : "REC END");
+            break;
         case B_SAVE:
         case B_FX:                                      /* the layers' buttons: ui_layer.c */
         case B_GLO:

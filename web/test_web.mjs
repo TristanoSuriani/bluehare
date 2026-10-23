@@ -50,9 +50,9 @@ async function editorMock() {
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   {   /* the primary distribution's engines by id (HARE FM1), "-" for the rest: retired (0 .. 13, 27), archived, left out */
-    const HARE = { 65: "VA", 60: "SANDSTRM", 24: "SID", 62: "OBIE", 28: "KIT", 54: "LINNKIT", 44: "WAR",
+    const HARE = { 65: "VA", 60: "SANDSTRM", 17: "HOOVER", 24: "SID", 62: "OBIE", 28: "KIT", 66: "RHYTHM", 54: "LINNKIT", 44: "WAR",
                    18: "SPEECH", 63: "ONYX", 64: "VOCODER", 21: "VOSIM", 25: "DUBSIREN" };   /* (2026-10-23: three tracks) */
-    ok(info.nengines === 66 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
+    ok(info.nengines === 67 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
   let descs = 0;
@@ -142,8 +142,8 @@ async function editorMock() {
   {   /* the lists in the device's order (engines.c ENGINE_ORDER: the three tracks' engines in turn): VA first, DUBSIREN
        * last, "-" never; the ids stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]), o = E.engineOrder(info.engines);
-    ok(shown.join() === "VA,SANDSTRM,SID,OBIE,KIT,LINNKIT,WAR,SPEECH,ONYX,VOCODER,VOSIM,DUBSIREN" &&
-       o.join() === "65,60,24,62,28,54,44,18,63,64,21,25",
+    ok(shown.join() === "VA,SANDSTRM,HOOVER,SID,OBIE,KIT,RHYTHM,LINNKIT,WAR,SPEECH,ONYX,VOCODER,VOSIM,DUBSIREN" &&
+       o.join() === "65,60,17,24,62,28,66,54,44,18,63,64,21,25",
        "editor: engines listed VA first, DUBSIREN last (ids kept)");
     ok(E.engineOrder(["SID", "X", "-", "KIT", "VA"]).join() === "4,0,3,1", "editor: an unknown engine follows the known ones");
     m.state.favorites[28][0] = m.state.favorites[24][0] = true;
@@ -501,7 +501,7 @@ async function editorLibrarian() {
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
   ok(file.format === "bluehare-library" && file.version === 1 && file.pCount === 104 && file.paramLabels.length === 104 && file.paramLabels[81] === "CHRD" && file.paramLabels[82] === "VOIC" &&
     file.paramLabels[83] === "MODE" && file.paramLabels[90] === "ORD" && file.paramLabels[17] === "TIME" && file.paramLabels[18] === "FEED" && file.paramLabels.slice(91, 96).join() === "SYNC,TRIG,POL,QNTZ,SPRD" &&
-    file.engines.length === 66,
+    file.engines.length === 67,
     "library file: versioned, with P_COUNT, labels and engines");
   const back = E.readLibraryFile(file, ctx);
   ok(back.patches.length === 2 && !back.skipped && eq(back.patches[0].p, cap.p) && eq(back.patches[1].p, bass.p)

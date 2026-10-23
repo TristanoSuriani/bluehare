@@ -179,7 +179,9 @@ const ENGINE_WORDS = {
   SPEECH: "Words, as the speech chips spoke them",
   ONYX: "Phrases in four Kokoro voices, as LPC",
   VOCODER: "The voices' words and vowels shaping a synth",
-  SANDSTRM: "The trance lead: five saws, the gate",
+  SANDSTRM: "The trance lead on VA's core: five saws, the gate",
+  HOOVER: "The rave lead on VA's core: PWM saws, the bend",
+  RHYTHM: "The 808 and the 909, synthesized",
 };
 
 // ------------------------------------------------------------------ history (every change can be taken back)

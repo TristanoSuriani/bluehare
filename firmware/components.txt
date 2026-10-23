@@ -13,12 +13,14 @@ ENGINE  SID      baseline  eng_sid.c                          24  OBIE    | a C6
 ENGINE  VOSIM    baseline  eng_vosim.c                        21  SPEECH    | two formants of pulse trains: voices, reeds, brass            | Tristano Suriani
 ENGINE  VA       baseline  eng_va.c                           65  OBIE    | the virtual analogue: two oscillators and a sub, a ladder, oversampled; six voices, UNISON 3 or 6 | Tristano Suriani
 ENGINE  OBIE     baseline  eng_obie.c                         62  SID     | the OB-Xa's flavour of VA's core: two oscillators, 12 / 24 dB, slop | Tristano Suriani
-ENGINE  SANDSTORM baseline eng_sandstorm.c                    60  OBIE    | the late-90s trance lead: five saws, the pluck, the gate's repeat, the dive | Tristano Suriani
+ENGINE  SANDSTORM baseline eng_sandstorm.c                    60  OBIE    | the late-90s trance lead on VA's core: five saws, the pluck, the gate's repeat, the dive | Tristano Suriani
+ENGINE  HOOVER   baseline  eng_hoover.c                       17  OBIE    | the rave lead on VA's core: two PWM saws, the sub, the bend into the note | Tristano Suriani
 ENGINE  SPEECH   baseline  eng_speech.c                       18  VOSIM   | words, as the LPC speech chips spoke them: a lattice filter, no recordings | Tristano Suriani
 ENGINE  ONYX     baseline  eng_onyx.c                         63  SPEECH  | phrases spoken by Kokoro TTS's voices (Onyx, Heart, George, Nicole), kept as LPC frames: the vocabulary of electronic music, vowels to sing | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0)
 ENGINE  VOCODER  baseline  eng_vocoder.c                      64  ONYX    | a vocoder: the voices' phrases and vowels (ONYX's LPC frames) shaping a saw, a square, a supersaw | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0)
 ENGINE  DUBSIREN baseline  eng_dubsiren.c                     25  VOSIM     | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | Tristano Suriani
 ENGINE  KIT      baseline  eng_kit.c,shared/drum_map.c,shared/fmp_dsp.c 28  LINNKIT | a drum kit on one patch: 8 lanes on the General MIDI notes | Tristano Suriani
+ENGINE  RHYTHM   baseline  eng_rhythm.c,shared/drum_map.c     66  KIT     | the 808 and the 909, synthesized as their circuits made their drums: no samples | Tristano Suriani
 ENGINE  LINNKIT  baseline  eng_linnkit.c,shared/drum_map.c    54  KIT     | the 80s drum machine after the LinnDrum, synthesized: no samples | Tristano Suriani
 ENGINE  WAR      baseline  eng_war.c,shared/drum_map.c        44  KIT     | an industrial kit: FM drums through a folder into clipping | Tristano Suriani
 FX      PLATE    baseline  fx_amb.c,fastmath.h                -   -       | REVERB TYPE PLATE: Dattorro's plate, in float                 | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani

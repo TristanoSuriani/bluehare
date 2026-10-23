@@ -17,6 +17,8 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_sid.c"            /* SID: a voice of the C64's sound chip, in its manner (1.5) */
 #include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
 #include "eng_dubsiren.c"       /* DUBSIREN: the dub siren (back 2026-10-18) */
+#include "eng_va.c"             /* VA: the virtual analogue, and the core OBIE, SANDSTORM, HOOVER are flavours of (2026-10-23) */
+#include "eng_hoover.c"         /* HOOVER: the rave lead (back on VA's core 2026-10-23) */
 #include "eng_sandstorm.c"      /* SANDSTORM: the late-90s trance lead (back 2026-10-18) */
 #include "eng_speech.c"         /* SPEECH: LPC words (back 2026-10-18; tools/gen_speech.py) */
 #include "eng_onyx.c"           /* ONYX: Kokoro's voices as LPC frames (2026-10-19; tools/gen_onyx_*.py) */
@@ -24,14 +26,14 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_war.c"            /* WAR: an industrial kit (back 2026-10-18) */
 #include "eng_linnkit.c"        /* LINNKIT: the 80s drum machine (back 2026-10-18) */
 #include "eng_kit.c"            /* KIT: a drum kit (back 2026-10-18) */
-#include "eng_va.c"             /* VA: the virtual analogue, and the core OBIE is a flavour of (2026-10-23) */
+#include "eng_rhythm.c"         /* RHYTHM: the 808 and the 909 (2026-10-23) */
 #include "eng_obie.c"           /* OBIE: an analog polysynth after the OB-Xa (2026-10-17) */
 
 /* the block's size: the largest this build's engines ask for (core.h BLUEHARE_ENG_*) */
 #define SLAB_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define SLAB_IF(on, sz) ((on) ? (uint32_t)(sz) : 0u)
 #define ENG_SLAB_BYTES                                                                                                  \
-    SLAB_MAX(SLAB_IF(BLUEHARE_ENG_SANDSTORM, sizeof(ss_voice_t) * SS_POLY), 4u)   /* (MODAL, DUBSIREN8 archived 2026-10-23) */
+    4u                          /* (MODAL, DUBSIREN8 archived; SANDSTORM on VA's core: 2026-10-23) */
 #define ENG_SLAB_WORDS ((ENG_SLAB_BYTES + 3u) / 4u + 1u)
 static uint32_t eng_slab_mem[NPART][ENG_SLAB_WORDS] __attribute__((section(".pool")));
 static uint8_t eng_slab_key[NPART];

@@ -20,10 +20,11 @@
 #define VA_OS 2u                                /* (the native image too: it plays as the device, the renders shared) */
 #define VA_POLY 6
 enum { VA_SAW, VA_PULSE, VA_SINE, VA_TRI, VA_WHITE, VA_PINK, VA_BROWN,   /* (the noises: the user's, 2026-10-23) */
-       VA_SAWP, VA_SYNC };      /* (OBIE's: SAWP saw + 0.7 pulse; SYNC, osc 2 only, a saw synced to osc 1) */
+       VA_SAWP, VA_PWSAW };     /* (OBIE's SAWP: saw + 0.7 pulse; HOOVER's PWSAW: a saw and the same saw PW on) */
 static const char *const N_VA_WAVE[] = {"SAW", "PULSE", "SINE", "TRI", "WHITE", "PINK", "BROWN", 0};
 static const char *const N_VA_UNI[] = {"3", "6", 0};
 
+#define VA_NOSC 5u                              /* (the oscillators a voice: SANDSTORM's five saws the most) */
 typedef struct {
     float f[4];                  /* the filter (ladder: four stages; SVF: two) */
     float d[4];                  /* the decimator's two biquads */
@@ -32,6 +33,7 @@ typedef struct {
     int8_t o1, o2, of;           /* its offsets: osc 1, osc 2, the filter (-127 .. 127) */
     uint32_t nr;                 /* the noises: white's generator, */
     float pk[3], br;             /* pink's three poles (Paul Kellet's economy filter), brown's integrator */
+    uint32_t ph[VA_NOSC + 1u];   /* the oscillators' phases, then the sub's */
 } va_voice_t;
 static va_voice_t va_v[NPART][NVOICE];
 static va_voice_t *va_of(track_t *t, voice_t *v)
@@ -76,6 +78,11 @@ static inline float va_osc(uint32_t w, float t, float dt, float pw)
         return po_pulse(t, dt, pw);
     case VA_SAWP:
         return po_saw(t, dt) + 0.7f * po_pulse(t, dt, pw);
+    case VA_PWSAW: {                                  /* (PW 0: a saw; towards half a cycle its odd harmonics thin) */
+        float t2 = t + pw;
+        t2 -= t2 >= 1.0f ? 1.0f : 0.0f;
+        return 0.5f * (po_saw(t, dt) + po_saw(t2, dt));
+    }
     case VA_SINE:
         return fm_sin_turns(t);
     case VA_TRI:
@@ -111,11 +118,13 @@ static inline float va_wave(va_voice_t *s, uint32_t w, float t, float dt, float 
 
 /* what a flavour asks of the core for one block of one voice */
 typedef struct {
-    uint32_t inc1, inc2, incs;   /* the oscillators' steps at the sample rate (cents_inc) */
-    uint8_t w1, w2, ws;          /* their waves (VA_*) */
+    uint32_t inc[VA_NOSC], incs; /* the oscillators' and the sub's steps at the sample rate (cents_inc) */
+    uint8_t w[VA_NOSC], ws;      /* their waves (VA_*) */
+    uint8_t nosc;                /* the oscillators sounding (1 .. VA_NOSC) */
+    uint8_t sync;                /* 1: osc 2 a saw hard-synced to osc 1 (OBIE's SYNC) */
     uint8_t ladder;              /* 1 the 24 dB ladder, 0 the 12 dB state-variable filter */
-    float g1, g2, gs;            /* their levels */
-    float pw;                    /* PULSE's width: 0.5 square .. ~0.05 */
+    float g[VA_NOSC], gs;        /* their levels */
+    float pw;                    /* PULSE's width (0.5 square .. ~0.05), PWSAW's offset (0 .. 0.5) */
     float cut;                   /* the cutoff, 0 .. 127 (20 Hz .. ~18 kHz) */
     float res;                   /* 0 .. 1 */
     float drive;                 /* into the saturation */
@@ -145,25 +154,37 @@ static inline float va_bq(const float *c, float *z, float x)   /* transposed dir
     return y;
 }
 
-/* the voice's note-on (VA's and OBIE's): the phases, the filter and decimator cleared, its offsets */
+/* the voice's note-on (every flavour's): the phases (osc 2 a quarter cycle on: no flam; the rest of a stack
+ * anywhere in their cycles: no click of five at once), the filter and decimator cleared, its offsets; a voice
+ * still sounding keeps them all */
 static void va_start(track_t *t, voice_t *v)
 {
     va_voice_t *s = va_of(t, v);
     int32_t nz;
-    uint32_t r;
-    v->ph[0] = 0;
-    v->ph[1] = 0x40000000u;                    /* (a quarter cycle apart: no flam at the start) */
-    v->ph[2] = 0;
+    uint32_t r, k;
     if (!s)
         return;
+    if (v->env) {                                     /* a retrigger, a steal: still sounding (voice.c keeps its level):
+                                                       * the phases and the filter go on (resetting them clicks) */
+        if (va_dq[0][0] == 0.0f)
+            va_dq_init();
+        return;
+    }
     nz = (int32_t)(0x6C8E9CF5u ^ (v->age * 2654435761u) ^ (uint32_t)(v - t->v) * 40503u);   /* (the voice's own, each note:
                                                       * a render repeats) */
-    memset(s, 0, sizeof *s);
+    memset(s, 0, sizeof s->f + sizeof s->d + sizeof s->prev);
+    s->drift = 0;
     r = noise32(&nz);
     s->o1 = (int8_t)(r & 255u);
     s->o2 = (int8_t)((r >> 8) & 255u);
     s->of = (int8_t)((r >> 16) & 255u);
     s->nr = noise32(&nz) | 1u;
+    s->pk[0] = s->pk[1] = s->pk[2] = s->br = 0.0f;
+    s->ph[0] = 0;
+    s->ph[1] = 0x40000000u;
+    for (k = 2; k < VA_NOSC; k++)
+        s->ph[k] = (uint32_t)noise32(&nz);
+    s->ph[VA_NOSC] = 0;
     s->nz = nz;
     if (va_dq[0][0] == 0.0f)
         va_dq_init();
@@ -177,13 +198,123 @@ static int32_t va_drift(va_voice_t *s, int32_t slop)
     return (s->drift >> 9) * slop / 127;
 }
 
-/* one block of one voice: the oscillators at VA_OS times the rate, the filter, down to the rate */
-static void va_run(voice_t *v, va_voice_t *s, int32_t *out, uint32_t n, const vmod_t *m, const va_cfg_t *c)
+/* the oscillators' sample at the voice's rate (OBIE's SYNC: osc 2 restarted with osc 1, band-limited between
+ * samples), then the sub */
+static inline __attribute__((always_inline)) float va_osc_sum(va_voice_t *restrict s, uint32_t *restrict ph, const va_cfg_t *restrict c,
+                                                              const uint32_t *ii, const float *dt, uint32_t is, float dts,
+                                                              const uint32_t nosc, const int sync)
+{
+    const float Q32 = 1.0f / 4294967296.0f;
+    float x;
+    uint32_t k, o0 = ph[0];
+    ph[0] += ii[0];
+    x = c->g[0] * va_wave(s, c->w[0], (float)ph[0] * Q32, dt[0], c->pw);
+    for (k = 1; k < nosc; k++) {
+        if (k == 1u && sync) {
+            float y = s->prev;
+            if (ph[0] < o0) {                        /* the master's restart: the slave's too */
+                float d = (float)ph[0] * Q32 / dt[0], hgt = 2.0f * ((float)ph[1] * Q32 + (1.0f - d) * dt[1]), t2;
+                hgt -= hgt >= 2.0f ? 2.0f : 0.0f;
+                y -= 0.5f * hgt * d * d;                /* (the sample before: lowered by h/2 d^2) */
+                ph[1] = (uint32_t)(d * dt[1] * 4294967296.0f);
+                t2 = (float)ph[1] * Q32;
+                s->prev = 2.0f * t2 - 1.0f + 0.5f * hgt * (1.0f - d) * (1.0f - d);
+            } else {
+                ph[1] += ii[1];
+                s->prev = po_saw((float)ph[1] * Q32, dt[1]);
+            }
+            x += 0.9f * c->g[1] * y;
+            continue;
+        }
+        ph[k] += ii[k];
+        x += c->g[k] * va_wave(s, c->w[k], (float)ph[k] * Q32, dt[k], c->pw);
+    }
+    if (c->gs > 0.0f) {
+        ph[VA_NOSC] += is;
+        x += c->gs * va_wave(s, c->ws, (float)ph[VA_NOSC] * Q32, dts, 0.5f);
+    }
+    return x;
+}
+
+/* one block of one voice: the oscillators at VA_OS times the rate, the saturation, the filter, down to the rate:
+ * into y (about -1 .. 1), for the flavour to finish (va_out) */
+static inline __attribute__((always_inline)) void va_run_k(va_voice_t *restrict s, float *restrict y, uint32_t n, const va_cfg_t *restrict c,
+                                                           const uint32_t nosc, const int sync)
 {
     const float Q32 = 1.0f / 4294967296.0f, ros = 1.0f / (float)VA_OS;
-    uint32_t i, k, ph1 = v->ph[0], ph2 = v->ph[1], phs = v->ph[2];
-    uint32_t i1 = c->inc1 / VA_OS, i2 = c->inc2 / VA_OS, is = c->incs / VA_OS;
-    float dt1 = (float)c->inc1 * Q32 * ros, dt2 = (float)c->inc2 * Q32 * ros, dts = (float)c->incs * Q32 * ros;
+    uint32_t i, k, ii[VA_NOSC], is = c->incs / VA_OS;
+    float dt[VA_NOSC], dts = (float)c->incs * Q32 * ros;
+    float s1 = s->f[0], s2 = s->f[1], s3 = s->f[2], s4 = s->f[3], fc, g, o = 0.0f;
+    float z0[2] = {s->d[0], s->d[1]}, z1[2] = {s->d[2], s->d[3]};
+    uint32_t ph[VA_NOSC + 1u];                        /* (the phases in locals: registers, not the voice's memory) */
+    memcpy(ph, s->ph, sizeof ph);
+    for (k = 0; k < nosc; k++) {
+        ii[k] = c->inc[k] / VA_OS;
+        dt[k] = (float)c->inc[k] * Q32 * ros;
+    }
+    fc = 20.0f * fm_exp2f(fm_clampf(c->cut, 0.0f, 127.0f) * (9.8f / 127.0f));
+    fc = fm_minf(fc, 18000.0f);
+    g = fm_tanf(3.14159265f * fc / ((float)FS * (float)VA_OS));
+    if (c->ladder) {
+        float G = g / (1.0f + g), G2 = G * G, kk = 4.2f * c->res, inv = 1.0f / (1.0f + kk * G2 * G2), a = 1.0f - G;
+        float c1 = G2 * G * a, c2 = G2 * a, c3 = G * a, boost = 1.0f + 0.5f * kk;
+        for (i = 0; i < n; i++) {
+            for (k = 0; k < VA_OS; k++) {
+                float x = va_osc_sum(s, ph, c, ii, dt, is, dts, nosc, sync) * c->drive, sum, u, vv, yy;
+                sum = c1 * s1 + c2 * s2 + c3 * s3 + a * s4;
+                u = po_sat((x * boost - kk * sum) * inv);
+                vv = (u - s1) * G; yy = vv + s1; s1 = yy + vv;
+                vv = (yy - s2) * G; yy = vv + s2; s2 = yy + vv;
+                vv = (yy - s3) * G; yy = vv + s3; s3 = yy + vv;
+                vv = (yy - s4) * G; yy = vv + s4; s4 = yy + vv;
+                o = va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, yy));
+            }
+            y[i] = o;
+        }
+    } else {
+        float kk = 2.0f - 1.95f * c->res, a1 = 1.0f / (1.0f + g * (g + kk)), a2 = g * a1, a3 = g * a2;
+        for (i = 0; i < n; i++) {
+            for (k = 0; k < VA_OS; k++) {
+                float x = po_sat(va_osc_sum(s, ph, c, ii, dt, is, dts, nosc, sync) * c->drive), v1, v2, v3;
+                v3 = x - s2;
+                v1 = a1 * s1 + a2 * v3;
+                v2 = s2 + a2 * s1 + a3 * v3;
+                s1 = 2.0f * v1 - s1;
+                s2 = 2.0f * v2 - s2;
+                o = va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, v2));
+            }
+            y[i] = o;
+        }
+    }
+    memcpy(s->ph, ph, sizeof ph);
+    s->f[0] = fm_flush(s1);
+    s->f[1] = fm_flush(s2);
+    s->f[2] = fm_flush(s3);
+    s->f[3] = fm_flush(s4);
+    s->d[0] = fm_flush(z0[0]);
+    s->d[1] = fm_flush(z0[1]);
+    s->d[2] = fm_flush(z1[0]);
+    s->d[3] = fm_flush(z1[1]);
+}
+/* the core into y, for a flavour that finishes the sound itself (SANDSTORM: its gate's chop, its drive): the
+ * oscillators' count known in each loop (unrolled); the two oscillators' flavours use va_run_out below */
+static void va_run(va_voice_t *s, float *y, uint32_t n, const va_cfg_t *c)
+{
+    if (c->sync)
+        va_run_k(s, y, n, c, 2u, 1);
+    else if (c->nosc == 5u)
+        va_run_k(s, y, n, c, 5u, 0);
+    else
+        va_run_k(s, y, n, c, 2u, 0);
+}
+/* VA's, OBIE's and HOOVER's two oscillators: the voice's output at once (the committed core's loop, its phases in
+ * locals: ~10 % fewer instructions than va_run_k's general one, measured 2026-10-23) */
+static void va_run_out(va_voice_t *s, int32_t *out, uint32_t n, const vmod_t *m, const va_cfg_t *c)
+{
+    const float Q32 = 1.0f / 4294967296.0f, ros = 1.0f / (float)VA_OS;
+    uint32_t i, k, ph1 = s->ph[0], ph2 = s->ph[1], phs = s->ph[VA_NOSC];
+    uint32_t i1 = c->inc[0] / VA_OS, i2 = c->inc[1] / VA_OS, is = c->incs / VA_OS;
+    float dt1 = (float)c->inc[0] * Q32 * ros, dt2 = (float)c->inc[1] * Q32 * ros, dts = (float)c->incs * Q32 * ros;
     float s1 = s->f[0], s2 = s->f[1], s3 = s->f[2], s4 = s->f[3], prev = s->prev, fc, g, y = 0.0f;
     float z0[2] = {s->d[0], s->d[1]}, z1[2] = {s->d[2], s->d[3]};
     const float outg = 36000.0f;
@@ -199,7 +330,7 @@ static void va_run(voice_t *v, va_voice_t *s, int32_t *out, uint32_t n, const vm
                 uint32_t o = ph1;
                 ph1 += i1;
                 phs += is;
-                if (c->w2 == VA_SYNC) {                 /* the master's restart: the slave's, between samples */
+                if (c->sync) {                 /* the master's restart: the slave's, between samples */
                     x = prev;
                     if (ph1 < o) {
                         float d = (float)ph1 * Q32 / dt1, hgt = 2.0f * ((float)ph2 * Q32 + (1.0f - d) * dt2), t2;
@@ -212,11 +343,11 @@ static void va_run(voice_t *v, va_voice_t *s, int32_t *out, uint32_t n, const vm
                         ph2 += i2;
                         prev = po_saw((float)ph2 * Q32, dt2);
                     }
-                    x *= 0.9f * c->g2;
-                    x += c->g1 * va_wave(s, c->w1, (float)ph1 * Q32, dt1, c->pw);
+                    x *= 0.9f * c->g[1];
+                    x += c->g[0] * va_wave(s, c->w[0], (float)ph1 * Q32, dt1, c->pw);
                 } else {
                     ph2 += i2;
-                    x = c->g1 * va_wave(s, c->w1, (float)ph1 * Q32, dt1, c->pw) + c->g2 * va_wave(s, c->w2, (float)ph2 * Q32, dt2, c->pw);
+                    x = c->g[0] * va_wave(s, c->w[0], (float)ph1 * Q32, dt1, c->pw) + c->g[1] * va_wave(s, c->w[1], (float)ph2 * Q32, dt2, c->pw);
                 }
                 if (c->gs > 0.0f)
                     x += c->gs * va_wave(s, c->ws, (float)phs * Q32, dts, 0.5f);
@@ -239,7 +370,7 @@ static void va_run(voice_t *v, va_voice_t *s, int32_t *out, uint32_t n, const vm
                 uint32_t o = ph1;
                 ph1 += i1;
                 phs += is;
-                if (c->w2 == VA_SYNC) {
+                if (c->sync) {
                     x = prev;
                     if (ph1 < o) {
                         float d = (float)ph1 * Q32 / dt1, hgt = 2.0f * ((float)ph2 * Q32 + (1.0f - d) * dt2), t2;
@@ -252,11 +383,11 @@ static void va_run(voice_t *v, va_voice_t *s, int32_t *out, uint32_t n, const vm
                         ph2 += i2;
                         prev = po_saw((float)ph2 * Q32, dt2);
                     }
-                    x *= 0.9f * c->g2;
-                    x += c->g1 * va_wave(s, c->w1, (float)ph1 * Q32, dt1, c->pw);
+                    x *= 0.9f * c->g[1];
+                    x += c->g[0] * va_wave(s, c->w[0], (float)ph1 * Q32, dt1, c->pw);
                 } else {
                     ph2 += i2;
-                    x = c->g1 * va_wave(s, c->w1, (float)ph1 * Q32, dt1, c->pw) + c->g2 * va_wave(s, c->w2, (float)ph2 * Q32, dt2, c->pw);
+                    x = c->g[0] * va_wave(s, c->w[0], (float)ph1 * Q32, dt1, c->pw) + c->g[1] * va_wave(s, c->w[1], (float)ph2 * Q32, dt2, c->pw);
                 }
                 if (c->gs > 0.0f)
                     x += c->gs * va_wave(s, c->ws, (float)phs * Q32, dts, 0.5f);
@@ -271,9 +402,9 @@ static void va_run(voice_t *v, va_voice_t *s, int32_t *out, uint32_t n, const vm
             out[i] += voice_amp((int32_t)fm_clampf(y * outg, -32767.0f, 32767.0f), m, i) << 1;
         }
     }
-    v->ph[0] = ph1;
-    v->ph[1] = ph2;
-    v->ph[2] = phs;
+    s->ph[0] = ph1;
+    s->ph[1] = ph2;
+    s->ph[VA_NOSC] = phs;
     s->f[0] = fm_flush(s1);
     s->f[1] = fm_flush(s2);
     s->f[2] = fm_flush(s3);
@@ -283,6 +414,13 @@ static void va_run(voice_t *v, va_voice_t *s, int32_t *out, uint32_t n, const vm
     s->d[2] = fm_flush(z1[0]);
     s->d[3] = fm_flush(z1[1]);
     s->prev = prev;
+}
+/* y into the voice's output (its envelope, its level) */
+static void va_out(int32_t *out, uint32_t n, const vmod_t *m, const float *y)
+{
+    uint32_t i;
+    for (i = 0; i < n; i++)
+        out[i] += voice_amp((int32_t)fm_clampf(y[i] * 36000.0f, -32767.0f, 32767.0f), m, i) << 1;
 }
 
 /* the cutoff a flavour asks for: CUT, the routings, half the keyboard, the velocity, the voice's offset */
@@ -304,21 +442,23 @@ static void vae_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const v
     if (!s)
         return;
     ct = va_drift(s, VA_SLOP);
-    c.w1 = (uint8_t)clamp(p[P_E0], 0, VA_BROWN);
-    c.w2 = (uint8_t)clamp(p[P_E1], 0, VA_BROWN);
+    c.nosc = 2;
+    c.sync = 0;
+    c.w[0] = (uint8_t)clamp(p[P_E0], 0, VA_BROWN);
+    c.w[1] = (uint8_t)clamp(p[P_E1], 0, VA_BROWN);
     c.ws = (uint8_t)clamp(p[P_E4], 0, VA_BROWN);
-    c.inc1 = cents_inc(m->pitch16, ct + s->o1 * VA_SLOP / 2600 - dtn, m->fine);
-    c.inc2 = cents_inc(m->pitch16, ct + s->o2 * VA_SLOP / 2600 + dtn, m->fine);
+    c.inc[0] = cents_inc(m->pitch16, ct + s->o1 * VA_SLOP / 2600 - dtn, m->fine);
+    c.inc[1] = cents_inc(m->pitch16, ct + s->o2 * VA_SLOP / 2600 + dtn, m->fine);
     c.incs = cents_inc(m->pitch16 - 12 * 16, ct + s->o1 * VA_SLOP / 2600, m->fine);
-    c.g1 = 0.5f;
-    c.g2 = 0.5f;
+    c.g[0] = 0.5f;
+    c.g[1] = 0.5f;
     c.gs = (float)p[P_E3] * (0.5f / 127.0f);
     c.pw = 0.5f - 0.45f / (127.0f * 256.0f) * (float)clamp(sh, 0, 127 << 8);
     c.cut = va_cut(v, m, p[P_E5], s->of, VA_SLOP);
     c.res = (float)p[P_E6] * (1.0f / 127.0f);
     c.ladder = 1;
     c.drive = 1.0f + c.gs;                             /* (the sub pushes the ladder a little: the warmth) */
-    va_run(v, s, out, n, m, &c);
+    va_run_out(s, out, n, m, &c);
 }
 static uint32_t vae_unison(const track_t *t) { return t->p[P_E7] ? 6u : 3u; }
 

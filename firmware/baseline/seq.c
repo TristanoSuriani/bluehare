@@ -9,7 +9,8 @@
  * CH1-4 (0) channels 1..4 play parts 1..4, channels 5..16 are ignored (midi_control.c midi_event); SEL (1)
  * every channel the selected track; 1.2: CH5-8, CH9-12, CH13-16 as CH1-4 on those four channels (midi_base). Their CC1 (mod wheel), CC11 (expression) and channel aftertouch go to
  * the same track's modulation matrix (mod.c; the selected track: the one selected then).
- * The sequencer is a placeholder (SEQ shows TODO): PLAY runs the transport alone (the click, the synced LFOs). A key or MIDI note plays a
+ * No sequencer of its own (it is sequenced from outside): PLAY runs the transport (the click, the synced LFOs, REC's
+ * loops: rec.c, on the SEQ button's LOOP page). A key or MIDI note plays a
  * chord when the track's CHRD is on (chord.c): its notes go through the same input as so many keys. */
 static const uint16_t SCALE_MASK[] = {
     0xFFF,                                   /* CHR */
@@ -110,9 +111,11 @@ static int player_key_off(track_t *t, uint32_t note);
 static void os_keys_block(void);
 static int os_keys_hold_track(uint32_t track);
 static int os_keys_hold_note(uint32_t track, uint32_t note);   /* (a key held on track sounds note) */
+#include "rec.c"                   /* (2026-10-23) REC: the loops */
 static void input_on(track_t *t, uint32_t note, uint32_t vel)   /* (2026-10-18: the patch played; no layers) */
 {
     last_note = (uint8_t)note;
+    rec_input(t, note, vel);                       /* (REC: into the take) */
     if (player_key_on(t, note, vel))               /* (2026-10-17) a player playing (the ARP): the key its way */
         return;
     trk_note_on(t, note, vel);
@@ -124,6 +127,7 @@ static void input_off(track_t *t, uint32_t note)
 {
     if (midi_note_held(t, note))
         return;
+    rec_input(t, note, 0);
     if (player_key_off(t, note))
         return;
     trk_note_off(t, note);
@@ -295,6 +299,7 @@ static void events_block(uint32_t n)
     }
     if (player())
         player()->block(clock_mode ? seq_n : n, n);   /* (the player, the ARP: the clock's samples, and time's) */
+    rec_block(song.playing ? seq_n : 0u);            /* (REC: the take, the loops) */
     if (seq_hook)
         seq_hook(song.playing ? seq_n : 0u);
     if (song.playing)

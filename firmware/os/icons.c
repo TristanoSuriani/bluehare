@@ -240,7 +240,7 @@ static uint32_t page_icon(const page_t *pg)
 {
     switch (pg->graph) {
     case GR_TRK: return ICON_X_MIXER;         /* MIXER (HOME): vertical faders */
-    case GR_TODO: return ICON_X_PATTERN;      /* SEQ: the sequencer's placeholder */
+    case GR_LOOP: return ICON_X_PATTERN;      /* SEQ: REC's loops */
     case GR_GEN: return ICON_X_PATTERN;       /* (Blue Hare) GEN: notes of its own */
     default: return ICON_NONE;
     }

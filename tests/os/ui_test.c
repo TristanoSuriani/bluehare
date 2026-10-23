@@ -169,6 +169,8 @@ static void ui_power_on(void)
     trk_mix_defaults();                           /* (nothing playing) */
     seq_hook = 0;                                 /* (the sequencer: a placeholder; no test song) */
     memset(&ar, 0, sizeof ar);                    /* (the ARP stopped, as at power-on: a test before started it) */
+    memset(&rl, 0, sizeof rl);                    /* (no loops, REC idle: as at power-on) */
+    rc_req = 0;
     memset(&ui, 0, sizeof ui);
     page_over = 0;                                /* (no layer's knobs; roll_settle's test page gone) */
     memset(&nm, 0, sizeof nm);                    /* NAME closed, no project name */
@@ -687,7 +689,7 @@ static int test_actions(void)
     press(B_OCTDN);
     bad += check("OCT- with nothing picked: HOME", ui.home);
     /* the dialogs and the menu */
-    open_family(FAM_SEQ);
+    open_family(FAM_LFO);                               /* (a page of values: SEQ's LOOP has actions since 2026-10-23) */
     t->p[P_E0] = (int16_t)(t->p[P_E0] + 1);
     ui.msg_t = 0;                                       /* (the INIT above said SOUND INIT) */
     confirm_open(CF_INIT_SOUND, 0);
@@ -701,7 +703,7 @@ static int test_actions(void)
     fm1_in.buttons &= ~(1u << panel.btn[B_OCTUP]);
     frame();
     bad += check("..OCT+ let go: done", ui.confirm == CF_NONE && msg_is("SOUND INIT"));
-    bad += check("back on SEQ: the octave LEDs again", oct_leds() == 2u);
+    bad += check("back on LFO: the octave LEDs again", oct_leds() == 2u);
     return bad;
 }
 
@@ -1784,7 +1786,7 @@ static int test_page_cycles(void)
     ok = 1;
     for (i = 0; i < NPAGES; i++) {                       /* every page in a family its button reaches, and its LED */
         uint32_t f = PAGES[i].fam;
-        ok &= f != FAM_SEQ || PAGES[i].graph == GR_TODO;   /* (the sequencer's placeholder) */
+        ok &= f != FAM_SEQ || str_eq(PAGES[i].title, "LOOP");   /* (2026-10-23: REC's loops) */
         ok &= f != FAM_GLO || str_eq(PAGES[i].title, "GLOBAL") || str_eq(PAGES[i].title, "MIDI IN");   /* (2026-10-23) */
         ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || str_eq(PAGES[i].title, "CLOCK");   /* HOME's: MIXER CLOCK */
         ok &= PAGES[i].graph != GR_TRK || f == FAM_TRK;
@@ -1794,7 +1796,7 @@ static int test_page_cycles(void)
     }
     for (i = 0; i < NPAGES; i++)
         ok &= !str_eq(PAGES[i].title, "STEP") && !str_eq(PAGES[i].title, "AUTOMATION") && !str_eq(PAGES[i].title, "PHRASES");
-    bad += check("SEQ has its placeholder alone (TODO); GLO GLOBAL and MIDI IN; no STEP, AUTOMATION, PHRASES; MIXER and "
+    bad += check("SEQ has LOOP alone (REC's loops); GLO GLOBAL and MIDI IN; no STEP, AUTOMATION, PHRASES; MIXER and "
                  "CLOCK HOME's (their LED HOME)", ok);
     {   /* (2026-10-23) GLO > GLOBAL: BPM SWG CLK TUNE (1.2's GLOBAL gone, back on GLO); no SYSTEM; ROUT on no page;
          * HOME > CLOCK still BPM SWG CLK */
@@ -1803,8 +1805,9 @@ static int test_page_cycles(void)
         for (i = 0; i < NPAGES; i++) {
             ok &= !str_eq(PAGES[i].title, "SYSTEM");
             for (k = 0; k < 4u && PAGES[i].scope == SC_GLOBAL; k++)
-                ok &= PAGES[i].id[k] != G_ROUTE && PAGES[i].id[k] != G_GPRE && PAGES[i].id[k] != G_GSCL &&
-                      PAGES[i].id[k] != G_GROOT;       /* (inert ids) */
+                ok &= PAGES[i].id[k] != G_ROUTE &&     /* (inert; G_GPRE G_GSCL G_GROOT LOOP's since 2026-10-23) */
+                      (PAGES[i].fam == FAM_SEQ || (PAGES[i].id[k] != G_GPRE && PAGES[i].id[k] != G_GSCL &&
+                                                   PAGES[i].id[k] != G_GROOT));
             if (str_eq(PAGES[i].title, "CLOCK"))
                 clock = i + 1u;
             if (str_eq(PAGES[i].title, "GLOBAL"))
@@ -1824,9 +1827,9 @@ static int test_page_cycles(void)
     ui.fam_last[FAM_SAVE] = 200u;
     ui.fam_last[FAM_ENV] = 250u;
     open_family(FAM_GLO); ok = cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "GLOBAL");
-    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TODO;   /* (its only page) */
+    open_family(FAM_SEQ); ok &= str_eq(cur_page()->title, "LOOP");   /* (its only page) */
     go_home();
-    open_family(FAM_SEQ); ok &= cur_page()->graph == GR_TODO;
+    open_family(FAM_SEQ); ok &= str_eq(cur_page()->title, "LOOP");
     open_family(FAM_ENV); ok &= str_eq(cur_page()->title, "ENV");
     open_family(FAM_SAVE); ok &= str_eq(cur_page()->title, "USER");
     open_family(FAM_GLO); open_family(FAM_GLO);          /* GLOBAL, MIDI IN, GLOBAL again */
@@ -1855,9 +1858,10 @@ static int test_product_ux(void)
         if (!page_visible(i))
             continue;
         press(B_REC);
-        ok &= !transport_req && ui.page == i && !ui.home;
+        ok &= !transport_req && ui.page == i && !ui.home && rc_req == 1u;
+        rc_req = 0;
     }
-    bad += check("REC does nothing on every page (no recording yet; PLAY does not start)", ok);
+    bad += check("REC on every page asks for a take (rec.c), the page stays; PLAY does not start", ok);
     ui_power_on(); hold(B_HOME); press(B_REC);
     bad += check("REC in the MENU does nothing (the menu stays, no transport start)", ui.menu == 1 && !transport_req);
     ui.menu_sel = MI_ABOUT; press(B_OCTUP); press(B_REC);
@@ -1907,11 +1911,11 @@ static int test_product_ux(void)
     go_title("CLOCK"); press(B_GLO); frames(320); ok &= cur_page()->fam == FAM_GLO;
     bad += check("GLO opens GLOBAL, again MIDI IN, round (2026-10-23: the global settings; no SYSTEM, no MIXER)", ok);
     go_home(); press(B_SEQ); frames(320);
-    ok = cur_page()->graph == GR_TODO && !ui.home && !ui.layer;
+    ok = str_eq(cur_page()->title, "LOOP") && !ui.home && !ui.layer;
     go_home(); btn_down(B_SEQ); frames(500);
     ok &= !ui.layer;
     btn_up(B_SEQ); frame();
-    bad += check("SEQ opens its placeholder (TODO); held: no layer, its page on release", ok && cur_page()->graph == GR_TODO);
+    bad += check("SEQ opens LOOP (REC's loops); held: no layer, its page on release", ok && str_eq(cur_page()->title, "LOOP"));
     ui_power_on(); open_family(FAM_EDIT);
     ok = 1;
     for (i = 0; i < 8u; i++) { open_family(FAM_EDIT); ok &= page_visible(ui.page); }
@@ -2107,7 +2111,7 @@ static int test_layer(void)
     /* combo: a key with FX: at once, silent, no MIDI */
     ui_power_on();
     usb.config = 1; mo = mo_w;
-    go_page(GR_TODO); song.playing = 1;
+    go_page(GR_LOOP); song.playing = 1;
     {
         btn_down(B_FX); key_down(white(2)); frame();
         ok = ui.layer == LAYER_FX && !gates() && mo_w == mo && (kb_layer >> white(2)) & 1u &&
@@ -2117,7 +2121,7 @@ static int test_layer(void)
         key_up(white(2)); frame();
         bad += check("  the key let go: its effect off, no note-off sent", !perf_held && !kb_layer && mo_w == mo);
         btn_up(B_FX); frame();
-        bad += check("  FX let go after a combo: no tap, the map gone", !ui.layer && cur_page()->graph == GR_TODO);
+        bad += check("  FX let go after a combo: no tap, the map gone", !ui.layer && cur_page()->graph == GR_LOOP);
     }
     song.playing = 0;
     /* FX let go first: the effect stays with its key, the map too; a key pressed now is a note */
@@ -2249,7 +2253,7 @@ static int test_layer(void)
     }
     ui_power_on(); hold(B_HOME);
     ok = ui.menu == 1; hold(B_HOME); ok &= !ui.menu;
-    go_home(); hold(B_SEQ); ok &= !ui.home && !ui.layer && cur_page()->graph == GR_TODO;
+    go_home(); hold(B_SEQ); ok &= !ui.home && !ui.layer && cur_page()->graph == GR_LOOP;
     bad += check("HOME (menu) hold of 0.7 s unchanged; SEQ held: no layer, its page (a long press a tap)", ok);
     /* no layer in the menu or a dialog: FX + a key is a note */
     ui_power_on(); hold(B_HOME);
@@ -3232,16 +3236,18 @@ static int test_retired_engines(void)
 {
     static const uint8_t GONE[4] = {1, 4, 8, 13};
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
-        {ENGI_VA, EID_VA, "VA"}, {ENGI_SANDSTORM, EID_SANDSTORM, "SANDSTRM"}, {ENGI_SID, EID_SID, "SID"},
-        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_KIT, EID_KIT, "KIT"}, {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"},
+        {ENGI_VA, EID_VA, "VA"}, {ENGI_SANDSTORM, EID_SANDSTORM, "SANDSTRM"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"},
+        {ENGI_SID, EID_SID, "SID"},
+        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_KIT, EID_KIT, "KIT"}, {ENGI_RHYTHM, EID_RHYTHM, "RHYTHM"},
+        {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"},
         {ENGI_WAR, EID_WAR, "WAR"}, {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_ONYX, EID_ONYX, "ONYX"},
         {ENGI_VOCODER, EID_VOCODER, "VOCODER"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"}};
-    static const uint8_t ARCH[17] = {EID_KARPLUS, EID_FMPERC, EID_WASP, EID_RISERS, EID_ECHOES, EID_CANYON, EID_WEST,
+    static const uint8_t ARCH[16] = {EID_KARPLUS, EID_FMPERC, EID_WASP, EID_RISERS, EID_ECHOES, EID_CANYON, EID_WEST,
                                      EID_SH101, EID_BLISS, EID_STRINGS,   /* (archived, 2026-10-16 .. 17) */
-                                     EID_MODAL, EID_WAVE, EID_HOOVER, EID_DUBCHORD, EID_DUBSIREN8, EID_BREAKS,
+                                     EID_MODAL, EID_WAVE, EID_DUBCHORD, EID_DUBSIREN8, EID_BREAKS,
                                      EID_CHIPKIT};                        /* (2026-10-19 .. 23) */
     /* (2026-10-23) each track its own: 1 the synths, 2 the kits, 3 the voices */
-    static const char *const ORDER[3][6] = {{"VA", "SANDSTRM", "SID", "OBIE", 0}, {"KIT", "LINNKIT", "WAR", 0},
+    static const char *const ORDER[3][6] = {{"VA", "SANDSTRM", "HOOVER", "SID", "OBIE", 0}, {"KIT", "RHYTHM", "LINNKIT", "WAR", 0},
                                             {"SPEECH", "ONYX", "VOCODER", "VOSIM", "DUBSIREN", 0}};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
@@ -3261,7 +3267,7 @@ static int test_retired_engines(void)
         ok &= EID_RETIRED(ARCH[i]) && eng_of_id(ARCH[i]) == ENG_NO && eng_load_id(ARCH[i], &sub) == ENG_NO &&
               eng_by_id(ARCH[i]) == &ENG_NONE && str_eq(N_ENGNAME[ARCH[i]], "-");
     ok &= !EID_RETIRED(EID_SID) && !EID_RETIRED(EID_VA) && !EID_RETIRED(EID_VOSIM);
-    bad += check("archived engines (KARPLUS .. STRINGS, MODAL WAVE HOOVER DUBCHORD DUBSIREN8 BREAKS CHIPKIT): retired as those, their ids kept; the kept ones not", ok);
+    bad += check("archived engines (KARPLUS .. STRINGS, MODAL WAVE DUBCHORD DUBSIREN8 BREAKS CHIPKIT): retired as those, their ids kept; the kept ones not", ok);
     for (i = 0; i < NENGINES; i++)
         all |= (uint32_t)eng_sel_ok(i) << i;           /* (the selected track's, track 1's: the list's) */
     /* (a project naming one is refused: tests/os/robust_test.c, which crafts the stored stream) */
@@ -3319,7 +3325,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown, a track's own: 1 VA SANDSTRM SID OBIE, 2 KIT LINNKIT WAR, 3 SPEECH ONYX VOCODER VOSIM "
+    bad += check("engines shown, a track's own: 1 VA SANDSTRM HOOVER SID OBIE, 2 KIT RHYTHM LINNKIT WAR, 3 SPEECH ONYX VOCODER VOSIM "
                  "DUBSIREN (ENGINES[]); PRESETS lists track 1's so", ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;
@@ -4500,9 +4506,9 @@ static int test_layer_lock(void)
     ui_power_on();
     go_page(GR_TRK); frame();
     press(B_SEQ); frames(400);                          /* (SEQ: its placeholder, no layer) */
-    ok = cur_page()->graph == GR_TODO && !ui.lock;
+    ok = cur_page()->graph == GR_LOOP && !ui.lock;
     press(B_SEQ); frames(16); press(B_SEQ); frames(400);  /* (a double tap: no layer to lock) */
-    ok &= cur_page()->graph == GR_TODO && !ui.lock && !ui.layer;
+    ok &= cur_page()->graph == GR_LOOP && !ui.lock && !ui.layer;
     press(B_GLO); frames(400);
     ok &= cur_page()->fam == FAM_GLO && !ui.lock;
     press(B_GLO);
@@ -5064,7 +5070,7 @@ static int test_click_menu(void)
     ok = transport_req == 1u;
     events_block(CTL);
     frame();
-    ok &= song.playing && cur_page()->graph == GR_TODO;
+    ok &= song.playing && cur_page()->graph == GR_LOOP;
     bad += check("no count-in: PLAY plays at once, the page stays", ok);
     press(B_PLAY);
     events_block(CTL);
@@ -5334,7 +5340,7 @@ static int test_large(void)
     page_over = 0;                                      /* (the ENV stand-in above gone: the real pages) */
     go_page(GR_BROWSE); frame();
     ok = large_kind() == LK_LABEL && card_h() == CARD_H && graph_y() == Y_GRAPH && graph_h() == H_GRAPH;
-    go_page(GR_TODO); frame();
+    go_page(GR_LOOP); frame();
     ok &= large_kind() == LK_LABEL;
     go_page(GR_TRK); frame();
     ok &= play_view() == (NTRK <= 4u ? PV_MIX : PV_NONE);   /* (2026-10-18: MIXER a play view, LARGE or not; 8 tracks:
