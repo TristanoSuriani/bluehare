@@ -36,8 +36,9 @@ LOADER_MARK = b"BLUEHARE-LOADER1"
 # the unmodified official FM-1 V15 (FM-1.fwsc from M-VAVE): returning to it is allowed without --force,
 # as the web installer's "Return to official V15" (web/fm1pkg.js validateStockPackage)
 STOCK_V15_SHA256 = "db1642b2b6fa5c2cccb11ffd13878068bb28601678d3644049f99dc40e7edb8a"
-PORT_RE = re.compile(r"fm-1|blue ?hare|felucca|update|ota|composite|sinco|usb-midi", re.I)   # never probe other gear
+PORT_RE = re.compile(r"fm-?1|blue ?hare|felucca|update|ota|composite|sinco|usb-midi", re.I)   # never probe other gear
 # (2026-10-23: felucca, update: the loader's port as a host may still name it, "Felucca Update" / "Blue Hare Update")
+# (fm-?1: FM-1 Open, the official firmware since 2026-10, names its port "FM1 Community")
 
 # seconds; the tests shorten them
 DELAY = {"open": 0.3, "start": 2.0, "reply": 0.01, "loader": 3.0, "reboot": 3.0, "retry": 1.0,
