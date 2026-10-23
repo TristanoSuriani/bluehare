@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<!-- Author: Tristano Suriani
+
+    Claude: any useful ideas we can put in this project?
+    Is it feasible to port the visuals on the fm-1 screen (adapted) during ambient mode?
+-->
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generative Ambient Synthesizer & Ocean Sanctuary</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyanGlow: '#00f2fe',
+                        violetGlow: '#4facfe',
+                        goldGlow: '#ffd700',
+                        deepOcean: '#030b1e',
+                        panelBg: 'rgba(11, 19, 43, 0.85)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #030b1e;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            user-select: none;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(3, 11, 30, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f2fe;
+        }
+        .glow-box {
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.15), inset 0 0 15px rgba(0, 242, 254, 0.05);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+        }
+        .glow-text {
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
+        }
+        /* Custom range sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: #1e293b;
+            border-radius: 9999px;
+            height: 6px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #00f2fe;
+            cursor: pointer;
+            box-shadow: 0 0 8px #00f2fe;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-deepOcean text-slate-200 antialiased selection:bg-cyan-500 selection:text-black">
+
+<!-- START ENGINE OVERLAY BANNER -->
+<div id="startBanner" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md cursor-pointer transition-opacity duration-500 p-6 text-center">
+    <div class="max-w-md p-8 rounded-3xl glow-box bg-slate-900/90 border border-cyan-500/30 flex flex-col items-center space-y-6">
+        <div class="relative flex items-center justify-center w-20 h-20 rounded-full bg-cyan-500/10 border border-cyan-400/40 animate-pulse">
+            <svg class="w-10 h-10 text-cyan-400 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <div>
+            <h1 class="text-3xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 glow-text">AURA SYNTH</h1>
+            <p class="text-sm text-slate-400 mt-2">Generative Ambient Soundscape & Ocean Sanctuary</p>
+        </div>
+        <p class="text-xs text-cyan-300/80 bg-cyan-950/50 px-4 py-2 rounded-full border border-cyan-800/40">
+            Tap anywhere to start audio engine & visuals
+        </p>
+    </div>
+</div>
+
+<!-- HEADER / NAVIGATION -->
+<header class="w-full border-b border-cyan-900/40 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30 px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center space-x-3">
+        <div class="w-3 h-3 rounded-full bg-cyan-400 animate-ping"></div>
+        <span class="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-blue-500">AURA</span>
+        <span class="text-xs uppercase tracking-widest text-slate-500 font-semibold hidden sm:inline">Generative Synthesizer</span>
+    </div>
+
+    <!-- Global Transport & Controls -->
+    <div class="flex items-center space-x-3">
+        <button id="btnPlayPause" class="px-4 py-1.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-300 font-medium text-xs tracking-wider transition-all flex items-center space-x-2">
+            <span id="playIcon">⏸ PAUSE</span>
+        </button>
+
+        <button id="btnPerformanceMode" class="px-4 py-1.5 rounded-full bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-slate-950 font-bold text-xs tracking-wider transition-all shadow-lg shadow-teal-500/20 flex items-center space-x-2">
+            <span>🌊 OCEAN PERFORMANCE</span>
+        </button>
+    </div>
+</header>
+
+<!-- MAIN APP CONTAINER -->
+<main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: CONTROLS & RACKS (lg:col-span-8) -->
+    <div class="lg:col-span-8 space-y-6">
+
+        <!-- PRESETS & SCALE SELECTION -->
+        <div class="p-5 rounded-2xl bg-panelBg glow-box space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <h2 class="text-sm font-bold tracking-wider text-cyan-400 uppercase flex items-center space-x-2">
+                    <span>✨ Presets & Tonality</span>
+                </h2>
+                <div class="flex items-center space-x-2">
+                    <label class="text-xs text-slate-400">Scale:</label>
+                    <select id="scaleSelect" class="bg-slate-900 border border-cyan-900/60 text-cyan-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-400">
+                        <option value="Lydian">Lydian (Bright & Floating)</option>
+                        <option value="Major">Major (Peaceful & Warm)</option>
+                        <option value="MajorPentatonic" selected>Major Pentatonic (Soothing)</option>
+                        <option value="SoftDorian">Soft Dorian (Melancholic Peace)</option>
+                        <option value="Mixolydian">Mixolydian (Upbeat Ambient)</option>
+                        <option value="LydianChromatic">Lydian Chromatic (Ethereal)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 16 Presets Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="presetGrid">
+                <!-- Javascript populates 16 presets here -->
+            </div>
+        </div>
+
+        <!-- 4 SYNTH TRACKS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="tracksContainer">
+
+            <!-- TRACK 1: MODAL PADS -->
+            <div class="p-4 rounded-2xl bg-panelBg border border-cyan-500/20 flex flex-col justify-between space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-cyan-300 tracking-wider">T1: MODAL PADS</span>
+                    <div class="flex items-center space-x-2">
+                        <button class="track-mute-btn text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400" data-track="0">MUTE</button>
+                        <div class="w-2 h-2 rounded-full bg-cyan-400" id="tr-led-0"></div>
+                    </div>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between text-slate-400"><span>Volume</span><span id="t0-vol-val">0.7</span></div>
+                    <input type="range" min="0" max="1" step="0.01" value="0.7" class="w-full t-vol" data-track="0">
+
+                    <div class="flex justify-between text-slate-400"><span>Inharmonicity</span><span id="t0-inh-val">0.2</span></div>
+                    <input type="range" min="0" max="1" step="0.01" value="0.2" class="w-full t-param" data-track="0" data-param="inharmonicity">
+
+                    <div class="flex justify-between text-slate-400"><span>Density / Rate</span><span id="t0-prob-val">0.4</span></div>
+                    <input type="range" min="0.05" max="1" step="0.05" value="0.4" class="w-full t-param" data-track="0" data-param="density">
+                </div>
+            </div>
+
+            <!-- TRACK 2: SPECTRAL SHIMMER -->
+            <div class="p-4 rounded-2xl bg-panelBg border border-teal-500/20 flex flex-col justify-between space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-teal-300 tracking-wider">T2: SHIMMER BELLS</span>
+                    <div class="flex items-center space-x-2">
+                        <button class="track-mute-btn text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400" data-track="1">MUTE</button>
+                        <div class="w-2 h-2 rounded-full bg-teal-400" id="tr-led-1"></div>
+                    </div>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between text-slate-400"><span>Volume</span><span id="t1-vol-val">0.6</span></div>
+                    <input type="range" min="0" max="1" step="0.01" value="0.6" class="w-full t-vol" data-track="1">
+
+                    <div class="flex justify-between text-slate-400"><span>FM Decay</span><span id="t1-dec-val">3.5s</span></div>
+                    <input type="range" min="0.5" max="8" step="0.1" value="3.5" class="w-full t-param" data-track="1" data-param="decay">
+
+                    <div class="flex justify-between text-slate-400"><span>Density / Rate</span><span id="t1-prob-val">0.3</span></div>
+                    <input type="range" min="0.05" max="1" step="0.05" value="0.3" class="w-full t-param" data-track="1" data-param="density">
+                </div>
+            </div>
+
+            <!-- TRACK 3: SUB BASS -->
+            <div class="p-4 rounded-2xl bg-panelBg border border-blue-500/20 flex flex-col justify-between space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-blue-300 tracking-wider">T3: WARM SUB BASS</span>
+                    <div class="flex items-center space-x-2">
+                        <button class="track-mute-btn text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400" data-track="2">MUTE</button>
+                        <div class="w-2 h-2 rounded-full bg-blue-400" id="tr-led-2"></div>
+                    </div>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between text-slate-400"><span>Volume</span><span id="t2-vol-val">0.8</span></div>
+                    <input type="range" min="0" max="1" step="0.01" value="0.8" class="w-full t-vol" data-track="2">
+
+                    <div class="flex justify-between text-slate-400"><span>Filter Cutoff</span><span id="t2-cut-val">180Hz</span></div>
+                    <input type="range" min="60" max="600" step="10" value="180" class="w-full t-param" data-track="2" data-param="cutoff">
+
+                    <div class="flex justify-between text-slate-400"><span>Density / Rate</span><span id="t2-prob-val">0.2</span></div>
+                    <input type="range" min="0.05" max="1" step="0.05" value="0.2" class="w-full t-param" data-track="2" data-param="density">
+                </div>
+            </div>
+
+            <!-- TRACK 4: OCEAN WAVES & TEXTURE -->
+            <div class="p-4 rounded-2xl bg-panelBg border border-indigo-500/20 flex flex-col justify-between space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-indigo-300 tracking-wider">T4: OCEAN NOISE & PULSE</span>
+                    <div class="flex items-center space-x-2">
+                        <button class="track-mute-btn text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400" data-track="3">MUTE</button>
+                        <div class="w-2 h-2 rounded-full bg-indigo-400" id="tr-led-3"></div>
+                    </div>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between text-slate-400"><span>Volume</span><span id="t3-vol-val">0.5</span></div>
+                    <input type="range" min="0" max="1" step="0.01" value="0.5" class="w-full t-vol" data-track="3">
+
+                    <div class="flex justify-between text-slate-400"><span>Filter Reso</span><span id="t3-res-val">4.0</span></div>
+                    <input type="range" min="0.5" max="15" step="0.5" value="4.0" class="w-full t-param" data-track="3" data-param="resonance">
+
+                    <div class="flex justify-between text-slate-400"><span>Density / Rate</span><span id="t3-prob-val">0.35</span></div>
+                    <input type="range" min="0.05" max="1" step="0.05" value="0.35" class="w-full t-param" data-track="3" data-param="density">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- MASTER FX RACK -->
+        <div class="p-5 rounded-2xl bg-panelBg glow-box space-y-4">
+            <h2 class="text-sm font-bold tracking-wider text-cyan-400 uppercase border-b border-slate-800 pb-2">
+                🎛️ Master FX Rack
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400"><span>Master Vol</span><span id="fx-master-val">0.30</span></div>
+                    <input type="range" id="fxMasterGain" min="0" max="0.8" step="0.01" value="0.30" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400"><span>Delay Feed</span><span id="fx-delay-val">0.45</span></div>
+                    <input type="range" id="fxDelayFeedback" min="0" max="0.85" step="0.01" value="0.45" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400"><span>Reverb Mix</span><span id="fx-verb-val">0.50</span></div>
+                    <input type="range" id="fxReverbMix" min="0" max="0.9" step="0.01" value="0.50" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400"><span>Master Cutoff</span><span id="fx-cut-val">3500Hz</span></div>
+                    <input type="range" id="fxMasterCutoff" min="400" max="12000" step="100" value="3500" class="w-full">
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: VISUALIZER & MONITORING (lg:col-span-4) -->
+    <div class="lg:col-span-4 space-y-6 flex flex-col">
+
+        <!-- REAL-TIME VISUALIZER CARD -->
+        <div class="p-5 rounded-2xl bg-panelBg glow-box flex-1 flex flex-col justify-between space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h2 class="text-sm font-bold tracking-wider text-cyan-400 uppercase">
+                    📊 Oscilloscope & Spectrum
+                </h2>
+                <div class="flex space-x-1">
+                    <button id="btnVizMode" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2.5 py-1 rounded-full border border-cyan-800">
+                        MODE: COMBINED
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Visualizer Container -->
+            <div class="relative w-full h-64 sm:h-80 bg-slate-950/80 rounded-xl border border-cyan-900/40 overflow-hidden flex items-center justify-center">
+                <canvas id="mainVisualizerCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Live Track Activity Monitor -->
+            <div class="grid grid-cols-4 gap-2 text-center text-[10px] text-slate-400">
+                <div class="p-2 bg-slate-900/80 rounded-lg border border-cyan-900/30">
+                    <div class="text-cyan-400 font-bold mb-1">PADS</div>
+                    <div id="meter-0" class="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-cyan-400 w-0 transition-all duration-100"></div></div>
+                </div>
+                <div class="p-2 bg-slate-900/80 rounded-lg border border-teal-900/30">
+                    <div class="text-teal-400 font-bold mb-1">BELLS</div>
+                    <div id="meter-1" class="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-teal-400 w-0 transition-all duration-100"></div></div>
+                </div>
+                <div class="p-2 bg-slate-900/80 rounded-lg border border-blue-900/30">
+                    <div class="text-blue-400 font-bold mb-1">BASS</div>
+                    <div id="meter-2" class="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-blue-400 w-0 transition-all duration-100"></div></div>
+                </div>
+                <div class="p-2 bg-slate-900/80 rounded-lg border border-indigo-900/30">
+                    <div class="text-indigo-400 font-bold mb-1">WAVES</div>
+                    <div id="meter-3" class="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-indigo-400 w-0 transition-all duration-100"></div></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+
+<!-- FULL SCREEN OCEAN PERFORMANCE CANVAS OVERLAY -->
+<div id="performanceOverlay" class="fixed inset-0 z-40 bg-slate-950 hidden flex flex-col">
+    <!-- Floating Performance Header Controls -->
+    <div class="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-auto">
+        <div class="flex items-center space-x-3 bg-slate-950/70 backdrop-blur-md px-4 py-2 rounded-full border border-cyan-500/30">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span class="text-xs font-bold tracking-widest text-cyan-300">BIOLUMINESCENT SANCTUARY</span>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button id="btnTogglePerfOverlayViz" class="bg-slate-900/80 hover:bg-slate-800 text-cyan-300 text-xs px-3 py-1.5 rounded-full border border-cyan-800/50 backdrop-blur-md">
+                Toggle Audio HUD
+            </button>
+            <button id="btnClosePerformance" class="bg-red-500/20 hover:bg-red-500/40 text-red-300 text-xs font-bold px-4 py-1.5 rounded-full border border-red-500/40 backdrop-blur-md">
+                ✕ EXIT MODE
+            </button>
+        </div>
+    </div>
+
+    <canvas id="oceanCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+</div>
+
+<!-- JAVASCRIPT APPLICATION CORE -->
+<script>
+    // --- SCALES & TONAL FREQUENCIES ---
+    const SCALES = {
+        MajorPentatonic: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00],
+        Lydian: [261.63, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25],
+        Major: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25],
+        SoftDorian: [220.00, 246.94, 261.63, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 523.25],
+        Mixolydian: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 466.16, 523.25, 587.33, 659.25],
+        LydianChromatic: [220.00, 246.94, 277.18, 311.13, 329.63, 369.99, 415.30, 440.00, 493.88, 554.37]
+    };
+
+    let currentScaleName = 'MajorPentatonic';
+
+    // --- PRESETS CONFIGURATION (16 PRESETS) ---
+    const PRESETS = [
+        { name: "Ethereal Lydian Sunlight", scale: "Lydian", t: [{v:0.7,p:0.4,i:0.1}, {v:0.6,p:0.3,d:4.0}, {v:0.7,p:0.2,c:200}, {v:0.4,p:0.3,r:3.0}], fx: {m:0.3, d:0.5, r:0.6, c:4500} },
+        { name: "Happy Coral Reef", scale: "MajorPentatonic", t: [{v:0.8,p:0.5,i:0.0}, {v:0.7,p:0.4,d:2.5}, {v:0.8,p:0.3,c:250}, {v:0.5,p:0.4,r:5.0}], fx: {m:0.32, d:0.4, r:0.45, c:5500} },
+        { name: "Soothing Gold Sunset", scale: "Major", t: [{v:0.75,p:0.3,i:0.15}, {v:0.5,p:0.2,d:5.0}, {v:0.8,p:0.15,c:160}, {v:0.6,p:0.2,r:2.0}], fx: {m:0.28, d:0.5, r:0.7, c:3000} },
+        { name: "Bioluminescent Lagoon", scale: "SoftDorian", t: [{v:0.6,p:0.45,i:0.4}, {v:0.8,p:0.5,d:3.0}, {v:0.6,p:0.25,c:180}, {v:0.6,p:0.5,r:8.0}], fx: {m:0.3, d:0.6, r:0.65, c:4000} },
+        { name: "Warm Blossom", scale: "MajorPentatonic", t: [{v:0.8,p:0.35,i:0.05}, {v:0.6,p:0.3,d:3.5}, {v:0.7,p:0.2,c:220}, {v:0.4,p:0.25,r:2.5}], fx: {m:0.3, d:0.35, r:0.5, c:5000} },
+        { name: "Floating In Cloud Nine", scale: "Lydian", t: [{v:0.7,p:0.2,i:0.1}, {v:0.7,p:0.35,d:6.0}, {v:0.5,p:0.1,c:140}, {v:0.7,p:0.3,r:4.0}], fx: {m:0.25, d:0.65, r:0.8, c:3200} },
+        { name: "Crystalline Dream", scale: "LydianChromatic", t: [{v:0.5,p:0.4,i:0.5}, {v:0.9,p:0.6,d:2.0}, {v:0.6,p:0.2,c:190}, {v:0.3,p:0.4,r:6.0}], fx: {m:0.28, d:0.55, r:0.6, c:6000} },
+        { name: "Gentle Breeze", scale: "Mixolydian", t: [{v:0.65,p:0.3,i:0.0}, {v:0.5,p:0.25,d:3.8}, {v:0.7,p:0.2,c:210}, {v:0.5,p:0.35,r:3.0}], fx: {m:0.3, d:0.4, r:0.5, c:4200} },
+        { name: "Deep Abyssal Trench", scale: "SoftDorian", t: [{v:0.8,p:0.2,i:0.3}, {v:0.3,p:0.1,d:7.0}, {v:0.9,p:0.3,c:110}, {v:0.7,p:0.2,r:9.0}], fx: {m:0.32, d:0.6, r:0.75, c:2200} },
+        { name: "Midnight Starlight", scale: "Lydian", t: [{v:0.6,p:0.3,i:0.2}, {v:0.85,p:0.45,d:4.5}, {v:0.6,p:0.15,c:150}, {v:0.4,p:0.3,r:4.5}], fx: {m:0.28, d:0.5, r:0.7, c:4800} },
+        { name: "Cosmic Tide Pool", scale: "MajorPentatonic", t: [{v:0.7,p:0.5,i:0.1}, {v:0.7,p:0.4,d:3.0}, {v:0.75,p:0.25,c:230}, {v:0.6,p:0.45,r:5.5}], fx: {m:0.3, d:0.45, r:0.55, c:5200} },
+        { name: "Solar Flare Harmonic", scale: "Mixolydian", t: [{v:0.85,p:0.5,i:0.25}, {v:0.6,p:0.3,d:2.8}, {v:0.8,p:0.3,c:280}, {v:0.5,p:0.3,r:3.5}], fx: {m:0.33, d:0.3, r:0.4, c:6500} },
+        { name: "Pearl Chamber", scale: "Major", t: [{v:0.75,p:0.25,i:0.05}, {v:0.6,p:0.2,d:5.5}, {v:0.7,p:0.15,c:170}, {v:0.4,p:0.2,r:2.0}], fx: {m:0.27, d:0.5, r:0.8, c:3800} },
+        { name: "Velvet Horizons", scale: "SoftDorian", t: [{v:0.7,p:0.3,i:0.15}, {v:0.55,p:0.25,d:4.0}, {v:0.8,p:0.2,c:190}, {v:0.5,p:0.25,r:3.8}], fx: {m:0.29, d:0.45, r:0.65, c:3500} },
+        { name: "Oceanic Zenith", scale: "LydianChromatic", t: [{v:0.65,p:0.4,i:0.35}, {v:0.8,p:0.35,d:3.2}, {v:0.7,p:0.2,c:210}, {v:0.6,p:0.4,r:7.0}], fx: {m:0.31, d:0.55, r:0.6, c:4600} },
+        { name: "Serene Meditation", scale: "MajorPentatonic", t: [{v:0.8,p:0.2,i:0.0}, {v:0.4,p:0.15,d:6.5}, {v:0.7,p:0.1,c:130}, {v:0.3,p:0.15,r:1.5}], fx: {m:0.25, d:0.4, r:0.85, c:2800} }
+    ];
+
+    // --- AUDIO ENGINE STATE & GLOBALS ---
+    let audioCtx = null;
+    let isAudioPlaying = true;
+    let masterGainNode = null;
+    let masterFilterNode = null;
+    let delayNode = null;
+    let delayFeedbackNode = null;
+    let reverbNode = null;
+    let reverbDryGain = null;
+    let reverbWetGain = null;
+    let analyserNode = null;
+
+    // Tracks Configuration State
+    const trackStates = [
+        { volume: 0.7, inharmonicity: 0.2, density: 0.4, muted: false, meterVal: 0 },
+        { volume: 0.6, decay: 3.5, density: 0.3, muted: false, meterVal: 0 },
+        { volume: 0.8, cutoff: 180, density: 0.2, muted: false, meterVal: 0 },
+        { volume: 0.5, resonance: 4.0, density: 0.35, muted: false, meterVal: 0 }
+    ];
+
+    // --- BULLETPROOF AUDIO INITIALIZATION ---
+    function initAudioEngine() {
+        if (audioCtx) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return;
+        }
+
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContextClass();
+
+            // Master Gain (Soothing quiet volume)
+            masterGainNode = audioCtx.createGain();
+            masterGainNode.gain.setValueAtTime(0.30, audioCtx.currentTime);
+
+            // Master Filter
+            masterFilterNode = audioCtx.createBiquadFilter();
+            masterFilterNode.type = 'lowpass';
+            masterFilterNode.frequency.setValueAtTime(3500, audioCtx.currentTime);
+
+            // Stereo Delay Node Loop
+            delayNode = audioCtx.createDelay();
+            delayNode.delayTime.setValueAtTime(0.375, audioCtx.currentTime); // Dotted 8th-like delay
+            delayFeedbackNode = audioCtx.createGain();
+            delayFeedbackNode.gain.setValueAtTime(0.45, audioCtx.currentTime);
+
+            delayNode.connect(delayFeedbackNode);
+            delayFeedbackNode.connect(delayNode);
+
+            // Reverb (Procedural Impulse Response Buffer)
+            reverbNode = audioCtx.createConvolver();
+            createProceduralReverbIR();
+
+            reverbDryGain = audioCtx.createGain();
+            reverbWetGain = audioCtx.createGain();
+            reverbDryGain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+            reverbWetGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+
+            // Analyser
+            analyserNode = audioCtx.createAnalyser();
+            analyserNode.fftSize = 512;
+
+            // Routing: Nodes -> Master Filter -> Delay/Reverb -> Master Gain -> Analyser -> Destination
+            masterFilterNode.connect(delayNode);
+            masterFilterNode.connect(reverbNode);
+            masterFilterNode.connect(reverbDryGain);
+
+            delayNode.connect(reverbDryGain);
+            reverbNode.connect(reverbWetGain);
+
+            reverbDryGain.connect(masterGainNode);
+            reverbWetGain.connect(masterGainNode);
+
+            masterGainNode.connect(analyserNode);
+            analyserNode.connect(audioCtx.destination);
+
+            // Start Generative Loops
+            startGenerativeLoops();
+
+        } catch (err) {
+            console.error("Audio Initialization Error:", err);
+        }
+    }
+
+    // Generate Procedural Reverb Impulse Response (Zero external files needed)
+    function createProceduralReverbIR() {
+        if (!audioCtx) return;
+        const rate = audioCtx.sampleRate;
+        const length = rate * 3.5; // 3.5 seconds decay tail
+        const decay = 2.5;
+        const buffer = audioCtx.createBuffer(2, length, rate);
+        const left = buffer.getChannelData(0);
+        const right = buffer.getChannelData(1);
+
+        for (let i = 0; i < length; i++) {
+            const n = length - i;
+            const e = Math.pow(n / length, decay);
+            left[i] = (Math.random() * 2 - 1) * e;
+            right[i] = (Math.random() * 2 - 1) * e;
+        }
+        reverbNode.buffer = buffer;
+    }
+
+    // Global Event Listener for Immediate Unlock
+    function unlockAudioOnGesture() {
+        initAudioEngine();
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        const banner = document.getElementById('startBanner');
+        if (banner && !banner.classList.contains('hidden')) {
+            banner.classList.add('opacity-0');
+            setTimeout(() => banner.classList.add('hidden'), 500);
+        }
+    }
+
+    window.addEventListener('click', unlockAudioOnGesture, { once: false });
+    window.addEventListener('touchstart', unlockAudioOnGesture, { once: false });
+    window.addEventListener('keydown', unlockAudioOnGesture, { once: false });
+
+    // --- TRACK GENERATORS ---
+
+    function getRandomScaleNote(octaveShift = 0) {
+        const scale = SCALES[currentScaleName] || SCALES.MajorPentatonic;
+        const baseFreq = scale[Math.floor(Math.random() * scale.length)];
+        return baseFreq * Math.pow(2, octaveShift);
+    }
+
+    // Track 1: Modal Pad Trigger
+    function triggerTrack1Pad() {
+        if (!audioCtx || !isAudioPlaying || trackStates[0].muted) return;
+
+        const now = audioCtx.currentTime;
+        const baseFreq = getRandomScaleNote(0);
+        const volume = trackStates[0].volume;
+        const inh = trackStates[0].inharmonicity;
+
+        trackStates[0].meterVal = 1.0;
+
+        // Bank of 3 modal sine oscillators
+        const partials = [1, 1.5 + inh * 0.1, 2.0 + inh * 0.2];
+        partials.forEach((mult, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(baseFreq * mult, now);
+
+            // Soft Envelope
+            const attack = 1.5 + Math.random();
+            const release = 3.0 + Math.random() * 2;
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime((volume * 0.15) / (idx + 1), now + attack);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + release);
+
+            osc.connect(gain);
+            gain.connect(masterFilterNode);
+
+            osc.start(now);
+            osc.stop(now + attack + release + 0.1);
+        });
+    }
+
+    // Track 2: Spectral Shimmer / FM Bells Trigger
+    function triggerTrack2Shimmer() {
+        if (!audioCtx || !isAudioPlaying || trackStates[1].muted) return;
+
+        const now = audioCtx.currentTime;
+        const carrierFreq = getRandomScaleNote(1); // One octave higher
+        const volume = trackStates[1].volume;
+        const decay = trackStates[1].decay;
+
+        trackStates[1].meterVal = 1.0;
+
+        const carrier = audioCtx.createOscillator();
+        const modulator = audioCtx.createOscillator();
+        const modGain = audioCtx.createGain();
+        const mainGain = audioCtx.createGain();
+
+        carrier.type = 'sine';
+        modulator.type = 'sine';
+
+        carrier.frequency.setValueAtTime(carrierFreq, now);
+        modulator.frequency.setValueAtTime(carrierFreq * 2.5, now); // Metallic ratio
+
+        modGain.gain.setValueAtTime(carrierFreq * 0.8, now);
+        modGain.gain.exponentialRampToValueAtTime(0.01, now + decay);
+
+        modulator.connect(modGain);
+        modGain.connect(carrier.frequency);
+
+        mainGain.gain.setValueAtTime(volume * 0.2, now);
+        mainGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+        carrier.connect(mainGain);
+        mainGain.connect(masterFilterNode);
+
+        carrier.start(now);
+        modulator.start(now);
+
+        carrier.stop(now + decay + 0.1);
+        modulator.stop(now + decay + 0.1);
+    }
+
+    // Track 3: Deep Sub Bass Trigger
+    function triggerTrack3Bass() {
+        if (!audioCtx || !isAudioPlaying || trackStates[2].muted) return;
+
+        const now = audioCtx.currentTime;
+        const freq = getRandomScaleNote(-1); // One octave lower
+        const volume = trackStates[2].volume;
+        const cutoff = trackStates[2].cutoff;
+
+        trackStates[2].meterVal = 1.0;
+
+        const osc = audioCtx.createOscillator();
+        const filter = audioCtx.createBiquadFilter();
+        const gain = audioCtx.createGain();
+
+        osc.type = Math.random() > 0.5 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(cutoff, now);
+
+        const dur = 4.0 + Math.random() * 2;
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(volume * 0.35, now + 0.8);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterFilterNode);
+
+        osc.start(now);
+        osc.stop(now + dur + 0.1);
+    }
+
+    // Track 4: Ambient Ocean Waves / Filtered Noise Trigger
+    function triggerTrack4Waves() {
+        if (!audioCtx || !isAudioPlaying || trackStates[3].muted) return;
+
+        const now = audioCtx.currentTime;
+        const volume = trackStates[3].volume;
+        const res = trackStates[3].resonance;
+
+        trackStates[3].meterVal = 1.0;
+
+        // Generate 2 seconds of pink/white noise buffer
+        const bufferSize = audioCtx.sampleRate * 3.0;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+        }
+
+        const whiteNoise = audioCtx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.Q.setValueAtTime(res, now);
+
+        // Filter sweep (mimicking dynamic ocean waves)
+        const startCutoff = 300 + Math.random() * 400;
+        const endCutoff = 800 + Math.random() * 600;
+
+        filter.frequency.setValueAtTime(startCutoff, now);
+        filter.frequency.exponentialRampToValueAtTime(endCutoff, now + 1.5);
+        filter.frequency.exponentialRampToValueAtTime(startCutoff, now + 3.0);
+
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(volume * 0.15, now + 1.2);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
+
+        whiteNoise.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterFilterNode);
+
+        whiteNoise.start(now);
+        whiteNoise.stop(now + 3.1);
+    }
+
+    // --- SEQUENCER LOOPS ---
+    function startGenerativeLoops() {
+        setInterval(() => {
+            if (Math.random() < trackStates[0].density) triggerTrack1Pad();
+        }, 2500);
+
+        setInterval(() => {
+            if (Math.random() < trackStates[1].density) triggerTrack2Shimmer();
+        }, 1800);
+
+        setInterval(() => {
+            if (Math.random() < trackStates[2].density) triggerTrack3Bass();
+        }, 3200);
+
+        setInterval(() => {
+            if (Math.random() < trackStates[3].density) triggerTrack4Waves();
+        }, 2200);
+    }
+
+    // --- UI INTERACTIVITY & PRESETS ---
+
+    function renderPresets() {
+        const grid = document.getElementById('presetGrid');
+        grid.innerHTML = '';
+        PRESETS.forEach((p, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `p-2 rounded-xl text-left text-[11px] font-medium border transition-all duration-200 ${
+                idx === 0
+                    ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-md shadow-cyan-500/10'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-cyan-500/40 hover:text-slate-200'
+            }`;
+            btn.innerText = `${idx + 1}. ${p.name}`;
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                applyPreset(idx);
+                document.querySelectorAll('#presetGrid button').forEach((b, i) => {
+                    b.className = `p-2 rounded-xl text-left text-[11px] font-medium border transition-all duration-200 ${
+                        i === idx
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-md shadow-cyan-500/10'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-cyan-500/40 hover:text-slate-200'
+                    }`;
+                });
+            };
+            grid.appendChild(btn);
+        });
+    }
+
+    function applyPreset(index) {
+        const p = PRESETS[index];
+        if (!p) return;
+
+        currentScaleName = p.scale;
+        document.getElementById('scaleSelect').value = p.scale;
+
+        // Apply tracks
+        p.t.forEach((tData, i) => {
+            trackStates[i].volume = tData.v;
+            trackStates[i].density = tData.p;
+            if (i === 0) trackStates[i].inharmonicity = tData.i;
+            if (i === 1) trackStates[i].decay = tData.d;
+            if (i === 2) trackStates[i].cutoff = tData.c;
+            if (i === 3) trackStates[i].resonance = tData.r;
+        });
+
+        // Update Track UI Sliders
+        document.querySelectorAll('.t-vol')[0].value = p.t[0].v;
+        document.querySelectorAll('.t-vol')[1].value = p.t[1].v;
+        document.querySelectorAll('.t-vol')[2].value = p.t[2].v;
+        document.querySelectorAll('.t-vol')[3].value = p.t[3].v;
+
+        document.getElementById('t0-vol-val').innerText = p.t[0].v;
+        document.getElementById('t1-vol-val').innerText = p.t[1].v;
+        document.getElementById('t2-vol-val').innerText = p.t[2].v;
+        document.getElementById('t3-vol-val').innerText = p.t[3].v;
+
+        document.getElementById('t0-inh-val').innerText = p.t[0].i;
+        document.getElementById('t1-dec-val').innerText = p.t[1].d + 's';
+        document.getElementById('t2-cut-val').innerText = p.t[2].c + 'Hz';
+        document.getElementById('t3-res-val').innerText = p.t[3].r;
+
+        document.getElementById('t0-prob-val').innerText = p.t[0].p;
+        document.getElementById('t1-prob-val').innerText = p.t[1].p;
+        document.getElementById('t2-prob-val').innerText = p.t[2].p;
+        document.getElementById('t3-prob-val').innerText = p.t[3].p;
+
+        // FX Rack
+        if (masterGainNode) masterGainNode.gain.setValueAtTime(p.fx.m, audioCtx.currentTime);
+        if (delayFeedbackNode) delayFeedbackNode.gain.setValueAtTime(p.fx.d, audioCtx.currentTime);
+        if (reverbWetGain) reverbWetGain.gain.setValueAtTime(p.fx.r, audioCtx.currentTime);
+        if (masterFilterNode) masterFilterNode.frequency.setValueAtTime(p.fx.c, audioCtx.currentTime);
+
+        document.getElementById('fxMasterGain').value = p.fx.m;
+        document.getElementById('fxDelayFeedback').value = p.fx.d;
+        document.getElementById('fxReverbMix').value = p.fx.r;
+        document.getElementById('fxMasterCutoff').value = p.fx.c;
+
+        document.getElementById('fx-master-val').innerText = p.fx.m;
+        document.getElementById('fx-delay-val').innerText = p.fx.d;
+        document.getElementById('fx-verb-val').innerText = p.fx.r;
+        document.getElementById('fx-cut-val').innerText = p.fx.c + 'Hz';
+    }
+
+    // Attach UI listeners
+    function attachUIListeners() {
+        document.getElementById('scaleSelect').onchange = (e) => {
+            currentScaleName = e.target.value;
+        };
+
+        document.getElementById('btnPlayPause').onclick = (e) => {
+            e.stopPropagation();
+            isAudioPlaying = !isAudioPlaying;
+            document.getElementById('playIcon').innerText = isAudioPlaying ? '⏸ PAUSE' : '▶ PLAY';
+        };
+
+        // Mute buttons
+        document.querySelectorAll('.track-mute-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const tr = parseInt(btn.dataset.track);
+                trackStates[tr].muted = !trackStates[tr].muted;
+                btn.classList.toggle('bg-red-950', trackStates[tr].muted);
+                btn.classList.toggle('text-red-400', trackStates[tr].muted);
+                btn.innerText = trackStates[tr].muted ? 'MUTED' : 'MUTE';
+            };
+        });
+
+        // Volume sliders
+        document.querySelectorAll('.t-vol').forEach(input => {
+            input.oninput = (e) => {
+                const tr = parseInt(e.target.dataset.track);
+                const val = parseFloat(e.target.value);
+                trackStates[tr].volume = val;
+                document.getElementById(`t${tr}-vol-val`).innerText = val;
+            };
+        });
+
+        // Parameter sliders
+        document.querySelectorAll('.t-param').forEach(input => {
+            input.oninput = (e) => {
+                const tr = parseInt(e.target.dataset.track);
+                const param = e.target.dataset.param;
+                const val = parseFloat(e.target.value);
+
+                if (param === 'density') {
+                    trackStates[tr].density = val;
+                    document.getElementById(`t${tr}-prob-val`).innerText = val;
+                } else if (param === 'inharmonicity') {
+                    trackStates[0].inharmonicity = val;
+                    document.getElementById('t0-inh-val').innerText = val;
+                } else if (param === 'decay') {
+                    trackStates[1].decay = val;
+                    document.getElementById('t1-dec-val').innerText = val + 's';
+                } else if (param === 'cutoff') {
+                    trackStates[2].cutoff = val;
+                    document.getElementById('t2-cut-val').innerText = val + 'Hz';
+                } else if (param === 'resonance') {
+                    trackStates[3].resonance = val;
+                    document.getElementById('t3-res-val').innerText = val;
+                }
+            };
+        });
+
+        // FX Rack Listeners
+        document.getElementById('fxMasterGain').oninput = (e) => {
+            const v = parseFloat(e.target.value);
+            if (masterGainNode) masterGainNode.gain.setValueAtTime(v, audioCtx.currentTime);
+            document.getElementById('fx-master-val').innerText = v;
+        };
+
+        document.getElementById('fxDelayFeedback').oninput = (e) => {
+            const v = parseFloat(e.target.value);
+            if (delayFeedbackNode) delayFeedbackNode.gain.setValueAtTime(v, audioCtx.currentTime);
+            document.getElementById('fx-delay-val').innerText = v;
+        };
+
+        document.getElementById('fxReverbMix').oninput = (e) => {
+            const v = parseFloat(e.target.value);
+            if (reverbWetGain) reverbWetGain.gain.setValueAtTime(v, audioCtx.currentTime);
+            document.getElementById('fx-verb-val').innerText = v;
+        };
+
+        document.getElementById('fxMasterCutoff').oninput = (e) => {
+            const v = parseFloat(e.target.value);
+            if (masterFilterNode) masterFilterNode.frequency.setValueAtTime(v, audioCtx.currentTime);
+            document.getElementById('fx-cut-val').innerText = v + 'Hz';
+        };
+    }
+
+    // --- REAL-TIME AUDIO VISUALIZER (MAIN HUD) ---
+    let vizMode = 'COMBINED'; // COMBINED, OSCILLOSCOPE, SPECTRUM
+
+    function initMainVisualizer() {
+        const canvas = document.getElementById('mainVisualizerCanvas');
+        const ctx = canvas.getContext('2d');
+
+        document.getElementById('btnVizMode').onclick = (e) => {
+            e.stopPropagation();
+            if (vizMode === 'COMBINED') vizMode = 'OSCILLOSCOPE';
+            else if (vizMode === 'OSCILLOSCOPE') vizMode = 'SPECTRUM';
+            else vizMode = 'COMBINED';
+            document.getElementById('btnVizMode').innerText = `MODE: ${vizMode}`;
+        };
+
+        function draw() {
+            requestAnimationFrame(draw);
+
+            const width = canvas.width = canvas.parentElement.clientWidth;
+            const height = canvas.height = canvas.parentElement.clientHeight;
+
+            ctx.fillStyle = 'rgba(3, 11, 30, 0.25)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Update LED Activity Meters
+            for (let i = 0; i < 4; i++) {
+                trackStates[i].meterVal = Math.max(0, trackStates[i].meterVal - 0.05);
+                const meterElem = document.querySelector(`#meter-${i} div`);
+                if (meterElem) meterElem.style.width = `${trackStates[i].meterVal * 100}%`;
+            }
+
+            if (!analyserNode) return;
+
+            const bufferLength = analyserNode.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            // SPECTRUM BARS
+            if (vizMode === 'SPECTRUM' || vizMode === 'COMBINED') {
+                analyserNode.getByteFrequencyData(dataArray);
+                const barWidth = (width / bufferLength) * 2.5;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const barHeight = (dataArray[i] / 255) * height * 0.8;
+                    const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
+                    gradient.addColorStop(0, 'rgba(0, 242, 254, 0.1)');
+                    gradient.addColorStop(0.5, 'rgba(79, 172, 254, 0.4)');
+                    gradient.addColorStop(1, 'rgba(0, 242, 254, 0.8)');
+
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+                    x += barWidth;
+                }
+            }
+
+            // OSCILLOSCOPE WAVE
+            if (vizMode === 'OSCILLOSCOPE' || vizMode === 'COMBINED') {
+                analyserNode.getByteTimeDomainData(dataArray);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#00f2fe';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#00f2fe';
+                ctx.beginPath();
+
+                const sliceWidth = width / bufferLength;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = dataArray[i] / 128.0;
+                    const y = (v * height) / 2;
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+
+                    x += sliceWidth;
+                }
+
+                ctx.lineTo(width, height / 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        draw();
+    }
+
+    // --- FULL-SCREEN PERFORMANCE MODE (GLOWING OCEAN & KING FISH) ---
+
+    let perfCanvas, perfCtx;
+    let showPerfHud = true;
+    let oceanFish = [];
+    let starfishes = [];
+    let bubbles = [];
+    let kingFish = null;
+
+    class Fish {
+        constructor(isKing = false) {
+            this.isKing = isKing;
+            this.reset();
+        }
+
+        reset() {
+            this.x = Math.random() < 0.5 ? -100 : window.innerWidth + 100;
+            this.y = Math.random() * (window.innerHeight * 0.7) + 100;
+            this.vx = (this.x < 0 ? 1 : -1) * (this.isKing ? 0.8 : (0.8 + Math.random() * 1.5));
+            this.vy = (Math.random() - 0.5) * 0.3;
+            this.size = this.isKing ? 45 : (15 + Math.random() * 20);
+            this.color = this.isKing ? '#ffd700' : (Math.random() > 0.5 ? '#00f2fe' : '#a855f7');
+            this.tailAngle = 0;
+            this.tailSpeed = 0.08 + Math.random() * 0.05;
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += Math.sin(this.x * 0.01) * 0.5 + this.vy;
+            this.tailAngle += this.tailSpeed;
+
+            // Loop or respawn
+            if (this.vx > 0 && this.x > window.innerWidth + 150) this.reset();
+            if (this.vx < 0 && this.x < -150) this.reset();
+        }
+
+        draw(ctx) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            if (this.vx < 0) ctx.scale(-1, 1);
+
+            // Body Glow
+            ctx.shadowBlur = this.isKing ? 25 : 12;
+            ctx.shadowColor = this.color;
+
+            // Fish Tail
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.moveTo(-this.size, 0);
+            ctx.lineTo(-this.size * 1.6, Math.sin(this.tailAngle) * (this.size * 0.5));
+            ctx.lineTo(-this.size * 1.6, -Math.sin(this.tailAngle) * (this.size * 0.5));
+            ctx.closePath();
+            ctx.fill();
+
+            // Fish Body
+            ctx.beginPath();
+            ctx.ellipse(0, 0, this.size, this.size * 0.55, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.size * 0.5, -this.size * 0.15, this.size * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(this.size * 0.52, -this.size * 0.15, this.size * 0.06, 0, Math.PI * 2);
+            ctx.fill();
+
+            // CROWN FOR KING FISH 👑
+            if (this.isKing) {
+                ctx.fillStyle = '#ffd700';
+                ctx.shadowColor = '#ffe600';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.moveTo(-this.size * 0.2, -this.size * 0.5);
+                ctx.lineTo(-this.size * 0.3, -this.size * 1.1);
+                ctx.lineTo(0, -this.size * 0.7);
+                ctx.lineTo(this.size * 0.3, -this.size * 1.1);
+                ctx.lineTo(this.size * 0.2, -this.size * 0.5);
+                ctx.closePath();
+                ctx.fill();
+
+                // Crown Jewels
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(0, -this.size * 0.7, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    function initPerformanceMode() {
+        const btnOpen = document.getElementById('btnPerformanceMode');
+        const btnClose = document.getElementById('btnClosePerformance');
+        const overlay = document.getElementById('performanceOverlay');
+        const btnToggleViz = document.getElementById('btnTogglePerfOverlayViz');
+
+        perfCanvas = document.getElementById('oceanCanvas');
+        perfCtx = perfCanvas.getContext('2d');
+
+        btnOpen.onclick = (e) => {
+            e.stopPropagation();
+            overlay.classList.remove('hidden');
+            setupOceanScene();
+        };
+
+        btnClose.onclick = (e) => {
+            e.stopPropagation();
+            overlay.classList.add('hidden');
+        };
+
+        btnToggleViz.onclick = (e) => {
+            e.stopPropagation();
+            showPerfHud = !showPerfHud;
+        };
+
+        // Interactive Ripple on click
+        perfCanvas.onclick = (e) => {
+            triggerTrack2Shimmer();
+            for (let i = 0; i < 8; i++) {
+                bubbles.push({
+                    x: e.clientX + (Math.random() - 0.5) * 20,
+                    y: e.clientY,
+                    r: 3 + Math.random() * 5,
+                    vy: 1 + Math.random() * 2,
+                    alpha: 1
+                });
+            }
+        };
+
+        function setupOceanScene() {
+            oceanFish = [];
+            for (let i = 0; i < 12; i++) oceanFish.push(new Fish(false));
+            kingFish = new Fish(true); // Rare King Fish
+
+            // Starfishes on Ocean Bed
+            starfishes = [];
+            for (let i = 0; i < 7; i++) {
+                starfishes.push({
+                    x: Math.random() * window.innerWidth,
+                    y: window.innerHeight - (20 + Math.random() * 40),
+                    size: 15 + Math.random() * 15,
+                    phase: Math.random() * Math.PI * 2
+                });
+            }
+
+            // Bubbles
+            bubbles = [];
+            for (let i = 0; i < 25; i++) {
+                bubbles.push({
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    r: 2 + Math.random() * 4,
+                    vy: 0.5 + Math.random() * 1.5,
+                    alpha: 0.3 + Math.random() * 0.5
+                });
+            }
+        }
+
+        function animateOcean() {
+            if (!overlay.classList.contains('hidden')) {
+                const width = perfCanvas.width = window.innerWidth;
+                const height = perfCanvas.height = window.innerHeight;
+
+                // Deep Sea Gradient Background
+                const oceanGradient = perfCtx.createLinearGradient(0, 0, 0, height);
+                oceanGradient.addColorStop(0, '#0284c7');
+                oceanGradient.addColorStop(0.3, '#0369a1');
+                oceanGradient.addColorStop(0.7, '#0f172a');
+                oceanGradient.addColorStop(1, '#020617');
+                perfCtx.fillStyle = oceanGradient;
+                perfCtx.fillRect(0, 0, width, height);
+
+                // Light Caustics Rays
+                perfCtx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                for (let i = 0; i < 5; i++) {
+                    perfCtx.beginPath();
+                    perfCtx.moveTo(width * (i * 0.2), 0);
+                    perfCtx.lineTo(width * (i * 0.2 + 0.15), 0);
+                    perfCtx.lineTo(width * (i * 0.2 + 0.3), height);
+                    perfCtx.lineTo(width * (i * 0.2 + 0.05), height);
+                    perfCtx.closePath();
+                    perfCtx.fill();
+                }
+
+                // Render Starfishes
+                starfishes.forEach(s => {
+                    s.phase += 0.03;
+                    const glow = 0.4 + Math.sin(s.phase) * 0.3;
+                    perfCtx.save();
+                    perfCtx.translate(s.x, s.y);
+                    perfCtx.fillStyle = `rgba(244, 63, 94, ${glow})`;
+                    perfCtx.shadowBlur = 15;
+                    perfCtx.shadowColor = '#f43f5e';
+                    perfCtx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        perfCtx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * s.size, -Math.sin((18 + i * 72) * Math.PI / 180) * s.size);
+                        perfCtx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * (s.size * 0.5), -Math.sin((54 + i * 72) * Math.PI / 180) * (s.size * 0.5));
+                    }
+                    perfCtx.closePath();
+                    perfCtx.fill();
+                    perfCtx.restore();
+                });
+
+                // Render Drifting Bubbles
+                bubbles.forEach(b => {
+                    b.y -= b.vy;
+                    if (b.y < -10) b.y = height + 10;
+                    perfCtx.strokeStyle = `rgba(255, 255, 255, ${b.alpha})`;
+                    perfCtx.lineWidth = 1;
+                    perfCtx.beginPath();
+                    perfCtx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    perfCtx.stroke();
+                });
+
+                // Update and Render Fish
+                oceanFish.forEach(fish => {
+                    fish.update();
+                    fish.draw(perfCtx);
+                });
+
+                // King Fish
+                if (kingFish) {
+                    kingFish.update();
+                    kingFish.draw(perfCtx);
+                }
+
+                // Overlay HUD Audio Spectrum in Performance Mode
+                if (showPerfHud && analyserNode) {
+                    const bufferLength = analyserNode.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+                    analyserNode.getByteTimeDomainData(dataArray);
+
+                    perfCtx.lineWidth = 3;
+                    perfCtx.strokeStyle = 'rgba(0, 242, 254, 0.6)';
+                    perfCtx.shadowBlur = 10;
+                    perfCtx.shadowColor = '#00f2fe';
+                    perfCtx.beginPath();
+
+                    const sliceWidth = width / bufferLength;
+                    let x = 0;
+                    for (let i = 0; i < bufferLength; i++) {
+                        const v = dataArray[i] / 128.0;
+                        const y = height - 100 + (v * 40);
+                        if (i === 0) perfCtx.moveTo(x, y);
+                        else perfCtx.lineTo(x, y);
+                        x += sliceWidth;
+                    }
+                    perfCtx.stroke();
+                    perfCtx.shadowBlur = 0;
+                }
+            }
+
+            requestAnimationFrame(animateOcean);
+        }
+
+        animateOcean();
+    }
+
+    // --- INIT ON DOM READY ---
+    window.addEventListener('DOMContentLoaded', () => {
+        renderPresets();
+        attachUIListeners();
+        initMainVisualizer();
+        initPerformanceMode();
+
+        // Set Initial Preset 1
+        applyPreset(0);
+    });
+</script>
+</body>
+</html>
