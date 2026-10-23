@@ -3238,7 +3238,7 @@ static int test_retired_engines(void)
     static const struct { uint32_t idx, id; const char *name; } MAP[] = {   /* (HARE FM1, the host tests' build) */
         {ENGI_VA, EID_VA, "VA"}, {ENGI_SANDSTORM, EID_SANDSTORM, "SANDSTRM"}, {ENGI_HOOVER, EID_HOOVER, "HOOVER"},
         {ENGI_SID, EID_SID, "SID"},
-        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_KIT, EID_KIT, "KIT"}, {ENGI_RHYTHM, EID_RHYTHM, "RHYTHM"},
+        {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_KIT, EID_KIT, "KIT"}, {ENGI_RHYTHM, EID_RHYTHM, "RHYTHM"}, {ENGI_VAKIT, EID_VAKIT, "VAKIT"},
         {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"},
         {ENGI_WAR, EID_WAR, "WAR"}, {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_ONYX, EID_ONYX, "ONYX"},
         {ENGI_VOCODER, EID_VOCODER, "VOCODER"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"}};
@@ -3247,7 +3247,7 @@ static int test_retired_engines(void)
                                      EID_MODAL, EID_WAVE, EID_DUBCHORD, EID_DUBSIREN8, EID_BREAKS,
                                      EID_CHIPKIT};                        /* (2026-10-19 .. 23) */
     /* (2026-10-23) each track its own: 1 the synths, 2 the kits, 3 the voices */
-    static const char *const ORDER[3][6] = {{"VA", "SANDSTRM", "HOOVER", "SID", "OBIE", 0}, {"KIT", "RHYTHM", "LINNKIT", "WAR", 0},
+    static const char *const ORDER[3][6] = {{"VA", "SANDSTRM", "HOOVER", "SID", "OBIE", 0}, {"KIT", "RHYTHM", "VAKIT", "LINNKIT", "WAR", 0},
                                             {"SPEECH", "ONYX", "VOCODER", "VOSIM", "DUBSIREN", 0}};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
@@ -3325,7 +3325,7 @@ static int test_retired_engines(void)
         last = e;
         r++;
     }
-    bad += check("engines shown, a track's own: 1 VA SANDSTRM HOOVER SID OBIE, 2 KIT RHYTHM LINNKIT WAR, 3 SPEECH ONYX VOCODER VOSIM "
+    bad += check("engines shown, a track's own: 1 VA SANDSTRM HOOVER SID OBIE, 2 KIT RHYTHM VAKIT LINNKIT WAR, 3 SPEECH ONYX VOCODER VOSIM "
                  "DUBSIREN (ENGINES[]); PRESETS lists track 1's so", ok && r == NENG_SHOWN);
     ui_power_on();
     return bad;

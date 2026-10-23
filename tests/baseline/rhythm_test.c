@@ -3,7 +3,8 @@
  * Part of Blue Hare, a fork of Felucca by Leo Kuroshita (Hügelton Instruments): see AUTHORS.md */
 /* (2026-10-23) RHYTHM, the 808 and the 909 (firmware/baseline/eng_rhythm.c): each of the twelve drums sounds in both
  * models, every octave the same twelve; a note-off at once leaves the hit alone (a sequencer's short notes); the
- * closed hat chokes a sounding open one; the kick's length follows KICK.
+ * closed hat chokes a sounding open one; the kick's length follows KICK. VAKIT (eng_vakit.c, synth drums on VA's core):
+ * its twelve, past their note-off, the choke.
  *   rhythm_test */
 #define main hostsim_main
 #include "hostsim.c"
@@ -33,11 +34,12 @@ static uint32_t sounding(const track_t *t, uint32_t drum)
         n += t->v[i].active && t->v[i].s[4] == (int32_t)drum;
     return n;
 }
+static uint32_t eng = ENGI_RHYTHM;
 static void fresh(uint32_t preset)
 {
     host_tracks_init();
     memset(trk[1].v, 0, sizeof trk[1].v);              /* (an earlier hit ringing on: gone) */
-    host_preset(&trk[1], ENGI_RHYTHM, preset);
+    host_preset(&trk[1], eng, preset);
     trk[1].p[P_REV] = trk[1].p[P_DLY] = trk[1].p[P_CHOR] = 0;
     peak_of(4);
 }
@@ -45,29 +47,36 @@ int main(void)
 {
     track_t *t = &trk[1];
     uint32_t m, d, ok = 1, quiet;
-    for (m = 0; m < 2u; m++)
+    for (m = 0; m < 4u; m++)
         for (d = 0; d < 12u; d++) {
             int32_t pk;
-            fresh(m ? 5u : 0u);                         /* 808 KIT, 909 KIT */
+            eng = m < 2u ? ENGI_RHYTHM : ENGI_VAKIT;
+            fresh(m == 1u ? 5u : m == 3u ? 2u : 0u);  /* 808 KIT, 909 KIT; VAKIT's SYNTH KIT, ELECTRO */
             trk_note_on(t, 36 + d, 120);
             trk_note_off(t, 36 + d);
             pk = peak_of(FS / 4u / CTL);
             if (pk < 3000 || pk > 32000) {
-                printf("  %s drum %u peak %d\n", m ? "909" : "808", d, pk);
+                printf("  %s preset %u drum %u peak %d\n", ENGINES[eng]->name, m, d, pk);
                 ok = 0;
             }
         }
-    check("the twelve drums sound in both models (a note-off at once: the hit plays on)", ok);
-    fresh(0);
-    trk_note_on(t, 48, 120);                           /* (C3: the kick again) */
-    check("every octave the same twelve (C3 the kick)", t->v[0].s[4] == 0 || sounding(t, 0) == 1u);
-    fresh(0);
-    trk_note_on(t, 46, 120);                           /* OPEN */
-    peak_of(FS / 20u / CTL);
-    ok = sounding(t, 10) == 1u;
-    trk_note_on(t, 42, 120);                           /* CLOSED */
-    peak_of(FS / 20u / CTL);
-    check("the closed hat chokes the open one (gone within 50 ms)", ok && sounding(t, 10) == 0u && sounding(t, 6) == 1u);
+    check("the twelve drums sound, RHYTHM's two models and VAKIT (a note-off at once: the hit plays on)", ok);
+    for (m = 0; m < 2u; m++) {
+        eng = m ? ENGI_VAKIT : ENGI_RHYTHM;
+        fresh(0);
+        trk_note_on(t, 48, 120);                       /* (C3: the kick again) */
+        ok = sounding(t, 0) == 1u;
+        fresh(0);
+        trk_note_on(t, 46, 120);                       /* OPEN */
+        peak_of(FS / 20u / CTL);
+        ok &= sounding(t, 10) == 1u;
+        trk_note_on(t, 42, 120);                       /* CLOSED */
+        peak_of(FS / 20u / CTL);
+        check(m ? "VAKIT: every octave the same twelve; the closed hat chokes the open one (within 50 ms)" :
+                  "RHYTHM: every octave the same twelve; the closed hat chokes the open one (within 50 ms)",
+              ok && sounding(t, 10) == 0u && sounding(t, 6) == 1u);
+    }
+    eng = ENGI_RHYTHM;
     fresh(0);
     t->p[P_E3] = 10;                                   /* KICK short */
     trk_note_on(t, 36, 120);

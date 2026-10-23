@@ -31,7 +31,8 @@ up next to them, not to make it a groovebox.
 - Three tracks (2026-10-23, after the FM-1 itself), each with its own engines and its own MIDI input and channel
   (GLO > MIDI IN); no layer stacking.
 - Engines, a track's own: 1 the synths VA SANDSTORM HOOVER SID OBIE (VA the virtual analogue; OBIE, SANDSTORM and
-  HOOVER flavours of its core); 2 the kits KIT RHYTHM LINNKIT WAR (RHYTHM: the 808 and the 909, synthesized); 3 the
+  HOOVER flavours of its core); 2 the kits KIT RHYTHM VAKIT LINNKIT WAR (RHYTHM: the 808 and the 909, synthesized; VAKIT:
+  synth drums on VA's core); 3 the
   voices SPEECH ONYX VOCODER VOSIM DUBSIREN. (2026-10-23: MODAL, BREAKS, DUBCHORD, DUBSIREN8 and WAVE archived: what
   sounds good on the device decides.)
 - Sequenced from outside (2026-10-23): no sequencer of its own. REC records what the sequencer plays into each track's

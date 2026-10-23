@@ -27,6 +27,7 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_linnkit.c"        /* LINNKIT: the 80s drum machine (back 2026-10-18) */
 #include "eng_kit.c"            /* KIT: a drum kit (back 2026-10-18) */
 #include "eng_rhythm.c"         /* RHYTHM: the 808 and the 909 (2026-10-23) */
+#include "eng_vakit.c"          /* VAKIT: synth drums on VA's core (2026-10-23) */
 #include "eng_obie.c"           /* OBIE: an analog polysynth after the OB-Xa (2026-10-17) */
 
 /* the block's size: the largest this build's engines ask for (core.h BLUEHARE_ENG_*) */

@@ -49,6 +49,7 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | DUBSIREN | engine | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | `firmware/baseline/eng_dubsiren.c` | Tristano Suriani |
 | KIT | engine | a drum kit on one patch: 8 lanes on the General MIDI notes | `firmware/baseline/eng_kit.c`, `firmware/baseline/shared/drum_map.c`, `firmware/baseline/shared/fmp_dsp.c` | Tristano Suriani |
 | RHYTHM | engine | the 808 and the 909, synthesized as their circuits made their drums: no samples | `firmware/baseline/eng_rhythm.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
+| VAKIT | engine | synth drums on VA's core: twelve recipes, eight macros (tune, decay, pitch envelope, filter, noise, drive, wave) | `firmware/baseline/eng_vakit.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | LINNKIT | engine | the 80s drum machine after the LinnDrum, synthesized: no samples | `firmware/baseline/eng_linnkit.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | WAR | engine | an industrial kit: FM drums through a folder into clipping | `firmware/baseline/eng_war.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | PLATE | fx | REVERB TYPE PLATE: Dattorro's plate, in float | `firmware/baseline/fx_amb.c`, `firmware/baseline/fastmath.h` | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani |

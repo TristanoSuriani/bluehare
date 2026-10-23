@@ -19,6 +19,7 @@
 #include "fastmath.h"                          /* (the float voice) */
 #define VA_OS 2u                                /* (the native image too: it plays as the device, the renders shared) */
 #define VA_POLY 6
+enum { VA_LP12, VA_LADDER, VA_BP, VA_HP };      /* (va_cfg_t.ladder) */
 enum { VA_SAW, VA_PULSE, VA_SINE, VA_TRI, VA_WHITE, VA_PINK, VA_BROWN,   /* (the noises: the user's, 2026-10-23) */
        VA_SAWP, VA_PWSAW };     /* (OBIE's SAWP: saw + 0.7 pulse; HOOVER's PWSAW: a saw and the same saw PW on) */
 static const char *const N_VA_WAVE[] = {"SAW", "PULSE", "SINE", "TRI", "WHITE", "PINK", "BROWN", 0};
@@ -122,7 +123,8 @@ typedef struct {
     uint8_t w[VA_NOSC], ws;      /* their waves (VA_*) */
     uint8_t nosc;                /* the oscillators sounding (1 .. VA_NOSC) */
     uint8_t sync;                /* 1: osc 2 a saw hard-synced to osc 1 (OBIE's SYNC) */
-    uint8_t ladder;              /* 1 the 24 dB ladder, 0 the 12 dB state-variable filter */
+    uint8_t ladder;              /* 1 the 24 dB ladder, 0 the 12 dB state-variable filter's low-pass; (va_run alone)
+                                  * VA_BP its band-pass, VA_HP its high-pass (VAKIT's hats, claps, rims) */
     float g[VA_NOSC], gs;        /* their levels */
     float pw;                    /* PULSE's width (0.5 square .. ~0.05), PWSAW's offset (0 .. 0.5) */
     float cut;                   /* the cutoff, 0 .. 127 (20 Hz .. ~18 kHz) */
@@ -255,7 +257,7 @@ static inline __attribute__((always_inline)) void va_run_k(va_voice_t *restrict 
     fc = 20.0f * fm_exp2f(fm_clampf(c->cut, 0.0f, 127.0f) * (9.8f / 127.0f));
     fc = fm_minf(fc, 18000.0f);
     g = fm_tanf(3.14159265f * fc / ((float)FS * (float)VA_OS));
-    if (c->ladder) {
+    if (c->ladder == VA_LADDER) {
         float G = g / (1.0f + g), G2 = G * G, kk = 4.2f * c->res, inv = 1.0f / (1.0f + kk * G2 * G2), a = 1.0f - G;
         float c1 = G2 * G * a, c2 = G2 * a, c3 = G * a, boost = 1.0f + 0.5f * kk;
         for (i = 0; i < n; i++) {
@@ -281,7 +283,8 @@ static inline __attribute__((always_inline)) void va_run_k(va_voice_t *restrict 
                 v2 = s2 + a2 * s1 + a3 * v3;
                 s1 = 2.0f * v1 - s1;
                 s2 = 2.0f * v2 - s2;
-                o = va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, v2));
+                v3 = c->ladder == VA_BP ? v1 * (2.0f - 1.95f * c->res) : c->ladder == VA_HP ? x - kk * v1 - v2 : v2;
+                o = va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, v3));
             }
             y[i] = o;
         }

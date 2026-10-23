@@ -17,5 +17,5 @@ UI STROBE
 # (2026-10-23, the user's, after the FM-1 itself) three tracks, each its own engines: 1 the synths, 2 the kits,
 # 3 the voices (DUBSIREN, the last track's, too). The engines' display order is the tracks' in turn.
 TRACK 1 VA SANDSTORM HOOVER SID OBIE
-TRACK 2 KIT RHYTHM LINNKIT WAR
+TRACK 2 KIT RHYTHM VAKIT LINNKIT WAR
 TRACK 3 SPEECH ONYX VOCODER VOSIM DUBSIREN

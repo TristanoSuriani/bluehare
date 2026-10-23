@@ -21,6 +21,7 @@ ENGINE  VOCODER  baseline  eng_vocoder.c                      64  ONYX    | a vo
 ENGINE  DUBSIREN baseline  eng_dubsiren.c                     25  VOSIM     | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | Tristano Suriani
 ENGINE  KIT      baseline  eng_kit.c,shared/drum_map.c,shared/fmp_dsp.c 28  LINNKIT | a drum kit on one patch: 8 lanes on the General MIDI notes | Tristano Suriani
 ENGINE  RHYTHM   baseline  eng_rhythm.c,shared/drum_map.c     66  KIT     | the 808 and the 909, synthesized as their circuits made their drums: no samples | Tristano Suriani
+ENGINE  VAKIT    baseline  eng_vakit.c,shared/drum_map.c      67  RHYTHM  | synth drums on VA's core: twelve recipes, eight macros (tune, decay, pitch envelope, filter, noise, drive, wave) | Tristano Suriani
 ENGINE  LINNKIT  baseline  eng_linnkit.c,shared/drum_map.c    54  KIT     | the 80s drum machine after the LinnDrum, synthesized: no samples | Tristano Suriani
 ENGINE  WAR      baseline  eng_war.c,shared/drum_map.c        44  KIT     | an industrial kit: FM drums through a folder into clipping | Tristano Suriani
 FX      PLATE    baseline  fx_amb.c,fastmath.h                -   -       | REVERB TYPE PLATE: Dattorro's plate, in float                 | Charles Vestal (amb-1, X0X's fastmath); ported by Tristano Suriani

@@ -28,7 +28,7 @@ run "ARP (2026-10-23, the arpeggiator back): ARP starts and stops it, each track
 compile $CC -O2 -w $I -o "$OUT/rec_test" tests/baseline/rec_test.c -lm
 run "REC (2026-10-23, the loop recorder): the take from PLAY or the next downbeat, BARS, the loops played back, a take replaces only the tracks that got notes, QNT, punch-out, stop, CLEAR, the MIDI clock" "$OUT/rec_test"
 compile $CC -O2 -w $I -o "$OUT/rhythm_test" tests/baseline/rhythm_test.c -lm
-run "RHYTHM (2026-10-23, the 808 and the 909): the twelve drums in both models, the hit past its note-off, the hats' choke, KICK's length" "$OUT/rhythm_test"
+run "RHYTHM and VAKIT (2026-10-23, the 808 and the 909; synth drums): the twelve drums, the hit past its note-off, the hats' choke, KICK's length" "$OUT/rhythm_test"
 slow compile $CC -O2 -w $I -o "$OUT/mod_test" tests/baseline/mod_test.c -lm
 mkdir -p build/mod_demo
 slow run "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" "$OUT/mod_test" build/mod_demo

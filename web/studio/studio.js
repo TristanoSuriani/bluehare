@@ -182,6 +182,7 @@ const ENGINE_WORDS = {
   SANDSTRM: "The trance lead on VA's core: five saws, the gate",
   HOOVER: "The rave lead on VA's core: PWM saws, the bend",
   RHYTHM: "The 808 and the 909, synthesized",
+  VAKIT: "Synth drums on VA's core: zaps, toms, blips",
 };
 
 // ------------------------------------------------------------------ history (every change can be taken back)

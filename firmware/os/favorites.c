@@ -19,20 +19,21 @@ static uint32_t *fav_user_word(uint32_t k) { return k < 32u ? &favorites.user : 
  * (16, 17) star presets 8 .. 63 in the last two of those tails (their 0 .. 7 stay in [15][8], [15][9]). (Blue Hare)
  * 35 (VECTOR) takes the tail of 27, retired (ACID: its stars of before show on VECTOR's first presets); ids 36 .. 46
  * bytes 16 .. 23 of the same rows as 26 .. (presets 0 .. 63), ids 47 .. 57 their bytes 8 .. 15, whose own engines
- * keep presets 0 .. 63 (bytes 8 .. 23 were their presets 64 .. 191: none has). Ids 57 .. 66 (the native image's
- * NEBULA, CANYON, ..) bytes 0 .. 7 of the rows of FAV_ROW26[0 .. 9], whose own engines are retired (presets 0 .. 63:
- * they had stars only in Felucca). An id past 66 needs a new settings layout */
+ * keep presets 0 .. 63 (bytes 8 .. 23 were their presets 64 .. 191: none has). Ids 57 .. 67 (the native image's
+ * NEBULA, CANYON, ..; VAKIT 67 since 2026-10-23) bytes 0 .. 7 of the rows of FAV_ROW26[0 .. 10], whose own engines are
+ * retired (presets 0 .. 63: they had stars only in Felucca; 67's row WAVE's, archived). An id past 67 needs a new
+ * settings layout */
 #define FAV_E16 (&favorites.factory[15][8])
 #define FAV_ROWS_FREED 1u       /* [15][12] bit 0: settings_persist.c */
 static const uint8_t FAV_ROW18[4] = {1, 4, 8, 13};
 static const uint8_t FAV_ROW26[11] = {0, 2, 3, 5, 6, 7, 9, 10, 11, 12, 14};
-typedef char fav_ids_fit[EID_COUNT <= 67u && (EID_COUNT <= 35u || EID_RETIRED(27u)) ? 1 : -1];   /* (ids 26 .. 34: FAV_ROW26[0 .. 8], 35
+typedef char fav_ids_fit[EID_COUNT <= 68u && (EID_COUNT <= 35u || EID_RETIRED(27u)) ? 1 : -1];   /* (ids 26 .. 34: FAV_ROW26[0 .. 8], 35
                                                                             * 27's; [9], [10]: 16, 17) */
 static uint8_t *favorite_byte(uint32_t engine, uint32_t preset)
 {
     if (engine >= EID_COUNT || preset >= 256u || EID_RETIRED(engine))
         return 0;
-    if (engine >= 57u)                                /* (the rows of retired ids: FAV_ROW26[0 .. 9]) */
+    if (engine >= 57u)                                /* (the rows of retired ids: FAV_ROW26[0 .. 10]) */
         return preset < 64u && EID_RETIRED(FAV_ROW26[engine - 57u]) ? &favorites.factory[FAV_ROW26[engine - 57u]][preset / 8u] : 0;
     if (engine >= 47u)
         return preset < 64u ? &favorites.factory[FAV_ROW26[engine - 47u]][8u + preset / 8u] : 0;
