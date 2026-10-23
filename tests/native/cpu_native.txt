@@ -1,0 +1,2 @@
+# Blue Hare host CPU baseline (tests/baseline/regress.c): instructions per 44.1 kHz sample, cc -O2 on
+# the Mac (kernel-counted, ~1 % run to run). The check allows +25 %. Rewritten by BUDGET_UPDATE=1.

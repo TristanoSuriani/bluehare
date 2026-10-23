@@ -6,8 +6,8 @@
  * The core (va_run): per voice two oscillators and a sub-oscillator, band-limited (polyBLEP saw and pulse; sine;
  * the triangle naive: its images fall at -12 dB an octave), then the input saturating (a rational tanh) into a
  * zero-delay filter, the four-pole ladder (24 dB, its feedback solved for the sample, RES to self-oscillation) or
- * the state-variable low-pass (12 dB, OBIE's), the whole voice run VA_OS times the sample rate (2, the native image as
- * the FM-1) and brought down through a fourth-order Butterworth (two biquads at 18 kHz): the saturation and
+ * the state-variable low-pass (12 dB, OBIE's), the whole voice run VA_OS times the sample rate (2 on the FM-1, 8 in
+ * the native image) and brought down through a fourth-order Butterworth (two biquads at 18 kHz): the saturation and
  * the resonance stay clean up the keyboard. Each voice a little off, as analog voices are: its oscillators and its
  * filter offset as it starts, and a slow drift on top (SLOP: OBIE's knob, VA's fixed and small).
  * VA: W1 W2 the oscillators' waves (SAW PULSE SINE TRI; PULSE's width moved by the SHAPE routings: PWM; or a noise,
@@ -17,7 +17,15 @@
  * voices (POLY 6, UNISON 3 or 6, MONO, LEGATO, GLIDE: the track's VOICE pages). The state each voice keeps beyond
  * voice_t's: va_v (VA and OBIE share it: a track plays one engine) */
 #include "fastmath.h"                          /* (the float voice) */
-#define VA_OS 2u                                /* (the native image too: it plays as the device, the renders shared) */
+#ifndef VA_OS                                   /* (a build may set it: a measure, -DVA_OS=..) */
+#ifdef BLUEHARE_NATIVE
+#define VA_OS 8u                                /* (2026-10-23, the user's) the native image: eight times the rate, the
+                                                 * resonant ladder and the sync ~10 dB cleaner than 2x (C6 .. C7), ~4.5 %
+                                                 * of a laptop's core at full power; its own renders (tests/native) */
+#else
+#define VA_OS 2u                                /* the device: what the FM-1 has room for */
+#endif
+#endif
 #define VA_POLY 6
 enum { VA_LP12, VA_LADDER, VA_BP, VA_HP };      /* (va_cfg_t.ladder) */
 enum { VA_SAW, VA_PULSE, VA_SINE, VA_TRI, VA_WHITE, VA_PINK, VA_BROWN,   /* (the noises: the user's, 2026-10-23) */

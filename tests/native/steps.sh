@@ -15,7 +15,7 @@ for d in hare_fm1 all; do
     slow run "native image ($d): 16 voices a track, the device's engines as they are, the device's reverb, the patches' long delays" "$OUT/native_test_$d"
 done
 slow compile $CC -O2 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=all $I -o "$OUT/regress_native" tests/baseline/regress.c -lm
-slow run "regression, Native (every component): its presets' golden renders (as the device's)" "$OUT/regress_native" tests/baseline/golden.txt tests/baseline/cpu_baseline.txt
+slow run "regression, Native (every component): its presets' golden renders (its own: VA's core at 8x, 2026-10-23)" "$OUT/regress_native" tests/native/golden_native.txt tests/native/cpu_native.txt
 FV=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/fm1/bluehare.c)
 slow compile $CC -O1 -w -DBLUEHARE_NATIVE -DBLUEHARE_DIST=all "-DBLUEHARE_VERSION=\"$FV\"" $I -Itests/os \
     -o "$OUT/ui_render_native" tests/os/ui_render.c -lm
