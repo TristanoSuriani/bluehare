@@ -799,8 +799,8 @@ static void setup(int s)
     case S_USER_FOOT: song.playing = 0; up_store(3, "MY BASS"); ui.uslot = 3; go_page(GR_USER); break;   /* EDIT NAME lit */
     case S_SEQ_LOOP: go_page(GR_LOOP); break;            /* SEQ > LOOP: REC's loops */
     case S_GAME_FROG:                                   /* (2026-10-24) HARE CROSSING: two burrows filled, on the road */
-        frog_open(); frog.home[1] = frog.home[3] = 1; frog.score = 230; frog.hi = 410; frog.level = 2;
-        frog.row = 10; frog.x = 96; ui.msg_t = 0;
+        frog_open(); frog_new(); frog.home[0] = frog.home[2] = 1; frog.score = 230; frog.hi = 410; frog.level = 2;
+        frog.row = 4; frog.x = 104; ui.msg_t = 0;
         break;
     default: break;
     }

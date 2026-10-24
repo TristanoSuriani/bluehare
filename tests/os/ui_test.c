@@ -5796,8 +5796,9 @@ static int test_eight_tracks(void)
 }
 #endif
 
-/* (2026-10-24) HARE CROSSING (game_frog.c): SEQ held a second opens it, shorter not; the hops (OCT+ right, a white key
- * up, a black key down); a car takes a life; HOME closes it, the page drawn again; the keys silent meanwhile */
+/* (2026-10-24) HARE CROSSING (game_frog.c): SEQ held a second opens it, shorter not; PLAY starts a game, pauses and
+ * resumes it (never the song); SELECT hops forward and back, KNOB 4 left and right; a car takes a life; the keys
+ * silent; HOME closes it */
 static int test_frog(void)
 {
     int bad = 0, ok;
@@ -5809,22 +5810,28 @@ static int test_frog(void)
     ok &= frog.on;
     btn_up(B_SEQ); frames(50);
     bad += check("HARE CROSSING: SEQ held a second opens it (0.6 s does not)", ok && frog.on);
-    ok = frog.row == 13 && keys_mode() == 1u;
+    ok = frog.state == FR_READY && keys_mode() == 1u;
+    turn(EN_SELECT, 1); ok &= frog.row == 6;            /* (no game yet: no hop) */
+    press(B_PLAY); ok &= frog.state == FR_RUN && !song.playing && transport_req == 0u;
+    bad += check("..PLAY starts a game (the song not), the keys silent", ok);
     i = (uint32_t)frog.x;
-    press(B_OCTUP); ok &= (uint32_t)frog.x == i + 16u;
-    frog.row = 7; frog.dead_t = 0;                      /* (on the bank between the road and the river: no car there) */
-    key_down(white(0)); frame(); key_up(white(0));
-    ok &= frog.row == 6;
-    frog.row = 7; frog.dead_t = 0; frame();
-    key_down(white(0) + 1u); frame(); key_up(white(0) + 1u);   /* (F#: a black key) */
-    ok &= frog.row == 8;
+    turn(EN_K4, 1); ok = (uint32_t)frog.x == i + 32u;
+    turn(EN_K4, -1); ok &= (uint32_t)frog.x == i;
+    frog.row = 3; frog.dead_t = 0;                      /* (on the bank between the road and the river: no car there) */
+    turn(EN_SELECT, 1); ok &= frog.row == 2;
+    frog.row = 3; frog.dead_t = 0; frame();
+    turn(EN_SELECT, -1); ok &= frog.row == 4;
     frog_start(); frame();
-    bad += check("..OCT+ a hop right, a white key up, a black key down; the keys play no notes", ok);
+    bad += check("..KNOB 4 a hop right and left, SELECT forward and back", ok);
+    press(B_PLAY); ok = frog.state == FR_PAUSE;
+    i = (uint32_t)frog.row;
+    turn(EN_SELECT, 1); ok &= (uint32_t)frog.row == i;  /* (paused: no hop) */
+    press(B_PLAY); ok &= frog.state == FR_RUN && !song.playing;
+    bad += check("..PLAY again pauses it, again goes on", ok);
     lives = frog.lives;
-    for (i = 0; i < 400u && frog.lives == lives; i++) {   /* up onto the road and wait there: a car comes */
-        if (frog.row > 10 && !frog.dead_t) {
-            key_down(white(0)); frame(); key_up(white(0));
-        }
+    for (i = 0; i < 400u && frog.lives == lives; i++) {   /* onto the road and wait there: a car comes */
+        if (frog.row > 4 && !frog.dead_t)
+            turn(EN_SELECT, 1);
         frame();
     }
     bad += check("..a car on the road takes a life", frog.lives == lives - 1u);

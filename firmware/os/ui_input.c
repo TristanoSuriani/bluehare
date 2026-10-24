@@ -615,9 +615,7 @@ static void ui_input(void)
     {   /* (2026-10-24) HARE CROSSING (game_frog.c): SEQ held a second opens it; while it is on, every input is its */
         static uint32_t seq_t0;                         /* (press time | 1; bit 1: it opened) */
         if (frog.on) {
-            for (k = 0; k < NE; k++)
-                panel_enc(k);                           /* (the knobs: no turn left over for after) */
-            frog_input(pressed, notes);
+            frog_input(pressed);                        /* (it reads SELECT and KNOB 4, drops the other knobs' turns) */
             return;
         }
         if (!((fm1_in.buttons >> panel.btn[B_SEQ]) & 1u))
