@@ -25,7 +25,7 @@ import re
 import sys
 from pathlib import Path
 
-MAX = 16
+MAX = 18
 
 
 def registry(root):

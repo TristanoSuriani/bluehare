@@ -3241,14 +3241,15 @@ static int test_retired_engines(void)
         {ENGI_OBIE, EID_OBIE, "OBIE"}, {ENGI_KIT, EID_KIT, "KIT"}, {ENGI_RHYTHM, EID_RHYTHM, "RHYTHM"}, {ENGI_VAKIT, EID_VAKIT, "VAKIT"},
         {ENGI_LINNKIT, EID_LINNKIT, "LINNKIT"},
         {ENGI_WAR, EID_WAR, "WAR"}, {ENGI_SPEECH, EID_SPEECH, "SPEECH"}, {ENGI_ONYX, EID_ONYX, "ONYX"},
-        {ENGI_VOCODER, EID_VOCODER, "VOCODER"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"}};
-    static const uint8_t ARCH[16] = {EID_KARPLUS, EID_FMPERC, EID_WASP, EID_RISERS, EID_ECHOES, EID_CANYON, EID_WEST,
+        {ENGI_VOCODER, EID_VOCODER, "VOCODER"}, {ENGI_VOSIM, EID_VOSIM, "VOSIM"}, {ENGI_DUBSIREN, EID_DUBSIREN, "DUBSIREN"},
+        {ENGI_RISERS, EID_RISERS, "RISERS"}, {ENGI_NOISE, EID_NOISE, "NOISE"}};
+    static const uint8_t ARCH[15] = {EID_KARPLUS, EID_FMPERC, EID_WASP, EID_ECHOES, EID_CANYON, EID_WEST,
                                      EID_SH101, EID_BLISS, EID_STRINGS,   /* (archived, 2026-10-16 .. 17) */
                                      EID_MODAL, EID_WAVE, EID_DUBCHORD, EID_DUBSIREN8, EID_BREAKS,
                                      EID_CHIPKIT};                        /* (2026-10-19 .. 23) */
     /* (2026-10-23) each track its own: 1 the synths, 2 the kits, 3 the voices */
-    static const char *const ORDER[3][6] = {{"VA", "SANDSTRM", "HOOVER", "SID", "OBIE", 0}, {"KIT", "RHYTHM", "VAKIT", "LINNKIT", "WAR", 0},
-                                            {"SPEECH", "ONYX", "VOCODER", "VOSIM", "DUBSIREN", 0}};
+    static const char *const ORDER[3][8] = {{"VA", "SANDSTRM", "HOOVER", "SID", "OBIE", 0}, {"KIT", "RHYTHM", "VAKIT", "LINNKIT", "WAR", 0},
+                                            {"SPEECH", "ONYX", "VOCODER", "VOSIM", "DUBSIREN", "RISERS", "NOISE", 0}};
     int bad = 0, ok = 1, sub;
     uint32_t i, k, e, total, seen = 0, all = 0, last = 0xFFu, r = 0, n = 0;
     ui_power_on();
@@ -3306,7 +3307,7 @@ static int test_retired_engines(void)
     bad += check("PRESETS KNOB 2: the track's engines in order, back to the first",
                  (NTRK > 3u || (seen == all && TSEL->eng_req == ENGI_SPEECH)) &&   /* (8 tracks: DUBSIREN off the last
                                                                                      * loads VOSIM: no round trip) */
-                 eng_step(ENGI_SPEECH, 1) == ENGI_ONYX && eng_step(ENGI_SPEECH, -1) == ENGI_DUBSIREN && NENG_SHOWN == 5u);
+                 eng_step(ENGI_SPEECH, 1) == ENGI_ONYX && eng_step(ENGI_SPEECH, -1) == ENGI_NOISE && NENG_SHOWN == 7u);
     /* the display order (engines.c ENGINES[]), each track its own: every engine one can pick there once */
     for (k = 0, ok = 1; k < NTRK && k < 3u; k++) {
         song.sel = (uint8_t)k;

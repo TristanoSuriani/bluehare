@@ -183,6 +183,8 @@ const ENGINE_WORDS = {
   HOOVER: "The rave lead on VA's core: PWM saws, the bend",
   RHYTHM: "The 808 and the 909, synthesized",
   VAKIT: "Synth drums on VA's core: zaps, toms, blips",
+  RISERS: "Build-ups and landings, timed to the song",
+  NOISE: "Noise as an instrument: wind, surf, whistles",
 };
 
 // ------------------------------------------------------------------ history (every change can be taken back)

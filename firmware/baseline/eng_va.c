@@ -518,13 +518,27 @@ static const preset_t VA_PRESETS[] = {
     {"TRANCE SAW", {0, 0, 55, 20, 0, 92, 15, 1}, {0, 75, 100, 45}, 20, 0, FX(0, 40, 50, 60), VA_UNI(90)},
     {"HOOVERISH", {0, 1, 60, 60, 1, 80, 20, 1}, {0, 80, 110, 40}, 25, 1, FX(20, 30, 30, 45), VA_UNI(110), .glide = 40},
     {"SAW STACK", {0, 0, 35, 45, 0, 95, 12, 0}, {0, 70, 110, 40}, 10, 0, FX(0, 30, 30, 50), VA_UNI(60)},
+    /* (2026-10-24) brass: saws whose filter swells open with the note (ENV -> FILTER), the ensemble's spread */
+    {"SYNTH BRASS", {0, 0, 30, 30, 1, 50, 15, 1}, {30, 70, 105, 40}, 45, 0, FX(0, 40, 15, 45)},
+    {"BRASS STAB", {0, 0, 20, 40, 1, 45, 20, 1}, {0, 55, 40, 30}, 60, 0, FX(0, 30, 25, 40)},
+    {"SOFT HORNS", {0, 1, 25, 20, 3, 55, 10, 1}, {45, 80, 110, 55}, 30, 0, FX(0, 50, 15, 65)},
+    {"BRASS SECTION", {0, 0, 35, 30, 1, 52, 15, 1}, {25, 75, 100, 45}, 50, 0, FX(0, 30, 20, 50), VA_UNI(25)},
+    /* flutes: a sine and a triangle, the breath a noise in the sub's place */
+    {"FLUTE", {2, 3, 4, 25, 4, 85, 10, 0}, {40, 70, 110, 40}, 10, 1, FX(0, 15, 25, 50), .glide = 10},
+    {"PAN FLUTE", {2, 2, 6, 35, 5, 75, 20, 0}, {30, 80, 95, 50}, 15, 1, FX(0, 10, 30, 60)},
+    {"AIRY FLUTES", {3, 2, 5, 45, 4, 70, 15, 1}, {55, 85, 115, 70}, 5, 0, FX(0, 30, 25, 70)},
+    /* organs: the oscillators the 8', the sub the 16', at once and held */
+    {"DRAWBAR", {2, 3, 3, 90, 2, 120, 0, 1}, {0, 0, 127, 15}, 0, 0, FX(0, 60, 10, 40)},
+    {"PERC ORGAN", {2, 1, 3, 70, 2, 100, 5, 1}, {0, 40, 90, 15}, 20, 0, FX(0, 50, 10, 35)},
+    {"REED ORGAN", {1, 1, 6, 50, 1, 80, 10, 1}, {5, 0, 127, 20}, 0, 0, FX(0, 40, 10, 45)},
+    {"CHURCH ORGAN", {1, 3, 10, 100, 1, 95, 5, 1}, {20, 0, 127, 60}, 0, 0, FX(0, 40, 10, 90)},
 };
 
 static const engine_t ENG_VA = {
     .name = "VA",
     .id = EID_VA,
     .cc = 0x67,                  /* CC74 CUT, CC71 RES */
-    .cats = "OOOOUUUPPPPPLLLLBPUFLLLL",
+    .cats = "OOOOUUUPPPPPLLLLBPUFLLLLPKPPLLPKKKK",
     .page_title = {"OSC", "FILTER"},
     .edit = {
         {"W1", F_ENUM, 0, VA_BROWN, 0, N_VA_WAVE, 0},

@@ -33,7 +33,7 @@ up next to them, not to make it a groovebox.
 - Engines, a track's own: 1 the synths VA SANDSTORM HOOVER SID OBIE (VA the virtual analogue; OBIE, SANDSTORM and
   HOOVER flavours of its core); 2 the kits KIT RHYTHM VAKIT LINNKIT WAR (RHYTHM: the 808 and the 909, synthesized; VAKIT:
   synth drums on VA's core); 3 the
-  voices SPEECH ONYX VOCODER VOSIM DUBSIREN. (2026-10-23: MODAL, BREAKS, DUBCHORD, DUBSIREN8 and WAVE archived: what
+  voices SPEECH ONYX VOCODER VOSIM DUBSIREN, RISERS and NOISE (both on VA's core, 2026-10-24). (2026-10-23: MODAL, BREAKS, DUBCHORD, DUBSIREN8 and WAVE archived: what
   sounds good on the device decides.)
 - Sequenced from outside (2026-10-23): no sequencer of its own. REC records what the sequencer plays into each track's
   loop (SEQ > LOOP: BARS, QNT, CLEAR); a take replaces only the tracks that got notes. A performance instrument.

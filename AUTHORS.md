@@ -47,6 +47,8 @@ What a distribution can be made of today (`firmware/components.txt`, the registr
 | ONYX | engine | phrases spoken by Kokoro TTS's voices (Onyx, Heart, George, Nicole), kept as LPC frames: the vocabulary of electronic music, vowels to sing | `firmware/baseline/eng_onyx.c` | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0) |
 | VOCODER | engine | a vocoder: the voices' phrases and vowels (ONYX's LPC frames) shaping a saw, a square, a supersaw | `firmware/baseline/eng_vocoder.c` | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0) |
 | DUBSIREN | engine | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | `firmware/baseline/eng_dubsiren.c` | Tristano Suriani |
+| RISERS | engine | build-ups and landings on VA's core, timed to the song: noise, saws, sine, Shepard, down, boom | `firmware/baseline/eng_risers.c` | Tristano Suriani |
+| NOISE | engine | noise as an instrument on VA's core: three colours, four filters, key tracking, a filter envelope (CHAOS's id) | `firmware/baseline/eng_noise.c` | Tristano Suriani |
 | KIT | engine | a drum kit on one patch: 8 lanes on the General MIDI notes | `firmware/baseline/eng_kit.c`, `firmware/baseline/shared/drum_map.c`, `firmware/baseline/shared/fmp_dsp.c` | Tristano Suriani |
 | RHYTHM | engine | the 808 and the 909, synthesized as their circuits made their drums: no samples | `firmware/baseline/eng_rhythm.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |
 | VAKIT | engine | synth drums on VA's core: twelve recipes, eight macros (tune, decay, pitch envelope, filter, noise, drive, wave) | `firmware/baseline/eng_vakit.c`, `firmware/baseline/shared/drum_map.c` | Tristano Suriani |

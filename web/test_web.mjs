@@ -51,7 +51,7 @@ async function editorMock() {
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
   {   /* the primary distribution's engines by id (HARE FM1), "-" for the rest: retired (0 .. 13, 27), archived, left out */
     const HARE = { 65: "VA", 60: "SANDSTRM", 17: "HOOVER", 24: "SID", 62: "OBIE", 28: "KIT", 66: "RHYTHM", 67: "VAKIT", 54: "LINNKIT", 44: "WAR",
-                   18: "SPEECH", 63: "ONYX", 64: "VOCODER", 21: "VOSIM", 25: "DUBSIREN" };   /* (2026-10-23: three tracks) */
+                   18: "SPEECH", 63: "ONYX", 64: "VOCODER", 21: "VOSIM", 25: "DUBSIREN", 30: "RISERS", 23: "NOISE" };   /* (2026-10-23: three tracks) */
     ok(info.nengines === 68 && info.engines.every((n, e) => n === (HARE[e] || "-")) && info.pcount === 104 && info.pe0 === 96,
       "editor: INFO");
   }
@@ -142,15 +142,15 @@ async function editorMock() {
   {   /* the lists in the device's order (engines.c ENGINE_ORDER: the three tracks' engines in turn): VA first, DUBSIREN
        * last, "-" never; the ids stay */
     const shown = E.engineOrder(info.engines).map((i) => info.engines[i]), o = E.engineOrder(info.engines);
-    ok(shown.join() === "VA,SANDSTRM,HOOVER,SID,OBIE,KIT,RHYTHM,VAKIT,LINNKIT,WAR,SPEECH,ONYX,VOCODER,VOSIM,DUBSIREN" &&
-       o.join() === "65,60,17,24,62,28,66,67,54,44,18,63,64,21,25",
-       "editor: engines listed VA first, DUBSIREN last (ids kept)");
+    ok(shown.join() === "VA,SANDSTRM,HOOVER,SID,OBIE,KIT,RHYTHM,VAKIT,LINNKIT,WAR,SPEECH,ONYX,VOCODER,VOSIM,DUBSIREN,RISERS,NOISE" &&
+       o.join() === "65,60,17,24,62,28,66,67,54,44,18,63,64,21,25,30,23",
+       "editor: engines listed VA first, NOISE last (ids kept)");
     ok(E.engineOrder(["SID", "X", "-", "KIT", "VA"]).join() === "4,0,3,1", "editor: an unknown engine follows the known ones");
     m.state.favorites[28][0] = m.state.favorites[24][0] = true;
     await rq(E.req.uiSet(3, 0));
     prefs = await E.readDevicePreferences(rq, info, names, prefs);
     const rows = E.devicePresetRows(info, names, prefs).filter((r) => !r.user), eng = [...new Set(rows.map((r) => r.engine))];
-    ok(eng[0] === 65 && eng[1] === 60 && eng[eng.length - 1] === 25, "editor: device presets in the device's engine order");
+    ok(eng[0] === 65 && eng[1] === 60 && eng[eng.length - 1] === 23, "editor: device presets in the device's engine order");
   }
   const none = await E.readDevicePreferences(() => { throw new Error("unexpected request"); }, { uiCaps: 0 }, []);
   ok(none === null, "editor: old firmware receives no unsupported preference requests");

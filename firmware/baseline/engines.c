@@ -18,6 +18,8 @@ static void *eng_slab(const track_t *t, uint32_t key, uint32_t bytes);
 #include "eng_vosim.c"          /* VOSIM: two formants of sin^2 pulse trains (1.5; back from the archive 2026-10-16) */
 #include "eng_dubsiren.c"       /* DUBSIREN: the dub siren (back 2026-10-18) */
 #include "eng_va.c"             /* VA: the virtual analogue, and the core OBIE, SANDSTORM, HOOVER are flavours of (2026-10-23) */
+#include "eng_risers.c"         /* RISERS: build-ups on VA's core (back 2026-10-24) */
+#include "eng_noise.c"          /* NOISE: noise as an instrument on VA's core (2026-10-24) */
 #include "eng_hoover.c"         /* HOOVER: the rave lead (back on VA's core 2026-10-23) */
 #include "eng_sandstorm.c"      /* SANDSTORM: the late-90s trance lead (back 2026-10-18) */
 #include "eng_speech.c"         /* SPEECH: LPC words (back 2026-10-18; tools/gen_speech.py) */

@@ -81,12 +81,12 @@ enum {                           /* the indices: the distribution's engines in i
 #define X(N) ENGI_##N,
     BLUEHARE_DIST_ENGINES(X)
 #undef X
-    NENGINES                     /* engines in this build (1 .. 16; the native image's every component, 1 .. 24) */
+    NENGINES                     /* engines in this build (1 .. 18; the native image's every component, 1 .. 24) */
 };                               /* (the ones left out: ENGI_<NAME> ENG_ABSENT, in the generated header) */
 #ifdef BLUEHARE_NATIVE           /* (2026-10-19: WAVE the native image's alone, its 17th; the keys pick the first 16, */
 #define ENG_MAX 24u              /* PRESETS' knob every one) */
 #else
-#define ENG_MAX 16u              /* (a device's: tools/gen_dist.py MAX) */
+#define ENG_MAX 18u              /* (a device's: tools/gen_dist.py MAX; 18 since 2026-10-24: RISERS, NOISE) */
 #endif
 typedef char eng_count_ok[NENGINES > 0 && NENGINES <= ENG_MAX ? 1 : -1];
 #define NENG_SHOWN eng_shown()   /* (the engines one can pick on the selected track, in their order: engines.c) */

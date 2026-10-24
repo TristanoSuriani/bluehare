@@ -19,6 +19,8 @@ ENGINE  SPEECH   baseline  eng_speech.c                       18  VOSIM   | word
 ENGINE  ONYX     baseline  eng_onyx.c                         63  SPEECH  | phrases spoken by Kokoro TTS's voices (Onyx, Heart, George, Nicole), kept as LPC frames: the vocabulary of electronic music, vowels to sing | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0)
 ENGINE  VOCODER  baseline  eng_vocoder.c                      64  ONYX    | a vocoder: the voices' phrases and vowels (ONYX's LPC frames) shaping a saw, a square, a supersaw | Tristano Suriani; the voices Kokoro-82M's (Apache 2.0)
 ENGINE  DUBSIREN baseline  eng_dubsiren.c                     25  VOSIM     | the dub siren: a swept oscillator, its echoes (the last patch; elsewhere DUBSIREN8) | Tristano Suriani
+ENGINE  RISERS   baseline  eng_risers.c                       30  NOISE   | build-ups and landings on VA's core, timed to the song: noise, saws, sine, Shepard, down, boom | Tristano Suriani
+ENGINE  NOISE    baseline  eng_noise.c                        23  RISERS  | noise as an instrument on VA's core: three colours, four filters, key tracking, a filter envelope (CHAOS's id) | Tristano Suriani
 ENGINE  KIT      baseline  eng_kit.c,shared/drum_map.c,shared/fmp_dsp.c 28  LINNKIT | a drum kit on one patch: 8 lanes on the General MIDI notes | Tristano Suriani
 ENGINE  RHYTHM   baseline  eng_rhythm.c,shared/drum_map.c     66  KIT     | the 808 and the 909, synthesized as their circuits made their drums: no samples | Tristano Suriani
 ENGINE  VAKIT    baseline  eng_vakit.c,shared/drum_map.c      67  RHYTHM  | synth drums on VA's core: twelve recipes, eight macros (tune, decay, pitch envelope, filter, noise, drive, wave) | Tristano Suriani
