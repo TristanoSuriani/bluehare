@@ -5796,6 +5796,43 @@ static int test_eight_tracks(void)
 }
 #endif
 
+/* (2026-10-24) HARE CROSSING (game_frog.c): SEQ held a second opens it, shorter not; the hops (OCT+ right, a white key
+ * up, a black key down); a car takes a life; HOME closes it, the page drawn again; the keys silent meanwhile */
+static int test_frog(void)
+{
+    int bad = 0, ok;
+    uint32_t i, lives;
+    ui_power_on(); frames(320);
+    btn_down(B_SEQ); frames(600); btn_up(B_SEQ); frames(100);
+    ok = !frog.on;
+    btn_down(B_SEQ); frames(1200);
+    ok &= frog.on;
+    btn_up(B_SEQ); frames(50);
+    bad += check("HARE CROSSING: SEQ held a second opens it (0.6 s does not)", ok && frog.on);
+    ok = frog.row == 13 && keys_mode() == 1u;
+    i = (uint32_t)frog.x;
+    press(B_OCTUP); ok &= (uint32_t)frog.x == i + 16u;
+    frog.row = 7; frog.dead_t = 0;                      /* (on the bank between the road and the river: no car there) */
+    key_down(white(0)); frame(); key_up(white(0));
+    ok &= frog.row == 6;
+    frog.row = 7; frog.dead_t = 0; frame();
+    key_down(white(0) + 1u); frame(); key_up(white(0) + 1u);   /* (F#: a black key) */
+    ok &= frog.row == 8;
+    frog_start(); frame();
+    bad += check("..OCT+ a hop right, a white key up, a black key down; the keys play no notes", ok);
+    lives = frog.lives;
+    for (i = 0; i < 400u && frog.lives == lives; i++) {   /* up onto the road and wait there: a car comes */
+        if (frog.row > 10 && !frog.dead_t) {
+            key_down(white(0)); frame(); key_up(white(0));
+        }
+        frame();
+    }
+    bad += check("..a car on the road takes a life", frog.lives == lives - 1u);
+    press(B_HOME);
+    bad += check("..HOME closes it, the keys play again", !frog.on && keys_mode() == 0u);
+    return bad;
+}
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -5812,6 +5849,7 @@ int main(void)
     bad += test_categories();
     bad += test_display_preferences();
     bad += test_menu_tabs();
+    bad += test_frog();
     bad += test_menu_project_rows();
     bad += test_information();
     bad += test_product_ux();

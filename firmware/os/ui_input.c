@@ -612,6 +612,25 @@ static void ui_input(void)
         usb_serial_apply();                             /* (MENU > USB SERIAL: when the menu has closed) */
     if (scr_input(pressed, notes))                      /* MENU > SCREEN OFF: dark, or the wake gesture: swallowed */
         return;                                         /* (before the buttons' timers: no tap or hold after it) */
+    {   /* (2026-10-24) HARE CROSSING (game_frog.c): SEQ held a second opens it; while it is on, every input is its */
+        static uint32_t seq_t0;                         /* (press time | 1; bit 1: it opened) */
+        if (frog.on) {
+            for (k = 0; k < NE; k++)
+                panel_enc(k);                           /* (the knobs: no turn left over for after) */
+            frog_input(pressed, notes);
+            return;
+        }
+        if (!((fm1_in.buttons >> panel.btn[B_SEQ]) & 1u))
+            seq_t0 = 0;
+        else if (!seq_t0)
+            seq_t0 = (now | 1u) & ~2u;
+        else if (!(seq_t0 & 2u) && now - (seq_t0 & ~3u) > 1000u * 1000u * FM1_TICKS_PER_US && !ui.menu &&
+                 !ui.confirm && !name_on()) {
+            seq_t0 |= 2u;
+            frog_open();
+            return;
+        }
+    }
     if (mom.n && !mom_down()) {                         /* MOMENTARY: LFO let go (or the menu, a layer ..): back */
         mom_restore();
         ui_message("BACK");

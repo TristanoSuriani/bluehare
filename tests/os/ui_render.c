@@ -531,6 +531,7 @@ static void state(void)                          /* a playing song */
 {
     uint32_t i;
     ui_power_on();
+    frog.on = 0;                                  /* (2026-10-24: the game's screen leaves it on) */
     if (large_on) ui_prefs |= PREF_LARGE;
     song.playing = 1;
     song.g[G_BPM] = 124;
@@ -554,7 +555,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_PRESETS_CAT_EMPTY, S_NAME_CAT, S_NAME_RANDOM, S_MENU_ANIM_IDLE, S_MOMENTARY, S_MOMENTARY_EDIT, S_USER_FOOT,
        S_LFO2,
        S_MENU_AUDIO, S_HEAD_PLAY, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK, S_HEAD_BPM_LOCKED,
-       S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_SEQ_LOOP, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_EDIT_HOOVER, S_EDIT_HOOVER_2, S_COUNT };
+       S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_SEQ_LOOP, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_EDIT_HOOVER, S_EDIT_HOOVER_2, S_GAME_FROG, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
        "mod", "fx", "dly", "scl", "chord", "chord_wide", "chord_off", "arp", "voice", "clock",
@@ -571,7 +572,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
        "lfo2", "menu_audio", "head_play",
        "head_bpm_turn", "head_bpm_lock", "head_bpm_locked", "head_glo_turn", "head_downbeat",
        "head_beat_2", "menu_tune", "menu_info", "menu_home", "seq_loop",
-       "edit_wave", "edit_strings_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2"};
+       "edit_wave", "edit_strings_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2", "game_frog"};
 
 
 
@@ -797,6 +798,10 @@ static void setup(int s)
     case S_LFO2: TSEL->p[P_LSYNC] = 6; TSEL->p[P_LTRIG] = 1; TSEL->p[P_LPOL] = 1; go_title("LFO 2"); break;
     case S_USER_FOOT: song.playing = 0; up_store(3, "MY BASS"); ui.uslot = 3; go_page(GR_USER); break;   /* EDIT NAME lit */
     case S_SEQ_LOOP: go_page(GR_LOOP); break;            /* SEQ > LOOP: REC's loops */
+    case S_GAME_FROG:                                   /* (2026-10-24) HARE CROSSING: two burrows filled, on the road */
+        frog_open(); frog.home[1] = frog.home[3] = 1; frog.score = 230; frog.hi = 410; frog.level = 2;
+        frog.row = 10; frog.x = 96; ui.msg_t = 0;
+        break;
     default: break;
     }
 }

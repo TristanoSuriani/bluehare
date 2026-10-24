@@ -59,7 +59,7 @@ static void name_close(void)
     nm.kind = NK_NONE;
 }
 /* the keys: 1 = NAME's (silent), 0 = notes (seq.c keyboard_block reads song.keys_mute) */
-static uint32_t keys_mode(void) { return name_on() ? 1u : 0u; }
+static uint32_t keys_mode(void) { return name_on() || frog.on ? 1u : 0u; }   /* (NAME, the game: the keys silent) */
 
 static const char *nm_group(uint32_t p)                /* white key place p's characters */
 {
