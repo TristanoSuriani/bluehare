@@ -22,6 +22,8 @@ struct bluehare_dbg {
     uint32_t prev_stage, prev_page, prev_home, prev_rst, prev_frames;   /* as found at boot */
 } bluehare_dbg __attribute__((section(".noinit")));
 static volatile uint32_t audio_halves, audio_max_us;
+static volatile uint32_t audio_late_n;                 /* (2026-10-24) halves late this session (bluehare_dbg.late: since the
+                                                        * last power-on, warm boots included): MENU > INFO AUDIO */
 static volatile uint32_t t5_nested_ticks;              /* TIMER4 ticks TIMER5 spent nested in this ISR (main.c) */
 static uint32_t audio_cpu_rem;                         /* keep the fractional IIR step: no low-load bias */
 #define AUDIO_NOW() TGT_NOW()                         /* (target.h: the native image's is the computer's clock) */
@@ -131,8 +133,10 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             song.cpu_q8 = load / CPU_AVG;
             audio_cpu_rem = load % CPU_AVG;
         }
-        if (fm1_audio_free_half() != half)
+        if (fm1_audio_free_half() != half) {
             bluehare_dbg.late++;                         /* the DMA moved on while we rendered */
+            audio_late_n++;
+        }
         bluehare_dbg.halves++;
         bluehare_dbg.last_us = us;
         if (us > bluehare_dbg.max_us)

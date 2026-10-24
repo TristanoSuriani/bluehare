@@ -93,6 +93,10 @@ static const menu_flag_t MENU_FLAGS[] = {
     {MI_EXPERT, PREF_EXPERT, {"OFF", "ON"}},           /* (2026-10-17) ON: EDIT 1 and 2, every engine parameter (ui.c) */
     {MI_CORES, PREF_ONE_CORE, {"2", "1"}},             /* (2026-10-24) 1: the second core not started (fm1/bluehare.c) */
 };
+/* (2026-10-24) CORES as this power-on started: 0 unknown (the host), else 1 + its value (fm1/dualcore.c c1_boot). A
+ * change applies at the next power-on: until then the row says AT RESTART (ui_menu.c menu_row) */
+static uint8_t menu_cores_boot;
+
 /* SPEAKER EQ (settings.lowcut, fx.c fx_lowcut): an EQ on the master for the small speaker, not a speaker switch
  * (#42: "OFF" read as the speaker off). FLAT is the old OFF (0, stored as before). The built-in speaker cannot be
  * turned off from the firmware (no amp enable or mute line is known); the EQ reaches

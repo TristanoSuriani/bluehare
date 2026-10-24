@@ -254,6 +254,7 @@ static void events_block(uint32_t n)
         memset(midi_owners, 0, sizeof midi_owners);
         memset(mchord, 0, sizeof mchord);
         midi_hint = 0;
+        midi_in_lost++;
         pr |= (1u << NTRK) - 1u;
         RING_PUBLISH();
         midi_in_overflow = 0;

@@ -17,6 +17,7 @@ static uint8_t midi_in_source[MQ];                    /* 1 USB, 2 TRS */
 static volatile uint32_t fm1_ms;                    /* (core.h's too: milliseconds since boot) */
 static volatile uint32_t mi_w, mi_r;
 static volatile uint8_t midi_in_overflow;               /* audio ISR discards a broken stream and releases notes */
+static volatile uint32_t midi_in_lost;                  /* (2026-10-24) overflows handled this session (MENU > INFO MIDI IN) */
 
 static int midi_enqueue(uint32_t pkt, uint32_t source)
 {

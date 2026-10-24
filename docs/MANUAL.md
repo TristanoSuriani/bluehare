@@ -212,7 +212,7 @@ HOME closes it. The settings are kept across power-offs.
 - **AUDIO:** SPEAKER EQ (FLAT for headphones and recording), USB LEVEL, CLICK, CLICK LEVEL, TUNE
 - **SYSTEM:** USB SERIAL (OFF makes the FM-1 a plain audio + MIDI device, needed on some macOS versions for USB
   audio), RESTORE LAST, **CORES**, CALIBRATION (the keys and buttons), **INFO** (the version, the USB link, the CPU
-  load, the cores), ABOUT
+  load, the cores, and what went wrong since power-on: AUDIO and MIDI IN), ABOUT
 
 ### CORES: the second processor core
 
@@ -222,7 +222,12 @@ ChoralRoot and Melodee firmwares do; it never goes higher.
 
 If the second core misbehaves (some units' cores do), Blue Hare stops using it for the session on its own, and after
 a crash keeps it off at the next start. **INFO** shows CORES: 2, or 1 and the reason. To turn it off yourself, set
-**MENU > SYSTEM > CORES** to 1 and switch the FM-1 off and on.
+**MENU > SYSTEM > CORES** to 1 and switch the FM-1 off and on: the change applies only at the next start, and until
+then the row says AT RESTART.
+
+INFO also counts what went wrong since power-on: **AUDIO** LATE (moments the sound was computed too late: clicks,
+notes out of time) and CUT (voices faded out because the load was too high), and **MIDI IN** (LOST: incoming MIDI
+came faster than it could be read, so every sounding note was released).
 
 ## 13. The engines
 
@@ -280,7 +285,7 @@ lane.
 - **Notes from the sequencer go to the wrong track:** GLO > MIDI IN, for each track: its input and channel.
 - **The FM-1 does not start (dark):** switch it off, hold OCT− alone and switch it on. Three short flashes: update
   mode; install Blue Hare again.
-- **Clicks or missing notes under heavy load:** look at MENU > SYSTEM > INFO (the CPU load and CORES). Fewer voices
+- **Clicks or missing notes under heavy load:** look at MENU > SYSTEM > INFO (the CPU load, CORES, AUDIO and MIDI IN). Fewer voices
   (MONO or POLY instead of UNISON), or lighter engines on the other tracks, help.
 - **The computer calls the FM-1 "Felucca":** your computer remembers the name it first saw for this USB device. On a
   Mac, remove the device in Audio MIDI Setup (with the FM-1 unplugged) and plug it in again.

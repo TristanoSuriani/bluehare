@@ -190,6 +190,9 @@ static void con_uac(void)                              /* USB audio input: strea
 }
 #endif
 
+#ifdef FM1_HAVE_CPU1
+static void c1_con(void);
+#endif
 static void con_status(void)
 {
     const engine_t *e = ENGINES[TSEL->eng_req % NENGINES];
@@ -202,6 +205,11 @@ static void con_status(void)
     con_kv("audio_late", (int32_t)bluehare_dbg.late);
     con_kv("voices_shed", (int32_t)shed_count);
     con_kv("voices_given_up", (int32_t)voice_kills);
+    con_kv("audio_late_session", (int32_t)audio_late_n);   /* (2026-10-24; audio_late: since the last power-on) */
+    con_kv("midi_in_lost", (int32_t)midi_in_lost);       /* (2026-10-24) the MIDI ring overflowed: every note released */
+#ifdef FM1_HAVE_CPU1
+    c1_con();                                           /* (2026-10-24) the second core (fm1/dualcore.c) */
+#endif
     con_kv("track", (int32_t)song.sel + 1);
     con_kv("batt_raw", song.batt_raw);
     con_puts("engine ");

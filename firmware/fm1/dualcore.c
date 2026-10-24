@@ -59,6 +59,7 @@ static void c1_boot(int failed_before, int wdt_reset)
         barred = fm1_c1_bar.barred || (fm1_c1_bar.ran && wdt_reset);
     fm1_c1_bar.magic = FM1_C1_BAR_MAGIC;
     fm1_c1_bar.ran = fm1_c1_bar.barred = 0;
+    menu_cores_boot = (uint8_t)(1u + !!(ui_prefs2 & (PREF_ONE_CORE >> 16)));   /* (the CORES row: AT RESTART) */
     if (ui_prefs2 & (PREF_ONE_CORE >> 16))
         return;                                         /* CORES 1 */
     if (failed_before || barred) {
@@ -72,9 +73,20 @@ static void c1_boot(int failed_before, int wdt_reset)
     fm1_guard_enable(FM1_GUARD_PC);
 }
 
-/* MENU > INFO: what the second core is doing */
+/* MENU > INFO: what the second core is doing (2026-10-24: running, with the misread it survived, if any) */
 static const char *c1_status(void)
 {
     static const char *const N[5] = {"1 (CORES 1)", "2", "1 (NO ANSWER)", "1 (GAVE UP)", "1 (LAST BOOT FAILED)"};
+    if (c1_state == C1_ON && c1_misreads)
+        return "2 (1 MISREAD)";
     return N[c1_state % 5u];
+}
+
+/* (2026-10-24) the serial console's status (console.c con_status): the second core's state and what it survived */
+static void c1_con(void)
+{
+    con_kv("c1_state", c1_state);                       /* 0 CORES 1, 1 running, 2 no answer, 3 gave up, 4 barred */
+    con_kv("c1_misreads", (int32_t)fm1_c1_rejected);
+    con_kv("c1_stalls", (int32_t)fm1_c1_stalls);
+    con_kv("c1_faults", (int32_t)fm1_c1_fault.count);
 }
