@@ -67,7 +67,7 @@ static void track_lfo_tick(track_t *t)
     uint32_t old = t->lfo_ph;
     t->lfo_ph += t->p[P_LSYNC] ? lfo_sync_inc(t) : LFO_INC[t->p[P_LRATE] & 127];
     if (t->lfo_ph < old) {
-        t->lfo_prev = (int16_t)mod_sh(t);               /* mod.c SLEW: it glides on from there */
+        t->lfo_prev = (int16_t)mod_sh(t);               /* MODC.c SLEW: it glides on from there */
         t->lfo_rnd = lfo_rand(t);
     }
     t->lfo_val = lfo_wave(t, t->lfo_ph);
@@ -275,7 +275,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->stage = 1;
     v->age = ++vage;
     v->pitch16 = (int32_t)note * 16;
-    v->mvel = t->m_vel;                                 /* mod.c: the note's VEL and RAND */
+    v->mvel = t->m_vel;                                 /* MODC.c: the note's VEL and RAND */
     v->mrnd = t->m_rnd;
     t->m_vi = (uint8_t)(v - t->v);
     glide_set(t, v, glide);
@@ -553,8 +553,10 @@ static int32_t env_tick(track_t *t, voice_t *v)
 /* SPREAD (#148, fx.c mix_spread): while spread_on (mix_part sets it for the part it renders), track_render renders the
  * voices of side 0 into spread_buf and the others into out, then adds spread_buf to out: out is every voice, as always
  * (the engines add into either the same way), spread_buf the left ones. A cost per block, none per voice */
-static uint8_t spread_on;
-static int32_t spread_buf[CTL];
+static uint8_t spread_on_c[2];
+static int32_t spread_buf_c[2][CTL];
+#define spread_on (spread_on_c[TGT_CORE()])            /* (per core, 2026-10-24: the second core renders a part) */
+#define spread_buf (spread_buf_c[TGT_CORE()])
 static __attribute__((noinline)) void spread_clear(void)
 {
     uint32_t i;
@@ -596,8 +598,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     int16_t pe_new[8];
     for (i = 0; i < n; i++)
         out[i] = 0;
-    if (mod.on && mod.ldep < 32767)                     /* the matrix's DEPTH (mod.c) */
-        lfo = mulq15(lfo, mod.ldep);
+    if (MODC.on && MODC.ldep < 32767)                     /* the matrix's DEPTH (MODC.c) */
+        lfo = mulq15(lfo, MODC.ldep);
     if (spread_on)
         spread_clear();
     if (fade)                                           /* engine switch: the old engine, its own values */
@@ -659,7 +661,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (v->vel > 110)                               /* accent opens the filter with the env */
             m.cutoff += (m.envq15 * 24) >> 7;
         m.shape = (64 << 8) + ((lfo * p[P_LD_SHP]) >> 7) + ((m.envq15 * p[P_ED_SHP]) >> 7);
-        if (mod.on)                                     /* the modulation matrix (mod.c) */
+        if (MODC.on)                                     /* the modulation matrix (MODC.c) */
             mod_voice(t, v, &m, v->fine + tune_fine + bend_fine);
         e->render(t, v, spread_on > v->side ? spread_buf : out, n, &m);   /* (SPREAD: the left ones) */
         nr++;

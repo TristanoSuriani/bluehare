@@ -61,13 +61,15 @@ static uint32_t up_gen;                      /* bumped on every user bank change
 /* 1.2: three more two-valued MENU settings, bits of another byte no engine uses, saved with the settings; 0 in older
  * settings = today's behaviour (append-only, as ui_prefs): bit 0 DISPLAY > SCOPE MIX (Discussion #165, fx.c scope_mix),
  * bit 1 was CONTROL > STEP PREVIEW (Discussion #169, the tracker's, gone with it); bit 2 was CONTROL > CHORD ENTRY ADD
- * (#155, the step sequencer's, 1.2 .. 1.4.1): both ignored, kept as saved. Bits 3-7 free */
+ * (#155, the step sequencer's, 1.2 .. 1.4.1): both ignored, kept as saved. Bit 3 EXPERT, bit 4 CORES 1; bits 5-7 free */
 #define ui_prefs2 (favorites.factory[15][24])
 #define PREF_X 0xFF0000u                       /* (menu_items.c MENU_FLAGS: a bit of ui_prefs2, << 16) */
 #define PREF_SCOPE_MIX (0x01u << 16)
 #define PREF_EXPERT (0x08u << 16)                /* (2026-10-17) MENU > CONTROL > EXPERT ON: EDIT shows the engine's
                                                 * own pages (EDIT 1, EDIT 2), else its plain one (SOUND) */
 static int expert_on(void) { return (ui_prefs2 & (PREF_EXPERT >> 16)) != 0u; }
+#define PREF_ONE_CORE (0x10u << 16)              /* (2026-10-24) MENU > SYSTEM > CORES 1: the second core not started
+                                                * at power-on (fm1/bluehare.c c1_boot); clear in older settings = 2 */
 /* 1.3 (Discussions #112, #134): MENU > DISPLAY > HOME, what the HOME page shows under its four cards: 0 SCOPE (the
  * oscilloscope, as before), 1 TRACKS (the four tracks as rows: ui_graph.c draw_home_tracks). A byte of its own no engine
  * uses, saved with the settings; 0 in older settings = SCOPE; an unknown value (a later firmware's view) reads as SCOPE

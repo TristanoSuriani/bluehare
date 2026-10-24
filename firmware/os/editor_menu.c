@@ -32,6 +32,7 @@ static const uint8_t ED_MENU[][2] = {
                                                        /* (21: MIDI IN, 1.2 .. 2026-10-23; retired: GLO > MIDI IN) */
     {MI_TUNE, 22},                                     /* 1.2: the project's G_TUNE (was GLO > GLOBAL), AUDIO */
     {MI_HOME, 23},                                     /* 1.3 (Discussions #112, #134): HOME SCOPE / TRACKS, DISPLAY */
+    {MI_CORES, 24},                                    /* (2026-10-24) SYSTEM > CORES: 2 or 1 (the second core) */
 };
 #define ED_MENU_N NELEM(ED_MENU)
 

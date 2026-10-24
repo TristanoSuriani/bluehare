@@ -24,8 +24,13 @@ SECTIONS
     .text : { KEEP(*(.text.crt0)) *(.text*) *(.rodata*) . = ALIGN(4); _etext = .; } > XIP
     /* .ram_fast (2026-10-24): hot code run from RAM for speed (eng_va.c VA_HOT, after ChoralRoot's CR_RAM_VA), every
      * call in it inlined (build.py: no calls in .ram_text) */
-    .ram_text : { _rt_start = .; KEEP(*(.ram_text*)) KEEP(*(.ram_fast*)) . = ALIGN(4); _rt_end = .; } > RAMTEXT AT > XIP
+    .ram_text : { _rt_start = .; KEEP(*(.ram_text*)) KEEP(*(.ram_fast*)) . = ALIGN(4); } > RAMTEXT AT > XIP
     _rt_load = LOADADDR(.ram_text);
+    /* (2026-10-24, from ChoralRoot FM-1) the second core's waiting loop (hal/fm1_cpu1.h, docs/DUALCORE.md): right after
+     * .ram_text, in RAM and in the image; main.c copies both in one run and the guard's RAM code window covers both */
+    .c1_text : { _c1_start = .; KEEP(*(.c1_text*)) . = ALIGN(4); _c1_end = .; } > RAMTEXT AT > XIP
+    _c1_load = LOADADDR(.c1_text);
+    _rt_end = _c1_end;
     .data : { . = ALIGN(4); _data_start = .; *(.data*) *(.sdata*) . = ALIGN(4); _data_end = .; } > RAM AT > XIP
     _data_load = LOADADDR(.data);
     .bss (NOLOAD) : { _bss_start = .; *(.bss*) *(.sbss*) *(COMMON) . = ALIGN(4); _bss_end = .; } > RAM

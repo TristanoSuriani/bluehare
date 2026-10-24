@@ -170,6 +170,9 @@ static void fm1_main(void)
     bluehare_init();
     master_boot();
     kb_boot_hold = 1;                         /* #137: no notes from the keys before the UI (seq.c keyboard_block) */
+#ifdef FM1_HAVE_CPU1
+    c1_boot(bootguard.failed != 0u, (fm1_boot.p3_rst & 4u) != 0u);   /* (2026-10-24) the second core, before the audio */
+#endif
     audio_init();
     usb_start();
 #if BLUEHARE_UART
@@ -287,6 +290,9 @@ static void fm1_main(void)
 void fm1_cstart(void)
 {
     uint32_t *s, *d, p3, src, wdt;
+#ifdef FM1_HAVE_CPU1
+    fm1_cpu1_halt();                            /* (2026-10-24) core 1 held before the RAM below is cleared */
+#endif
     fm1_time_init();
     fm1_reset_reason();
     p3 = fm1_boot.p3_rst;

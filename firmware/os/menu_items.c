@@ -15,7 +15,9 @@
 enum { MI_COLOR, MI_STYLE, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_SCOPE, MI_HOME, MI_HOLD, MI_ACCEL, MI_LATCH, MI_BPMLOCK, MI_SCLLED,
        MI_EXPERT,                                      /* (2026-10-17) CONTROL > EXPERT: the engines' own pages */
        MI_LOWCUT, MI_USB,
-       MI_CLICK, MI_CLKLVL, MI_TUNE, MI_SERIAL, MI_RESTORE, MI_PANEL, MI_INFO, MI_ABOUT, MI_COUNT };
+       MI_CLICK, MI_CLKLVL, MI_TUNE, MI_SERIAL, MI_RESTORE,
+       MI_CORES,                                       /* (2026-10-24) SYSTEM > CORES: 2 (the second core, at power-on) or 1 */
+       MI_PANEL, MI_INFO, MI_ABOUT, MI_COUNT };
                                                        /* (2026-10-23: MIDI IN gone, each track's on GLO > MIDI IN;
                                                         * the MIDI tab with it) */
                                                        /* (1.1: the metronome's rows in AUDIO; 1.2: RESTORE LAST in
@@ -28,7 +30,7 @@ enum { MI_COLOR, MI_STYLE, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_SCOPE, MI_H
 static const char *const MI_NAME[MI_COUNT] = {"COLOR", "STYLE", "LARGE", "ANIM", "LEDS", "SCREEN OFF", "SCOPE", "HOME", "HOLD", "KNOB ACCEL",
                                               "FX LATCH", "BPM LOCK", "SCALE LEDS", "EXPERT",
                                               "SPEAKER EQ", "USB LEVEL", "CLICK", "CLICK LEVEL", "TUNE",
-                                              "USB SERIAL", "RESTORE LAST", "CALIBRATION", "INFO", "ABOUT"};
+                                              "USB SERIAL", "RESTORE LAST", "CORES", "CALIBRATION", "INFO", "ABOUT"};
 /* 1.0.5: the MENU's tabs (ui_menu.c: ALGORITHM steps between them, PRESETS among one tab's rows; the editor gets a
  * row's tab after its MENU_DESC reply). A tab's rows follow each other in MI order (tests/os/ui_test.c checks it); at
  * most MTAB_ROWS each (the page does not scroll: ui_menu.c fits them; 1.2: 7, the rows of such a tab 21 px; 1.3: 8,
@@ -48,8 +50,8 @@ static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_CONTROL,                                                           /* EXPERT (2026-10-17) */
     MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO,                         /* SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL */
     MTAB_AUDIO,                                                             /* TUNE (1.2) */
-    MTAB_SYSTEM, MTAB_SYSTEM, MTAB_SYSTEM, MTAB_SYSTEM, MTAB_SYSTEM,        /* USB SERIAL, RESTORE LAST, CALIBRATION,
-                                                                             * INFO (1.2), ABOUT */
+    MTAB_SYSTEM, MTAB_SYSTEM, MTAB_SYSTEM,                                  /* USB SERIAL, RESTORE LAST, CORES (2026-10-24) */
+    MTAB_SYSTEM, MTAB_SYSTEM, MTAB_SYSTEM,                                  /* CALIBRATION, INFO (1.2), ABOUT */
 };
 /* TUNE: the project's tuning in cents (G_TUNE, -50..+50); as a row its values 0..TUNE_N - 1 (value - TUNE_MIN). The
  * editor gets it as a number (EDM_INT: the cents, min..max, its unit) */
@@ -89,6 +91,7 @@ static const menu_flag_t MENU_FLAGS[] = {
     {MI_SCLLED, PREF_SCALE_LEDS, {"OFF", "ON"}},      /* 1.2, Discussion #127: ON, the keys show the scale (ui_input.c) */
     {MI_SCOPE, PREF_SCOPE_MIX, {"OUT", "MIX"}},        /* 1.2, Discussion #165: MIX, the scope before MASTER (fx.c) */
     {MI_EXPERT, PREF_EXPERT, {"OFF", "ON"}},           /* (2026-10-17) ON: EDIT 1 and 2, every engine parameter (ui.c) */
+    {MI_CORES, PREF_ONE_CORE, {"2", "1"}},             /* (2026-10-24) 1: the second core not started (fm1/bluehare.c) */
 };
 /* SPEAKER EQ (settings.lowcut, fx.c fx_lowcut): an EQ on the master for the small speaker, not a speaker switch
  * (#42: "OFF" read as the speaker off). FLAT is the old OFF (0, stored as before). The built-in speaker cannot be

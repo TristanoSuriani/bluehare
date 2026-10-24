@@ -3,7 +3,7 @@
  * Modified by Tristano Suriani for Blue Hare (2026): see AUTHORS.md */
 /* Host test of the roadmap's sound items (Discussions #132, #104, #148), same sources as the firmware (hostsim.c):
  *   build/host/sound14_test [DEMO_DIR]      (run_tests.sh builds and runs it; demos in build/sound14_demo/)
- * 1. the matrix (mod.c): the lists only grew (every stored SRC / DST keeps its name), S&H holds one value a cycle of the
+ * 1. the matrix (MODC.c): the lists only grew (every stored SRC / DST keeps its name), S&H holds one value a cycle of the
  *    track LFO (the value LFO WAVE S&H plays), steps at the cycle's start, spreads over both signs; SLEW is continuous,
  *    glides from the cycle before's value to this one's, stays inside S&H's range; DEPTH scales the LFO (its LFO DEST
  *    routings and the matrix's LFO source) as AMP does a voice, several slots multiply, none = untouched (bit for bit);
@@ -88,7 +88,7 @@ static void fresh(uint32_t e, uint32_t pi)        /* the boot state (no FX tails
     rng_state = 0x1234567u;
     mod_seed = 0x2545F491u;
     memset(trk, 0, sizeof trk);
-    memset(&mod, 0, sizeof mod);
+    memset(mod_c, 0, sizeof mod_c);
     host_tracks_init();
     for (k = 0; k < NPART; k++)
         host_preset(&trk[k], k ? 0u : e, k ? 0u : pi);
@@ -237,43 +237,43 @@ static void test_matrix(void)
     slot(t, 0, MS_MODW, MD_DEPTH, 63);
     t->mw = 0;
     mod_begin(t);
-    check("MODW -> DEPTH +63: the wheel down closes the LFO (gain 1.6 %)", mod.on && mod.ldep >= 500 && mod.ldep <= 512);
+    check("MODW -> DEPTH +63: the wheel down closes the LFO (gain 1.6 %)", MODC.on && MODC.ldep >= 500 && MODC.ldep <= 512);
     mod_end(t);
     t->mw = 127;
     mod_begin(t);
-    check("MODW -> DEPTH +63: the wheel up leaves it whole", mod.ldep >= 32700);
+    check("MODW -> DEPTH +63: the wheel up leaves it whole", MODC.ldep >= 32700);
     mod_end(t);
     slot(t, 0, MS_MODW, MD_DEPTH, -64);
     mod_begin(t);
-    check("MODW -> DEPTH -64: the wheel up closes it", mod.ldep == 0);
+    check("MODW -> DEPTH -64: the wheel up closes it", MODC.ldep == 0);
     mod_end(t);
     slot(t, 0, MS_MODW, MD_DEPTH, 63);
     slot(t, 1, MS_LFO, MD_CUT, 63);
     t->mw = 0;
     mod_begin(t);
     check("DEPTH scales the matrix's LFO source too (LFO -> CUT with the wheel down: ~1.6 %)",
-          mod.cut > 0 && mod.cut < ((32767 * 63) >> 7) / 40);
+          MODC.cut > 0 && MODC.cut < ((32767 * 63) >> 7) / 40);
     mod_end(t);
     slot(t, 2, MS_AT, MD_DEPTH, 63);
     t->mw = 127;
     t->at = 64;
     mod_begin(t);
-    check("two DEPTH slots multiply (wheel up x AT half)", mod.ldep > 16000 && mod.ldep < 17000);
+    check("two DEPTH slots multiply (wheel up x AT half)", MODC.ldep > 16000 && MODC.ldep < 17000);
     mod_end(t);
     slot(t, 0, MS_LFO, MD_DEPTH, 63);                     /* the LFO on its own depth: the unscaled LFO */
     slot(t, 1, 0, 0, 0);
     slot(t, 2, 0, 0, 0);
     mod_begin(t);
-    check("LFO -> DEPTH: takes the LFO unscaled (at its top: whole)", mod.ldep >= 32700);
+    check("LFO -> DEPTH: takes the LFO unscaled (at its top: whole)", MODC.ldep >= 32700);
     mod_end(t);
     slot(t, 0, MS_SH, MD_CUT, 40);                        /* no DEPTH slot: the LFO untouched */
     mod_begin(t);
-    check("no DEPTH slot: the LFO untouched (track_render leaves it alone)", mod.ldep == 32767);
+    check("no DEPTH slot: the LFO untouched (track_render leaves it alone)", MODC.ldep == 32767);
     mod_end(t);
     slot(t, 0, 11, MD_CUT, 40);                           /* past the lists: nothing */
     slot(t, 1, MS_LFO, MD_N, 40);
     mod_begin(t);
-    check("a SRC / DST past the lists does nothing", mod.cut == 0 && mod.nk == 0 && mod.nv == 0);
+    check("a SRC / DST past the lists does nothing", MODC.cut == 0 && MODC.nk == 0 && MODC.nv == 0);
     mod_end(t);
 }
 

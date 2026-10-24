@@ -1063,11 +1063,11 @@ static int test_menu_tabs(void)
             }
     }
     ui_prefs = 0;
-    bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM (8 6 5 5 rows; MIDI's gone 2026-10-23), 1..8 each in a run, fit "
+    bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM (8 6 5 6 rows; MIDI's gone 2026-10-23), 1..8 each in a run, fit "
                  "the page; tab gaps constant (S, LARGE)",
                  ok && MTAB_COUNT == 4u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_SYSTEM], "SYSTEM") &&
                  mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 6u && MI_TAB[MI_EXPERT] == MTAB_CONTROL && mtab_rows(MTAB_AUDIO) == 5u &&
-                 mtab_rows(MTAB_SYSTEM) == 5u && MI_TAB[MI_TUNE] == MTAB_AUDIO &&
+                 mtab_rows(MTAB_SYSTEM) == 6u && MI_TAB[MI_TUNE] == MTAB_AUDIO && MI_TAB[MI_CORES] == MTAB_SYSTEM &&
                  MI_TAB[MI_INFO] == MTAB_SYSTEM && MI_INFO >= MI_VALUES);
 
     ui_power_on();
@@ -1170,8 +1170,9 @@ static int test_menu_tabs(void)
     hold(B_HOME);
     bad += check("MENU: HOME pressed closes it, held too (no reopen); held opens it again at the same tab and row",
                  ok && ui.menu == 1 && ui.menu_sel == MI_USB);
-    turn(EN_ALGO, 1); turn(EN_PRESET, -1);               /* SYSTEM (the MIDI tab gone, 2026-10-23): ABOUT */
-    ok = ui.menu_sel == MI_ABOUT;
+    turn(EN_ALGO, 1);                                   /* SYSTEM (the MIDI tab gone, 2026-10-23) */
+    ok = menu_tab() == MTAB_SYSTEM;
+    ui.menu_sel = MI_ABOUT;                             /* (its last row: CORES since 2026-10-24 moved the others) */
     frame();
     ok &= oct_leds() == OCT_BREATH;                     /* (OCT+ opens, OCT- does nothing: dark) */
     press(B_OCTDN); ok &= ui.menu == 1 && ui.menu_sel == MI_ABOUT;   /* (no close, no back) */

@@ -792,7 +792,8 @@ static void rev_clear(void)
 #endif
 }
 
-static int32_t part_buf[CTL];                            /* a part's block (mix_part); the fade of a model change */
+static int32_t part_buf_c[2][CTL];                       /* a part's block (mix_part); the fade of a model change */
+#define part_buf (part_buf_c[TGT_CORE()])               /* (per core, 2026-10-24: the second core mixes a part too) */
 
 /* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are
  * cleared, the new one starts from silence */
@@ -981,7 +982,14 @@ static __attribute__((noinline)) void rev_side_mix(int32_t *l, int32_t *r, uint3
 /* one block of the whole mix (shared with hostsim.c): events -> each part (with its modulation matrix)
  * -> dist -> level / pan / sends -> buses -> master; out: stereo Q15 */
 static void events_block(uint32_t n);                    /* seq.c */
-static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_r[CTL];
+static int32_t send_d[CTL], wet[CTL];
+/* (2026-10-24) what a part's mix adds into: per core (the second core mixes a part into its own, fx.c mix_block adds
+ * them after: integer sums, the same in any order) */
+static int32_t send_cc[2][CTL], send_rc[2][CTL], mix_lc[2][CTL], mix_rc[2][CTL];
+#define send_c (send_cc[TGT_CORE()])
+#define send_r (send_rc[TGT_CORE()])
+#define mix_l (mix_lc[TGT_CORE()])
+#define mix_r (mix_rc[TGT_CORE()])
 
 /* (2026-10-18) the patches' delays: a line a patch (dly_buf in NTRK parts: 0.74 s each at 4 patches), written and read
  * at half the rate (two samples averaged in, the output held and halfway-smoothed between its samples: the repeats end
@@ -996,7 +1004,8 @@ static int32_t send_c[CTL], send_d[CTL], send_r[CTL], wet[CTL], mix_l[CTL], mix_
                                      * the same, golden.txt shared; its longer TIMEs still ring) */
 typedef char pdl_pow2[(PDL_LEN & (PDL_LEN - 1u)) == 0 ? 1 : -1];
 static struct { uint32_t w, quiet; int32_t acc, lp, y0, y1; uint8_t ph; } pdl[NTRK];
-static int32_t pdl_in[CTL];
+static int32_t pdl_in_c[2][CTL];
+#define pdl_in (pdl_in_c[TGT_CORE()])                   /* (per core: mix_part's) */
 static uint32_t div_samples(uint32_t div);
 static __attribute__((noinline)) void pdl_block(uint32_t k, const int32_t *in, uint32_t n, int32_t gl, int32_t gr, int fed)
 {
@@ -1128,7 +1137,7 @@ static void mix_part(track_t *t, uint32_t n)
 {
     int32_t *b = part_buf;
     uint32_t i;
-    mod_begin(t);                                       /* the matrix's per-block values into t->p (mod.c) */
+    mod_begin(t);                                       /* the matrix's per-block values into t->p (MODC.c) */
     spread_on = (t->p[P_SPRD] > 0 && (trk_vmode(t) == V_POLY || trk_vmode(t) == V_UNISON)) ||   /* (SPREAD, mix_spread; */
                 trk_pmode[(uint32_t)(t - trk) % NTRK] == TP_RND;                                   /* PAN MODE RND: any) */
     if (track_render(t, b, n))
@@ -1137,7 +1146,7 @@ static void mix_part(track_t *t, uint32_t n)
         int32_t pan = t->p[P_PAN];                      /* (2026-10-18) the patch's delay rings on after its last voice,
                                                          * unfed, until its line is silent (pdl_block sleeps then) */
         pdl_block((uint32_t)(t - trk) % NTRK, pdl_in, n, 4096 - (pan > 0 ? pan * 64 : 0), 4096 + (pan < 0 ? pan * 64 : 0), 0);
-        if (mod.on)
+        if (MODC.on)
             mod_end(t);
         return;
     }
@@ -1174,7 +1183,7 @@ static void mix_part(track_t *t, uint32_t n)
         t->peak = pk;
         pdl_block(k, pdl_in, n, gl, gr, d != 0);    /* (2026-10-18) the patch's delay, panned as the patch */
     }
-    if (mod.on)
+    if (MODC.on)
         mod_end(t);                                     /* the stored values back */
 }
 
@@ -1280,17 +1289,59 @@ static void mix_track(uint32_t i, uint32_t n, int32_t mg)
 #include "fx_amb_chain.c"                           /* (Blue Hare, 2026-10) amb-1's whole chain, the studio's choice */
 #endif
 
-static void mix_block(int32_t *out, uint32_t n)
+/* (2026-10-24) the second core (target.h tgt_c1_*, after ChoralRoot FM-1 and Melodee): one part's whole mix_part, the
+ * part with the most voices sounding, into the second core's own buffers (fx.c's and voice.c's per-core ones, mod.c's
+ * MODC), while core 0 mixes the others; mix_block adds them after (integer sums: the samples one core's, bit for bit).
+ * Everything else (the notes, the voices' allocation, the buses, the master) stays core 0's, before and after.
+ * Nothing a part's mix writes is another part's (its voices, its engine's state, its delay line, its DIST and
+ * filters, its mute ramp) or core 0's at that time. A job that failed (a stall, a fault: the core given up): its
+ * part is silent for that block (its state half advanced: not rendered twice) */
+static uint32_t c1_n;
+static void c1_part_job(uint32_t k)
 {
     uint32_t i;
-    int perf;
+    for (i = 0; i < c1_n; i++)                          /* (core 1's buffers: TGT_CORE() is 1 here) */
+        send_c[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
+    mix_part(&trk[k], c1_n);
+}
+static uint32_t c1_pick(void)                           /* the part with the most voices sounding; NPART: none */
+{
+    uint32_t k, i, best = NPART, most = 1;
+    for (k = 0; k < NPART; k++) {
+        uint32_t c = 0;
+        for (i = 0; i < NVOICE; i++)
+            c += trk[k].v[i].active;
+        if (c >= most) {
+            most = c + 1u;
+            best = k;
+        }
+    }
+    return best;
+}
+
+static void mix_block(int32_t *out, uint32_t n)
+{
+    uint32_t i, c1k;
+    int perf, c1 = 0;
     int32_t mg = fx_usb_fixed ? MASTER_FULL : (int32_t)song.master_q12;   /* (USB LEVEL FIXED: MASTER after) */
     for (i = 0; i < n; i++)
         send_c[i] = send_d[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
     events_block(n);
     perf = perf_begin(n);                               /* the FX hold layer at work (perform.c) */
+    c1k = c1_pick();
+    c1_n = n;
+    if (c1k < NPART)                                    /* (the native image and the plugin's: never handed) */
+        c1 = tgt_c1_run(c1_part_job, c1k);
     for (i = 0; i < NPART; i++)
-        mix_track(i, n, mg);
+        if (!c1 || i != c1k)
+            mix_track(i, n, mg);
+    if (c1 && !tgt_c1_wait())                           /* core 1's part into core 0's mix and sends */
+        for (i = 0; i < n; i++) {
+            mix_lc[0][i] += mix_lc[1][i];
+            mix_rc[0][i] += mix_rc[1][i];
+            send_cc[0][i] += send_cc[1][i];
+            send_rc[0][i] += send_rc[1][i];
+        }
     tgt_mix_end(n);
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);

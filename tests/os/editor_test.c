@@ -122,8 +122,8 @@ static int preferences(void)
         host_wire[m - 14] == 0x4d && host_wire[m - 13] == 1 && host_wire[m - 12] == 64u && host_wire[m - 11] == 1 &&
         host_wire[m - 10] == 0x42 && host_wire[m - 9] == 1 && host_wire[m - 8] == 3 &&
         host_wire[m - 7] == 0x53 && host_wire[m - 6] == 1 && host_wire[m - 5] == 3 &&   /* (no FM6 tags 46 50 56: FM6 gone) */
-        host_wire[m - 4] == 0x4E && host_wire[m - 3] == 1 && host_wire[m - 2] == 20);   /* MENU settings: 20 items (MIDI IN
-                                                                                    * gone, 2026-10-23) */
+        host_wire[m - 4] == 0x4E && host_wire[m - 3] == 1 && host_wire[m - 2] == 21);   /* MENU settings: 21 items (MIDI IN
+                                                                                    * gone 2026-10-23, CORES 2026-10-24) */
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 7 && T_BG == UI_PALETTES[7].bg);
@@ -643,12 +643,12 @@ static int menu_protocol(void)
         bad += check("MENU_DESC: the tab comes after every byte of the 1.0.4 reply (older editors ignore it)", ok);
     }
     ok = 1;
-    for (i = 0; i < 20u; i++) {
+    for (i = 0; i < 21u; i++) {
         menu_desc(i, &it);
         ok &= strcmp(it.name, "CALIBRATION") && strcmp(it.name, "ABOUT") && strcmp(it.name, "INFO");
     }
-    n = menu_desc(20, &it);
-    ok &= n == 2u && it.index == 20 && it.id == 127;
+    n = menu_desc(21, &it);
+    ok &= n == 2u && it.index == 21 && it.id == 127;
     n = menu_desc(127, &it);
     bad += check("MENU_DESC: no CALIBRATION / INFO / ABOUT; an index past the list answers index, 127 (no item)",
                  ok && n == 2u && it.index == 127 && it.id == 127);
@@ -713,7 +713,7 @@ static int menu_protocol(void)
         static uint8_t fav0[sizeof favorites], set0[sizeof settings];
         uint8_t hold0 = settings_hold, leds0 = settings_leds;
         memcpy(fav0, &favorites, sizeof favorites); memcpy(set0, &settings, sizeof settings);
-        ok = menu_set(24, 1) == 1 && host_wire[6] == 24 && ed_rv(host_wire + 7) == 1;
+        ok = menu_set(25, 1) == 1 && host_wire[6] == 25 && ed_rv(host_wire + 7) == 1;   /* (24: CORES since 2026-10-24) */
         ok &= menu_set(126, -3) == 1 && host_wire[6] == 126 && ed_rv(host_wire + 7) == -3;
         ok &= menu_set(127, 0) == 1 && host_wire[6] == 127;
         ok &= !memcmp(fav0, &favorites, sizeof favorites) && !memcmp(set0, &settings, sizeof settings) &&

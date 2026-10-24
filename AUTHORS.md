@@ -157,6 +157,11 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
   GPL-3.0-only, by its contributors; Melodee adopted the same from it), taken unchanged but for our loader's
   signature and the paths. The VA family's code in RAM (2026-10-24, `firmware/baseline/eng_va.c` VA_HOT) follows
   ChoralRoot's CR_RAM_VA.
+- The second core (2026-10-24): `firmware/hal/fm1_cpu1.h`, `fm1_cpu1.S`, `fm1_power.h` and the fault path in `fm1_vec.S`
+  are **ChoralRoot FM-1's** (after fm1-x0x by Charles Vestal and **Melodee's** PR 21 by Kerem Kilic: the core rails, the
+  checked mailbox, the faults and stalls survived; all GPL-3.0). Blue Hare's own: which part core 1 mixes and how the
+  mix stays one core's bit for bit (`firmware/baseline/fx.c` mix_block, the per-core buffers), when it may start
+  (`firmware/fm1/dualcore.c`), MENU > SYSTEM > CORES and INFO's CORES, `tests/baseline/dualcore_test.c`.
 
 ### Files moved from Felucca
 

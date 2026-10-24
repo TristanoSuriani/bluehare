@@ -273,6 +273,7 @@ def build_app():
             flags.append(f"-D{flag}={v}")
     flags.append(f"-DBLUEHARE_DIST={distribution()}")   # (core.h includes build/gen/dist_<name>.h)
     flags.append("-DBLUEHARE_RAM_FAST=1")               # (2026-10-24) the VA family's loops from RAM (eng_va.c VA_HOT)
+    flags.append("-DBLUEHARE_CPU1=1")                   # (2026-10-24) the second core (target.h, fm1/dualcore.c)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "dist.txt").write_text(distribution() + "\n")   # (what build/bluehare.* is: tests/fm1/target_budget.py)
     v = os.environ.get("BLUEHARE_USB_LAYOUT")   # firmware/fm1/usb.c: how the USB composite presents itself (#67), 0..3
@@ -290,6 +291,7 @@ def build_app():
     tc_all(("cc", "-c", FW / "crt0.S", "-o", OUT / "crt0.o"),
            ("cc", "-c", FW / "hal" / "fm1_vec.S", "-o", OUT / "fm1_vec.o"),
            ("cc", "-c", FW / "hal" / "fm1_isr.S", "-o", OUT / "fm1_isr.o"),
+           ("cc", "-c", FW / "hal" / "fm1_cpu1.S", "-o", OUT / "fm1_cpu1.o"),
            cmain)
     if size:
         subprocess.run([sys.executable, SRC / "tools" / "size_fns.py", OUT / "bluehare.ll", OUT / "bluehare_size.ll"],
@@ -297,13 +299,14 @@ def build_app():
         tc("cc", *[f for f in flags if not f.startswith(("-I", "-D", "-W"))], "-c",
            OUT / "bluehare_size.ll", "-o", OUT / "bluehare.o")
     elf = OUT / "bluehare.elf"
-    tc("pi32v2/bin/ld", "-T", FW / "app.ld", OUT / "crt0.o", OUT / "fm1_vec.o", OUT / "fm1_isr.o",
+    tc("pi32v2/bin/ld", "-T", FW / "app.ld", OUT / "crt0.o", OUT / "fm1_vec.o", OUT / "fm1_isr.o", OUT / "fm1_cpu1.o",
        OUT / "bluehare.o", "-o", elf)
-    for sect in ("text.bin", "data.bin", "ramtext.bin"):
+    for sect in ("text.bin", "data.bin", "ramtext.bin", "c1text.bin"):
         (OUT / sect).unlink(missing_ok=True)
     *_, syms, dis, rt = tc_all(("common/bin/objcopy", "-O", "binary", "-j", ".text", elf, OUT / "text.bin"),
                                ("common/bin/objcopy", "-O", "binary", "-j", ".data", elf, OUT / "data.bin"),
                                ("common/bin/objcopy", "-O", "binary", "-j", ".ram_text", elf, OUT / "ramtext.bin"),
+                               ("common/bin/objcopy", "-O", "binary", "-j", ".c1_text", elf, OUT / "c1text.bin"),
                                ("common/bin/objdump", "-t", elf),
                                ("common/bin/objdump", "-d", elf),
                                ("common/bin/objdump", "-d", "-j", ".ram_text", elf))
@@ -313,7 +316,7 @@ def build_app():
         return int(re.search(r"^([0-9a-f]+) .*\s" + name + r"$", syms, re.M).group(1), 16)
     img = bytearray((OUT / "text.bin").read_bytes())
     # .ram_text and .data follow .text at their load addresses; crt0 copies them by words
-    for sect, lname in (("ramtext.bin", "_rt_load"), ("data.bin", "_data_load")):
+    for sect, lname in (("ramtext.bin", "_rt_load"), ("c1text.bin", "_c1_load"), ("data.bin", "_data_load")):
         load = symv(lname)
         if load % 4:
             raise SystemExit(f"{lname} {load:#x} is not word aligned")

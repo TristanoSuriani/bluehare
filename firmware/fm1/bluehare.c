@@ -45,6 +45,7 @@
 #include "fm1_sys.h"
 #include "fm1_irq.h"
 #include "fm1_guard.h"
+#include "fm1_cpu1.h"             /* (2026-10-24) the second core (ChoralRoot FM-1's, after Melodee): dualcore.c */
 #include "fm1_input.h"
 #include "fm1_timer.h"
 #include "fm1_audio.h"
@@ -101,5 +102,6 @@
 #if BLUEHARE_CDC
 #include "console.c"
 #endif
+#include "dualcore.c"             /* (2026-10-24) the second core: when it starts, what fx.c hands it */
 #include "master.c"              /* the MASTER pot (#137: read before the audio starts) */
 #include "main.c"

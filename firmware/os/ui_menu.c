@@ -343,10 +343,17 @@ static void menu_row(uint32_t k, uint32_t row)
 }
 /* MENU > SYSTEM > INFO (1.2, ui.menu 3): what the old GLO > SYSTEM page showed, read only: the firmware, the USB link (the
  * SYSTEM page's MIDI card: OFF no USB, WAIT no bus yet, BUS frames seen, ENUM being set up, MIDI in use) and the CPU load
- * of the audio (its SYSTEM card; the shown value follows every INFO_CPU_MS, not every frame). The rows as the menu's (no
+ * of the audio (its SYSTEM card; the shown value follows every INFO_CPU_MS, not every frame), the cores at work (2026-10-24:
+ * 2, or 1 and why). The rows as the menu's (no
  * tabs: from INFO_Y), the selected look on none; OCT- back to the tabs, HOME closes */
 #define INFO_Y 32
-#define INFO_N 3u
+#define INFO_N 4u
+#ifdef FM1_HAVE_CPU1                                   /* (2026-10-24) CORES: the second core's state (fm1/dualcore.c) */
+static const char *c1_status(void);
+#define INFO_CORES() c1_status()
+#else
+#define INFO_CORES() "1"
+#endif
 #define INFO_CPU_MS 500u
 static struct { uint8_t cpu; uint32_t t; } info;
 static uint32_t info_usb(void)                         /* 0 OFF, 1 WAIT, 2 BUS, 3 ENUM, 4 MIDI */
@@ -359,11 +366,11 @@ static uint32_t info_sig(void)
         info.t = fm1_ms;
         info.cpu = (uint8_t)(song.cpu_q8 * 100u / 256u);
     }
-    return info.cpu * 7u + info_usb() * 131u + 1u;
+    return info.cpu * 7u + info_usb() * 131u + (uint32_t)(uintptr_t)INFO_CORES() * 31u + 1u;
 }
 static void info_rows(void)                            /* (in screen rows: cv_oy set by the caller) */
 {
-    static const char *const LBL[INFO_N] = {TGT_INFO_VERSION, "USB", "CPU"};   /* (target.h) */
+    static const char *const LBL[INFO_N] = {TGT_INFO_VERSION, "USB", "CPU", "CORES"};   /* (target.h) */
     static const char *const USB_N[5] = {"OFF", "WAIT", "BUS", "ENUM", "MIDI"};
     int32_t h = menu_large() ? 28 : 24;
     uint32_t k;
@@ -382,7 +389,7 @@ static void info_rows(void)                            /* (in screen rows: cv_oy
             GFX_HOOK_ALIGN(0, 0, 0, vy + AF_M.asc, AL_B, "info row unit on its value's baseline");
             cv_text_r(cv_text_r(MR_VR, vy + AF_M.asc - AF_S.asc, &AF_S, "%", T_MID, T_SURF) - 3, vy, &AF_M, cpu, T_THEME, T_SURF);
         } else {                                       /* (a value too wide beside its name: S, as LED's version) */
-            const char *v = k ? USB_N[info_usb()] : BLUEHARE_VERSION_DIST;
+            const char *v = k == 3u ? INFO_CORES() : k ? USB_N[info_usb()] : BLUEHARE_VERSION_DIST;
             const aafont_t *f = text_w(&AF_M, v) > MR_VR - MR_LX - text_w(&AF_M, LBL[k]) - 10 ? &AF_S : &AF_M;
             cv_text_r(MR_VR, f == &AF_M ? vy : vy + AF_M.asc - AF_S.asc, f, v, T_THEME, T_SURF);
         }
