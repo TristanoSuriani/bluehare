@@ -5835,6 +5835,34 @@ static int test_frog(void)
         frame();
     }
     bad += check("..a car on the road takes a life", frog.lives == lives - 1u);
+    {   /* the third burrow: the intermezzo, then the next level; PLAY cuts it short */
+        uint32_t lv = frog.level;
+        frog.home[0] = frog.home[1] = 1; frog.dead_t = 0;
+        frog.row = 0; frog.x = FR_X0 + 5 * FR_CELL;     /* (Niglio at the third burrow's mouth) */
+        frame();
+        ok = frog.state == FR_LEVEL && frog.level == lv + 1u;
+        frames(1500); ok &= frog.state == FR_LEVEL;
+        frames(1700); ok &= frog.state == FR_RUN && !frog.home[0] && frog.row == 6;
+        frog.home[0] = frog.home[1] = 1; frog.row = 0; frog.x = FR_X0 + 5 * FR_CELL; frame();
+        press(B_PLAY); frame(); ok &= frog.state == FR_RUN && frog.level == lv + 2u && !song.playing;
+        bad += check("..all three burrows: the intermezzo (3 s), then the next level; PLAY cuts it short", ok);
+    }
+    {   /* the difficulty: faster to level 6 (twice), the time 30 s .. 20 s, the fast lane and the sinking logs from
+         * level 4, shorter logs and closer cars every third level */
+        uint32_t t, under = 0, l1 = 0;
+        frog.level = 1; ok = fr_speed(0) == 34 && fr_life_ms() == 30000u && fr_len(0) == 3 && fr_gap(2) == 3;
+        frog.level = 6; ok &= fr_speed(0) == 68 && fr_life_ms() == 20000u;
+        frog.level = 9; ok &= fr_speed(0) == 68 && fr_life_ms() == 20000u && fr_len(1) == 1 && fr_gap(2) == 2 &&
+                              fr_gap(0) <= 4;
+        frog.level = 3;
+        for (t = 0; t < 6000u; t += 100u) { frog.gt = t; l1 |= fr_sink(1); }
+        frog.level = 4; ok &= !l1 && fr_speed(2) == -60 * 8 / 5 * 8 / 5 && fr_speed(3) == 42 * 8 / 5;
+        for (t = 0; t < 6000u; t += 100u) { frog.gt = t; under += fr_sink(1) == 2u; ok &= !fr_sink(0); }
+        ok &= under == 15u;
+        frog.level = 1; frog.gt = 0;
+        bad += check("..the difficulty: 2x at most (level 6), 30 .. 20 s, from level 4 sinking logs (1.5 s of 6) and a "
+                     "fast lane, shorter logs and closer cars", ok);
+    }
     press(B_HOME);
     bad += check("..HOME closes it, the keys play again", !frog.on && keys_mode() == 0u);
     return bad;

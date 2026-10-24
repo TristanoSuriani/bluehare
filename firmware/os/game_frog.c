@@ -10,7 +10,11 @@
  *   KNOB 4        a hop right or left
  * The road's cars run Niglio over; in the river only the logs carry him (the water and the edge of the screen do not).
  * A burrow filled is 50 points (and 10 for every row further than before, a point a second left), all three fill the
- * next level: the lanes faster. Each life has 30 seconds (the bar at the top); three lives.
+ * next level. Each life has 30 seconds (the bar at the top); three lives.
+ * The difficulty (2026-10-24, the user's): every level the lanes 20 % faster, at most twice (level 6); every third level
+ * the logs a cell shorter (one at least) with more water between, the cars' gaps a cell narrower (two at least); the
+ * time a life 2 s less (20 s at least); from level 4 the second river lane's logs sink now and then (darker half a
+ * second before: under for 1.5 s of every 6) and the first road lane's cars 60 % faster. The intermezzo says what is new.
  * The screen: a 16 px line on top (the score, the time, the lives), then 7 rows of 32 px: 0 the burrows, 1..2 the
  * river, 3 the bank, 4..5 the road, 6 the start; Niglio and the cars a 32 px cell (Niglio from the splash's picture,
  * ui_niglio.h, scaled down). Drawn in two canvases (gfx.c's: 240 x 124 at most). Its own colours, but in GREY and MONO
@@ -21,7 +25,8 @@
 #define FR_X0 8                                         /* Niglio's places across: 8 + 32 k */
 #define FR_LANES 4u                                     /* rows 1, 2 the river, 4, 5 the road */
 #define FR_LIFE_MS 30000u
-enum { FR_READY, FR_RUN, FR_PAUSE, FR_OVER };
+enum { FR_READY, FR_RUN, FR_PAUSE, FR_OVER, FR_LEVEL };   /* (FR_LEVEL: the intermezzo between two levels) */
+#define FR_LEVEL_MS 3000u
 enum { FR_C_WATER = 0x1A7Fu, FR_C_ROAD = 0x2104u, FR_C_GRASS = 0x2C64u, FR_C_LOG = 0x8A22u, FR_C_HUD = 0x0000u,
        FR_C_HOME = 0x0180u, FR_C_TEXT = 0xFFFFu, FR_C_LINE = 0xFFE0u };
 static const uint16_t FR_CAR[4] = {0xF8A3u, 0xFE60u, 0x07FFu, 0xF81Fu};
@@ -36,9 +41,40 @@ static struct {
     int16_t x, row;                                     /* Niglio: px (left edge), row */
     int32_t xf;                                         /* (his px << 8, carried by a log) */
     int32_t off[FR_LANES];                              /* each lane's offset, px << 8 */
-    uint32_t score, hi, t_last, life_t, paused_t;
+    uint32_t score, hi, t_last, life_t, paused_t, level_t, gt;   /* gt: the game's clock (stops in a pause) */
     uint8_t sprite[FR_CELL * FR_CELL];                  /* Niglio at 32 x 32: NG_PAL indices, 0 the ground */
 } frog;
+
+/* the level's lanes: speed (px a second), length and gap (cells); the time a life; the sinking logs' state */
+static int32_t fr_speed(uint32_t i)
+{
+    int32_t sp = FR_LANE[i].speed * (int32_t)(4u + (frog.level < 6u ? frog.level : 6u)) / 5;
+    return i == 2u && frog.level >= 4u ? sp * 8 / 5 : sp;   /* (from level 4: the fast lane) */
+}
+static int32_t fr_len(uint32_t i)
+{
+    int32_t n = (int32_t)FR_LANE[i].len - (i < 2u ? (int32_t)(frog.level - 1u) / 3 : 0);
+    return n < 1 ? 1 : n;
+}
+static int32_t fr_gap(uint32_t i)
+{
+    int32_t g = (int32_t)FR_LANE[i].gap, d = (int32_t)(frog.level - 1u) / 3;
+    if (i < 2u)
+        return g + d > 4 ? 4 : g + d;                   /* (the river: more water) */
+    return g - d < 2 ? 2 : g - d;                       /* (the road: closer cars) */
+}
+static uint32_t fr_life_ms(void)
+{
+    uint32_t lv = frog.level < 6u ? frog.level : 6u;
+    return FR_LIFE_MS - 2000u * (lv - 1u);              /* 30 s .. 20 s */
+}
+static uint32_t fr_sink(uint32_t i)                     /* 0 afloat, 1 sinking (the warning), 2 under */
+{
+    uint32_t ph = frog.gt % 6000u;
+    if (i != 1u || frog.level < 4u)
+        return 0;
+    return ph >= 4500u ? 2u : ph >= 4000u ? 1u : 0u;
+}
 
 static uint16_t frog_c(uint16_t c) { return ux.mono || ux.bw ? ux_gray(ux_luma(c) * 31u / 255u) : c; }
 
@@ -97,11 +133,10 @@ static void frog_close(void)
 /* the things of lane i: is pixel column x covered? (the pattern repeats every period, offset by the lane's motion) */
 static int frog_covered(uint32_t i, int32_t x)
 {
-    const fr_lane_t *l = &FR_LANE[i];
-    int32_t period = (int32_t)(l->len + l->gap) * FR_CELL, p = (x - (frog.off[i] >> 8)) % period;
+    int32_t period = (fr_len(i) + fr_gap(i)) * FR_CELL, p = (x - (frog.off[i] >> 8)) % period;
     if (p < 0)
         p += period;
-    return p < (int32_t)l->len * FR_CELL;
+    return p < fr_len(i) * FR_CELL && fr_sink(i) != 2u;
 }
 
 static void frog_die(void)
@@ -141,6 +176,8 @@ static void frog_input(uint32_t pressed)
     if ((pressed >> panel.btn[B_PLAY]) & 1u) {          /* PLAY: a new game; in one, pause and on (never the song) */
         if (frog.state == FR_READY || frog.state == FR_OVER)
             frog_new();
+        else if (frog.state == FR_LEVEL)
+            frog.level_t = fm1_ms - FR_LEVEL_MS;        /* (the intermezzo cut short) */
         else if (frog.state == FR_RUN) {
             frog.state = FR_PAUSE;
             frog.paused_t = fm1_ms;
@@ -164,14 +201,17 @@ static void frog_input(uint32_t pressed)
 static void frog_step(void)                             /* the lanes, the log's ride, the rules: once a frame */
 {
     uint32_t i, dt = fm1_ms - frog.t_last, b;
-    int32_t sp;
     frog.t_last = fm1_ms;
     if (frog.state == FR_PAUSE)
         return;
     dt = dt > 100u ? 100u : dt;
-    for (i = 0; i < FR_LANES; i++) {
-        sp = FR_LANE[i].speed * (int32_t)(4u + frog.level) / 5;
-        frog.off[i] += sp * (int32_t)dt * 256 / 1000;
+    frog.gt += dt;
+    for (i = 0; i < FR_LANES; i++)
+        frog.off[i] += fr_speed(i) * (int32_t)dt * 256 / 1000;
+    if (frog.state == FR_LEVEL && fm1_ms - frog.level_t >= FR_LEVEL_MS) {   /* the intermezzo over: the next level */
+        memset(frog.home, 0, sizeof frog.home);
+        frog.state = FR_RUN;
+        frog_start();
     }
     if (frog.state != FR_RUN)
         return;
@@ -186,7 +226,7 @@ static void frog_step(void)                             /* the lanes, the log's 
         }
         return;
     }
-    if (fm1_ms - frog.life_t > FR_LIFE_MS) {
+    if (fm1_ms - frog.life_t > fr_life_ms()) {
         frog_die();
         return;
     }
@@ -197,8 +237,7 @@ static void frog_step(void)                             /* the lanes, the log's 
             if (!frog_covered(i, frog.x + FR_CELL / 2))
                 frog_die();
             else {
-                sp = FR_LANE[i].speed * (int32_t)(4u + frog.level) / 5;
-                frog.xf += sp * (int32_t)dt * 256 / 1000;
+                frog.xf += fr_speed(i) * (int32_t)dt * 256 / 1000;
                 frog.x = (int16_t)(frog.xf >> 8);
                 if (frog.x < -8 || frog.x > 240 - FR_CELL + 8)
                     frog_die();                         /* (off the screen with the log) */
@@ -212,11 +251,12 @@ static void frog_step(void)                             /* the lanes, the log's 
         b = (uint32_t)(c - 1) / 2u;
         if (c >= 1 && c <= 5 && (c & 1) && !frog.home[b]) {
             frog.home[b] = 1;
-            frog.score += 50u + (FR_LIFE_MS - (fm1_ms - frog.life_t)) / 1000u;
-            if (frog.home[0] && frog.home[1] && frog.home[2]) {   /* all three: the next level */
-                memset(frog.home, 0, sizeof frog.home);
+            frog.score += 50u + (fr_life_ms() - (fm1_ms - frog.life_t)) / 1000u;
+            if (frog.home[0] && frog.home[1] && frog.home[2]) {   /* all three: the intermezzo, then the next level */
                 frog.level++;
                 frog.score += 200u;
+                frog.state = FR_LEVEL;
+                frog.level_t = fm1_ms;
             }
             frog_start();
         } else
@@ -245,6 +285,57 @@ static void frog_car(int32_t x, int32_t y, int32_t w, uint16_t c, int right)   /
     cv_rect(right ? x + w - 13 : x + 7, y + 9, 6, FR_CELL - 18, frog_c(0xFFFFu));
 }
 
+/* a centred line of text at screen row sy, in the band starting at screen row y0 (h rows) */
+static void frog_line(int32_t y0, int32_t h, int32_t sy, const aafont_t *f, const char *t, uint16_t c, uint16_t bg)
+{
+    int32_t y = sy - y0;
+    if (y + (int32_t)f->h <= 0 || y >= h)
+        return;
+    cv_text_on(120 - text_w(f, t) / 2, y, f, t, frog_c(c), frog_c(bg));
+}
+
+/* the start screen: how to play, on a panel over the field */
+static void frog_howto(int32_t y0, int32_t h)
+{
+    static const char *const L[] = {"GET NIGLIO HOME", "", "SELECT: HOP UP / DOWN", "KNOB 4: HOP LEFT / RIGHT",
+                                    "DODGE THE CARS", "RIDE THE LOGS, NOT THE WATER", "FILL THE 3 BURROWS",
+                                    "30 S A LIFE, 3 LIVES", "", "PLAY: START / PAUSE", "HOME: BACK"};
+    const int32_t top = 26, bottom = 226;
+    uint32_t i;
+    cv_rect(10, top - y0, 220, bottom - top, frog_c(FR_C_HUD));
+    cv_rect(10, top - y0, 220, 2, frog_c(FR_C_LINE));
+    cv_rect(10, bottom - 2 - y0, 220, 2, frog_c(FR_C_LINE));
+    frog_line(y0, h, top + 8, &AF_M, "HARE CROSSING", FR_C_LINE, FR_C_HUD);
+    for (i = 0; i < NELEM(L); i++)
+        if (L[i][0])
+            frog_line(y0, h, top + 32 + (int32_t)i * 15, &AF_S, L[i],
+                      i == 9u ? FR_C_LINE : FR_C_TEXT, FR_C_HUD);
+}
+
+/* between two levels: the level reached, its bonus, Niglio hopping for joy (the lanes go on behind) */
+static void frog_intermezzo(int32_t y0, int32_t h)
+{
+    char t[24];
+    uint32_t el = fm1_ms - frog.level_t, k;
+    const int32_t top = 52, bottom = 204;
+    cv_rect(20, top - y0, 200, bottom - top, frog_c(FR_C_HUD));
+    cv_rect(20, top - y0, 200, 2, frog_c(FR_C_LINE));
+    cv_rect(20, bottom - 2 - y0, 200, 2, frog_c(FR_C_LINE));
+    str_cpy(t, "LEVEL ", sizeof t);
+    fmt_int(t + 6, frog.level);
+    frog_line(y0, h, top + 10, &AF_L, t, FR_C_LINE, FR_C_HUD);
+    frog_line(y0, h, top + 46, &AF_S, "ALL THREE HOME!  +200", FR_C_TEXT, FR_C_HUD);
+    frog_line(y0, h, top + 62, &AF_S, frog.level == 4u ? "LOGS SINK! A FAST LANE!" : frog.level == 7u ?
+              "SHORTER LOGS, CLOSER CARS" : frog.level < 7u ? "FASTER, LESS TIME" : "AS HARD AS IT GETS",
+              FR_C_TEXT, FR_C_HUD);                     /* (what is new: fr_speed, fr_len, fr_gap, fr_sink) */   /* (Niglio hops below, from
+                                                     * top + 84: 15 px up at most from bottom - 6 - 32) */
+    for (k = 0; k < 3u; k++) {                          /* three Niglios hopping in turn */
+        uint32_t ph = (el / 4u + k * 120u) % 360u;
+        int32_t up = ph < 180u ? (int32_t)(ph < 90u ? ph : 180u - ph) / 6 : 0;
+        frog_niglio(56 + (int32_t)k * 48, bottom - 6 - FR_CELL - up - y0, 0);
+    }
+}
+
 /* screen rows y0 .. y0 + h - 1 into one canvas, blitted */
 static void frog_band(int32_t y0, int32_t h)
 {
@@ -254,14 +345,15 @@ static void frog_band(int32_t y0, int32_t h)
     if (y0 == 0) {                                      /* the top line: the score, the level, the time, the lives */
         uint32_t used = frog.state == FR_PAUSE ? frog.paused_t - frog.life_t : fm1_ms - frog.life_t;
         uint32_t left = frog.state == FR_READY || frog.state == FR_OVER || frog.dead_t ? 0u :
-                        FR_LIFE_MS - (uint32_t)clamp((int32_t)used, 0, FR_LIFE_MS);
+                        fr_life_ms() - (uint32_t)clamp((int32_t)used, 0, (int32_t)fr_life_ms());
         str_cpy(s, "SCORE ", sizeof s);
         fmt_int(s + 6, (int32_t)frog.score);
         cv_text_on(4, 2, &AF_S, s, frog_c(FR_C_TEXT), frog_c(FR_C_HUD));
         str_cpy(s, "LV ", sizeof s);
         fmt_int(s + 3, frog.level);
         cv_text_on(96, 2, &AF_S, s, frog_c(FR_C_LINE), frog_c(FR_C_HUD));
-        cv_rect(140, 5, (int32_t)(left * 60u / FR_LIFE_MS), 6, frog_c(left < 8000u ? FR_CAR[0] : FR_C_LINE));
+        cv_rect(140, 5, (int32_t)(left * 60u / FR_LIFE_MS), 6, frog_c(left < 8000u ? FR_CAR[0] : FR_C_LINE));   /* (the
+                                                       * bar's length: of 30 s, so a shorter life a shorter bar) */
         for (i = 0; i < frog.lives; i++)
             cv_rect(210 + (int32_t)i * 9, 4, 6, 8, frog_c(NG_PAL[2]));
     }
@@ -284,27 +376,33 @@ static void frog_band(int32_t y0, int32_t h)
         }
         for (i = 0; i < FR_LANES; i++) {                /* the logs, the cars */
             const fr_lane_t *l = &FR_LANE[i];
-            int32_t period = (int32_t)(l->len + l->gap) * FR_CELL, x0 = (frog.off[i] >> 8) % period;
+            int32_t period = (fr_len(i) + fr_gap(i)) * FR_CELL, x0 = (frog.off[i] >> 8) % period;
+            uint32_t sink = fr_sink(i);
             if (l->row != r)
                 continue;
             for (x = x0 - period; x < 240; x += period) {
-                int32_t w = (int32_t)l->len * FR_CELL;
-                if (i < 2u) {
-                    cv_rect(x, y + 4, w, FR_CELL - 8, frog_c(FR_C_LOG));
+                int32_t w = fr_len(i) * FR_CELL;
+                if (i < 2u && sink == 2u)               /* (under: its ripples only) */
+                    cv_rect(x + 4, y + 15, w - 8, 2, frog_c(0x5DDFu));
+                else if (i < 2u) {
+                    cv_rect(x, y + 4, w, FR_CELL - 8, frog_c(sink ? 0x4100u : FR_C_LOG));   /* (sinking: darker) */
                     cv_rect(x + 3, y + 10, w - 6, 2, frog_c(0x5180u));
                     cv_rect(x + 3, y + 20, w - 6, 2, frog_c(0x5180u));
                 } else
                     frog_car(x, y, w, FR_CAR[i % 4u], l->speed > 0);   /* (a colour a lane) */
             }
         }
-        if ((uint32_t)frog.row == r && frog.state != FR_OVER)
+        if ((uint32_t)frog.row == r && frog.state != FR_OVER && frog.state != FR_LEVEL && frog.state != FR_READY)
             frog_niglio(frog.x, y, frog.dead_t && (frog.dead_t & 4u));
-        if (r == 3u && frog.state != FR_RUN) {          /* the bank: what PLAY does now */
-            const char *m = frog.state == FR_READY ? "PLAY: START" : frog.state == FR_PAUSE ? "PAUSE - PLAY: ON" :
-                                                                                           "GAME OVER - PLAY: AGAIN";
+        if (r == 3u && (frog.state == FR_PAUSE || frog.state == FR_OVER)) {   /* the bank: what PLAY does now */
+            const char *m = frog.state == FR_PAUSE ? "PAUSE - PLAY: ON" : "GAME OVER - PLAY: AGAIN";
             cv_text_on(120 - text_w(&AF_S, m) / 2, y + 10, &AF_S, m, frog_c(FR_C_TEXT), frog_c(FR_C_GRASS));
         }
     }
+    if (frog.state == FR_READY)
+        frog_howto(y0, h);
+    else if (frog.state == FR_LEVEL)
+        frog_intermezzo(y0, h);
     cv_blit(0, (uint32_t)y0);
 }
 

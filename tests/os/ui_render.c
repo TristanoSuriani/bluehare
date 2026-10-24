@@ -555,7 +555,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_PRESETS_CAT_EMPTY, S_NAME_CAT, S_NAME_RANDOM, S_MENU_ANIM_IDLE, S_MOMENTARY, S_MOMENTARY_EDIT, S_USER_FOOT,
        S_LFO2,
        S_MENU_AUDIO, S_HEAD_PLAY, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK, S_HEAD_BPM_LOCKED,
-       S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_SEQ_LOOP, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_EDIT_HOOVER, S_EDIT_HOOVER_2, S_GAME_FROG, S_COUNT };
+       S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_SEQ_LOOP, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_EDIT_HOOVER, S_EDIT_HOOVER_2, S_GAME_FROG, S_GAME_HOWTO, S_GAME_LEVEL, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
        "mod", "fx", "dly", "scl", "chord", "chord_wide", "chord_off", "arp", "voice", "clock",
@@ -572,7 +572,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
        "lfo2", "menu_audio", "head_play",
        "head_bpm_turn", "head_bpm_lock", "head_bpm_locked", "head_glo_turn", "head_downbeat",
        "head_beat_2", "menu_tune", "menu_info", "menu_home", "seq_loop",
-       "edit_wave", "edit_strings_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2", "game_frog"};
+       "edit_wave", "edit_strings_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2", "game_frog", "game_howto", "game_level"};
 
 
 
@@ -801,6 +801,11 @@ static void setup(int s)
     case S_GAME_FROG:                                   /* (2026-10-24) HARE CROSSING: two burrows filled, on the road */
         frog_open(); frog_new(); frog.home[0] = frog.home[2] = 1; frog.score = 230; frog.hi = 410; frog.level = 2;
         frog.row = 4; frog.x = 104; ui.msg_t = 0;
+        break;
+    case S_GAME_HOWTO: frog_open(); ui.msg_t = 0; break;   /* (the start screen: how to play) */
+    case S_GAME_LEVEL:                                  /* (the intermezzo: level 3 reached) */
+        frog_open(); frog_new(); frog.level = 3; frog.score = 760; frog.state = FR_LEVEL; frog.level_t = fm1_ms - 500u;
+        ui.msg_t = 0;
         break;
     default: break;
     }
