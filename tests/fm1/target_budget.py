@@ -37,14 +37,14 @@ FUNCS = ["fm1_alnk0_irq", "fm1_timer5_irq",               # the audio ISR; TIMER
          "onyx_render", "vocoder_render", "dubchord_render",   # (2026-10-19; WAVE the native image's alone, CHIPKIT archived)
          "rhythm_render", "vakit_render",                   # (2026-10-23: the 808 and the 909; synth drums)
          "risers_render", "noise_render",                  # (2026-10-24: on VA's core, track 3)
-         "va_run_out",                                      # (2026-10-23: VA's core, VA OBIE HOOVER's loop)
+         "va_run_out_ram", "va_run_ram",                    # (VA's core from RAM, 2026-10-24: VA OBIE HOOVER; the rest)
          "vosim_render"]                                    # (back from the archive 2026-10-16)
 # absent from some builds: skipped then; present, checked against these
 OPTIONAL = {"uac_tap48": 504}           # (absent from a BLUEHARE_UAC_48K=0 or BLUEHARE_UAC=0 build)
 # the engine each engine function belongs to: absent from a distribution without that engine (build/dist.txt names
 # the one build/bluehare.dis is: tools/build.py), skipped then
 ENGINE_OF = {"sid_render": "SID", "wave_render": "WAVE",
-             "modal_render": "MODAL", "vosim_render": "VOSIM", "obie_render": "OBIE", "hoover_render": "HOOVER", "rhythm_render": "RHYTHM", "vakit_render": "VAKIT", "risers_render": "RISERS", "noise_render": "NOISE", "va_run_out": "VA",
+             "modal_render": "MODAL", "vosim_render": "VOSIM", "obie_render": "OBIE", "hoover_render": "HOOVER", "rhythm_render": "RHYTHM", "vakit_render": "VAKIT", "risers_render": "RISERS", "noise_render": "NOISE", "va_run_out_ram": "VA", "va_run_ram": "VA",
              "dubsiren_render": "DUBSIREN", "kit_render": "KIT", "breaks_render": "BREAKS",
              "sandstorm_render": "SANDSTORM", "speech_render": "SPEECH", "dubsiren8_render": "DUBSIREN8",
              "war_render": "WAR", "chipkit_render": "CHIPKIT", "linnkit_render": "LINNKIT", "onyx_render": "ONYX",

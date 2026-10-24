@@ -30,6 +30,18 @@
 /* the decimator to the rate (VA_OS 1: none, the voice already at it) */
 #define VA_DOWN(x) (VA_OS > 1u ? va_bq(va_dq[1], z1, va_bq(va_dq[0], z0, (x))) : (x))
 #define VA_POLY 6
+#if BLUEHARE_RAM_FAST                           /* (2026-10-24) the device: the loops run from RAM, not the flash (about */
+                                                /* 9 KB; ChoralRoot's CR_RAM_VA; app.ld .ram_fast). Every call in them
+                                                 * inlined (flatten): a call from RAM cannot reach the flash */
+#define VA_HOT __attribute__((section(".ram_fast"), noinline, flatten))
+#define VA_HOT_INL __attribute__((section(".ram_fast"), flatten))
+static inline void *va_far(void *p) { void *volatile q = p; return q; }   /* (the flash cannot call RAM directly either: */
+#define VA_FAR(fn) ((__typeof__(&fn))va_far((void *)&fn))                 /* through a pointer, as hal/fm1_flash.h FL_FAR) */
+#else
+#define VA_HOT
+#define VA_HOT_INL
+#define VA_FAR(fn) (fn)
+#endif
 enum { VA_LP12, VA_LADDER, VA_BP, VA_HP };      /* (va_cfg_t.ladder) */
 enum { VA_SAW, VA_PULSE, VA_SINE, VA_TRI, VA_WHITE, VA_PINK, VA_BROWN,   /* (the noises: the user's, 2026-10-23) */
        VA_SAWP, VA_PWSAW };     /* (OBIE's SAWP: saw + 0.7 pulse; HOOVER's PWSAW: a saw and the same saw PW on) */
@@ -106,7 +118,7 @@ static inline float va_osc(uint32_t w, float t, float dt, float pw)
 
 /* a wave (va_osc), or one of the noises: WHITE flat, PINK -3 dB an octave, BROWN -6 dB (at the voice's rate; their
  * level about a saw's) */
-static inline float va_wave(va_voice_t *s, uint32_t w, float t, float dt, float pw)
+static inline VA_HOT_INL float va_wave(va_voice_t *s, uint32_t w, float t, float dt, float pw)
 {
     float x;
     if (w < VA_WHITE || w > VA_BROWN)
@@ -319,7 +331,7 @@ static inline __attribute__((always_inline)) void va_run_k(va_voice_t *restrict 
 }
 /* the core into y, for a flavour that finishes the sound itself (SANDSTORM: its gate's chop, its drive): the
  * oscillators' count known in each loop (unrolled); the two oscillators' flavours use va_run_out below */
-static void va_run(va_voice_t *s, float *y, uint32_t n, const va_cfg_t *c)
+static VA_HOT void va_run_ram(va_voice_t *s, float *y, uint32_t n, const va_cfg_t *c)
 {
     if (c->sync)
         va_run_k(s, y, n, c, 2u, 1);
@@ -330,7 +342,7 @@ static void va_run(va_voice_t *s, float *y, uint32_t n, const va_cfg_t *c)
 }
 /* VA's, OBIE's and HOOVER's two oscillators: the voice's output at once (the committed core's loop, its phases in
  * locals: ~10 % fewer instructions than va_run_k's general one, measured 2026-10-23) */
-static void va_run_out(va_voice_t *s, int32_t *out, uint32_t n, const vmod_t *m, const va_cfg_t *c)
+static VA_HOT void va_run_out_ram(va_voice_t *s, int32_t *out, uint32_t n, const vmod_t *m, const va_cfg_t *c)
 {
     const float Q32 = 1.0f / 4294967296.0f, ros = 1.0f / (float)VA_OS;
     uint32_t i, k, ph1 = s->ph[0], ph2 = s->ph[1], phs = s->ph[VA_NOSC];
@@ -435,6 +447,12 @@ static void va_run_out(va_voice_t *s, int32_t *out, uint32_t n, const vmod_t *m,
     s->d[2] = fm_flush(z1[0]);
     s->d[3] = fm_flush(z1[1]);
     s->prev = prev;
+}
+/* what the flavours call (VA_FAR: on the device, RAM's code through a pointer) */
+static void va_run(va_voice_t *s, float *y, uint32_t n, const va_cfg_t *c) { VA_FAR(va_run_ram)(s, y, n, c); }
+static void va_run_out(va_voice_t *s, int32_t *out, uint32_t n, const vmod_t *m, const va_cfg_t *c)
+{
+    VA_FAR(va_run_out_ram)(s, out, n, m, c);
 }
 /* y into the voice's output (its envelope, its level) */
 static void va_out(int32_t *out, uint32_t n, const vmod_t *m, const float *y)

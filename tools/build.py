@@ -206,6 +206,7 @@ def build_app():
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
     flags.append(f"-DBLUEHARE_DIST={distribution()}")   # (core.h includes build/gen/dist_<name>.h)
+    flags.append("-DBLUEHARE_RAM_FAST=1")               # (2026-10-24) the VA family's loops from RAM (eng_va.c VA_HOT)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "dist.txt").write_text(distribution() + "\n")   # (what build/bluehare.* is: tests/fm1/target_budget.py)
     v = os.environ.get("BLUEHARE_USB_LAYOUT")   # firmware/fm1/usb.c: how the USB composite presents itself (#67), 0..3
@@ -268,8 +269,9 @@ def check(img, syms, dis, rt):
         errors.append(f"_start is not at {APP_XIP:#x}")
     if img[:4] != bytes.fromhex("04818000"):
         errors.append(f"image starts with {img[:4].hex()}, not the entry stub")
-    rt_calls = [ln for ln in rt.splitlines() if re.search(r"\bcall\b", ln)]
-    if rt_calls:                    # RAM code runs with the flash off: no calls into XIP
+    rt_calls = [ln for ln in rt.splitlines() if re.search(r"\bcall\b", ln) and   # RAM code runs with the flash off: no
+                not re.search(r": (1c0[0-5][0-9a-f]{3}) >", ln)]                  # calls into XIP (calls within the RAM
+    if rt_calls:                                                                 # code: jump tables' thunks, 2026-10-24)
         errors.append(f".ram_text contains calls: {rt_calls[:3]}")
     else:
         notes.append(f".ram_text: {len([ln for ln in rt.splitlines() if LINE.match(ln)])} insns, no calls")

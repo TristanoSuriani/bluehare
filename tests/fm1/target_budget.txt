@@ -30,7 +30,7 @@ dubsiren_render 293
 kit_render 28
 breaks_render 188
 fmp_run 92
-sandstorm_render 2383
+sandstorm_render 2387
 speech_render 217
 dubsiren8_render 300
 war_render 192
@@ -40,8 +40,9 @@ onyx_render 10660
 vocoder_render 2750
 dubchord_render 840
 rhythm_render 15576
-vakit_render 13108
+vakit_render 13370
 risers_render 18452
-noise_render 7858
-va_run_out 14221
+noise_render 7789
+va_run_out_ram 108202
+va_run_ram 23468
 vosim_render 220
