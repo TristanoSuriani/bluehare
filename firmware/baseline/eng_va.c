@@ -167,6 +167,7 @@ static inline float va_bq(const float *c, float *z, float x)   /* transposed dir
     return y;
 }
 
+static uint32_t trk_vmode(const track_t *t);    /* (voice.c: the mode played; a kit's always POLY) */
 /* the voice's note-on (every flavour's): the phases (osc 2 a quarter cycle on: no flam; the rest of a stack
  * anywhere in their cycles: no click of five at once), the filter and decimator cleared, its offsets; a voice
  * still sounding keeps them all */
@@ -198,6 +199,12 @@ static void va_start(track_t *t, voice_t *v)
     for (k = 2; k < VA_NOSC; k++)
         s->ph[k] = (uint32_t)noise32(&nz);
     s->ph[VA_NOSC] = 0;
+    if (trk_vmode(t) == V_UNISON && v != &t->v[0])   /* UNISON: the stacked voices each anywhere in their cycles (in
+                                                       * phase they stack at the attack, then drift into cancelling: the
+                                                       * user's "brighter and quieter", 2026-10-23; voice.c's v->ph is
+                                                       * not the core's) */
+        for (k = 0; k <= VA_NOSC; k++)
+            s->ph[k] = (uint32_t)noise32(&nz);
     s->nz = nz;
     if (va_dq[0][0] == 0.0f)
         va_dq_init();
