@@ -5863,6 +5863,41 @@ static int test_frog(void)
         bad += check("..the difficulty: 2x at most (level 6), 30 .. 20 s, from level 4 sinking logs (1.5 s of 6) and a "
                      "fast lane, shorter logs and closer cars", ok);
     }
+    {   /* drawn in part (the lanes every frame, the rest on a change): the same screen as drawn whole, every frame of a
+         * game on the move (a hop, the burrows, a death, a pause, the time bar) */
+        static uint16_t part[240 * 240];
+        uint32_t f, same = 1, lanes_px = 0;
+        frog_new();
+        for (f = 0; f < 240u; f++) {
+            if (f % 9u == 0u) turn(EN_SELECT, (f / 9u) % 3u ? 1 : -1);
+            if (f % 13u == 0u) turn(EN_K4, (f / 13u) & 1u ? 1 : -1);
+            if (f == 120u) frog.home[1] = 1;
+            if (f == 200u) press(B_PLAY);               /* (a pause) */
+            frame();
+            memcpy(part, host_screen, sizeof part);
+            frog_band(0, 120);                          /* (the whole screen drawn again: the same state, no step) */
+            frog_band(120, 120);
+            if (same && memcmp(part, host_screen, sizeof part)) {
+                uint32_t q;
+                for (q = 0; q < 240u * 240u && part[q] == host_screen[q]; q++)
+                    ;
+                printf("  frame %u: first difference at row %u (state %u, row %d, dead %u)\n", f, q / 240u, frog.state, frog.row, frog.dead_t);
+                same = 0;
+            }
+        }
+        frog_new();
+        for (f = 0; f < 60u; f++) {                     /* a game going on: the rows a frame sends */
+            if (f == 30u) turn(EN_K4, 1);
+            host_blit_rows = 0;
+            frame();
+            lanes_px += host_blit_rows;
+        }
+        printf("  rows a frame in play: %u of 240\n", lanes_px / 60u);
+        same &= lanes_px / 60u < 150u;
+        bad += check("..drawn in part (the lanes every frame, the rest on a change): pixel for pixel the whole screen's, "
+                     "under 150 rows of 240 a frame",
+                     same);
+    }
     press(B_HOME);
     bad += check("..HOME closes it, the keys play again", !frog.on && keys_mode() == 0u);
     return bad;

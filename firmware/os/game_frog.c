@@ -37,7 +37,8 @@ static const fr_lane_t FR_LANE[FR_LANES] = {
     {4, -60, 1, 3}, {5, 42, 2, 3},                      /* the cars */
 };
 static struct {
-    uint8_t on, state, lives, level, home[3], best_row, dead_t;
+    uint8_t on, state, lives, level, home[3], best_row, dead_t, drawn_state;
+    uint32_t sig[FR_ROWS + 1u];                         /* what each still part shows (frog_draw: drawn again on a change) */
     int16_t x, row;                                     /* Niglio: px (left edge), row */
     int32_t xf;                                         /* (his px << 8, carried by a log) */
     int32_t off[FR_LANES];                              /* each lane's offset, px << 8 */
@@ -117,6 +118,7 @@ static void frog_open(void)
     memset(frog.home, 0, sizeof frog.home);
     frog.on = 1;
     frog.state = FR_READY;
+    frog.drawn_state = 0xFF;                            /* (the first frame: all of it) */
     frog.lives = 3;
     frog.level = 1;
     frog.score = 0;
@@ -406,10 +408,40 @@ static void frog_band(int32_t y0, int32_t h)
     cv_blit(0, (uint32_t)y0);
 }
 
-/* ui_draw (ui.c): the whole screen, every frame while it is on */
+/* ui_draw (ui.c): every frame while it is on. The screen's link is the limit (a whole screen a frame: the cars jump
+ * at speed), so only what changes is drawn: the four lanes every frame (rows 3 .. 29 of theirs, where the logs and
+ * cars are; the whole row with Niglio in it); the top line, the burrows, the bank and the start when what they show
+ * changes (sig); the start screen and the intermezzo (panels over the field) whole */
 static void frog_draw(void)
 {
+    uint32_t r, sg, i, used, left, full;
     frog_step();
-    frog_band(0, 120);
-    frog_band(120, 120);
+    full = frog.state != frog.drawn_state || ui.force;
+    frog.drawn_state = frog.state;
+    if (frog.state == FR_READY || frog.state == FR_LEVEL) {   /* (a panel over everything) */
+        frog_band(0, 120);
+        frog_band(120, 120);
+        memset(frog.sig, 0, sizeof frog.sig);
+        return;
+    }
+    used = frog.state == FR_PAUSE ? frog.paused_t - frog.life_t : fm1_ms - frog.life_t;
+    left = frog.state == FR_OVER || frog.dead_t ? 0u : fr_life_ms() - (uint32_t)clamp((int32_t)used, 0, (int32_t)fr_life_ms());
+    sg = frog.score * 2654435761u ^ frog.level * 97u ^ frog.lives * 7919u ^ (left * 60u / FR_LIFE_MS) * 31u ^
+         (left < 8000u) * 65537u ^ frog.state * 131u;
+    if (full || sg + 1u != frog.sig[FR_ROWS]) {         /* the top line */
+        frog_band(0, FR_TOP);
+        frog.sig[FR_ROWS] = sg + 1u;
+    }
+    for (r = 0; r < FR_ROWS; r++) {
+        int lane = 0;
+        for (i = 0; i < FR_LANES; i++)
+            lane |= FR_LANE[i].row == r;
+        sg = ((uint32_t)frog.row == r) * (1u + (uint32_t)(uint16_t)frog.x * 3u + ((frog.dead_t & 4u) ? 7u : 0u)) ^
+             (uint32_t)(frog.home[0] | frog.home[1] << 1 | frog.home[2] << 2) * 40503u ^ frog.state * 131u;
+        if (full || sg + 1u != frog.sig[r] || (lane && (uint32_t)frog.row == r)) {
+            frog_band(FR_TOP + (int32_t)r * FR_CELL, FR_CELL);   /* (the whole row: Niglio in it, or just gone) */
+            frog.sig[r] = sg + 1u;
+        } else if (lane)                                /* a lane alone: the band its logs and cars move in */
+            frog_band(FR_TOP + (int32_t)r * FR_CELL + 3, FR_CELL - 5);
+    }
 }

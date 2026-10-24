@@ -1,380 +1,98 @@
 # Blue Hare
 
-**Blue Hare** is a fork of [Felucca](https://github.com/hugelton/Felucca), the multi-engine synthesizer firmware
-for the M-VAVE FM-1 by Leo Kuroshita ([Hügelton Instruments](https://hugelton.com)). It is developed by
-**Tristano Suriani** (<https://github.com/TristanoSuriani/blue-hare>). It is an independent fork, not an official
-Felucca release. Version **0.10.0** (its own numbering; it grew from Felucca 1.4.1). On the device, the editor and
-the browser emulator it introduces itself as Blue Hare, naming Felucca and its makers as what it is built on.
+**Blue Hare** is an alternative firmware for the **M-VAVE FM-1**: a three-part synthesizer for live playing, made
+to be played from an external sequencer or from the FM-1's own keys. It is developed by **Tristano Suriani** and is a
+fork of [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita (Hügelton Instruments). It is an independent
+project, not an official Felucca or M-VAVE release.
 
-What Blue Hare adds, all by Tristano Suriani:
+**Status: beta (0.11).** It runs on the FM-1 and has a broad automatic test suite, but it has been played on few
+units so far. Please report what you find in the repository's issues.
 
-- **The sequencer:** a placeholder for now (SEQ shows TODO). Felucca's step sequencer is gone, and so is the tracker
-  that took its place until 2026-10.
-- **One distribution, HARE FM1** *(2026-10-16)*: the base synthesizer engines SID, SH101, WAVE, VOSIM, BLISS, WEST, MODAL and
-  STRINGS on **4 tracks** (at power-on WAVE's WARM PAD and SH101's 101 BASS, centred; BLISS's E.PIANO on the left and MODAL's
-  KALIMBA on the right). The build still takes any number of distributions of up to 16 engines, with stable engine
-  ids and a palette each (HARE FM1: ICE); the earlier ones are archived (BUILDING.md "Distributions").
-- **Blue Hare's engines:** of the twenty-four Blue Hare wrote, SID, SH101, WAVE, VOSIM (back from the archive 2026-10-16), BLISS, WEST, MODAL
-  and STRINGS (back 2026-10-17 in ECHOES' place; ECHOES and the native image's CANYON archived) are in the build; the others are in `archive/engines/`. **SH101** *(2026-10)*: saw, pulse
-  with PWM, a locked sub-oscillator and noise into a self-oscillating 24 dB ladder.
-- **A synthesizer, not a groovebox** *(2026-10-16)*: the SLICER, DUCK and the FX layer's REPEAT, REVERSE and TAPE STOP
-  are archived; the design and the plan are in [docs/](docs/) (DesignPrinciples.md, Milestones.md, SoundAndDSP.md).
-- **GEN, the generative engine** *(2026-10)*: ARP plays the four tracks as an ambient ensemble (pad, bass, bells,
-  pulse; amb1's composition), 8 pieces, on the FM-1, the native image, the emulator and the studio alike.
-  *(2026-10-17)* WAVES (swells of noise) in the pieces without a pulse; a density a role on KNOB 1–4 while it plays
-  (the GEN MIX page); keys played along snapped to its scale, on the bells; an ocean on its pages while it plays
-  (fish, a crowned king, starfish, bubbles), following the music.
-- **Layers** *(2026-10-16, Milestone 2's start)*: the four tracks are a patch's layers. A layer ON plays the notes
-  its key and velocity ranges hold, transposed by its own TRANS (STACK), or one layer a note in turn (ROUND ROBIN);
-  each has an insert (drive, a 12 dB filter, low cut). *(2026-10-17)* Layers crossfade by velocity, key or the mod
-  wheel; a MONO layer takes a chord without stuttering; the controllers reach every layer. GLO + F3 .. B3 picks the
-  layer to edit. See
-  [docs/LayerArchitecture.md](docs/LayerArchitecture.md).
-- **Floating point** *(2026-10-17)*: amb-1's plate reverb and tape echo (Charles Vestal's) on the FM-1 as REVERB TYPE
-  PLATE and DELAY TYPE AMB, and a 4-band EQ (FX > EQ), in float on the FPU with X0X's fast maths (`fastmath.h`).
-- **The sound design studio** *(2026-10-16)*: the firmware's engines, effects and GEN in the browser, on one screen, to design sounds,
-  try them on 4 tracks with every effect (track inserts, the shared buses, the performance layer, the master) and
-  save them to a file, to the studio's slots or straight to the FM-1's user slots
-  (`web/studio/`, `make studio`, BUILDING.md "Sound design studio").
+- **Manual:** [docs/MANUAL.md](docs/MANUAL.md)
+- **Build:** [BUILDING.md](BUILDING.md)
+- **Who made what:** [AUTHORS.md](AUTHORS.md)
 
-Everything else is Felucca, Leo Kuroshita's work. [AUTHORS.md](AUTHORS.md) says in detail whose work is whose. Below,
-Blue Hare's parts are marked *(Blue Hare)*.
+## What it is
 
-The rest of this README started as Felucca's. Its install links, site, sponsorship and issue tracker are Felucca's
-(Hügelton Instruments). They install official Felucca, not Blue Hare; to build Blue Hare, see
-[BUILDING.md](BUILDING.md).
+**Three tracks, each with a job and its own engines:**
 
----
-
-[![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
-[![Sponsor](https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/hugelton)
-
-**TL;DR:** Felucca 1.4.1 — 1.4 plus DRUM lane mutes on the EDIT layer and an FM6 voice bank, field testing. Connect your FM-1 to a computer by USB,
-open the [web installer](https://hugelton.github.io/Felucca/) in Chrome or Edge, and press Install;
-no extra hardware is needed. Installing is at your own risk: M-VAVE's updater or the installer's
-**Return to official V15** takes you back. Coming from 1.1.5.x? Read [⚠ Coming from 1.1.5](#-coming-from-115) first:
-projects saved by 1.4 or 1.4.1 do not open on 1.1.5.x. Want to look around first?
-[Try it in your browser](https://hugelton.github.io/Felucca/webapp/try/), no FM-1 needed.
-
-Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you find in
-[Issues](https://github.com/hugelton/Felucca/issues).
-
-- Install: [web installer](https://hugelton.github.io/Felucca/) (Chrome or Edge, USB), or `tools/fm1_install.py` from a terminal
-- Try: [Felucca in your browser](https://hugelton.github.io/Felucca/webapp/try/): the same firmware compiled to
-  WebAssembly, with the panel on screen (mouse, touch, computer keyboard, Web MIDI in)
-- Editor: `web/editor.html` in this repository (its Sequencer tab says TODO with this firmware); the
-  [web editor](https://hugelton.github.io/Felucca/webapp/editor/) on the site
-  ([Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp)) edits the sounds
-- Build: [BUILDING.md](BUILDING.md)
-
-<a href="https://hugelton.itch.io/felucca"><img src="https://static.itch.io/images/badge-color.svg" alt="Available on itch.io" width="74"></a>
-
-## Features
-
-- **Native image** *(Blue Hare)*: Blue Hare as a desktop application for each distribution (`native/build.sh`:
-  `Blue Hare HARE FM1.app` on macOS), the same firmware in a window with the panel, the computer's sound out and MIDI in,
-  its saves in a file: the base for heavier engines and effects than the FM-1 can hold. Every track has its own 16
-  voices there, three more reverbs (CONCERT: HALL at the full rate and twice the lines; CAVERN: a cave's echoes and
-  a 30 s tail; SHIMMER: a tail climbing in octaves), a 23.8 s delay line, and every component of the registry
-  (`firmware/components.txt`; BUILDING.md "Native image")
-
-- **Six engines** in HARE FM1 (below), each with its own factory presets; every factory sound has a category (BASS, LEAD,
-  PAD, PLUCK, KEYS, DRUM, FX, OTHER) to browse by
-- **Four tracks**, one synth part each with its own engine and sound;
-  12 voices shared between them (Blue Hare; 8 when the device is busy: voices 9 .. 12 start only while the audio's
-  measured load is under 75 %, a heavy song keeps to 8 on its own). ALGORITHM selects the track on every page
-- **Sequencer:** a placeholder for now: SEQ (and GLO) show TODO. PLAY runs the transport (the click and the synced
-  LFOs follow it). See [Sequencer](#sequencer)
-- **Metronome:** CLICK (OFF or ON) with three levels; the click goes to the headphones and speaker only, never to
-  USB audio. There is no count-in: PLAY starts at once
-- **Chord keys:** one finger plays an in-key chord (triads or sevenths of the scale, or fixed chord
-  shapes), with voicings; on the keys and MIDI in
-- **Scales and voices:** 16 scales with a white-key mode, glide, MONO / LEGATO / UNISON. The arpeggiator is gone
-  (2026-10): ARP plays GEN instead (below)
-- **GEN, the generative engine** *(Blue Hare, 2026-10)*: ARP starts and stops an ambient ensemble on the four
-  tracks, amb1's composition (docs/excerpt_amb1.c): a pad of four voices that breathe on unequal cycles (track 1), the
-  bass (2), bells in four loops of 13, 17, 23 and 29 beats that phase against each other and grow, thin and change
-  (3), a euclidean pulse (4); the chords drift on their own, voice-led. Its page (ARP) picks one of amb1's 8 pieces
-  (GARDEN, DEPARTURES, VOICES, AFTERNOON, NIGHT BUS, SHORELINE, GLASS, TIDES: the four sounds, the tempo and the
-  effects), the SCALE, the ROOT and MOTION (how far it swells and thins). The same code plays in the native image, the
-  browser emulator and the studio
-- **LFO:** RATE or **SYNC** to a note value (4 bars to 1/32, following the tempo or an external clock), **TRIG** NOTE
-  or FREE, **POL** bipolar or unipolar (LFO > LFO 2)
-- **Modulation matrix:** 4 slots per track, MIDI controllers as sources, **S&H** and **SLEW** (a random value per
-  LFO cycle, held or gliding), and **DEPTH** as a destination, so the matrix can modulate the LFO itself
-- **SPREAD** (EDIT > VOICE 3): the voices of a POLY or UNISON track alternate left and right of its PAN (or land on a
-  side at random: SETTINGS' **PAN MODE** RND, below); **OCT** beside it moves
-  the whole sound up or down by octaves (a preset can set it)
-- **Effects:** distortion per track; chorus, delay and reverb sends (the reverb as
-  **HALL**, ROOM, SPRING or *(Blue Hare)* **GATED** or **CONCERT**; HALL is a smooth stereo reverb, the default on a
-  fresh start; the delay **CLEAN**, **TAPE**, **WORN**, **PING** or **DUAL** on DLY 2: TAPE and WORN a tape echo with
-  wow and flutter, repeats that darken and saturate and run away into a howl past FDBK ~95; PING echoes left, then
-  right, and so on, up to 0.74 s; DUAL a true stereo delay, the left at TIME and the right at three quarters of it,
-  each its own loop, a quarter fed across); master limiter. *(Blue Hare)* The chorus and ROOM are stereo (the chorus's two sides sweep in opposition; SPRING and the
-  tape echoes stay mono, as the real ones are), and the delay's and the reverb's sends lose their lows below about
-  220 Hz first, so the bass and the kick stay dry and the tails stay clear. A gentle bus compressor (3:1, slow) sits in
-  front of the master limiter, so a full mix keeps its punch at the top of MASTER instead of being held down all the time.
-  *(Blue Hare, 2026-10)* **2x oversampling** around a shaper (`dsp.c` os2_*): what a hard drive adds above the band no
-  longer folds back into it (6 to 7 dB fewer aliases; its engines are archived for now, the building block stays).
-  *(Blue Hare, 2026-10)* **MONO LOWS**: before it, the mix's stereo difference under about 120 Hz is taken out (40 Hz
-  hard left plays on both sides), as a club's system wants the bass; the width above stays
-- **FX layer:** hold FX for filter sweeps (LPF, HPF), freeze, a harmonizer (OCT UP / OCT DN with shimmer), and mutes
-  on the black keys (REPEAT, REVERSE and TAPE STOP: archived 2026-10-16);
-  any white key can hold any effect (hold the key in the layer and turn PRESETS); MENU > FX LATCH makes them toggle,
-  so nothing has to stay held
-- **MOMENTARY:** hold LFO and turn a knob on HOME or a sound / FX page; let go of LFO and the value jumps back
-  (OCT+ while holding keeps it)
-- **Quick layers:** hold FX, GLO, SCL or EDIT for shortcuts on the keys and knobs, or double-tap it to
-  keep the layer open; one-step undo (SAVE held); OCT+ confirms, OCT- goes back; what can be
-  pressed breathes softly instead of blinking
-- **Presets:** factory presets and 32 user preset slots, named on the device (an FM6 sound keeps its own patch);
-  user presets get a category. One project (the tracks' sounds and settings) is saved on SAVE > PROJECT and can get a
-  random name; projects of earlier versions do not open (see [Sequencer](#sequencer)). The PRESETS knob changes the sound from every page
-  that is not a list.
-  Turn the FM-1 off and on and the music is as you left it (MENU > RESTORE LAST, an autosave of its own,
-  written only when stopped and idle)
-- **Screen:** flat UI with Inter Tight and Fukiai icons, FLAT or LINE style, 10 palettes including
-  grayscale, black and white, high contrast and NIGHT; type in sizes by role (what you read in the larger size,
-  labels and hints in the smaller); MENU > LARGE for tall knob cards with larger labels and values; the menu in
-  five tabs. The header shows the track, the play state and the tempo. HOME
-  shows the oscilloscope or, with MENU > HOME TRACKS, **the four tracks** with their sounds, mutes and meters; the
-  screen can go dark when the panel is left alone (MENU > SCREEN OFF)
-- **LEDs:** idle buttons and keys glow dim so the panel can be found in the dark (MENU > LEDS: OFF,
-  DIM LO, DIM HI or INV, the official firmware's look); PLAY turns green while playing; the keys show
-  the notes MIDI IN plays; MENU > SCALE LEDS shows the track's scale on the keys;
-  a soft light sweeps over the keys at power-on, and with MENU > ANIM IDLE drifts over them while the FM-1 waits
-- **USB:** class-compliant MIDI in and out, and a stereo audio input ("Felucca") at 44.1 or 48 kHz
-  (the computer picks) that records the master output on the computer, no driver needed (at a fixed level with MENU > USB LEVEL FIXED;
-  on macOS 13–15, set MENU > USB SERIAL to OFF so the audio input appears)
-- **MIDI:** USB and TRS MIDI in; MENU > MIDI > MIDI IN: CH1-4 (channels 1–4 play tracks 1–4), CH5-8, CH9-12 or
-  CH13-16 (another block of four, e.g. for two FM-1s on one cable), or SEL (every channel plays the selected track);
-  the keys send on the track's channel; pitch bend, sustain, panic; clock from internal, USB or TRS. MIDI CCs set
-  track parameters: 5 GLIDE, 7 LEVEL, 10 PAN, 71 resonance, 72 / 73 / 75 release / attack / decay, 74 brightness,
-  91 / 93 / 94 the reverb, chorus and delay sends
-- **Web:** editor for every parameter (with a 6-operator FM patch editor that also sends a whole 32-voice bank),
-  mixer, preset library, sample upload and
-  recording with trim, the MENU settings; full backup and restore
-  (everything but the FM6 voice bank: keep its .syx file);
-  return to the official firmware; Felucca itself running in the browser
-
-## New in 1.4.1
-
-- **Engine quick actions on the EDIT layer's black keys.** Hold EDIT: the black keys do what the selected track's
-  engine offers, and the map shows it. On a DRUM track, black keys 1–8 (F#3 … A#4) mute its lanes KICK, SNARE, CLAP,
-  HATCL, HATOP, TOM, RIM and BELL, one press to mute, the next to unmute. The LEDs show which lanes sound, the drum
-  grid dims a muted lane. A muted lane keeps playing unheard, so unmuting brings it back in time. The mutes are for
-  live play: never saved, not recorded, not undone; a sound or project load clears them, OCT− in the layer puts them
-  back as they were when it opened. Other engines have no quick actions yet.
-- **FM6 voice bank** (Discussion #168). The web editor's 6-OP FM tab sends a whole 32-voice SysEx bank (the standard
-  4096-byte file) to the FM-1 in one go, with its name. On an FM6 track SLOT (EDIT 2, KNOB 4) now goes F1–F8, OWN,
-  then **B1–B32**, the bank's voices; the algorithm chart shows the voice's name. Picking a voice copies it into the
-  track, as F1–F8 do, so a project or user preset saved with it keeps that sound after you send another bank (it
-  loads with SLOT OWN). With no bank sent, SLOT stops at OWN as before. The bank has its own flash sector and is only
-  replaced once a new one arrived whole; projects, presets, samples and settings are not touched. **The full backup
-  does not include the bank: keep the .syx file.**
-- 1.4.1 opens and saves everything 1.4 does, in the same formats.
-- (Blue Hare: FM6 and DRUM are gone, with the bank and the DRUM quick actions; KIT has the lane mutes on the black
-  keys now.)
-
-## ⚠ Coming from 1.1.5
-
-1.4 is the first release since 1.1.5.1 and holds a lot (all of this holds for 1.4.1 too). Everything you saved loads and sounds as before, except
-where marked here:
-
-- **Projects are saved in a new format (FUN10).** 1.4 opens every older project, but **1.1.5.x and older cannot
-  open a project saved by 1.4**: they show its slot as empty (the data stays in flash until you save something into
-  that slot there), and refuse a backup that holds one. User presets saved by 1.4 load on 1.1.5.x without the five
-  new values (LFO 2's SYNC, TRIG and POL, QUANTIZE, SPREAD).
-- **ARP ORD now plays the held notes in the order you pressed them** (up to 1.1.5 it played them as UP): a sound
-  or project using ORD sounds different when its notes were pressed in another order than low to high.
-- **The pages moved** (Discussion #153): see Controls below. In short: SEQ is STEP and AUTOMATION; **SEQ held is SEQ
-  TOOLS on every page** (it no longer opens SONG); **GLO opens SONG**; PHRASES is on SAVE; HOME goes round HOME,
-  MIXER and CLOCK (BPM, swing, clock source); TUNE is MENU > AUDIO, MIDI IN (ROUT) is MENU > MIDI, and the USB state
-  and CPU load are MENU > SYSTEM > INFO. REC held is the REC layer as before.
-- **SONG has a lane per track**: older songs load with all four tracks on each row's slot and play as before; its
-  knobs are KNOB 1 SECTION, 2 TRACK, 3 PAT, 4 REPS, and on SONG the white keys A3 B3 C4 D4 set the slot.
-- **A fresh start uses the HALL reverb** (up to 1.1.5: ROOM). Saved projects keep their reverb TYPE.
-- **BASS+ (MENU > SPEAKER EQ) is softer:** its added harmonics are at half the level, so a full-scale kick no longer
-  distorts (#180).
-- **The web editor** needs its 1.4 update for the new features; use the one on the site.
-
-## Controls
-
-- Tap a page button for its page, again for the next; HOME returns home. Page buttons act when let go
-- Hold FX, GLO, SCL or EDIT for its quick layer; hold SAVE to undo, HOME for the menu; hold LFO and turn a
-  knob for a MOMENTARY change
-- Double-tap a layer's button to keep its layer open without holding; tap it again to close
-- On action pages and in dialogs, OCT+ does it and OCT− goes back; in the menu, OCT+ / OCT− change the value and HOME closes it
-- Save a sound: stop, tap SAVE, pick a slot with KNOB 1, then OCT+ and OCT+ again (name it with the keys)
-
-The pages by button:
-
-| Button | Taps go round | Held |
+| Track | Job | Engines |
 |---|---|---|
-| HOME | HOME, MIXER, CLOCK (BPM, swing, clock source) | the menu |
-| SEQ | the sequencer's placeholder (TODO) | (as a tap) |
-| GLO | the sequencer's placeholder (TODO) | the GLO layer (mutes, solos, levels, TAP tempo) |
-| SAVE | USER, PROJECT, TOOLS (INIT SOUND), PRESETS | UNDO |
-| LFO | LFO, LFO 2, LFO DEST, MOD | MOMENTARY (with a knob) |
-| EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
-| FX, SCL, ENV | their pages, as before | FX and SCL: their layers |
-| ARP | GEN starts (GEN MIX shown: KNOB 1–4 the density of the pad, bass, bells, pulse or waves) or stops (GEN shown: KNOB 1 the preset, 2 SCALE, 3 ROOT, 4 MOTION); ARP breathes while it plays | (as a tap) |
-| REC | nothing for now (no recording) | nothing |
+| 1 | the synth | VA (the virtual analogue), SANDSTORM (the trance lead), HOOVER (the rave lead), SID (the C64 chip), OBIE (after the OB-Xa) |
+| 2 | the drums | KIT (FM), RHYTHM (the 808 and the 909), VAKIT (synth drums), LINNKIT (the LinnDrum), WAR (industrial) |
+| 3 | the voices | SPEECH (the speech chips), ONYX (spoken phrases and sung vowels), VOCODER, VOSIM, DUBSIREN, RISERS (build-ups), NOISE |
 
-## Sequencer
+Everything is synthesized: there are no samples. 186 factory sounds, 80 slots of your own, favourites and
+categories.
 
-A placeholder for now: SEQ (and GLO, which opened the song) show a page that says TODO. Felucca's step sequencer, its
-automation, PHRASES and the A–D song are gone, and so is the tracker that took their place until 2026-10 (git
-history keeps it). PLAY still runs the transport: the click and the synced LFOs follow it, on the internal, USB or
-TRS clock. REC does nothing for now.
+**Made for playing live:**
 
-A project (SAVE > PROJECT, the autosave) holds the tracks' sounds, the globals and each track's
-place in the mix (LOW CUT, PAN MODE: no page of the FM-1 sets them yet, the studio does; WIDTH, the Haas effect, was
-removed 2026-10-16, its byte kept as 0; version 9: DUCK is
-archived). Projects of
-earlier versions, the tracker's songs among them, do not open.
+- **MIDI:** each track has its own input (USB, TRS or both) and channel, on GLO > MIDI IN. Blue Hare follows the
+  sequencer's MIDI clock, Start and Stop, or its own tempo.
+- **REC** records what the sequencer plays into a loop per track (1–16 bars, as played or quantized). A take
+  replaces only the tracks that got notes.
+- **An arpeggiator** per track (14 modes, hold, swing, probability), with visuals while it runs.
+- **Quick layers:** hold FX for performance effects and macros, GLO for mutes, levels and tap tempo, SCL for scales
+  and chords, EDIT to switch engines.
+- **Effects:** a shared reverb (spring, gated, plate), a delay per track, chorus, EQ and distortion.
+- **USB audio:** the FM-1 is an audio input on the computer, carrying Blue Hare's output.
 
-The web editor's Sequencer tab says TODO with this firmware (an older Felucca firmware still gets its step grid).
+**Under the hood:**
 
-## Menu
+- The synth engines run oversampled in the desktop version and from the chip's fast RAM on the FM-1.
+- The FM-1's **second processor core** mixes the busiest track (MENU > SYSTEM > CORES; see the manual).
+- **Boot protection** (from ChoralRoot FM-1): an interrupted update brings the FM-1 back in update mode instead of
+  leaving it dark, and holding OCT− at power-on enters update mode on purpose.
+- A game, HARE CROSSING, behind SEQ held for a second.
 
-Hold **HOME** for the menu, in five tabs: **DISPLAY** (COLOR, STYLE, LARGE, ANIM, LEDS, SCREEN OFF, SCOPE, HOME),
-**CONTROL** (HOLD, KNOB ACCEL, FX LATCH, BPM LOCK, SCALE LEDS), **AUDIO** (SPEAKER EQ,
-USB LEVEL, CLICK, CLICK LEVEL, TUNE), **MIDI** (MIDI IN) and **SYSTEM** (USB SERIAL, RESTORE LAST,
-HARDWARE CALIBRATION, INFO, ABOUT).
-ALGORITHM moves between the tabs and PRESETS through the rows of one; any of KNOB 1–4, or OCT+ / OCT−,
-changes the value (OCT+ opens HARDWARE CALIBRATION, INFO and ABOUT); press HOME to close the menu. Every new
-setting defaults to the earlier behaviour. The web editor's Settings tab reads and changes them too, saved the same
-way as from the menu, in the same tabs.
+## Installing
 
-- **COLOR:** the palette. GREY (grayscale, called MONO up to 1.0.1), GREEN, AMBER, ICE, VIOLET, ROSE,
-  PAPER (light), HI-CON (high contrast), NIGHT (the 0.9 look: true black, green-tinted text) and MONO
-  (black and white)
-- **STYLE:** FLAT (filled cards) or LINE (areas divided by thin lines)
-- **LARGE:** OFF or ON: on HOME and the value pages the four knob cards grow tall, marked K1–K4, with
-  larger labels and values about twice the size; the graph below becomes a strip. Lists, SEQ's placeholder
-  and the quick layers keep their layout with larger labels
-- **ANIM:** ON, OFF or IDLE. OFF shows every change at once, without rolling digits or
-  the LED sweep at power-on. IDLE is ON plus a gentle LED animation after a minute without input: a soft light drifts
-  over the keys and the buttons breathe; any key, button or knob ends it and does what it always does. It never runs
-  while playing, in a layer, the menu or a dialog
-- **LEDS:** OFF (no glow), DIM LO, DIM HI (default) or INV (the idle LEDs lit, the active ones dark).
-  What can be pressed breathes up to about 60 % of a lit LED, about 30 % with DIM LO
-- **SCREEN OFF:** NEVER (default), 5 MIN, 15 MIN, 30 MIN or 60 MIN: after that long with no button, key or knob
-  touched, the screen goes dark; the sound, the sequencer, MIDI and USB go on. The backlight stays on (on the FM-1
-  its line also enables the buttons and keys). The next button, key or knob only turns the screen back on
-- **SCOPE:** OUT (default) or MIX: what HOME's oscilloscope shows. OUT the sound after MASTER (the picture shrinks
-  with the volume), MIX the mix before MASTER, the same size at any volume
-- **HOME:** SCOPE (default) or TRACKS: under HOME's four cards, the oscilloscope or the four tracks, a row each with
-  its sound, MUTE and a meter. Only the look changes: the knobs work as on SCOPE
-- **HOLD:** how long a layer's button is held before its map shows
-- **KNOB ACCEL:** OFF (one step per click) or ON: a fast, steady turn of a wide value moves 2 to 4 steps
-  per click, up to 8 on values of more than 64 steps, the FX and GLO layers' knobs included; lists never
-  jump. ON or OFF, every click of a fast turn counts
-- **FX LATCH:** ON, FX + an effect key turns the effect on until pressed again, the knob macros stay
-  where you leave them, and FX + OCT− turns everything off
-- **BPM LOCK:** ON, SELECT no longer changes the tempo; hold GLO and turn SELECT, tap F4 in the GLO
-  layer or use HOME > CLOCK instead
-- **SCALE LEDS:** OFF or ON: the keys show the selected track's scale all the time (the root a little
-  brighter); not on DRUM tracks
-- **SPEAKER EQ:** FLAT, LOWCUT or BASS+, a tone setting for the built-in speaker (not a switch). It also
-  shapes the headphone out and USB audio, so keep it on FLAT when recording. The firmware cannot turn
-  the speaker off, but headphones in the jack do
-- **USB LEVEL:** MASTER (the MASTER knob sets the USB audio level too) or FIXED (USB always at full
-  level, MASTER sets only the speaker and headphones)
-- **CLICK:** OFF (default) or ON: a click on every beat while playing, the
-  bar's first beat higher. **CLICK LEVEL:** LOW, MID (default) or HIGH; MASTER sets it too
-- **TUNE:** the global tuning, −50 to +50 cents. It is the project's, saved and loaded with it
-- **MIDI IN:** CH1-4 (default), SEL, CH5-8, CH9-12 or CH13-16 (see MIDI above). The project's too
-- **USB SERIAL:** ON or OFF, applied when the menu closes (the FM-1 reconnects). OFF leaves out the
-  serial console, a developer tool, so the FM-1 is a plain audio + MIDI device; this lets macOS 13–15
-  see its USB audio input. MIDI, the editor and the installer work either way
-- **RESTORE LAST:** ON (default) or OFF. ON, the FM-1 starts with the music you left (the header says
-  RESTORED), kept in an autosave apart from the saved song; it is written when the music changed, the
-  transport is stopped and nothing has been touched for 10 s, at most once a minute. OFF starts with the
-  power-on sounds
-- **HARDWARE CALIBRATION**, **INFO** (the version, the USB link and the CPU load) and **ABOUT**
+You need a computer with Python 3 and a USB cable:
 
-## Engines
+```
+pip install mido python-rtmidi
+python3 tools/fm1_install.py blue-hare-0.11.fwsc
+```
 
-Felucca's own engines, by Leo Kuroshita (ANALOG, FM6, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE and DRUM), are not in
-Blue Hare any more (below); what other engines build on of them stays (PHYS's resonators in MODAL).
+The FM-1 restarts with Blue Hare when the installer says `done`. **The first install of 0.11** writes the boot
+protection itself: for about a second at its start an interruption cannot be repaired from the FM-1, so use a direct
+cable and a charged FM-1. Every install after it is protected.
 
-*(Blue Hare, 2026-10-16: Milestone 1)* Blue Hare has one distribution, **HARE FM1**, with the base engines its
-synthesizer is built on; the other engines (BYTE, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE, CHAOS, DUBSIREN,
-KIT, BREAKS, RISERS, SIREN8, DUBCHORD, WASP, VECTOR, GLITCH and the FOUNDRY, WAREHOUSE and CHIP engines) are archived
-in `archive/engines/` with their descriptions ([archive/engines/README.md](archive/engines/README.md)); their ids stay
-theirs, and a sound of one is refused. An SH-101-style engine joins them next ([docs/Milestones.md](docs/Milestones.md)).
-[docs/SoundAndDSP.md](docs/SoundAndDSP.md) describes every engine's and effect's algorithm.
+**Back to the stock firmware:** `python3 tools/fm1_install.py FM-1.fwsc` with M-VAVE's official package.
 
-In the order the device lists them:
+**Please note:**
 
-- **SID** *(Blue Hare)*: a voice of the C64's sound chip, in its manner. WAVE TRI SAW PUL NOIS (the chip's
-  pitched shift-register noise) or the chip's combined waves (TS PT PS PTS); PW, PWM; MOD RING / SYNC / both against a
-  master at the note, the oscillator MDTN semitones above it (the sync lead, ring bells); FILT the 12 dB multimode
-  filter (LP BP HP) at CUT with RES, a little gritty. The SHP routings move PW and MDTN
-- **SH101** *(Blue Hare, 2026-10)*: after the 1982 monosynth. One oscillator's waves at once, by level: SAW, PULS (PW
-  50 % down to ~5 %; ENV DEST or LFO DEST SHP is its PWM), SUB locked to the oscillator (SUBT -1 SQ, -2 SQ, -2 PU) and
-  NOIS; into a 24 dB ladder low-pass at CUT (half following the keys) with RES, its input saturating as the mix gets
-  louder, singing by itself past ~110. Basses, acid lines, PWM and saw leads, a singing lead, plucks, a pad, brass, a
-  kick, a hat, a zap, wind
-- **WAVE** *(Blue Hare)*: wavetables. TBL picks one of 8 tables of 8 frames each (BASIC: sine to narrow pulses;
-  ADDTV: one partial to many; SYNC: a hard-sync sweep; RESO: a resonant peak climbing; VOX: vowels; FM: two-operator
-  FM; DIGI: sparse, metallic spectra; BITS: stepped and 1-bit shapes), POS the place between its frames; the SHP
-  routings move POS (ENV DEST / LFO DEST SHP, the matrix's SHP), so an envelope or the LFO scans the table. SYNC reads
-  the frame up to 8x faster (windowed sync), DTN adds a detuned second oscillator, then DRV, a resonant low-pass and
-  CRSH (sample-rate and bit reduction). The tables are band-limited per octave: high notes do not alias
-- **VOSIM** *(Blue Hare; back 2026-10-16)*: VOice SIMulation, two formants. Each period starts a train of PULS sin^2
-  pulses, each DECAY times the last; their width sets the formants F1 and F2, which stay put whatever the note (KTRK
-  makes them follow it). SWEEP moves them at each note and lets them glide back (wah, brass, "yow"); BAL mixes them;
-  BRTH adds breath. Vowels, a talk lead, basses, brass, choirs, reed, whistle, growl, formant pads
-- **BLISS** *(Blue Hare; FMKEYS until 2026-10)*: FM keyboards, four operators as two pairs: the body (RATIO, INDEX, FDBK; the
-  index falls over DECAY, harder notes brighter by VEL) and the tine (the metallic strike of the attack, TINE; DTUNE
-  its beating against the body); KSCL softens the top of the keyboard. Electric pianos, bells, tubular bells, marimba,
-  vibes, clav, organ, harpsichord, kalimba, celesta, music box; Rhodes, Wurly, the DX and LATELY basses, FM bells,
-  crystal, an FM pad, brass, flute, a harp pluck
-- **WEST** *(Blue Hare)*: west coast. A complex oscillator, a wavefolder and a low-pass gate: a modulating sine at RATIO
-  times the note (whole and half ratios, and 1.41, 1.73, 2.76, 3.55, 4.61 for bells and metal) moves the carrier's
-  phase by FM (FDBK feeds the modulator back into itself, up to noise); FOLD folds the carrier over (the SHP routings
-  move it), SYM shifts the fold off centre; the low-pass gate's cutoff follows the envelope through a vactrol-like lag,
-  LPG of the way down from CUT, so a note darkens as it fades (the plucked, struck sound); TMBR opens FM and FOLD with
-  the same envelope. FM and FOLD ease off on high notes so they do not alias. Its plucks (LPG HARP, NYLON GATE, KOTO
-  FOLD, THUMB WOOD, BUZZ PLUCK, PIZZ GATE, GLASS PLUCK, RUBBER PLUCK) took KARPLUS's place when it was archived
-- **MODAL** *(Blue Hare; its resonators are PHYS's, DaisySP's)*: a modal resonator. An exciter
-  strikes 12 tuned resonators, the modes of a material: MATRL BAR, MRMBA, BELL, GLASS, PLATE, DRUM, TUBE, STRING; EXCIT
-  MALLET, PLUCK, BOW (noise while the key is held), CLICK. STRUCT stretches the modes (inharmonic), POS the strike's
-  place, DECAY the ring (50 ms .. 8 s), DAMP how much sooner the highs die, BRIGHT the strike's hardness, BEAT detunes
-  the modes a little each (a bell's beating). Presets: marimba, vibes, bells, glass, plates, drums, harp, kalimba,
-  gamelan, bowed glass and bells, a drone pipe, clanks and glitches
-- **STRINGS** *(Blue Hare)*: a string ensemble after the Waldorf Streichfett: three saws (16', 8', 4') and a square
-  per voice, blended by REG from contrabass through cello, viola and violin to an organ registration, BODY the 16'
-  weight, DTN the dividers' loose tuning, BRITE a gentle low-pass that ANIM sweeps slowly, TREM a tremolo; then the
-  layer's ensemble chorus (ENSEM, SPEED): the string machines' shimmer
-- **Tristano Suriani** ([@TristanoSuriani](https://github.com/TristanoSuriani)): Blue Hare, meaning the tracker,
-  the distributions and engine ids, the engines WAVE, BYTE, WEST, HOOVER, SPEECH, FMPERC, KARPLUS, VOSIM, PARTICLE,
-  CHAOS, SID, DUBSIREN, DUBSIREN8 (SIREN8), DUBCHORD, BLISS, WASP, MODAL, VECTOR, ECHOES, GLITCH, KIT, BREAKS and RISERS,
-  and the changes to
-  Felucca listed in
-  [AUTHORS.md](AUTHORS.md)
-- **[Hügelton Instruments](https://hugelton.com)** (Leo Kuroshita, [@kurogedelic](https://github.com/kurogedelic)):
-  Felucca itself, its own engines (removed in Blue Hare) and the DRUM lanes' General MIDI map the kits used; the
-  [Fukiai](https://github.com/hugelton/Fukiai) icon font ([MIT](LICENSES/MIT-Fukiai.txt))
-- Fonts: [Inter Tight](https://github.com/rsms/inter-tight) by The Inter Project Authors, [SIL OFL 1.1](LICENSES/OFL-InterTight.txt);
-  the browser emulator's labels: [DotGothic16](https://github.com/fontworks-fonts/DotGothic16) by The DotGothic16 Project Authors, [SIL OFL 1.1](LICENSES/OFL-DotGothic16.txt)
-- MODAL and ANVIL: the modal resonator ported from [DaisySP](https://github.com/electro-smith/DaisySP) by Electrosmith and Emilie Gillet ([MIT](LICENSES/MIT-DaisySP.txt))
-- Browser emulator: after [X0X](https://github.com/charlesvestal/fm1-x0x) by [charlesvestal](https://github.com/charlesvestal) (GPL-3.0), a Felucca fork whose browser build showed the way
-- Package format and boot files: [JieLi AC79 SDK](https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK) ([Apache-2.0](LICENSES/Apache-2.0.txt); three of its files are in every package, none in this tree)
-- Contributions: [keremimo](https://github.com/keremimo) (white-key scales, #2), [ChanceTheMaker](https://github.com/ChanceTheMaker)
-  (TRS MIDI, bend, sustain and clock, palettes, favourites, editor display settings: #8, #10, #11, #12),
-  [andreahaku](https://github.com/andreahaku) (sample recording and trim, #29; SLICE manual slices and tests, #27, #22),
-  [spinkham](https://github.com/spinkham) (the boot fix for 0.9 projects, #111),
-  [zednaked](https://github.com/zednaked) (ratchets, #100),
-  [jasonpersinger](https://github.com/jasonpersinger) (the ROOM reverb click fix, #121)
+- **Your songs and sounds from Felucca or earlier Blue Hare versions do not load.**
+- **The second core runs with the chip's core supply raised** to the maker's levels for its clock (1.35 V and
+  1.50 V), as in ChoralRoot and Melodee; never higher. If you prefer not to, set MENU > SYSTEM > CORES to 1.
+- Installing is at your own risk, as with any alternative firmware.
+
+## Desktop and browser
+
+The same firmware also builds as:
+
+- **A desktop application** (`native/`), with the panel on screen, the computer's sound and MIDI.
+- **A browser emulator** (`web/emu/`).
+- **A sound design studio** (`web/studio/`) to design sounds on a computer and send them to the FM-1.
+
+See [BUILDING.md](BUILDING.md).
+
+## Credits
+
+Blue Hare stands on others' work:
+
+- **Felucca:** Leo Kuroshita (Hügelton Instruments): the platform, the drivers, the update loader and much of the UI.
+- **ChoralRoot FM-1:** its contributors: the boot stub, the second-core support, the code in RAM.
+- **Melodee:** Kerem Kilic: the second core's robustness.
+- **amb-1 and X0X:** Charles Vestal: the plate reverb, the tape echo, the fast maths.
+- **The Kokoro-82M voices** (Apache-2.0) behind ONYX and VOCODER.
+
+Every component and its author: [AUTHORS.md](AUTHORS.md).
 
 ## Licence
 
-Free software: [GPL-3.0-only](LICENSE). The bundled fonts and the
-ported DSP keep their own licences ([LICENSES/](LICENSES/)); details in [LICENSING.md](LICENSING.md).
+Free software: [GPL-3.0-only](LICENSE). The bundled fonts, the ported DSP, the voices and the SDK files keep their
+own licences ([LICENSES/](LICENSES/)); details in [LICENSING.md](LICENSING.md).
 
 M-VAVE and FM-1 are trademarks of their respective owners. Neither Felucca nor Blue Hare is affiliated with or
 endorsed by them. "Felucca" is Hügelton Instruments' name for its firmware; Blue Hare is an independent fork.
