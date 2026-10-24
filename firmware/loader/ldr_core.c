@@ -20,8 +20,16 @@
  *      and flash: 4K boundary - 256 between 0x93000 and 0xFC000, outside
  *      Felucca's store, where only user data lives) so the SPL boots the new
  *      app, and resets.
- * Power loss during 3: the record is still there, the SPL runs the loader
- * again on the next power-on and the host can resume.
+ * The order of 3 for a package with the boot stub and its commit marker
+ * (2026-10-24, from ChoralRoot FM-1: firmware/stub/stub_core.h,
+ * docs/BOOT-SAFETY.md), so that a write cut at any point leaves a unit the
+ * stub turns into a rescue: a. before the first write anywhere else, the
+ * marker's sector (0x91000) is erased; b. sector 0x4000 (the directory and
+ * the stub) only if it differs (normally never: the same bytes in every
+ * build with the same stub); c. the body; d. the marker's sector last.
+ * Power loss during 3: the SPL does not start the loader from the flash copy
+ * of the record on a cold boot (ChoralRoot found on the unit); the stub finds
+ * no marker and hands over to the staged loader, or to the ROM's USB boot.
  *
  * Hooks from the platform (loader.c, ldr_test.c):
  *   ldr_fread(off, p, n)  ldr_erase(off)  ldr_prog(off, p, n)   flash, 0 = ok
@@ -35,6 +43,8 @@
 #define LDR_DATA_LO 0x97000u                    /* the stock firmware's: 0xE8F00), never in Felucca's store, whose */
 #define LDR_DATA_HI 0xE0000u                    /* bytes (user samples) the host writes */
 #define LDR_NSEC ((LDR_APP_HI - LDR_APP_LO) >> 12)
+#define LDR_MARK_SEC 0x91000u                   /* (2026-10-24, ChoralRoot's boot stub) stub_core.h STUB_MARK_SEC, */
+#define LDR_MARK_OFF 0x91FE0u                   /* STUB_MARK_OFF: the commit marker */
 #define LDR_FL_MAX 0x100000u                    /* flash.bin: at most the 1 MiB part */
 
 static int ldr_fread(uint32_t off, void *p, uint32_t n);
@@ -87,6 +97,50 @@ static int ldr_chip_key(uint32_t *key)
     return -3;
 }
 
+/* CRC-32 (zlib's), bit by bit: the marker's own 16 bytes only */
+static uint32_t ldr_crc32(const uint8_t *p, uint32_t n)
+{
+    uint32_t c = 0xFFFFFFFFu, i;
+    while (n--) {
+        c ^= *p++;
+        for (i = 0; i < 8u; i++)
+            c = c & 1u ? (c >> 1) ^ 0xEDB88320u : c >> 1;
+    }
+    return ~c;
+}
+
+/* does the package carry the stub's commit marker? (the 512 bytes that hold it, decrypted in place) */
+static int ldr_pkg_marker(uint32_t fl_off, uint8_t *b, uint32_t key)
+{
+    const uint8_t *m = b + (LDR_MARK_OFF & 0x1FFu);
+    if (ota_read(fl_off + (LDR_MARK_OFF & ~0x1FFu), b, 512))
+        return -7;
+    ldr_sfc(b, 512, (LDR_MARK_OFF & ~0x1FFu) - LDR_APP_LO, key);
+    return ota_rd32(m) == 0x4D425243u && ota_rd32(m + 4) == 1u && ota_rd32(m + 16) == ldr_crc32(m, 16);
+}
+
+/* the marker's sector erased, once, before the first write elsewhere: from here to the marker's own write the
+ * stub refuses the body. Left alone when it is blank already (a resumed install) */
+static int ldr_uncommit(uint8_t *cur, uint32_t *open)
+{
+    uint32_t i, tries;
+    if (*open)
+        return 0;
+    for (tries = 0; tries < 3u; tries++) {
+        if (ldr_fread(LDR_MARK_SEC, cur, 0x1000u))
+            return -8;
+        for (i = 0; i < 0x1000u && cur[i] == 0xFFu; i++)
+            ;
+        if (i == 0x1000u) {
+            *open = 1;
+            return 0;
+        }
+        if (tries < 2u && ldr_erase(LDR_MARK_SEC))
+            return -9;
+    }
+    return -15;                                          /* it does not erase: nothing else was touched */
+}
+
 /* 2b. flash.bin [0, fl_size) from the host, before any erase: its CRC16 must be the UFW entry's (want); sc gets
  * the CRC16 of each app sector as it came in */
 static int ldr_check(uint32_t fl_off, uint32_t fl_size, uint32_t want, uint16_t *sc, uint8_t *b)
@@ -105,12 +159,50 @@ static int ldr_check(uint32_t fl_off, uint32_t fl_size, uint32_t want, uint16_t 
     return crc == want ? 0 : -12;
 }
 
+/* one sector: the package's into sec (as checked in 2b, else read again), then the flash's; erased, written and
+ * read back (twice at most) only when they differ. mark: the package has a marker, so its sector goes blank before
+ * anything else is written */
+static int ldr_sector(uint32_t fl_off, uint32_t s, uint8_t *sec, uint8_t *cur, const uint16_t *sc, uint32_t mark,
+                      uint32_t *open)
+{
+    uint32_t k, again, tries;
+    int rc;
+    for (again = 0;; again++) {
+        for (k = 0; k < 0x1000u; k += 512u)
+            if (ota_read(fl_off + s + k, sec + k, 512))
+                return -7;
+        if (ota_crc16(sec, 0x1000u, 0) == sc[(s - LDR_APP_LO) >> 12])
+            break;
+        if (again == 2u)
+            return -13;
+    }
+    if (ldr_fread(s, cur, 0x1000u))
+        return -8;
+    if (ota_memeq(sec, cur, 0x1000u))
+        return 0;
+    if (mark && s != LDR_MARK_SEC && (rc = ldr_uncommit(cur, open)) != 0)
+        return rc;
+    for (tries = 0; tries < 2u; tries++) {
+        if (ldr_erase(s))
+            return -9;
+        for (k = 0; k < 0x1000u; k += 256u)
+            if (ldr_prog(s + k, sec + k, 256))
+                return -10;
+        if (ldr_fread(s, cur, 0x1000u))
+            return -8;
+        if (ota_memeq(sec, cur, 0x1000u))
+            return 0;
+    }
+    return -11;                                          /* verify failed twice */
+}
+
 static int ldr_session(void)
 {
     static uint8_t hdr[0x400], sec[0x1000], cur[0x1000];
     static uint16_t sc[LDR_NSEC];
-    uint32_t i, k, fl_off, fl_size, ota_off, ota_len, key, s, want = ~0u, done = 0;   /* (no CRC16: no flash.bin entry) */
-    int rc;
+    uint32_t i, fl_off, fl_size, ota_off, ota_len, key, s, want = ~0u, done = 0, open = 0;   /* (no CRC16: no
+                                                     * flash.bin entry) */
+    int rc, mark;
     /* 1. UFW header + entry list (ota.c; it leaves the entries decoded in hdr) */
     if ((rc = ota_ufw(hdr, &fl_off, &fl_size, &ota_off, &ota_len)) != 0)
         return rc;
@@ -130,38 +222,24 @@ static int ldr_session(void)
     /* 2b. the whole package first: nothing is erased for a damaged one */
     if ((rc = ldr_check(fl_off, fl_size, want, sc, sec)) != 0)
         return rc;
-    /* 3. app area, sector by sector */
+    /* 3. app area, sector by sector. A package with the boot stub's commit marker (firmware/stub, docs/BOOT-SAFETY.md):
+     * the marker's sector is erased before the first write elsewhere and written last, so a write cut at any point
+     * leaves a unit the stub turns into a rescue; sector 0x4000 (the stub) is the same bytes in every build with the
+     * same stub, normally not written at all */
+    if ((mark = ldr_pkg_marker(fl_off, sec, key)) < 0)
+        return mark;
     for (s = LDR_APP_LO; s < LDR_APP_HI; s += 0x1000u) {
-        uint32_t again;
-        for (again = 0;; again++) {                      /* as checked in 2b, else read it again */
-            for (k = 0; k < 0x1000u; k += 512u)
-                if (ota_read(fl_off + s + k, sec + k, 512))
-                    return -7;
-            if (ota_crc16(sec, 0x1000u, 0) == sc[(s - LDR_APP_LO) >> 12])
-                break;
-            if (again == 2u)
-                return -13;
-        }
-        if (ldr_fread(s, cur, 0x1000u))
-            return -8;
-        if (!ota_memeq(sec, cur, 0x1000u)) {
-            uint32_t tries;
-            for (tries = 0; tries < 2u; tries++) {
-                if (ldr_erase(s))
-                    return -9;
-                for (k = 0; k < 0x1000u; k += 256u)
-                    if (ldr_prog(s + k, sec + k, 256))
-                        return -10;
-                if (ldr_fread(s, cur, 0x1000u))
-                    return -8;
-                if (ota_memeq(sec, cur, 0x1000u))
-                    break;
-            }
-            if (tries == 2u)
-                return -11;                              /* verify failed twice */
-        }
+        if (mark && s == LDR_MARK_SEC)
+            continue;
+        if ((rc = ldr_sector(fl_off, s, sec, cur, sc, (uint32_t)mark, &open)) != 0)
+            return rc;
         done += 0x1000u;
         ldr_progress(done, LDR_APP_HI - LDR_APP_LO);
+    }
+    if (mark) {                                          /* the commit: every other sector is written and verified */
+        if ((rc = ldr_sector(fl_off, LDR_MARK_SEC, sec, cur, sc, 1u, &open)) != 0)
+            return rc;
+        ldr_progress(LDR_APP_HI - LDR_APP_LO, LDR_APP_HI - LDR_APP_LO);
     }
     /* 4. finish: the host confirms, the record goes, the SPL boots the app */
     for (i = 0; i < 4u; i++)

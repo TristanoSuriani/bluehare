@@ -3,7 +3,7 @@
 /* Blue Hare update loader: one RAM image at the address the SPL loads it to.
  * Everything (code, constants, data) lives in RAM: the loader rewrites the
  * flash, so nothing may execute from XIP. Stacks far above, clear of the
- * update record (0x01C7FD88) and the crash record (0x01C7C000). */
+ * update record (0x01C7FD88), the boot stub's rescue word (0x01C7C000) and the crash record (.noinit, 0x01C7C020..). */
 MEMORY
 {
     LDR (rwx) : ORIGIN = 0x01C0A800, LENGTH = 0x14000

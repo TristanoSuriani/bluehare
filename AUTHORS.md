@@ -151,6 +151,12 @@ These changes are Tristano Suriani's (`git log 7aa4347^..`):
 - The sound design studio (`web/studio/`, 2026-10-16) is Blue Hare's: its page, its exports and its test. It runs on
   the browser emulator's build and worklet (Felucca's, after X0X), which gained a "call" message for it.
 - The documentation is updated to match.
+- The boot stub (2026-10-24: `firmware/stub/`, `docs/BOOT-SAFETY.md`, `tests/fm1/stub_test.c`, the commit marker in
+  `tools/fm1pkg_make.py`, the write order in `firmware/loader/ldr_core.c`, the staged loader kept in `firmware/os/ota.c`,
+  the interruption model in `tests/fm1/ldr_test.c`) is **ChoralRoot FM-1's** (github.com/Quixotic7/ChoralRootFM1,
+  GPL-3.0-only, by its contributors; Melodee adopted the same from it), taken unchanged but for our loader's
+  signature and the paths. The VA family's code in RAM (2026-10-24, `firmware/baseline/eng_va.c` VA_HOT) follows
+  ChoralRoot's CR_RAM_VA.
 
 ### Files moved from Felucca
 

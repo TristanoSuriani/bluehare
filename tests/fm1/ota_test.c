@@ -196,8 +196,22 @@ int main(int argc, char **argv)
                      (p[6] | p[7] << 8) == 0x5441 && ota_rd32(p + 72) == 0xE0000);
         bad += check("nothing written outside 0xE0000..0xE4FFF", bad_erase == 0);
     }
-    /* boot cleanup erases it */
-    bad += check("boot cleanup erases the area", ota_boot_cleanup() == 1 && area_erased());
+    /* boot cleanup (2026-10-24, the boot stub's rescue): a whole loader of ours stays, the record's flash copy goes;
+     * a torn one (or another loader) is erased */
+    {
+        static uint8_t keep[0x5000];
+        uint32_t i, rec_gone = 1;
+        memcpy(keep, nor + 0xE0000, sizeof keep);
+        bad += check("boot cleanup keeps a whole staged loader (the stub's rescue), removes the record",
+                     ota_staged() != 0 && ota_boot_cleanup() == 2 && !memcmp(nor + 0xE0000, keep, 0x4000));
+        for (i = 0xE4F00; i < 0xE5000; i++)
+            rec_gone &= nor[i] == 0xFF;
+        bad += check("..the record's sector blank, the loader's whole again on the next boot",
+                     rec_gone && ota_staged() != 0 && ota_boot_cleanup() == 0);
+        nor[0xE0000 + 20] ^= 0xFF;                          /* a torn staging: its head no longer its CRC's */
+        bad += check("a staged loader that is not whole (or not ours): erased", ota_staged() == 0 &&
+                     ota_boot_cleanup() == 1 && area_erased());
+    }
     bad += check("second boot: nothing to do", ota_boot_cleanup() == 0);
 
     /* host disappears in the middle */

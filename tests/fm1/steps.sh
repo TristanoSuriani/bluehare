@@ -26,17 +26,25 @@ done
 [ -f build/bluehare.fwsc ] || { echo "run ./build.sh first"; exit 1; }
 compile $CC -DOWN_PKG=1 -o "$OUT/ota_test" tests/fm1/ota_test.c
 run "M-UPGRADE entry (own loader)" "$OUT/ota_test" build/bluehare.fwsc
-head -c 200000 build/bluehare.bin > "$OUT/old_app.bin"
+compile $CC -std=c99 -Wall -Wextra -Wno-unused-function -O1 -fsanitize=address,undefined -Ifirmware/baseline -o "$OUT/stub_test" tests/fm1/stub_test.c
+run "boot stub (2026-10-24, from ChoralRoot FM-1): the CRC-32s, the marker, the rescue key, the requests, the staged loader, the record == ota.c's" "$OUT/stub_test"
+# (2026-10-24, the boot stub) old: an app without the stub (the layout before it: the body alone, cut short), as on
+# the units now; same: this stub with another body (an earlier build of the same stub)
+tail -c +3809 build/bluehare.bin | head -c 200000 > "$OUT/old_app.bin"
 python3 tools/fm1pkg_make.py "$OUT/old_app.bin" build/loader/ota.bin "$OUT/old.fwsc" >/dev/null
+head -c 300000 build/bluehare.bin > "$OUT/same_app.bin"
+python3 tools/fm1pkg_make.py "$OUT/same_app.bin" build/loader/ota.bin "$OUT/same.fwsc" >/dev/null
 compile $CC -o "$OUT/ldr_test" tests/fm1/ldr_test.c
-run "update loader: other app -> this build" "$OUT/ldr_test" "$OUT/old.fwsc" build/bluehare.fwsc
+run "update loader: other app -> this build; the stub's interruption model (a power cut after every flash operation)" \
+    "$OUT/ldr_test" "$OUT/old.fwsc" build/bluehare.fwsc "$OUT/same.fwsc"
 if [ -f build/gen/bluehare_tables.h ]; then
     compile $CC -w -Ibuild/gen -Ifirmware/baseline -Ifirmware/os -Ifirmware/fm1 -o "$OUT/audio_test" tests/fm1/audio_test.c -lm
     run "audio: overload protection, bounded fades and DMA diagnostics" "$OUT/audio_test"
 fi
 if san_wanted; then
     $SCC -o "$A/ldr_test" tests/fm1/ldr_test.c
-    run "ASan/UBSan: update loader (other app -> this build)" "$A/ldr_test" "$OUT/old.fwsc" build/bluehare.fwsc
+    run "ASan/UBSan: update loader (other app -> this build), the interruption model" "$A/ldr_test" "$OUT/old.fwsc" \
+        build/bluehare.fwsc "$OUT/same.fwsc"
     $SCC -DOWN_PKG=1 -o "$A/ota_test" tests/fm1/ota_test.c
     run "ASan/UBSan: M-UPGRADE entry (own loader)" "$A/ota_test" build/bluehare.fwsc
 fi
