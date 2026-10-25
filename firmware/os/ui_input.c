@@ -614,8 +614,26 @@ static void ui_input(void)
         return;                                         /* (before the buttons' timers: no tap or hold after it) */
     {   /* (2026-10-24) HARE CROSSING (game_frog.c): SEQ held a second opens it; while it is on, every input is its */
         static uint32_t seq_t0;                         /* (press time | 1; bit 1: it opened) */
+        static uint32_t play_t0;                        /* (2026-10-24, PONG: the same for PLAY; bit 2: it was playing) */
         if (frog.on) {
             frog_input(pressed);                        /* (it reads SELECT and KNOB 4, drops the other knobs' turns) */
+            return;
+        }
+        if (pong.on) {
+            pong_input(pressed);                        /* (the same: SELECT and KNOB 4) */
+            return;
+        }
+        if (!((fm1_in.buttons >> panel.btn[B_PLAY]) & 1u))
+            play_t0 = 0;
+        else if (!play_t0)                              /* (the press: before this frame's PLAY acts below) */
+            play_t0 = ((now | 1u) & ~6u) | (song.playing ? 4u : 0u);
+        else if (!(play_t0 & 2u) && now - (play_t0 & ~7u) > 1000u * 1000u * FM1_TICKS_PER_US && !ui.menu &&
+                 !ui.confirm && !name_on()) {
+            play_t0 |= 2u;
+            if (((play_t0 & 4u) != 0u) != (song.playing || transport_req == 1u))
+                transport_req = (play_t0 & 4u) ? 1u : 2u;   /* the transport as before the press (playing: again
+                                                         * from the top) */
+            pong_open();
             return;
         }
         if (!((fm1_in.buttons >> panel.btn[B_SEQ]) & 1u))

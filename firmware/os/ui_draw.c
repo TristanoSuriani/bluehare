@@ -973,6 +973,7 @@ static void style_apply(void)
 /* SEQ (and GLO): the sequencer's placeholder, TODO in L across the page between the header and the footer */
 #include "ui_play.c"                                    /* (Blue Hare, 2026-10-18) the play views: HOME, TECHNO */
 #include "game_frog.c"                                  /* (2026-10-24) HARE CROSSING: SEQ held a second (ui_input.c) */
+#include "game_pong.c"                                  /* (2026-10-24) PONG: PLAY held a second (ui_input.c) */
 static void ui_draw_page(void);
 static void ui_draw(void)
 {
@@ -987,6 +988,10 @@ static void ui_draw_page(void)
 {
     if (frog.on) {                                      /* (the game: the whole screen) */
         frog_draw();
+        return;
+    }
+    if (pong.on) {                                      /* (2026-10-24: PONG, the same) */
+        pong_draw();
         return;
     }
     if (ui.uboot) {

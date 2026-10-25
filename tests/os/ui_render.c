@@ -532,6 +532,7 @@ static void state(void)                          /* a playing song */
     uint32_t i;
     ui_power_on();
     frog.on = 0;                                  /* (2026-10-24: the game's screen leaves it on) */
+    pong.on = 0;                                  /* (PONG's too) */
     menu_cores_boot = 0;                          /* (2026-10-24: the SYSTEM screen's AT RESTART) */
     ui_prefs2 = (uint8_t)(ui_prefs2 & ~(PREF_ONE_CORE >> 16));
     if (large_on) ui_prefs |= PREF_LARGE;
@@ -557,7 +558,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_PRESETS_CAT_EMPTY, S_NAME_CAT, S_NAME_RANDOM, S_MENU_ANIM_IDLE, S_MOMENTARY, S_MOMENTARY_EDIT, S_USER_FOOT,
        S_LFO2,
        S_MENU_AUDIO, S_HEAD_PLAY, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK, S_HEAD_BPM_LOCKED,
-       S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_SEQ_LOOP, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_EDIT_HOOVER, S_EDIT_HOOVER_2, S_GAME_FROG, S_GAME_HOWTO, S_GAME_LEVEL, S_COUNT };
+       S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_MENU_TUNE, S_MENU_INFO, S_MENU_HOME, S_SEQ_LOOP, S_EDIT_WAVE, S_EDIT_BYTE, S_EDIT_WEST, S_EDIT_WEST_2, S_EDIT_HOOVER, S_EDIT_HOOVER_2, S_GAME_FROG, S_GAME_HOWTO, S_GAME_LEVEL, S_PONG, S_PONG_START, S_PONG_OVER, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
        "presets_nofav", "user", "project", "tools", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo",
        "mod", "fx", "dly", "scl", "chord", "chord_wide", "chord_off", "arp", "voice", "clock",
@@ -574,7 +575,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
        "lfo2", "menu_audio", "head_play",
        "head_bpm_turn", "head_bpm_lock", "head_bpm_locked", "head_glo_turn", "head_downbeat",
        "head_beat_2", "menu_tune", "menu_info", "menu_home", "seq_loop",
-       "edit_wave", "edit_strings_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2", "game_frog", "game_howto", "game_level"};
+       "edit_wave", "edit_strings_2", "edit_west", "edit_west_2", "edit_modal_2", "edit_sid_2", "game_frog", "game_howto", "game_level", "pong", "pong_start", "pong_over"};
 
 
 
@@ -810,6 +811,15 @@ static void setup(int s)
     case S_GAME_LEVEL:                                  /* (the intermezzo: level 3 reached) */
         frog_open(); frog_new(); frog.level = 3; frog.score = 760; frog.state = FR_LEVEL; frog.level_t = fm1_ms - 500u;
         ui.msg_t = 0;
+        break;
+    case S_PONG:                                        /* (2026-10-24) PONG: a rally at 7 - 4, 2 PLAYERS */
+        pong_open(); pong.players = 2u; pong_new(); pong.score[0] = 7u; pong.score[1] = 4u; pong.ball_on = 1;
+        pong.bx = 150 << 8; pong.by = 90 << 8; pong.py[0] = 60 << 8; pong.py[1] = 140 << 8; ui.msg_t = 0;
+        break;
+    case S_PONG_START: pong_open(); pong.players = 1u; ui.msg_t = 0; break;   /* (the start screen, 1 PLAYER) */
+    case S_PONG_OVER:                                   /* (the end: the FM-1 won 11 - 9) */
+        pong_open(); pong.players = 1u; pong_new(); pong.score[0] = 9u; pong.score[1] = 11u; pong.state = PG_OVER;
+        pong.ball_on = 0; ui.msg_t = 0;
         break;
     default: break;
     }

@@ -118,11 +118,12 @@ static void host_pw_log(uint32_t s)
 static void lcd_power(uint32_t s) { host_pw_log(s); }
 static void lcd_wake_now(void) { host_pw_log(3u); }
 /* (the HOME oscilloscope's buffer, scope_buf: fx.c, with hostsim.c) */
-static uint32_t host_blit_rows;                    /* rows blitted (what a frame draws) */
+static uint32_t host_blit_rows, host_blit_px;      /* rows and pixels blitted (what a frame draws) */
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 {
     uint32_t i, j;
     host_blit_rows += h;
+    host_blit_px += w * h;
     for (j = 0; j < h && y + j < 240u; j++)
         for (i = 0; i < w && x + i < 240u; i++) host_put((y + j) * 240u + x + i, p[j * w + i]);
 }
@@ -5796,6 +5797,121 @@ static int test_eight_tracks(void)
 }
 #endif
 
+/* (2026-10-24) PONG (game_pong.c): PLAY held a second opens it, the transport as before the press; SELECT picks 1 or 2
+ * players, PLAY serves; SELECT moves player 1, KNOB 4 player 2 (1 PLAYER: the FM-1's own); the arcade's rules (the
+ * paddle's parts, the speed by the hits, the serve to the loser, 11 wins); drawn only where something changed, pixel
+ * for pixel the whole screen's; HOME closes it */
+static int test_pong(void)
+{
+    int bad = 0, ok;
+    uint32_t i;
+    int32_t y;
+    ui_power_on(); frames(320);
+    ok = !song.playing;                                 /* (no audio here: the requests stand for the transport) */
+    btn_down(B_PLAY); frames(600); btn_up(B_PLAY); frames(100);
+    ok &= !pong.on && transport_req == 1u;              /* (a short press: PLAY as always) */
+    transport_req = 0;
+    btn_down(B_PLAY); frames(1200);
+    ok &= pong.on && keys_mode() == 1u && transport_req == 2u;   /* (the press's start taken back) */
+    btn_up(B_PLAY); frames(50);
+    transport_req = 0;
+    bad += check("PONG: PLAY held a second opens it (0.6 s plays), the transport as before the press, the keys silent", ok);
+    ok = pong.state == PG_READY && pong.players == 1u;
+    turn(EN_SELECT, -1); ok &= pong.players == 2u;
+    turn(EN_SELECT, 1); ok &= pong.players == 1u;
+    turn(EN_SELECT, -1);
+    press(B_PLAY); ok &= pong.state == PG_RUN && pong.players == 2u && !song.playing && transport_req == 0u;
+    bad += check("..SELECT picks 1 or 2 players, PLAY serves (the song not)", ok);
+    y = pong.py[0];
+    turn(EN_SELECT, 1); ok = pong.py[0] == y - (PG_STEP << 8);
+    turn(EN_SELECT, -2); ok &= pong.py[0] == y + (PG_STEP << 8);
+    y = pong.py[1];
+    turn(EN_K4, 1); ok &= pong.py[1] == y - (PG_STEP << 8);
+    turn(EN_SELECT, 100); ok &= pong.py[0] == PG_WALL << 8;   /* (the wall stops it) */
+    bad += check("..SELECT moves player 1, KNOB 4 player 2, within the walls", ok);
+    press(B_PLAY); ok = pong.state == PG_PAUSE;
+    y = pong.py[0];
+    turn(EN_SELECT, -1); ok &= pong.py[0] == y;
+    press(B_PLAY); ok &= pong.state == PG_RUN && !song.playing;
+    bad += check("..PLAY pauses it (nothing moves), again goes on", ok);
+    {   /* the arcade's rules: the ball off a paddle's top part steep and up, the middle shallow; faster after 4 and 12
+         * hits; a ball out: the other's point, served toward the loser; 11 wins */
+        pong.ball_on = 1; pong.hits = 0; pong.py[0] = 100 << 8;
+        pong.by = 100 << 8; pong.bx = (PG_X1 + PG_PW + 2) << 8; pong.vx = -150; pong.vy = 0;
+        frames(40);
+        ok = pong.vx == 150 && pong.vy == -170 && pong.hits == 1u;
+        pong.by = (100 + PG_PH / 2 - PG_BALL / 2) << 8; pong.bx = (PG_X1 + PG_PW + 2) << 8; pong.vx = -150; pong.vy = 0;
+        pong.py[0] = 100 << 8; pong.hits = 3u;
+        frames(40);
+        ok &= pong.vx == 200 && (pong.vy == 40 || pong.vy == -40) && pong.hits == 4u;
+        pong.hits = 12u; ok &= pg_speed() == 260;
+        bad += check("..the paddle's parts (the top steep, the middle shallow), faster after 4 and 12 hits", ok);
+        pong.score[0] = pong.score[1] = 0; pong.ball_on = 1; pong.py[1] = PG_WALL << 8;
+        pong.bx = 230 << 8; pong.by = 200 << 8; pong.vx = 150; pong.vy = 0;
+        frames(200);
+        ok = pong.score[0] == 1u && pong.score[1] == 0u && !pong.ball_on;
+        frames(1100);
+        ok &= pong.ball_on && pong.vx > 0;              /* (served toward player 2, who lost the point) */
+        pong.score[0] = 10u; pong.bx = 230 << 8; pong.by = 200 << 8; pong.vx = 150; pong.vy = 0; pong.py[1] = PG_WALL << 8;
+        frames(200);
+        ok &= pong.state == PG_OVER && pong.score[0] == 11u;
+        press(B_PLAY); ok &= pong.state == PG_READY;
+        bad += check("..a ball out: the other's point, served to the loser a second later; 11 wins, PLAY: the start", ok);
+    }
+    {   /* 1 PLAYER: the FM-1 follows the ball with KNOB 4 ignored, and returns it */
+        uint32_t hits = 0;
+        pong.players = 1u;
+        press(B_PLAY);
+        frames(1100);
+        y = pong.py[1];
+        turn(EN_K4, 3);
+        ok = pong.py[1] == y;
+        for (i = 0; i < 3000u && pong.state == PG_RUN && !hits; i++) {
+            uint8_t h = pong.hits;
+            pong.py[0] = clamp(pong.by - ((PG_PH / 2 - PG_BALL / 2) << 8), PG_WALL << 8, (240 - PG_WALL - PG_PH) << 8);
+            frame();
+            hits += pong.hits > h && pong.vx < 0;       /* (a return by the FM-1's paddle) */
+        }
+        ok &= hits > 0u;
+        bad += check("..1 PLAYER: KNOB 4 does nothing, the FM-1 plays the right paddle and returns the ball", ok);
+    }
+    {   /* drawn in part: the same screen as drawn whole, every frame of a game on the move; few pixels a frame */
+        static uint16_t part[240 * 240];
+        uint32_t f, same = 1, px = 0;
+        pong.players = 2u; pong.state = PG_READY; frame();
+        press(B_PLAY);
+        for (f = 0; f < 400u; f++) {
+            if (f % 7u == 0u) turn(EN_SELECT, (f / 7u) % 3u ? 1 : -1);
+            if (f % 11u == 0u) turn(EN_K4, (f / 11u) & 1u ? 1 : -1);
+            if (f == 300u) press(B_PLAY);               /* (a pause) */
+            if (f == 330u) press(B_PLAY);
+            host_blit_px = 0;
+            frame();
+            if (f > 1u && f < 300u)
+                px += host_blit_px;
+            memcpy(part, host_screen, sizeof part);
+            ui.force = 1; pong.drawn_state = 0xFF;      /* (the whole screen drawn again: the same state, no step) */
+            pong.t_last = fm1_ms;
+            pong_draw();
+            ui.force = 0;
+            if (same && memcmp(part, host_screen, sizeof part)) {
+                uint32_t q;
+                for (q = 0; q < 240u * 240u && part[q] == host_screen[q]; q++)
+                    ;
+                printf("  frame %u: first difference at (%u, %u) (state %u)\n", f, q % 240u, q / 240u, pong.state);
+                same = 0;
+            }
+        }
+        printf("  pixels a frame in play: %u of 57600\n", px / 298u);
+        same &= px / 298u < 2000u;
+        bad += check("..drawn in part (the ball, the paddles, a score): pixel for pixel the whole screen's, under 2000 "
+                     "pixels a frame", same);
+    }
+    press(B_HOME);
+    bad += check("..HOME closes it, the keys play again", !pong.on && keys_mode() == 0u);
+    return bad;
+}
+
 /* (2026-10-24) HARE CROSSING (game_frog.c): SEQ held a second opens it, shorter not; PLAY starts a game, pauses and
  * resumes it (never the song); SELECT hops forward and back, KNOB 4 left and right; a car takes a life; the keys
  * silent; HOME closes it */
@@ -5920,6 +6036,7 @@ int main(void)
     bad += test_display_preferences();
     bad += test_menu_tabs();
     bad += test_frog();
+    bad += test_pong();
     bad += test_menu_project_rows();
     bad += test_information();
     bad += test_product_ux();
