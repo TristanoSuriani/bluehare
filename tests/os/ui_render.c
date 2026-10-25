@@ -534,7 +534,7 @@ static void state(void)                          /* a playing song */
     frog.on = 0;                                  /* (2026-10-24: the game's screen leaves it on) */
     pong.on = 0;                                  /* (PONG's too) */
     menu_cores_boot = 0;                          /* (2026-10-24: the SYSTEM screen's AT RESTART) */
-    ui_prefs2 = (uint8_t)(ui_prefs2 & ~(PREF_ONE_CORE >> 16));
+    ui_prefs2 = (uint8_t)(ui_prefs2 & ~(PREF_TWO_CORES >> 16));
     if (large_on) ui_prefs |= PREF_LARGE;
     song.playing = 1;
     song.g[G_BPM] = 124;
@@ -745,8 +745,8 @@ static void setup(int s)
                                                      * every flag set (CLICK ON, LEVEL HIGH) */
     /* the MENU's tabs (1.0.5): menu DISPLAY (COLOR), menu_hold CONTROL, menu_speaker AUDIO, menu_system SYSTEM (USB
      * SERIAL); menu_slide: from DISPLAY to CONTROL with ANIM ON, the frame half way (draw) */
-    case S_MENU_SYSTEM:                               /* (2026-10-24: CORES changed to 1 since power-on: AT RESTART) */
-        ui.menu = 1; ui.menu_sel = MI_SERIAL; menu_cores_boot = 1; ui_prefs2 |= PREF_ONE_CORE >> 16; break;
+    case S_MENU_SYSTEM:                               /* (2026-10-24: CORES changed to 2 since power-on: AT RESTART) */
+        ui.menu = 1; ui.menu_sel = MI_SERIAL; menu_cores_boot = 1; ui_prefs2 |= PREF_TWO_CORES >> 16; break;
     case S_MENU_SLIDE: ui.menu = 1; ui.menu_sel = MI_ACCEL; ui_prefs |= PREF_LATCH; break;
     /* the GLO SCL EDIT layers (ui_layer.c): just opened (a peek), and in use: GLO with T2 muted, T3 soloed (its key
      * held) and KNOB 1 turned; with CLK EXT (TAP dimmed); SCL at D# minor, KNOB 2 turned; EDIT on FM6 preset 3,

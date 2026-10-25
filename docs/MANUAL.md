@@ -216,14 +216,14 @@ HOME closes it. The settings are kept across power-offs.
 
 ### CORES: the second processor core
 
-The FM-1's chip has two cores; Blue Hare uses the second for the busiest track, which leaves room for more voices.
-To do so it raises the chip's core supply to the maker's levels for its clock speed (1.35 V and 1.50 V), as the
-ChoralRoot and Melodee firmwares do; it never goes higher.
+The FM-1's chip has two cores. Blue Hare uses one by default. Set **MENU > SYSTEM > CORES** to 2 and switch the
+FM-1 off and on to let the second core mix the busiest track, which leaves room for more voices. The change applies
+only at the next start; until then the row says AT RESTART.
 
-If the second core misbehaves (some units' cores do), Blue Hare stops using it for the session on its own, and after
-a crash keeps it off at the next start. **INFO** shows CORES: 2, or 1 and the reason. To turn it off yourself, set
-**MENU > SYSTEM > CORES** to 1 and switch the FM-1 off and on: the change applies only at the next start, and until
-then the row says AT RESTART.
+With two cores, Blue Hare raises the chip's core supply to the maker's levels for its clock speed (1.35 V and
+1.50 V), as the ChoralRoot and Melodee firmwares do; it never goes higher. Two cores are still being tested: on some
+units the second core misbehaves. If it does, Blue Hare stops using it for the session on its own, and after a crash
+keeps it off at the next start. **INFO** shows CORES: 2, or 1 and the reason.
 
 INFO also counts what went wrong since power-on: **AUDIO** LATE (moments the sound was computed too late: clicks,
 notes out of time) and CUT (voices faded out because the load was too high), and **MIDI IN** (LOST: incoming MIDI

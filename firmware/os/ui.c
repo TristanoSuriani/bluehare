@@ -68,8 +68,9 @@ static uint32_t up_gen;                      /* bumped on every user bank change
 #define PREF_EXPERT (0x08u << 16)                /* (2026-10-17) MENU > CONTROL > EXPERT ON: EDIT shows the engine's
                                                 * own pages (EDIT 1, EDIT 2), else its plain one (SOUND) */
 static int expert_on(void) { return (ui_prefs2 & (PREF_EXPERT >> 16)) != 0u; }
-#define PREF_ONE_CORE (0x10u << 16)              /* (2026-10-24) MENU > SYSTEM > CORES 1: the second core not started
-                                                * at power-on (fm1/bluehare.c c1_boot); clear in older settings = 2 */
+#define PREF_TWO_CORES (0x20u << 16)             /* (2026-10-25) MENU > SYSTEM > CORES 2: the second core started at
+                                                * power-on (fm1/dualcore.c c1_boot); clear (a fresh install) = 1, the
+                                                * user's default. (0x10 was 2026-10-24's CORES 1, retired: ignored) */
 /* 1.3 (Discussions #112, #134): MENU > DISPLAY > HOME, what the HOME page shows under its four cards: 0 SCOPE (the
  * oscilloscope, as before), 1 TRACKS (the four tracks as rows: ui_graph.c draw_home_tracks). A byte of its own no engine
  * uses, saved with the settings; 0 in older settings = SCOPE; an unknown value (a later firmware's view) reads as SCOPE

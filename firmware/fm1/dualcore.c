@@ -4,8 +4,8 @@
 /* (2026-10-24) The second core on the device: target.h's tgt_c1_run / tgt_c1_wait over hal/fm1_cpu1.h (ChoralRoot
  * FM-1's, after fm1-x0x and Melodee PR 21, all GPL-3.0), what fx.c mix_block hands it (one part's mix_part a block),
  * and when it may start. After ChoralRoot's cr_cpu1.h, the essentials:
- *   power-on (main.c fm1_main, before audio_init and the timers): core 1 starts unless MENU > SYSTEM > CORES is 1, the
- *   boot before this one failed (the boot guard: a crash or a hang in its first 30 s), or the bar says no (a crash
+ *   power-on (main.c fm1_main, before audio_init and the timers): core 1 starts only with MENU > SYSTEM > CORES 2
+ *   (2026-10-25: 1 the default), and not when the boot before this one failed (the boot guard: a crash or a hang in its first 30 s), or the bar says no (a crash
  *   beside core 1 at the last boot, a hang of it: the watchdog's reset after it ran, or a give-up). Before it starts
  *   the core rails go up to JieLi's levels for this clock (hal/fm1_power.h: SYSVDD 1.35 V, VDC14 1.50 V, never more,
  *   a step every 100 us); the PC limits open while it boots through the ROM. Not answering in 20 ms: one core.
@@ -59,9 +59,9 @@ static void c1_boot(int failed_before, int wdt_reset)
         barred = fm1_c1_bar.barred || (fm1_c1_bar.ran && wdt_reset);
     fm1_c1_bar.magic = FM1_C1_BAR_MAGIC;
     fm1_c1_bar.ran = fm1_c1_bar.barred = 0;
-    menu_cores_boot = (uint8_t)(1u + !!(ui_prefs2 & (PREF_ONE_CORE >> 16)));   /* (the CORES row: AT RESTART) */
-    if (ui_prefs2 & (PREF_ONE_CORE >> 16))
-        return;                                         /* CORES 1 */
+    menu_cores_boot = (uint8_t)(1u + !!(ui_prefs2 & (PREF_TWO_CORES >> 16)));   /* (the CORES row: AT RESTART) */
+    if (!(ui_prefs2 & (PREF_TWO_CORES >> 16)))
+        return;                                         /* CORES 1 (2026-10-25: the default) */
     if (failed_before || barred) {
         c1_state = C1_BARRED;
         return;

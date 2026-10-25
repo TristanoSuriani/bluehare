@@ -16,7 +16,8 @@ enum { MI_COLOR, MI_STYLE, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_SCOPE, MI_H
        MI_EXPERT,                                      /* (2026-10-17) CONTROL > EXPERT: the engines' own pages */
        MI_LOWCUT, MI_USB,
        MI_CLICK, MI_CLKLVL, MI_TUNE, MI_SERIAL, MI_RESTORE,
-       MI_CORES,                                       /* (2026-10-24) SYSTEM > CORES: 2 (the second core, at power-on) or 1 */
+       MI_CORES,                                       /* (2026-10-24) SYSTEM > CORES: 1 (the default) or 2 (the second core,
+                                                        * at power-on) */
        MI_PANEL, MI_INFO, MI_ABOUT, MI_COUNT };
                                                        /* (2026-10-23: MIDI IN gone, each track's on GLO > MIDI IN;
                                                         * the MIDI tab with it) */
@@ -91,7 +92,8 @@ static const menu_flag_t MENU_FLAGS[] = {
     {MI_SCLLED, PREF_SCALE_LEDS, {"OFF", "ON"}},      /* 1.2, Discussion #127: ON, the keys show the scale (ui_input.c) */
     {MI_SCOPE, PREF_SCOPE_MIX, {"OUT", "MIX"}},        /* 1.2, Discussion #165: MIX, the scope before MASTER (fx.c) */
     {MI_EXPERT, PREF_EXPERT, {"OFF", "ON"}},           /* (2026-10-17) ON: EDIT 1 and 2, every engine parameter (ui.c) */
-    {MI_CORES, PREF_ONE_CORE, {"2", "1"}},             /* (2026-10-24) 1: the second core not started (fm1/bluehare.c) */
+    {MI_CORES, PREF_TWO_CORES, {"1", "2"}},            /* (2026-10-25) 2: the second core started (fm1/dualcore.c); 1 the
+                                                        * default */
 };
 /* (2026-10-24) CORES as this power-on started: 0 unknown (the host), else 1 + its value (fm1/dualcore.c c1_boot). A
  * change applies at the next power-on: until then the row says AT RESTART (ui_menu.c menu_row) */

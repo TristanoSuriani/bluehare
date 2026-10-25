@@ -1070,6 +1070,18 @@ static int test_menu_tabs(void)
                  mtab_rows(MTAB_DISPLAY) == 8u && MI_TAB[MI_HOME] == MTAB_DISPLAY && mtab_rows(MTAB_CONTROL) == 6u && MI_TAB[MI_EXPERT] == MTAB_CONTROL && mtab_rows(MTAB_AUDIO) == 5u &&
                  mtab_rows(MTAB_SYSTEM) == 6u && MI_TAB[MI_TUNE] == MTAB_AUDIO && MI_TAB[MI_CORES] == MTAB_SYSTEM &&
                  MI_TAB[MI_INFO] == MTAB_SYSTEM && MI_INFO >= MI_VALUES);
+    {   /* (2026-10-25) CORES: 1 on a fresh install (no settings: ui_prefs2 0), 2 only when chosen; the old CORES 1 bit
+         * (0x10, 2026-10-24) ignored */
+        uint8_t was = ui_prefs2;
+        ui_prefs2 = 0;
+        ok = str_eq(menu_vname(MI_CORES, menu_get(MI_CORES)), "1");
+        ui_prefs2 = 0x10u;
+        ok &= str_eq(menu_vname(MI_CORES, menu_get(MI_CORES)), "1");
+        ui_prefs2 = (uint8_t)(PREF_TWO_CORES >> 16);
+        ok &= str_eq(menu_vname(MI_CORES, menu_get(MI_CORES)), "2");
+        ui_prefs2 = was;
+        bad += check("MENU > SYSTEM > CORES: 1 on a fresh install, 2 only when chosen", ok);
+    }
 
     ui_power_on();
     hold(B_HOME);

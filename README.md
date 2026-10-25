@@ -40,7 +40,8 @@ categories.
 **Under the hood:**
 
 - The synth engines run oversampled in the desktop version and from the chip's fast RAM on the FM-1.
-- The FM-1's **second processor core** mixes the busiest track (MENU > SYSTEM > CORES; see the manual).
+- The FM-1's **second processor core** can mix the busiest track (off by default, still being tested: MENU > SYSTEM >
+  CORES; see the manual).
 - **Boot protection** (from ChoralRoot FM-1): an interrupted update brings the FM-1 back in update mode instead of
   leaving it dark, and holding OCT− at power-on enters update mode on purpose.
 - Two games: HARE CROSSING behind SEQ held for a second, PONG behind PLAY held for a second.
@@ -63,8 +64,8 @@ cable and a charged FM-1. Every install after it is protected.
 **Please note:**
 
 - **Your songs and sounds from Felucca or earlier Blue Hare versions do not load.**
-- **The second core runs with the chip's core supply raised** to the maker's levels for its clock (1.35 V and
-  1.50 V), as in ChoralRoot and Melodee; never higher. If you prefer not to, set MENU > SYSTEM > CORES to 1.
+- **Blue Hare runs on one core by default.** If you set MENU > SYSTEM > CORES to 2, the chip's core supply is raised
+  to the maker's levels for its clock (1.35 V and 1.50 V), as in ChoralRoot and Melodee; never higher.
 - Installing is at your own risk, as with any alternative firmware.
 
 ## Desktop and browser
