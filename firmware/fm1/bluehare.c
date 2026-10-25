@@ -32,7 +32,7 @@
 #define BLUEHARE_ID "FM-1_900"    /* package identity (build.py: the .fwsc marker string) */
 #endif
 #ifndef BLUEHARE_VERSION
-#define BLUEHARE_VERSION "v0.10.0" /* Blue Hare's (was Felucca's v1.4.1, its base): shown in the menu, the splash, the
+#define BLUEHARE_VERSION "v0.40.0" /* Blue Hare's (was Felucca's v1.4.1, its base): shown in the menu, the splash, the
                                     * console and the editor; build.py --release X.Y */
 #endif
 #if BLUEHARE_OTA && !BLUEHARE_FLASH

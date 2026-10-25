@@ -1,7 +1,7 @@
 # Contributing
 
 **Blue Hare** (this repository, Tristano Suriani's fork of Felucca) takes issues and pull requests at
-<https://github.com/TristanoSuriani/blue-hare>. Please don't send Blue Hare problems to Felucca. The rest of
+<https://github.com/TristanoSuriani/bluehare>. Please don't send Blue Hare problems to Felucca. The rest of
 this file is Felucca's own guide (Leo Kuroshita, Hügelton Instruments), for contributing to Felucca itself.
 
 ## Contributing to Felucca

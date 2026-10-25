@@ -5,7 +5,7 @@ to be played from an external sequencer or from the FM-1's own keys. It is devel
 fork of [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita (Hügelton Instruments). It is an independent
 project, not an official Felucca or M-VAVE release.
 
-**Status: beta (0.11).** It runs on the FM-1 and has a broad automatic test suite, but it has been played on few
+**Status: beta (0.40.0).** It runs on the FM-1 and has a broad automatic test suite, but it has been played on few
 units so far. Please report what you find in the repository's issues.
 
 - **Manual:** [docs/MANUAL.md](docs/MANUAL.md)
@@ -43,7 +43,7 @@ categories.
 - The FM-1's **second processor core** mixes the busiest track (MENU > SYSTEM > CORES; see the manual).
 - **Boot protection** (from ChoralRoot FM-1): an interrupted update brings the FM-1 back in update mode instead of
   leaving it dark, and holding OCT− at power-on enters update mode on purpose.
-- A game, HARE CROSSING, behind SEQ held for a second.
+- Two games: HARE CROSSING behind SEQ held for a second, PONG behind PLAY held for a second.
 
 ## Installing
 
@@ -51,10 +51,10 @@ You need a computer with Python 3 and a USB cable:
 
 ```
 pip install mido python-rtmidi
-python3 tools/fm1_install.py blue-hare-0.11.fwsc
+python3 tools/fm1_install.py bluehare-0.40.0.fwsc
 ```
 
-The FM-1 restarts with Blue Hare when the installer says `done`. **The first install of 0.11** writes the boot
+The FM-1 restarts with Blue Hare when the installer says `done`. **The first install of 0.40.0** writes the boot
 protection itself: for about a second at its start an interruption cannot be repaired from the FM-1, so use a direct
 cable and a charged FM-1. Every install after it is protected.
 

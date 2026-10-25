@@ -10,14 +10,14 @@
 /* ------------------------------------------------------------ menu --- */
 /* (the rows, their values and names, usb_serial_apply: menu_items.c) */
 
-/* github.com/TristanoSuriani/blue-hare, QR version 3, correction M (2026-10-23: Blue Hare's repository; tools: segno).
+/* github.com/TristanoSuriani/bluehare, QR version 3, correction M (2026-10-25: Blue Hare's repository; tools: segno).
  * One row per word, leftmost module in bit 0; the constant matrix needs no encoder or RAM. */
 static const uint32_t ABOUT_QR[29] = {
-    0x1FDE9B7Fu, 0x10535D41u, 0x1744265Du, 0x17528B5Du, 0x174BFE5Du, 0x10595241u,
-    0x1FD5557Fu, 0x0006F100u, 0x1A5E74EDu, 0x1DDF0A02u, 0x0C854C65u, 0x10817139u,
-    0x079297EAu, 0x1E41BEBCu, 0x19995D77u, 0x0298A22Bu, 0x11B895F9u, 0x0232AA9Eu,
-    0x05A39959u, 0x1D6F1C00u, 0x1FF7ABEEu, 0x1F147100u, 0x0959377Fu, 0x11101B41u,
-    0x05F2D85Du, 0x15B9CF5Du, 0x14AC555Du, 0x0A95D441u, 0x091D1D7Fu,
+    0x1FDEBC7Fu, 0x1044EE41u, 0x1748B75Du, 0x1752DF5Du, 0x175C895Du, 0x10558B41u,
+    0x1FD5557Fu, 0x0011D900u, 0x07D28E7Du, 0x1DDF7719u, 0x0132FEF1u, 0x0BEC33A2u,
+    0x0793C04Du, 0x13F7169Fu, 0x02F581FEu, 0x0298C831u, 0x1C0E817Bu, 0x195F7C07u,
+    0x05A2E6F1u, 0x10D8B4ADu, 0x05FA49D5u, 0x1F151900u, 0x055F8E7Fu, 0x131DC541u,
+    0x0DF28F5Du, 0x180F735Du, 0x0FC1D35Du, 0x0A959041u, 0x04ABB57Fu,
 };
 
 static void draw_about_qr(int32_t x, int32_t y)
@@ -41,7 +41,7 @@ static const menu_credit_t MENU_CREDITS[] = {
     {"Tristano Suriani", MC_TEXT},
     {"The tracker, the distributions, the engines WAVE BYTE WEST HOOVER SPEECH FMPERC KARPLUS VOSIM PARTICLE CHAOS SID "
      "DUBSIREN SIREN8 DUBCHORD BLISS WASP MODAL VECTOR ECHOES GLITCH DARK RAZOR GUTS SLAG VENOM HONKS WAR CHOKE RUST DRILL ANVIL SCREAM FLUIDS SCRATCH ABYSS SHRED KIT BREAKS RISERS LINNKIT STRINGS FLOOR NEBULA CANYON CHIPKIT SANDSTORM: GPL-3.0", MC_TEXT},
-    {"https://github.com/TristanoSuriani/blue-hare", MC_URL},
+    {"https://github.com/TristanoSuriani/bluehare", MC_URL},
     {"", MC_TEXT},
     {"H\xFCgelton Instruments", MC_TITLE},  /* Felucca's own: above; these are ours too */
     {"Leo Kuroshita", MC_TEXT},
@@ -145,7 +145,7 @@ static int32_t menu_document(int32_t y, int draw)
     y = menu_text("Fonts and icons: their licences travel with the source and the release files.", y, T_TEXT, draw);
     y = menu_text("NO WARRANTY", y, T_TEXT, draw);
     y = menu_text("Full notices in source:", y + 8, T_TEXT, draw);
-    y = menu_text("github.com/TristanoSuriani/blue-hare", y, T_MID, draw);
+    y = menu_text("github.com/TristanoSuriani/bluehare", y, T_MID, draw);
     y = menu_text("Felucca's: github.com/hugelton/Felucca", y, T_MID, draw);
     return y + 4;
 }

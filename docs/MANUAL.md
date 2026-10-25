@@ -5,7 +5,7 @@ live playing**: a synth, a drum kit and a voice, each on its own track, played f
 external sequencer over USB or TRS MIDI. It has no sequencer of its own. Instead it has an arpeggiator per track, and
 REC records what your sequencer plays into a loop per track.
 
-This manual covers version 0.11. Blue Hare is a fork of [Felucca](https://github.com/hugelton/Felucca) by Leo
+This manual covers version 0.40.0. Blue Hare is a fork of [Felucca](https://github.com/hugelton/Felucca) by Leo
 Kuroshita (Hügelton Instruments); see the [README](../README.md) for credits and licences.
 
 ## Contents
@@ -23,7 +23,7 @@ Kuroshita (Hügelton Instruments); see the [README](../README.md) for credits an
 11. [Songs and the autosave](#11-songs-and-the-autosave)
 12. [The menu](#12-the-menu)
 13. [The engines](#13-the-engines)
-14. [The game](#14-the-game)
+14. [The games](#14-the-games)
 15. [Troubleshooting](#15-troubleshooting)
 
 ---
@@ -34,13 +34,13 @@ Blue Hare installs over USB, like any FM-1 update. From a computer with Python 3
 
 ```
 pip install mido python-rtmidi
-python3 tools/fm1_install.py blue-hare-0.11.fwsc
+python3 tools/fm1_install.py bluehare-0.40.0.fwsc
 ```
 
 The installer finds the FM-1, checks the package and writes it. The FM-1 restarts by itself, and the installer then
 checks that the FM-1 is running the new firmware. Keep the cable connected and the computer awake until it says `done`.
 
-**The first time you install Blue Hare 0.11** the package also writes its boot protection. That takes about a
+**The first time you install Blue Hare 0.40.0** the package also writes its boot protection. That takes about a
 second at the start of the install, and for that second only, an interruption cannot be repaired from the FM-1
 itself. Use a direct cable and a charged FM-1.
 
@@ -86,7 +86,7 @@ changes the value only while LFO is held (MOMENTARY); press OCT+ before letting 
 | SAVE | PRESETS (the sound list), USER (your sounds), PROJECT (load and save the song), TOOLS (INIT SOUND) |
 | ARP | starts or stops the arpeggiator; ARP and ARP 2 (section 8) |
 | GLO | GLOBAL (BPM, SWING, CLOCK, TUNE), MIDI IN (the selected track's MIDI input and channel) |
-| SEQ | LOOP (section 10). Held for a second: the game (section 14) |
+| SEQ | LOOP (section 10). Held for a second: HARE CROSSING (section 14) |
 
 ## 3. The three tracks
 
@@ -265,7 +265,9 @@ KNOB order is EDIT 1 then EDIT 2 (with EXPERT on). The synth engines play 6 voic
 | **RISERS** | Build-ups and landings, timed to the song: noise, saws, sine, an endless Shepard tone, down-lifters, impacts | TYPE, LEN (beats), RANGE, CURVE, SPRD, RES, BUILD, NOISE |
 | **NOISE** | Noise as an instrument: three colours, four filters, the filter following the keys | COLOR, FILT, CUT, RES, TRACK, ENV, DEC, TONE |
 
-## 14. The game
+## 14. The games
+
+### HARE CROSSING
 
 Hold **SEQ** for a second: **HARE CROSSING**. Get Niglio, Blue Hare's mascot, across the road and the river into
 the three burrows. The music goes on while you play (your sequencer, the loops); the keys are silent.
@@ -278,9 +280,23 @@ Cars run Niglio over; in the river only the logs carry him. Each life has a time
 lives. Fill all three burrows for the next level: faster lanes, less time, and from level 4 sinking logs and a fast
 lane.
 
+### PONG
+
+Hold **PLAY** for a second: **PONG**, as in the 1972 arcade game. The transport stays as it was before you pressed
+PLAY (if it was playing, it starts again from the top). The music goes on; the keys are silent.
+
+- **SELECT** on the start screen: 1 PLAYER (against the FM-1) or 2 PLAYERS
+- **PLAY:** serve; during a game, pause and go on; after a game, back to the start screen
+- **SELECT:** player 1's paddle (left); **KNOB 4:** player 2's paddle (right)
+- **HOME:** back to the instrument
+
+The first to 11 wins. Where the ball meets the paddle sets its angle (the ends send it off steepest), and it speeds
+up after the 4th and the 12th hit of a rally. After a point the ball is served toward the player who lost it. The
+colours follow MENU > COLOR.
+
 ## 15. Troubleshooting
 
-- **No sound from the keys:** check the track is not muted (HOME > MIXER, or the GLO layer), and that the game and
+- **No sound from the keys:** check the track is not muted (HOME > MIXER, or the GLO layer), and that the games and
   NAME are not open.
 - **Notes from the sequencer go to the wrong track:** GLO > MIDI IN, for each track: its input and channel.
 - **The FM-1 does not start (dark):** switch it off, hold OCT− alone and switch it on. Three short flashes: update

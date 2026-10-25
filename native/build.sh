@@ -16,7 +16,7 @@ DIST="${1:-all}"
 [ -f build/gen/bluehare_tables.h ] || { echo "native: run ./build.sh once first (build/gen)"; exit 1; }
 [ -f "build/gen/dist_$DIST.h" ] || { echo "native: no distribution $DIST (distributions/$DIST.txt; ./build.sh once after adding it)"; exit 1; }
 command -v sdl2-config >/dev/null 2>&1 || { echo "native: no SDL2 (macOS: brew install sdl2)"; exit 1; }
-VERSION=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/fm1/bluehare.c)   # ("v0.10.0")
+VERSION=$(sed -n 's/^#define BLUEHARE_VERSION "\([^"]*\)".*/\1/p' firmware/fm1/bluehare.c)   # ("v0.40.0")
 PLIST_VERSION=${VERSION#v}
 NAME=$(echo "$DIST" | tr 'a-z_' 'A-Z ')   # ("HARE FM1": the tag, gen_dist.py's; all: none)
 [ "$DIST" = all ] && NAME=""

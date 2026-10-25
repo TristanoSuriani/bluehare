@@ -72,7 +72,8 @@ On Linux x86-64 the toolchain runs natively and Docker is not needed.
 `JIELI_TOOLCHAIN` and `AC79_SDK` override the default locations
 (`~/.jieli/toolchain`, `~/fw-AC79_AIoT_SDK`).
 
-`./build.sh --release 1.0` makes a release build: the package identity becomes `FM-1_910`
+`./build.sh --release 1.0` makes a release build: the package identity becomes `FM-1_910` (a two-digit minor takes
+both places: `--release 0.40.0` is `FM-1_940`)
 and the version string `v1.0`; the package is `build/bluehare-1.0.fwsc`, and
 `build/release-1.0/` holds what a release ships: the package, the app
 (`bluehare-1.0-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
@@ -102,7 +103,7 @@ in the order the device lists them: `distributions/<name>.txt`, one engine a lin
 (tools/gen_ui_palettes.py; GREY without the line).
 
 ```
-./build.sh                          # the distribution distributions/BUILD names: HARE FM1 (build/bluehare.fwsc, "v0.10.0 HARE FM1")
+./build.sh                          # the distribution distributions/BUILD names: HARE FM1 (build/bluehare.fwsc, "v0.40.0 HARE FM1")
 BLUEHARE_DIST=<name> ./build.sh      # another one (build/bluehare-<name>.fwsc)
 ```
 

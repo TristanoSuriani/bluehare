@@ -415,17 +415,18 @@ def mmio_check():
 def main():
     global PRODUCT, VERSION
     ap = argparse.ArgumentParser()
-    ap.add_argument("--release", metavar="X.Y", help="release build: identity FM-1_9XY, version string vX.Y")
+    ap.add_argument("--release", metavar="X.Y", help="release build: identity FM-1_9XY (a two-digit Y: FM-1_9YY), version string vX.Y")
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")
     a = ap.parse_args()
     dist = distribution()
     plain = dist == build_default()                 # (the build's own distribution: the plain names)
     name = "bluehare.fwsc" if plain else f"bluehare-{dist}.fwsc"
-    if a.release:                   # one digit each: the identity has room for two (X.Y.Z and X.Y.Z.W keep X.Y's)
-        m = re.fullmatch(r"(\d)\.(\d)(?:\.\d){0,2}(-[A-Za-z0-9]+)?", a.release)
+    if a.release:                   # the identity has room for two digits: X and Y, or a two-digit Y alone (2026-10-25:
+        # 0.40.0 is FM-1_940); X.Y.Z and X.Y.Z.W keep X.Y's
+        m = re.fullmatch(r"(\d)\.(\d{1,2})(?:\.\d{1,2}){0,2}(-[A-Za-z0-9]+)?", a.release)
         if not m:
-            raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z, X.Y.Z.W or X.Y-suffix, one digit each")
-        PRODUCT = "FM-1_9" + m[1] + m[2]
+            raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z, X.Y.Z.W or X.Y-suffix (X one digit, Y one or two)")
+        PRODUCT = "FM-1_9" + (m[2] if len(m[2]) == 2 else m[1] + m[2])
         VERSION = "v" + a.release.lower()      # e.g. v1.0, v1.1-rc1
         name = f"bluehare-{a.release}.fwsc" if plain else f"bluehare-{a.release}-{dist}.fwsc"
     fm1pkg_make.SDK = a.sdk

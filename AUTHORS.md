@@ -2,7 +2,7 @@
 
 **Blue Hare** is a fork of **Felucca**, the multi-engine synthesizer firmware for the M-VAVE FM-1 by
 Leo Kuroshita (Hügelton Instruments). Blue Hare is developed by **Tristano Suriani**
-(<https://github.com/TristanoSuriani/blue-hare>). It is an independent fork, not an official Felucca release.
+(<https://github.com/TristanoSuriani/bluehare>). It is an independent fork, not an official Felucca release.
 
 Both are free software under the GNU General Public License, version 3 only (`LICENSE`). This file says whose work
 is whose. The third-party parts that both build on (fonts, ported DSP, the JieLi SDK files) are listed in
